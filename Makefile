@@ -8,16 +8,23 @@
 ci: core-no-deps core-imports core-no-world core-no-panic modules scripts
 
 # GUARD_SCAN is an awk program. For each line of its input files whose code matches the ERE `re`, it
-# prints "<rule>: <file>:<line>: <the line>". The code is the line with its // comment removed; a //
-# inside a "...", '...' or `...` literal on the same line is not a comment, and literals stay in the
-# code. It reads one line at a time, so a /* */ comment or a raw string over several lines is code.
+# prints "<rule>: <file>:<line>: <the line>". The code is the line with its comments removed: a //
+# comment to the end of the line, and a /* */ comment, which may span lines and becomes one space.
+# Comment markers inside a "...", '...' or `...` literal are text, and literals stay in the code. The
+# state of a /* */ comment or a `...` raw string carries from one line to the next within a file.
 define GUARD_SCAN
-function code(s,    i, c, q, out) {
-	out = ""; q = ""
+function code(s,    i, c, out) {
+	out = ""
+	if (q != "`") q = ""
 	for (i = 1; i <= length(s); i++) {
 		c = substr(s, i, 1)
+		if (bc) {
+			if (c == "*" && substr(s, i + 1, 1) == "/") { bc = 0; i++; out = out " " }
+			continue
+		}
 		if (q == "") {
 			if (c == "/" && substr(s, i + 1, 1) == "/") break
+			if (c == "/" && substr(s, i + 1, 1) == "*") { bc = 1; i++; continue }
 			if (c == "\"" || c == "'" || c == "`") q = c
 		} else if (c == "\\" && q != "`") {
 			out = out c; i++; c = substr(s, i, 1)
@@ -28,6 +35,7 @@ function code(s,    i, c, q, out) {
 	}
 	return out
 }
+FNR == 1 { bc = 0; q = "" }
 code($$0) ~ re {
 	t = $$0; sub(/^[ \t]+/, "", t)
 	print rule ": " FILENAME ":" FNR ": " t
@@ -57,8 +65,13 @@ CORE_SRC = -name '*.go' ! -name '*_test.go' ! -path '*/testdata/*'
 IMPORTS_RE = ["`]github[.]com/orilloai/placket/(adapters|cmd|recipes)(/[^"`]*)?["`]
 # core-no-deps: a require directive, single or block.
 REQUIRE_RE = ^[ \t]*require([ \t(]|$$)
-# core-no-world: the clock, the environment, files, printing, and the packages for randomness and network.
-WORLD_RE = (^|[^A-Za-z0-9_])(time[.]Now|os[.]Getenv|os[.]Open|fmt[.]Print)|["`](crypto/rand|math/rand(/v2)?|net(/[^"`]*)?)["`]
+# core-no-world: by import path, under any name, the packages for randomness, the network, the process
+# and its files and environment, logs, and memory (crypto/rand, math/rand, net, os, syscall, io/ioutil,
+# log, runtime, unsafe, and those below them); by name, the clock (time.Now and the calls that wait on
+# or measure against it), os.Getenv and os.Open, and printing (fmt.Print*, print, println).
+WORLD_PKGS = crypto/rand|math/rand(/v2)?|net(/[^"`]*)?|os(/[^"`]*)?|syscall|io/ioutil|log(/[^"`]*)?|runtime(/[^"`]*)?|unsafe
+WORLD_CALLS = time[.](Now|Since|Until|After|AfterFunc|Tick|NewTimer|NewTicker|Sleep)|os[.]Getenv|os[.]Open|fmt[.]Print
+WORLD_RE = (^|[^A-Za-z0-9_])($(WORLD_CALLS))|(^|[^A-Za-z0-9_.])print(ln)?[ \t]*[(]|["`]($(WORLD_PKGS))["`]
 # core-no-panic: panic( as a word.
 PANIC_RE = (^|[^A-Za-z0-9_])panic[ \t]*[(]
 
@@ -70,16 +83,18 @@ core-no-deps:
 	$(call guard,-path core/go.mod,$(REQUIRE_RE),core/go.mod requires no module)
 
 core-no-world:
-	$(call guard,$(CORE_SRC),$(WORLD_RE),no non-test code in core/ reads the clock$(comma) randomness$(comma) the environment or files$(comma) or touches the network or prints)
+	$(call guard,$(CORE_SRC),$(WORLD_RE),no non-test code in core/ reads the clock$(comma) randomness$(comma) the environment or files$(comma) or touches the network$(comma) the process or memory$(comma) or prints)
 
 core-no-panic:
 	$(call guard,$(CORE_SRC),$(PANIC_RE),no non-test code in core/ calls panic)
 
 # Every Go module's format, vet and tests. A module under a testdata/ directory is a fixture and is
-# skipped, as is a module with no Go packages yet (go vet and go test refuse an empty pattern).
+# skipped, as is a module with no Go packages yet (go vet and go test refuse an empty pattern). A module
+# whose packages cannot be listed fails here; it is never taken for an empty one.
 modules:
 	@set -e; for m in $$(find . -name go.mod -not -path './.git/*' -not -path '*/testdata/*' -exec dirname {} \; | sort); do \
-		if [ -z "$$(cd "$$m" && go list ./...)" ]; then echo "== $$m: no Go packages; skipped"; continue; fi; \
+		pkgs=$$(cd "$$m" && go list ./...) || { echo "== $$m: go list failed"; exit 1; }; \
+		if [ -z "$$pkgs" ]; then echo "== $$m: no Go packages; skipped"; continue; fi; \
 		echo "== $$m"; \
 		unformatted=$$(cd "$$m" && find . -name '*.go' -not -path '*/testdata/*' -exec gofmt -l {} +); \
 		if [ -n "$$unformatted" ]; then echo "gofmt: $$m: not formatted:" $$unformatted; exit 1; fi; \
