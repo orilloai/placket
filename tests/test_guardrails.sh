@@ -64,8 +64,21 @@ bad() {
 	failed=$((failed + 1))
 }
 
+# extra <rule> <file>[:<line>]...: the output's refusal lines of the rule that name none of the places
+# given, other than its "ok" and its closing "refused:" line.
+extra() {
+	r=$1
+	shift
+	awk -v r="$r: " -v ats="$*" '
+		BEGIN { n = split(ats, at, " ") }
+		index($0, r) != 1 || $0 == r "ok" || index($0, r "refused: ") == 1 { next }
+		{ for (i = 1; i <= n; i++) if (index($0, r at[i] ": ") == 1) next; print }
+	' "$tmp/out"
+}
+
 # refused <case> <rules> <file>[:<line>]...: make ci fails, and only the rules named (one, or several
-# space-separated) refuse, each naming every file and line given. A whole file is named without a line.
+# space-separated) refuse, each naming every file and line given and nothing else.
+# A whole file is named without a line.
 refused() {
 	name=$1
 	rule=$2
@@ -77,6 +90,8 @@ refused() {
 		for at in "$@"; do
 			if ! has "$r: $at: "; then bad "no line starting '$r: $at: '"; return; fi
 		done
+		more=$(extra "$r" "$@")
+		if [ -n "$more" ]; then bad "$r also refused: $more"; return; fi
 	done
 	other=$(refusals "$rule")
 	if [ -n "$other" ]; then bad "refused by another check: $other"; return; fi
@@ -124,8 +139,8 @@ refused world-time-now core-no-world core/world/world.go:7
 refused world-crypto-rand core-no-world core/world/world.go:4
 refused world-math-rand core-no-world core/world/world.go:4
 refused world-math-rand-v2 core-no-world core/world/world.go:4
-refused world-os-getenv core-no-world core/world/world.go:7
-refused world-os-open core-no-world core/world/world.go:7
+refused world-os-getenv core-no-world core/world/world.go:4 core/world/world.go:7
+refused world-os-open core-no-world core/world/world.go:4 core/world/world.go:7
 refused world-net core-no-world core/world/world.go:4
 refused world-net-http core-no-world core/world/world.go:4
 refused world-fmt-print core-no-world core/world/world.go:7
@@ -181,11 +196,16 @@ passes comments-only
 passes block-comments-only
 
 # What core-no-world allows in a non-test file: fmt.Fprint* and fmt.Sprint*, a call of a field named
-# print, "C" and escapes in a string that is not an import path, and assembly under testdata/.
+# print, "C" and escapes in a string that is not an import path, assembly under testdata/, and a
+# type of package time whose name starts like a refused call (time.Ticker).
 passes world-allowed
 
 # A module whose packages cannot be listed fails make ci; it is never taken for an empty one.
 fails gomod-broken "== ./core: go list failed"
+
+# A module whose files go list does not see on this host (all behind a build constraint for another
+# system) still has its format checked before it is skipped as one with no packages.
+fails unlisted-unformatted "gofmt: ./core: not formatted: ./u/u.go"
 
 # A module with no Go packages is skipped: it is neither built, vetted nor tested.
 passes empty-module

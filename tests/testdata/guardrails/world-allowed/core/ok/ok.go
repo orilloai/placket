@@ -9,6 +9,9 @@ import (
 
 type sink struct{ print func(string) }
 
+// Wait holds a ticker it is given; the type is not a call that reads the clock.
+type Wait struct{ T *time.Ticker }
+
 // Say writes to the writer it is given and formats strings; none of it prints.
 func Say(w io.Writer, at time.Time) string {
 	fmt.Fprintln(w, "hello")
