@@ -19,3 +19,10 @@ def test_search(tmp_path):
     assert search("a b", p) == ["a b"]
     assert search("; rm", p) == ["; rm -rf x"]
     assert search("zz", p) == []
+
+
+def test_first_n():
+    from reviewtest.listutil import first_n
+    assert first_n([1, 2, 3], 2) == [1, 2]
+    assert first_n([1, 2, 3], -1) == []
+    assert first_n([1, 2, 3], 9) == [1, 2, 3]
