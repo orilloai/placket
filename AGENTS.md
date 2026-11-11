@@ -107,7 +107,7 @@ Fixtures for any check go under a `testdata/` directory. Go's tools skip it, and
 
 - **`one-decision-module`**: the decision about what crosses is reached through one entry point in the composition package. No other code compares a stance, matches a term or runs the forbidden check, and a recorded verdict is never computed again, not on reload and not in the export. Why: the decision module is the seam that can be swapped; logic outside it would survive the swap. *M2.*
 - **`release-in-resolve`**: content is released only by the operation that resolves a question, during the very call that carries the answer permitting it, with every receipt of that call built before any state changes. One function recognises a release from receipts, and everything else calls it. Why: a release outside the answer is content crossing that nobody agreed to. *M2.*
-- **`reserved-evaluate`**: reserved for evaluating a proposal before it is sent. When it is built, it shares one matching function with the decision and restates none of its rules. *After v1.*
+- **`reserved-evaluate`**: reserved for evaluating a proposal before it is sent. When it is built, it shares one matching function with the decision and restates none of its rules. Why: a second copy of the matching rules would let the preview and the real decision disagree. *After v1.*
 
 ### How changes are made
 
