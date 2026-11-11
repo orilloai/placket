@@ -23,7 +23,7 @@ The repository has these top-level directories. Each is created by the change th
 | `cmd/placket/` | The binary: `main` only, which parses arguments, builds a client and hands over to `adapters/cli`. | M3 |
 | `scripts/` | Scripts a person runs by hand, such as the end-to-end demo behind `make demo`. | M3 |
 | `recipes/<name>/` | One job's templates, agents and plugin, built on the core's exported API alone. | After v1 |
-| `out/` | Working notes a builder leaves on a change's branch for the next round of the same change. | Now, on a change's branch |
+| `out/` | Working notes a builder leaves on a change's branch for the next round of the same change, removed before the change merges; never on `main`. | Now, on a change's branch |
 
 `.github/workflows/` holds the workflows that run `make ci`. It is the maintainer's: no other change edits it.
 

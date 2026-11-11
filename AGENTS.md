@@ -30,7 +30,7 @@ Placket v1 is built in four milestones, each resting on the one before:
 | `cmd/placket/` | The binary: `main` only. | M3 |
 | `scripts/` | Scripts run by hand, such as the demo behind `make demo`. | M3 |
 | `recipes/<name>/` | One job's templates, agents and plugin, on the core's exported API only. | After v1 |
-| `out/` | Notes a builder leaves on a change's branch for the next round of that change. | Any change |
+| `out/` | Notes a builder leaves on a change's branch for the next round of that change. Removed before the change merges, so never on `main`. | Any change |
 | `.github/workflows/` | The workflows that run `make ci`. The maintainer's alone. | Present |
 
 At the root: `Makefile`, this file, `CONTRIBUTING.md`, `README.md`, and from M3 the root module's `go.mod`. Dependencies point one way: `cmd` to `adapters` to `core`, and `recipes` to `core`. `docs/adr/0001-repository-layout.md` and `docs/adr/0002-core-boundaries.md` record why.
@@ -45,7 +45,7 @@ Fixtures for any check go under a `testdata/` directory. Go's tools skip it, and
 - **`core-no-deps`**: `core/go.mod` has no `require`. A dependency in the core needs a decision record first, naming the code path that uses it. Why: every byte the core writes must come from code the protocol stands behind, at a version that cannot drift. *M0: `make ci` checks it.*
 - **`root-module`**: `adapters/` and `cmd/` live in one root module, `github.com/orilloai/placket`, which requires the core module and points that requirement at `./core` with a `replace` until the core is first tagged. Nobody commits a `go.work` file. Why: one module for everything that touches the world, and a build that works the same from a fresh clone. *M3, with its own decision record.*
 - **`recipes-core-only`**: a recipe uses only the core's exported names, never an adapter. Why: a recipe is one job built on the protocol, and must work against any door. *After v1, with the first recipe.*
-- **`core-no-world`**: no non-test file in `core/` reads the clock (`time.Now`), draws randomness (`crypto/rand`, `math/rand`), reads the environment (`os.Getenv`), opens a file (`os.Open`), touches the network (`net` and below) or prints (`fmt.Print*`). The core takes the time, salts and keys as parameters. Why: output that depends on when or where it ran cannot be pinned by a vector. *M0: `make ci` checks it.*
+- **`core-no-world`**: no non-test file in `core/` reads the clock (`time.Now`, and `time.Since`, `Until`, `After`, `AfterFunc`, `Tick`, `NewTimer`, `NewTicker` and `Sleep`, which wait on it or measure against it), draws randomness (`crypto/rand`, `math/rand`), reads the environment (`os.Getenv`), opens a file (`os.Open`), touches the network (`net` and below), reaches the process, its files or its memory (`os`, `syscall`, `io/ioutil`, `runtime`, `unsafe`, and the packages below them), logs (`log` and below) or prints (`fmt.Print*`, `print`, `println`). The core takes the time, salts and keys as parameters. Why: output that depends on when or where it ran cannot be pinned by a vector. *M0: `make ci` checks it.*
 - **`adapters-no-recheck`**: an adapter hands work to the core and does not do the core's checking again. A door never returns one of the core's rejection codes from its own code; its own codes are about the call, never the operation inside it. Why: two copies of a check drift apart, and the record would then blame the core for what the door refused. *M3.*
 - **`adapters-core-types`**: an adapter package does not re-export a core type under a new name; it takes and returns the core's types, bytes and strings. Why: one name per thing, so a reader never has to map two. *M3.*
 
@@ -148,7 +148,9 @@ In short, `CONTRIBUTING.md` in full:
 
 The four core checks in `make ci` are line-based greps over `core/`, not a type-aware analysis:
 
-- `core-no-panic` and `core-no-world` remove a `//` comment before matching, so a name in a comment passes. A `//` inside a string literal is not a comment. A `/* */` comment is not removed.
+- Every check removes comments before matching: a `//` comment to the end of its line, and a `/* */` comment, which may span lines. A name in a comment passes. Comment markers inside a string or rune literal, a raw string over several lines included, are text, and the code after the literal is checked.
 - `core-no-panic` matches `panic(` as a word in code, string literals included: `"panic("` inside a string is refused. This is a known false positive; write the string another way.
-- `core-no-world` matches the import paths of `crypto/rand`, `math/rand` and `net` under any alias, but `time.Now`, `os.Getenv`, `os.Open` and `fmt.Print*` only under their usual package names. A renamed import of `time`, `os` or `fmt` gets past it; the reviewer reads the imports.
+- `core-no-world` refuses the packages it names by import path, under any alias, so a renamed `os` or `net` is caught. The calls of `time` and `fmt` it names are matched only under those package names: a renamed or dot import of `time` or `fmt` gets past it, and the reviewer reads the imports.
+- `core-no-world` allows `fmt.Fprint*` and `fmt.Sprint*`: writing to an `io.Writer` the caller passes in is not printing, and the core cannot reach `os.Stdout` without importing `os`. A standard-library call that reaches the world inside itself, such as `time.LoadLocation` reading the time zone files, is not matched; the reviewer catches it.
+- `core-no-world` matches an import path it refuses, and a call of `print(` or `println(` as a word, anywhere in code, string literals included: `"os"` in a string, or a function of the core's own named `print`, is refused. These are known false positives; spell them another way.
 - `core-imports` matches the import path in any file under `core/`, wherever it appears in code, including in a string.

@@ -17,5 +17,5 @@ Placket's core decides what crosses between parties and writes the receipts that
 
 - Every function in the core is a function of its inputs. The same inputs give the same receipts on two machines, and a vector can state them byte for byte.
 - An adapter does the work of the world: it reads the clock once per call, mints salts and nonces, reads key files and prints. That puts more code in the adapters, and it is the right place for it.
-- The checks are line-based greps, not a type-aware analysis. They catch the usual forms of each mistake; an import under an unusual alias, or a call reached through another package, is left to the reviewer, who reads the imports of every change to `core/`.
+- The checks are line-based greps, not a type-aware analysis. They refuse the packages that reach the world by import path, under any alias, and the clock and printing calls by their usual names; a call under an unusual alias, or one that reaches the world inside another package, is left to the reviewer, who reads the imports of every change to `core/`.
 - A verifier can build against the core alone and needs nothing else from this repository.
