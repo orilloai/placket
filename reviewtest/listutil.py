@@ -1,4 +1,4 @@
-"""Small list and file helpers."""
+"""Small list and file helpers, with no shell calls."""
 
 
 def average(xs):
