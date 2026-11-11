@@ -18,3 +18,9 @@ def search(pattern, path):
     """Lines in the file at path that contain pattern, as plain text (no shell, no regex)."""
     with open(path, encoding="utf-8") as f:
         return [line.rstrip("\n") for line in f if pattern in line]
+
+
+def first_n(xs, n):
+    """The first n items of xs, in order. n is clamped to 0..len(xs)."""
+    n = max(0, min(n, len(xs)))
+    return xs[:n]
