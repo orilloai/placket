@@ -13,6 +13,7 @@
 - `core-imports` covers every `.go` file under `core/`, tests and testdata included. `core-no-world` and `core-no-panic` skip `_test.go` and `testdata/`.
 - `core-no-world` matches import paths for `crypto/rand`, `math/rand(/v2)`, `net(/...)`, and `time.Now`, `os.Getenv`, `os.Open` (so `OpenFile` too), `fmt.Print*` by name.
 - Self-tests copy the repo minus `.git` and `tests/test_*.sh` and run `make ci` in the copy, so the nested run never recurses.
+- Lists of the four core rules (Makefile targets, the self-tests' `rules`, CONTRIBUTING.md) put `core-no-deps` first, then `core-imports`, `core-no-world`, `core-no-panic`. Keep that order; a later round that adds a list follows it.
 - The fixture module `tests/testdata/guardrails/modules/broken` does not compile on purpose: the clean-tree case proves testdata modules are skipped.
 
 ## Gotchas
