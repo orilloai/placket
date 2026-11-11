@@ -6,6 +6,8 @@
 # `make -k ci` there and reads its output. A planted fault must be refused by its own check, with a
 # line "<rule>: <file>:<line>: ..."; a clean tree must pass with every check reporting "ok". The -k
 # keeps make going after a refusal, so every other check runs too and its silence means something.
+# A case that needs a symbolic link sets $setup, a command run in the copy after the fixture is laid;
+# the links are made here rather than stored in git.
 # Fixtures stay under testdata/, which `make ci` never builds, vets or tests.
 set -u
 
@@ -17,9 +19,10 @@ trap 'rm -rf "$tmp"' EXIT
 trap 'exit 1' INT TERM
 failed=0
 cases=0
+setup=
 
 # ci <case>: run `make ci` on a copy of the repository with the case's fixture laid over it
-# ("" for none). The output goes to $tmp/out and the exit status to $rc.
+# ("" for none), then $setup, which is cleared. The output goes to $tmp/out and the exit status to $rc.
 ci() {
 	rm -rf "$tmp/repo"
 	mkdir "$tmp/repo"
@@ -33,6 +36,11 @@ ci() {
 		[ -d "$fixtures/$1" ] || { echo "no fixture $1" >"$tmp/out"; rc=2; return; }
 		cp -R "$fixtures/$1/." "$tmp/repo/"
 	fi
+	if [ -n "$setup" ]; then
+		s=$setup
+		setup=
+		(cd "$tmp/repo" && eval "$s") >"$tmp/out" 2>&1 || { echo "setup failed: $s" >>"$tmp/out"; rc=2; return; }
+	fi
 	(cd "$tmp/repo" && MAKEFLAGS= MAKELEVEL= make -k --no-print-directory ci) >"$tmp/out" 2>&1
 	rc=$?
 }
@@ -42,10 +50,10 @@ has() {
 	awk -v p="$1" 'index($0, p) == 1 { found = 1 } END { exit !found }' "$tmp/out"
 }
 
-# refusals [rule]: the output's refusal lines, other than those of rule.
+# refusals [rules]: the output's refusal lines, other than those of the rules named (space-separated).
 refusals() {
 	for r in $rules; do
-		[ "$r" = "${1:-}" ] && continue
+		case " ${1:-} " in *" $r "*) continue ;; esac
 		awk -v p="$r: " -v ok="$r: ok" 'index($0, p) == 1 && $0 != ok' "$tmp/out"
 	done
 }
@@ -56,7 +64,8 @@ bad() {
 	failed=$((failed + 1))
 }
 
-# refused <case> <rule> <file>:<line>...: make ci fails, and only rule refuses, naming each file and line.
+# refused <case> <rules> <file>[:<line>]...: make ci fails, and only the rules named (one, or several
+# space-separated) refuse, each naming every file and line given. A whole file is named without a line.
 refused() {
 	name=$1
 	rule=$2
@@ -64,8 +73,10 @@ refused() {
 	cases=$((cases + 1))
 	ci "$name"
 	if [ "$rc" -eq 0 ]; then bad "make ci passed; $rule should refuse $*"; return; fi
-	for at in "$@"; do
-		if ! has "$rule: $at: "; then bad "no line starting '$rule: $at: '"; return; fi
+	for r in $rule; do
+		for at in "$@"; do
+			if ! has "$r: $at: "; then bad "no line starting '$r: $at: '"; return; fi
+		done
 	done
 	other=$(refusals "$rule")
 	if [ -n "$other" ]; then bad "refused by another check: $other"; return; fi
@@ -136,6 +147,27 @@ refused panic-call core-no-panic core/p/p.go:7
 refused panic-in-string core-no-panic core/p/p.go:5
 refused panic-after-slashes core-no-panic core/p/p.go:5
 
+# core-no-world: cgo, and source files Go builds that are not Go (assembly, C, C++, headers, objects),
+# outside testdata/; a selector split after its dot, by a line break or a comment.
+refused world-cgo core-no-world core/c/c.go:5 core/c/d.go:4
+refused world-non-go core-no-world core/a/a_amd64.s core/a/b_arm64.S core/a/x.c core/a/x.h core/a/y.cc \
+	core/a/z.syso
+refused world-split-selector core-no-world core/w/w.go:12 core/w/w.go:16 core/w/w.go:22
+
+# An import path written with an escape cannot be read by a grep, so both checks that read import
+# paths refuse it, whatever it spells.
+refused world-escaped-import "core-imports core-no-world" core/e/e.go:4 core/e/f.go:4
+refused imports-escaped "core-imports core-no-world" core/bad/bad.go:5
+
+# A symbolic link under core/, to a file, a directory or core/go.mod itself, is refused by every
+# check: the Go tool follows a link, and a check that skipped it would let anything in.
+setup='mkdir -p core/s && ln -s ../../elsewhere/s.go core/s/s.go'
+refused symlink-file "$rules" core/s/s.go
+setup='ln -s ../elsewhere core/d'
+refused symlink-dir "$rules" core/d
+setup='rm core/go.mod && ln -s ../elsewhere/go.mod core/go.mod'
+refused symlink-gomod "$rules" core/go.mod
+
 # A /* */ comment is not code, even when a line inside it starts with //; a raw string is not a
 # comment, even when a line inside it starts with //. Code after either is checked.
 refused block-comment-import core-imports core/bad/bad.go:6
@@ -147,6 +179,10 @@ refused raw-string-slashes core-no-world core/w/w.go:8
 passes world-in-test
 passes comments-only
 passes block-comments-only
+
+# What core-no-world allows in a non-test file: fmt.Fprint* and fmt.Sprint*, a call of a field named
+# print, "C" and escapes in a string that is not an import path, and assembly under testdata/.
+passes world-allowed
 
 # A module whose packages cannot be listed fails make ci; it is never taken for an empty one.
 fails gomod-broken "== ./core: go list failed"
