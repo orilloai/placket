@@ -106,7 +106,7 @@ REQUIRE_RE = ^[ \t]*require([ \t(]|$$)
 # lines only, cgo's "C". And every non-Go source file outside testdata/, which reaches the world in C or
 # assembly where no grep of Go can see it.
 WORLD_PKGS = crypto/rand|math/rand(/v2)?|net(/[^"`]*)?|os(/[^"`]*)?|syscall|io/ioutil|log(/[^"`]*)?|runtime(/[^"`]*)?|unsafe
-WORLD_CALLS = time[.](Now|Since|Until|After|AfterFunc|Tick|NewTimer|NewTicker|Sleep)|os[.]Getenv|os[.]Open|fmt[.]Print
+WORLD_CALLS = time[.](Now|Since|Until|After|AfterFunc|Tick|NewTimer|NewTicker|Sleep)([^A-Za-z0-9_]|$$)|os[.]Getenv|os[.]Open|fmt[.]Print
 WORLD_RE = (^|[^A-Za-z0-9_])($(WORLD_CALLS))|(^|[^A-Za-z0-9_.])print(ln)?[ \t]*[(]|["`]($(WORLD_PKGS))["`]
 WORLD_IMPORT_RE = ["`]C["`]
 # core-no-panic: panic( as a word.
@@ -126,15 +126,17 @@ core-no-panic:
 	$(call guard,$(CORE_SRC),$(PANIC_RE),no non-test code in core/ calls panic)
 
 # Every Go module's format, vet and tests. A module under a testdata/ directory is a fixture and is
-# skipped, as is a module with no Go packages yet (go vet and go test refuse an empty pattern). A module
-# whose packages cannot be listed fails here; it is never taken for an empty one.
+# skipped. Every other module's Go files are format-checked first, whatever their build constraints,
+# since the guardrail checks read gofmt form. Then a module with no Go packages on this host is skipped
+# (go vet and go test refuse an empty pattern). A module whose packages cannot be listed fails here; it
+# is never taken for an empty one.
 modules:
 	@set -e; for m in $$(find . -name go.mod -not -path './.git/*' -not -path '*/testdata/*' -exec dirname {} \; | sort); do \
 		pkgs=$$(cd "$$m" && go list ./...) || { echo "== $$m: go list failed"; exit 1; }; \
-		if [ -z "$$pkgs" ]; then echo "== $$m: no Go packages; skipped"; continue; fi; \
-		echo "== $$m"; \
 		unformatted=$$(cd "$$m" && find . -name '*.go' -not -path '*/testdata/*' -exec gofmt -l {} +); \
 		if [ -n "$$unformatted" ]; then echo "gofmt: $$m: not formatted:" $$unformatted; exit 1; fi; \
+		if [ -z "$$pkgs" ]; then echo "== $$m: no Go packages; skipped"; continue; fi; \
+		echo "== $$m"; \
 		(cd "$$m" && go vet ./... && go test -count=1 ./...); done
 
 # The repository's own shell tests.
