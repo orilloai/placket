@@ -15,5 +15,8 @@
 - Self-tests copy the repo minus `.git` and `tests/test_*.sh` and run `make ci` in the copy, so the nested run never recurses.
 - The fixture module `tests/testdata/guardrails/modules/broken` does not compile on purpose: the clean-tree case proves testdata modules are skipped.
 
+## Gotchas
+- The lock check treats every `*_test.go` it sees added, fixtures under `testdata/` included, as a Go test to run at the head. A fixture `_test.go` must not add a `func Test...` or `func Fuzz...` line; `world-in-test` uses `ExampleLater` instead.
+
 ## Open
 - Nothing blocking. The other machine checks, the requirement text and the runner come in later changes.
