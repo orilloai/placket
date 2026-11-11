@@ -3,11 +3,16 @@ package clock_test
 import (
 	crand "crypto/rand"
 	"fmt"
+	"io/ioutil"
+	"log"
 	mrand "math/rand"
 	rand2 "math/rand/v2"
 	"net"
 	"os"
+	"runtime"
+	"syscall"
 	"time"
+	"unsafe"
 
 	"github.com/orilloai/placket/core/clock"
 )
@@ -27,6 +32,13 @@ func ExampleLater() {
 	_ = net.ParseIP("::1")
 	fmt.Printf("%s", "")
 	fmt.Println()
+	_ = time.Since(now)
+	_ = ioutil.Discard
+	log.SetOutput(ioutil.Discard)
+	_ = runtime.NumCPU()
+	_ = syscall.Getpid()
+	_ = unsafe.Sizeof(b)
+	print("")
 	defer func() { _ = recover() }()
 	panic("a test may panic")
 	// Output: false

@@ -3,8 +3,9 @@
 #
 # Each case copies the repository without its tests/test_*.sh (so the copy's `make ci` does not run
 # this file again), lays one fixture from tests/testdata/guardrails/<case>/ over the copy, runs
-# `make ci` there and reads its output. A planted fault must be refused by its own check, with a
-# line "<rule>: <file>:<line>: ..."; a clean tree must pass with every check reporting "ok".
+# `make -k ci` there and reads its output. A planted fault must be refused by its own check, with a
+# line "<rule>: <file>:<line>: ..."; a clean tree must pass with every check reporting "ok". The -k
+# keeps make going after a refusal, so every other check runs too and its silence means something.
 # Fixtures stay under testdata/, which `make ci` never builds, vets or tests.
 set -u
 
@@ -32,7 +33,7 @@ ci() {
 		[ -d "$fixtures/$1" ] || { echo "no fixture $1" >"$tmp/out"; rc=2; return; }
 		cp -R "$fixtures/$1/." "$tmp/repo/"
 	fi
-	(cd "$tmp/repo" && MAKEFLAGS= MAKELEVEL= make --no-print-directory ci) >"$tmp/out" 2>&1
+	(cd "$tmp/repo" && MAKEFLAGS= MAKELEVEL= make -k --no-print-directory ci) >"$tmp/out" 2>&1
 	rc=$?
 }
 
@@ -55,16 +56,32 @@ bad() {
 	failed=$((failed + 1))
 }
 
-# refused <case> <rule> <file>:<line>: make ci fails, and only rule refuses, naming file and line.
+# refused <case> <rule> <file>:<line>...: make ci fails, and only rule refuses, naming each file and line.
 refused() {
+	name=$1
+	rule=$2
+	shift 2
+	cases=$((cases + 1))
+	ci "$name"
+	if [ "$rc" -eq 0 ]; then bad "make ci passed; $rule should refuse $*"; return; fi
+	for at in "$@"; do
+		if ! has "$rule: $at: "; then bad "no line starting '$rule: $at: '"; return; fi
+	done
+	other=$(refusals "$rule")
+	if [ -n "$other" ]; then bad "refused by another check: $other"; return; fi
+	echo "ok   $name: $rule refuses $*"
+}
+
+# fails <case> <line>: make ci fails with that exact line in its output, and no guardrail check refuses.
+fails() {
 	name=$1
 	cases=$((cases + 1))
 	ci "$1"
-	if [ "$rc" -eq 0 ]; then bad "make ci passed; $2 should refuse $3"; return; fi
-	if ! has "$2: $3: "; then bad "no line starting '$2: $3: '"; return; fi
-	other=$(refusals "$2")
-	if [ -n "$other" ]; then bad "refused by another check: $other"; return; fi
-	echo "ok   $name: $2 refuses $3"
+	if [ "$rc" -eq 0 ]; then bad "make ci passed; it should fail with '$2'"; return; fi
+	if ! awk -v l="$2" '$0 == l { found = 1 } END { exit !found }' "$tmp/out"; then bad "no line '$2'"; return; fi
+	other=$(refusals)
+	if [ -n "$other" ]; then bad "a check refused: $other"; return; fi
+	echo "ok   $name: fails with '$2'"
 }
 
 # passes <case>: make ci passes, and every check runs and reports ok.
@@ -104,21 +121,49 @@ refused world-fmt-print core-no-world core/world/world.go:7
 refused world-fmt-printf core-no-world core/world/world.go:7
 refused world-fmt-println core-no-world core/world/world.go:7
 
+# core-no-world: the packages that reach the process, files, logs and memory, under any name, and
+# the other ways to read the clock or print.
+refused world-imports core-no-world core/world/world.go:5 core/world/world.go:6 core/world/world.go:7 \
+	core/world/world.go:8 core/world/world.go:9 core/world/world.go:10 core/world/world.go:11 \
+	core/world/world.go:12 core/world/world.go:13
+refused world-calls core-no-world core/world/world.go:8 core/world/world.go:9 core/world/world.go:10 \
+	core/world/world.go:11 core/world/world.go:12 core/world/world.go:13 core/world/world.go:14 \
+	core/world/world.go:15 core/world/world.go:16 core/world/world.go:17
+
 # core-no-panic: a call in code; a "panic(" inside a string literal (the known false positive);
 # a call after a string that holds "//", which is not a comment.
 refused panic-call core-no-panic core/p/p.go:7
 refused panic-in-string core-no-panic core/p/p.go:5
 refused panic-after-slashes core-no-panic core/p/p.go:5
 
-# The same names in a _test.go file, or only in // comments, pass.
+# A /* */ comment is not code, even when a line inside it starts with //; a raw string is not a
+# comment, even when a line inside it starts with //. Code after either is checked.
+refused block-comment-import core-imports core/bad/bad.go:6
+refused block-comment-world core-no-world core/w/w.go:6 core/w/w.go:15
+refused block-comment-panic core-no-panic core/p/p.go:7
+refused raw-string-slashes core-no-world core/w/w.go:8
+
+# The same names in a _test.go file, or only in // or /* */ comments, pass.
 passes world-in-test
 passes comments-only
+passes block-comments-only
 
-# The repository as it stands passes. Its empty core/ module and every module under testdata/
-# (one of which does not compile) are neither built, vetted nor tested.
+# A module whose packages cannot be listed fails make ci; it is never taken for an empty one.
+fails gomod-broken "== ./core: go list failed"
+
+# A module with no Go packages is skipped: it is neither built, vetted nor tested.
+passes empty-module
+if [ "$rc" -eq 0 ]; then
+	has "== ./empty: no Go packages; skipped" || bad "the package-less module was not skipped"
+	if awk '$0 == "== ./empty" { found = 1 } END { exit !found }' "$tmp/out"; then
+		bad "make ci went into the package-less module"
+	fi
+fi
+
+# The repository as it stands passes. No module under testdata/ (one of which does not compile) is
+# built, vetted or tested.
 passes ""
 if [ "$rc" -eq 0 ]; then
-	has "== ./core: no Go packages; skipped" || bad "the package-less core/ module was not skipped"
 	if awk '/^== .*testdata/ { found = 1 } END { exit !found }' "$tmp/out"; then
 		bad "make ci went into a testdata/ module"
 	fi
