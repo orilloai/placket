@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("{\"vector\":\"crossing/a-give\",\"spec\":\"0.1\",\"tests\":\"t\",\"operation\":\"scenario\",\"keys\":{\"a\":\"00\"},\"steps\":[{\"op\":\"tick\",\"at\":\"2026-02-29T00:00:00Z\",\"expect\":{\"receipts\":[]}}]}")

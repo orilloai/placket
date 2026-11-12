@@ -1,0 +1,9 @@
+{
+  "vector": "founding/a-stranger",
+  "spec": "0.1",
+  "tests": "an empty set is refused",
+  "operation": "found",
+  "input": {},
+  "foundedAt": "2026-11-02T09:00:00Z",
+  "expect": {"code": "invalid-shape"}
+}

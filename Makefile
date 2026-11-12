@@ -2,11 +2,18 @@
 #
 # The guardrail checks run first, each as its own step named for the rule it enforces (AGENTS.md).
 # Every line a check prints starts with the rule's name: "<rule>: ok" when it passes, and
-# "<rule>: <file>:<line>: <code>" for each offending line when it refuses. Then every Go module's
-# format, vet and tests, and every tests/test_*.sh. The protocol's checks, specs-name-behaviour and
-# schemas-hold, read spec/ and print "<rule>: <file>[:<line>]: ..." in the same way.
-.PHONY: ci core-no-deps core-imports core-no-world core-no-panic specs-name-behaviour schemas-hold modules scripts
-ci: core-no-deps core-imports core-no-world core-no-panic specs-name-behaviour schemas-hold modules scripts
+# "<rule>: <file>:<line>: <code>" for each offending line when it refuses. The protocol's checks,
+# specs-name-behaviour and schemas-hold, read spec/ and print "<rule>: <file>[:<line>]: ..." in the
+# same way, and so do the checks of the vectors, the format constants, the product words, the claims,
+# the binary's main, the root module and the tools' versions. Then every Go module's format, the
+# toolchain steps (vet, lint, vulnerabilities, secrets, race, fuzz-seeds, coverage-reported), the
+# conformance runner over vectors/ (runner-no-silent-pass), and every tests/test_*.sh.
+CHECKS = core-no-deps core-imports core-no-world core-no-panic specs-name-behaviour schemas-hold \
+	vectors-independent constants-once product-words-once claims-stop-at-crossing main-is-thin root-module \
+	machine-rules-in-ci
+TOOLCHAIN = vet lint vulnerabilities secrets race fuzz-seeds coverage-reported
+.PHONY: ci $(CHECKS) modules $(TOOLCHAIN) runner-no-silent-pass scripts
+ci: $(CHECKS) modules $(TOOLCHAIN) runner-no-silent-pass scripts
 
 # GUARD_SCAN is an awk program. For each line of its input files whose code matches the ERE `re`, it
 # prints "<rule>: <file>:<line>: <the line>". The code is the line with its comments removed: a //
@@ -284,19 +291,265 @@ export SCHEMAS_HOLD
 schemas-hold:
 	@sh -c "$$SCHEMAS_HOLD"
 
-# Every Go module's format, vet and tests. A module under a testdata/ directory is a fixture and is
-# skipped. Every other module's Go files are format-checked first, whatever their build constraints,
-# since the guardrail checks read gofmt form. Then a module with no Go packages on this host is skipped
-# (go vet and go test refuse an empty pattern). A module whose packages cannot be listed fails here; it
-# is never taken for an empty one.
+# The checks below read the rest of the tree: the vectors' generators, the core and the adapters' string
+# literals, the binary's main and the root module. Each prints "<rule>: ok", or one line per offending
+# line or file and then "<rule>: refused: <why> (AGENTS.md, <rule>)", as the core's checks do. A check
+# whose subject does not exist yet (adapters/, cmd/, a root go.mod, a generator) has nothing to refuse
+# and prints ok.
+
+# report,<why>: the end of a check whose refusal lines are in $$hits, as the guard macro ends.
+define report
+	if [ -z "$$hits" ]; then echo "$@: ok"; exit 0; fi; \
+	printf '%s\n' "$$hits" | sort -t: -k2,2 -k3,3n; echo "$@: refused: $(1) (AGENTS.md, $@)"; exit 1
+endef
+
+# STRINGS_SCAN is an awk program that prints every string literal of its Go input files, one per line,
+# as "<file>\t<line>\t<text>": the text between the quotes, with its escapes as written, of each "..."
+# and `...` literal outside comments. A raw string over several lines is joined with "\n" and named by
+# the line it starts on. Rune literals are skipped.
+define STRINGS_SCAN
+FNR == 1 { bc = 0; q = ""; buf = "" }
+{
+	s = $$0
+	if (q == "`") buf = buf "\\n"
+	for (i = 1; i <= length(s); i++) {
+		c = substr(s, i, 1)
+		if (bc) { if (c == "*" && substr(s, i + 1, 1) == "/") { bc = 0; i++ } continue }
+		if (q == "") {
+			if (c == "/" && substr(s, i + 1, 1) == "/") break
+			if (c == "/" && substr(s, i + 1, 1) == "*") { bc = 1; i++; continue }
+			if (c == "\"" || c == "`" || c == "'") { q = c; buf = ""; at = FNR }
+			continue
+		}
+		if (c == "\\" && q != "`") { buf = buf c substr(s, i + 1, 1); i++; continue }
+		if (c == q) { if (q != "'") print FILENAME "\t" at "\t" buf; q = ""; continue }
+		buf = buf c
+	}
+	if (q == "\"" || q == "'") q = ""
+}
+endef
+export STRINGS_SCAN
+
+# literals,<dirs>: the string literals of the non-test Go files under <dirs> that exist, outside
+# testdata/.
+define literals
+dirs=; for d in $(1); do [ -d "$$d" ] && dirs="$$dirs $$d"; done; \
+	if [ -n "$$dirs" ]; then find $$dirs -type f -name '*.go' ! -name '*_test.go' ! -path '*/testdata/*' -exec awk "$$STRINGS_SCAN" {} +; fi
+endef
+
+# vectors-independent: a generator is Go code under vectors/<group>/, outside testdata/. It imports no
+# core package its group tests, as the last column of the table "Groups and the packages they test"
+# in vectors/README.md gives them, and never the conformance runner, which runs them all. A Go file
+# outside every group's directory, or in a group the table does not list, is refused whole; so is a
+# symbolic link under vectors/. The match reads import paths as written: a package reached through
+# another package is not seen (vectors/README.md, Known limits).
+define VECTOR_GROUPS_SCAN
+BEGIN { FS = "|" }
+/^## / { on = ($$0 == "## Groups and the packages they test") }
+on && NF >= 4 && $$2 ~ /^ *`[a-z0-9-]+` *$$/ {
+	g = $$2; gsub(/[ `]/, "", g); p = $$(NF - 1); gsub(/[ `]/, "", p); gsub(/,/, "|", p)
+	if (p != "") print g " " p
+}
+endef
+export VECTOR_GROUPS_SCAN
+vectors-independent:
+	@set -e; t=$$(mktemp); trap 'rm -f "$$t"' EXIT; \
+	if [ -d vectors ]; then \
+		find vectors -type l -exec printf '$@: %s: a symbolic link\n' {} + >>"$$t"; \
+		table=$$(if [ -f vectors/README.md ]; then awk "$$VECTOR_GROUPS_SCAN" vectors/README.md; fi); \
+		for f in $$(find vectors -type f -name '*.go' ! -path '*/testdata/*' | sort); do \
+			g=$${f#vectors/}; \
+			case "$$g" in */*) g=$${g%%/*} ;; \
+			*) echo "$@: $$f: a generator outside every group's directory; generators go under vectors/<group>/" >>"$$t"; continue ;; esac; \
+			pkgs=$$(printf '%s\n' "$$table" | awk -v g="$$g" '$$1 == g { print $$2 }'); \
+			if [ -z "$$pkgs" ]; then echo "$@: $$f: the group $$g has no row in vectors/README.md's table of the packages each group tests" >>"$$t"; continue; fi; \
+			awk -v rule='$@' -v re='["`]github[.]com/orilloai/placket/core/('"$$pkgs"'|conformance)(/[^"`]*)?["`]' -v esc=1 "$$GUARD_SCAN" "$$f" >>"$$t"; \
+		done; \
+	fi; \
+	hits=$$(cat "$$t"); \
+	$(call report,no generator imports a core package its group tests$(comma) or the runner$(comma) and every generator is under its group's directory)
+
+# constants-once: every string literal holding "placket.dev/" or "vnd.placket" in a non-test Go file
+# under core/ or adapters/ is in exactly one file. Each file holding a literal that another also holds is
+# named at its first line with it. Two literals are the same when they are written the same, escapes
+# included.
+define CONSTANTS_SCAN
+BEGIN { FS = "\t" }
+index($$3, "placket.dev/") || index($$3, "vnd.placket") {
+	k = $$3 SUBSEP $$1
+	if (!(k in first)) { first[k] = $$2; n[$$3]++; f[$$3, n[$$3]] = $$1 }
+}
+END {
+	for (s in n) {
+		if (n[s] < 2) continue
+		c = n[s]
+		for (i = 2; i <= c; i++) for (j = i; j > 1 && f[s, j - 1] > f[s, j]; j--) { t = f[s, j]; f[s, j] = f[s, j - 1]; f[s, j - 1] = t }
+		for (i = 1; i <= c; i++) {
+			o = ""
+			for (j = 1; j <= c; j++) if (j != i) o = o (o == "" ? "" : ", ") f[s, j]
+			print rule ": " f[s, i] ":" first[s SUBSEP f[s, i]] ": \"" s "\" is also in " o
+		}
+	}
+}
+endef
+export CONSTANTS_SCAN
+constants-once:
+	@set -e; \
+	hits=$$($(call literals,core adapters) | awk -v rule='$@' "$$CONSTANTS_SCAN"); \
+	$(call report,a format constant is defined in one file and imported everywhere else)
+
+# product-words-once: no non-test file in core/ spells "ask" or "released" as a whole string literal.
+PRODUCT_WORDS_RE = ["`](ask|released)["`]
+product-words-once:
+	$(call guard,$(CORE_SRC),$(PRODUCT_WORDS_RE),the core never spells the outcome words the command line owns)
+
+# claims-stop-at-crossing: no string literal in a non-test Go file under adapters/ or cmd/ holds a word
+# that speaks of what a receiver does after receipt: train, retain, retention, share, purpose or
+# consent, in any case and with their usual endings, each as a whole word (so "retainer" passes). An
+# escape such as \n, and the line break in a raw string, separate words.
+CLAIM_WORDS = train|trains|trained|training|retain|retains|retained|retaining|retention|share|shares|shared|sharing|purpose|purposes|consent|consents|consented|consenting
+claims-stop-at-crossing:
+	@set -e; \
+	hits=$$($(call literals,adapters cmd) | awk -F '\t' -v rule='$@' ' \
+		{ t = tolower($$3); gsub(/\\./, " ", t) } \
+		t ~ /(^|[^a-z])($(CLAIM_WORDS))([^a-z]|$$)/ { print rule ": " $$1 ":" $$2 ": \"" $$3 "\"" }'); \
+	$(call report,nothing placket prints speaks of what a receiver does with content after receipt)
+
+# main-is-thin: cmd/placket/main.go, when it exists, is under 40 lines; the 40th is named.
+main-is-thin:
+	@set -e; f=cmd/placket/main.go; hits=; \
+	if [ -f "$$f" ]; then n=$$(awk 'END { print NR }' "$$f"); \
+		[ "$$n" -lt 40 ] || hits="$@: $$f:40: main.go has $$n lines"; fi; \
+	$(call report,cmd/placket/main.go stays under 40 lines and every command is tested from adapters/cli)
+
+# root-module: no go.work or go.work.sum outside testdata/; and a root go.mod, when it exists, is the
+# module github.com/orilloai/placket, requires the core module and replaces it with ./core.
+CORE_MODULE = github.com/orilloai/placket/core
+define ROOT_MODULE_SCAN
+{ sub(/\/\/.*/, "") }
+/^[ \t]*module[ \t]/ { mod = 1; if ($$2 != "github.com/orilloai/placket") print rule ": go.mod:" FNR ": the module is " $$2 ", not github.com/orilloai/placket" }
+/^[ \t]*(require|replace)[ \t]*[(][ \t]*$$/ { blk = $$1; next }
+blk != "" && /^[ \t]*[)]/ { blk = ""; next }
+{ w1 = $$1; line = $$0; if (blk != "") { kind = blk } else { kind = w1; sub(/^[ \t]*[a-z]+[ \t]+/, "", line) } }
+kind == "require" { split(line, a, " "); if (a[1] == core) req = 1 }
+kind == "replace" { split(line, a, " "); if (a[1] == core) { rep = 1; t = line; sub(/.*=>[ \t]*/, "", t); sub(/[ \t]+$$/, "", t); if (t != "./core" && t != "./core/") print rule ": go.mod:" FNR ": " core " is replaced with " t ", not ./core" } }
+END {
+	if (!mod) print rule ": go.mod: no module line"
+	if (!req) print rule ": go.mod: no require of " core
+	if (!rep) print rule ": go.mod: no replace of " core " with ./core"
+}
+endef
+export ROOT_MODULE_SCAN
+root-module:
+	@set -e; \
+	hits=$$( { find . \( -name .git -o -name testdata \) -prune -o \( -name go.work -o -name go.work.sum \) -print | sed 's|^[.]/||' | \
+		awk -v rule='$@' '{ print rule ": " $$0 ": a workspace file; none is committed" }'; \
+		if [ -f go.mod ]; then awk -v rule='$@' -v core='$(CORE_MODULE)' "$$ROOT_MODULE_SCAN" go.mod; fi; } ); \
+	$(call report,the root module requires the core and replaces it with ./core$(comma) and no go.work is committed)
+
+# machine-rules-in-ci: every tool make ci runs is fetched at an exact version. In the Makefile, every *.mk
+# and *.sh file and every workflow, outside testdata/, each "go run" or "go install" of a package that is
+# not a local path must name it as <path>@vX.Y.Z (a pre-release or a pseudo-version included). A make
+# variable written alone as the package, $$(NAME) or $${NAME}, is read from its assignment in the same
+# file. Anything else, @latest, a branch, a partial version or no version at all, is refused. Text after
+# a "#" that starts a word is a comment and is not read.
+define TOOLS_SCAN
+FNR == 1 { split("", vars) }
+{
+	line = $$0
+	sub(/(^|[ \t])#.*$$/, "", line)
+	if (line ~ /^[A-Za-z_][A-Za-z0-9_]*[ \t]*[:?]?=/) {
+		name = line; sub(/[ \t]*[:?]?=.*$$/, "", name)
+		val = line; sub(/^[^=]*=[ \t]*/, "", val); sub(/[ \t]+$$/, "", val); vars[name] = val
+	}
+	rest = line
+	while (match(rest, /(^|[^A-Za-z0-9_.\/-])go[ \t]+(run|install)([ \t]+-[^ \t]+)*[ \t]+[^ \t;|&]+/)) {
+		m = substr(rest, RSTART, RLENGTH); rest = substr(rest, RSTART + RLENGTH)
+		tool = m; sub(/^.*[ \t]/, "", tool); gsub(/["\047]/, "", tool)
+		sub(/[:,]+$$/, "", tool); if (tool !~ /[$$][({]/) sub(/[)]+$$/, "", tool)
+		if (tool ~ /^[$$][({][A-Za-z_][A-Za-z0-9_]*[)}]$$/) { n = substr(tool, 3, length(tool) - 3); if (n in vars) tool = vars[n] }
+		if (tool ~ /^[.\/]/) continue
+		if (tool !~ /^[^@ ]+@v[0-9]+[.][0-9]+[.][0-9]+(-[0-9A-Za-z.-]+)?([+][0-9A-Za-z.-]+)?$$/)
+			print rule ": " FILENAME ":" FNR ": " tool ": not an exact version"
+	}
+}
+endef
+export TOOLS_SCAN
+machine-rules-in-ci:
+	@set -e; \
+	hits=$$(find . \( -name .git -o -name testdata \) -prune -o -type f \( -name Makefile -o -name '*.mk' -o -name '*.sh' -o -path './.github/workflows/*.yml' -o -path './.github/workflows/*.yaml' \) -print | \
+		sed 's|^[.]/||' | sort | while read -r f; do awk -v rule='$@' "$$TOOLS_SCAN" "$$f"; done); \
+	$(call report,every tool make ci runs is pinned to an exact version)
+
+# The toolchain, in every Go module that has packages, as `modules` finds them: go vet; the linter, the
+# vulnerability scan and the secret scan, each run by `go run` at the exact version named here, so that
+# no module requires them; the tests with the race detector; the fuzz tests on their committed seed
+# corpora alone; and each module's coverage table, printed and never judged. Each step prints
+# "<step>: ok", or "<step>: <module>: refused" after the tool's own output.
+STATICCHECK = honnef.co/go/tools/cmd/staticcheck@v0.8.2
+GOVULNCHECK = golang.org/x/vuln/cmd/govulncheck@v1.9.0
+GITLEAKS = github.com/zricethezav/gitleaks/v8@v8.30.1
+
+# each_module,<command>: run <command> in each module with Go packages, failing the step on the first
+# module where it fails.
+define each_module
+	@set -e; for m in $$(find . -name go.mod -not -path './.git/*' -not -path '*/testdata/*' -exec dirname {} \; | sort); do \
+		pkgs=$$(cd "$$m" && go list ./...) || { echo "$@: $$m: go list failed"; exit 1; }; \
+		[ -n "$$pkgs" ] || continue; \
+		(cd "$$m" && $(1)) || { echo "$@: $$m: refused"; exit 1; }; \
+	done; echo "$@: ok"
+endef
+
+vet:
+	$(call each_module,go vet ./...)
+
+lint:
+	$(call each_module,go run $(STATICCHECK) ./...)
+
+vulnerabilities:
+	$(call each_module,go run $(GOVULNCHECK) ./...)
+
+race:
+	$(call each_module,go test -race -count=1 ./...)
+
+# fuzz-seeds: each fuzz test runs once on its seed corpus, the f.Add seeds and testdata/fuzz/, as a test.
+fuzz-seeds:
+	$(call each_module,n=$$(go test -list '^Fuzz' ./... | grep -c '^Fuzz' || :); go test -count=1 -run '^Fuzz' ./... && echo "$@: $$m: $$n fuzz tests run on their seed corpora")
+
+# coverage-reported: each module's coverage, per function and in total, from its tests; never a gate.
+coverage-reported:
+	$(call each_module,p=$$(mktemp); go test -count=1 -coverprofile="$$p" ./... >/dev/null && echo "$@: $$m:" && go tool cover -func="$$p"; rc=$$?; rm -f "$$p"; exit $$rc)
+
+# secrets: the secret scan reads every file of the tree but .git/, and names each finding by file, line
+# and the kind of secret, never the secret itself.
+secrets:
+	@set -e; r=$$(mktemp); trap 'rm -f "$$r"' EXIT; \
+	if go run $(GITLEAKS) dir --no-banner --redact --log-level error --report-format json --report-path "$$r" . ; then echo "$@: ok"; exit 0; fi; \
+	if [ -s "$$r" ]; then jq -r '.[] | "$@: \(.File | sub("^[.]/"; "")):\(.StartLine): \(.RuleID)"' "$$r"; fi; \
+	echo "$@: refused: no secret is committed (AGENTS.md, machine-rules-in-ci)"; exit 1
+
+# runner-no-silent-pass: the conformance runner over vectors/, as core/conformance's TestVectors. It
+# prints every vector's result, every open entry of the coverage list and a count, each line starting
+# with the rule's name, and fails unless every vector found passed and the coverage list holds.
+runner-no-silent-pass:
+	@set -e; if [ ! -d core/conformance ]; then echo "$@: core/conformance/: missing; the runner lives there"; exit 1; fi; \
+	out=$$(mktemp); trap 'rm -f "$$out"' EXIT; \
+	if (cd core/conformance && go test -count=1 -run '^TestVectors$$') >"$$out" 2>&1; then \
+		grep '^$@: ' "$$out"; echo "$@: ok"; exit 0; fi; \
+	cat "$$out"; echo "$@: refused: a green run means every vector ran and passed (AGENTS.md, $@)"; exit 1
+
+# Every Go module's format. A module under a testdata/ directory is a fixture and is skipped. Every
+# other module's Go files are format-checked, whatever their build constraints, since the guardrail
+# checks read gofmt form. A module with no Go packages on this host is then named as skipped: the
+# toolchain steps pass over it (go vet and go test refuse an empty pattern). A module whose packages
+# cannot be listed fails here, and in every toolchain step; it is never taken for an empty one.
 modules:
 	@set -e; for m in $$(find . -name go.mod -not -path './.git/*' -not -path '*/testdata/*' -exec dirname {} \; | sort); do \
 		pkgs=$$(cd "$$m" && go list ./...) || { echo "== $$m: go list failed"; exit 1; }; \
 		unformatted=$$(cd "$$m" && find . -name '*.go' -not -path '*/testdata/*' -exec gofmt -l {} +); \
 		if [ -n "$$unformatted" ]; then echo "gofmt: $$m: not formatted:" $$unformatted; exit 1; fi; \
 		if [ -z "$$pkgs" ]; then echo "== $$m: no Go packages; skipped"; continue; fi; \
-		echo "== $$m"; \
-		(cd "$$m" && go vet ./... && go test -count=1 ./...); done
+		echo "== $$m"; done
 
 # The repository's own shell tests.
 scripts:

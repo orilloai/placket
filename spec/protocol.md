@@ -1318,13 +1318,19 @@ Every object of a vector is closed: a member `vector.json` does not list, at any
 
 ### conformance-vectors-10 Every vector against the schema
 
-Every vector under `vectors/` is validated against `vector.json` before it runs, and so are the schema's own examples: each accepted example must validate and each refused one must be refused. A run that finds no vector fails.
+Every vector under `vectors/` is validated against `vector.json` before it runs, and so are the schema's own examples: each accepted example must validate and each refused one must be refused. A run that finds no vector fails, with one exception, before the first vector is written: when the coverage list published with the vectors (`vectors/README.md`) names no vector, the run checks the schema against its examples and passes, with nothing else to run.
 
 #### Scenario: a refused example that validates
 
 - Given a refused example of `vector.json` that the schema accepts
 - When the examples are checked
 - Then the check fails, naming the example
+
+#### Scenario: before the first vector
+
+- Given a `vectors/` directory with no vector in it, and a coverage list that names none
+- When the runner runs
+- Then it checks `vector.json` against its examples and passes; had the list named a vector, the run would fail
 
 ### conformance-vectors-11 The header first
 

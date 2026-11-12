@@ -1,0 +1,5 @@
+{
+  "canonical-1": {"open": "M4", "scenarios": {"members shuffled": {"open": "M1"}}},
+  "receipt-6": {"open": "M1", "vectors": ["receipts/a-chain"], "scenarios": {"a chain that verifies": {"open": "M1", "notes": "a member no entry has"}}},
+  "receipt-99": {"open": "M1"}
+}

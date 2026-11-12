@@ -1,0 +1,483 @@
+{
+  "canonical-1": {
+    "open": "M1",
+    "scenarios": {
+      "members sorted and whitespace dropped": {"open": "M1"},
+      "names sorted by UTF-16 code units": {"open": "M1"},
+      "only quotes, backslashes and controls are escaped": {"open": "M1"}
+    }
+  },
+  "canonical-2": {
+    "open": "M1",
+    "scenarios": {
+      "a fraction is refused": {"open": "M1"},
+      "the ends of the range are accepted": {"open": "M1"},
+      "one past the end is refused": {"open": "M1"}
+    }
+  },
+  "canonical-3": {
+    "open": "M1",
+    "scenarios": {
+      "the hash of an empty object": {"open": "M1"}
+    }
+  },
+  "canonical-4": {
+    "open": "M1",
+    "scenarios": {
+      "a repeated name": {"open": "M1"},
+      "a name repeated only after its escape is read": {"open": "M1"},
+      "names that differ in case": {"open": "M1"}
+    }
+  },
+  "canonical-5": {
+    "open": "M1",
+    "scenarios": {
+      "spellings of one value": {"open": "M1"},
+      "magnitude before integrality": {"open": "M1"},
+      "huge exponents": {"open": "M1"}
+    }
+  },
+  "canonical-6": {
+    "open": "M1",
+    "scenarios": {
+      "invalid UTF-8 inside a string": {"open": "M1"},
+      "after a backslash": {"open": "M1"},
+      "an unpaired surrogate escape": {"open": "M1"}
+    }
+  },
+  "canonical-7": {
+    "open": "M1",
+    "scenarios": {
+      "the empty input and an input that ends too soon": {"open": "M1"},
+      "a byte order mark": {"open": "M1"},
+      "trailing data and a token cut short": {"open": "M1"}
+    }
+  },
+  "canonical-8": {
+    "open": "M1",
+    "scenarios": {
+      "depth 1000 and 1001": {"open": "M1"}
+    }
+  },
+  "canonical-9": {
+    "open": "M1",
+    "scenarios": {
+      "noncharacters and their neighbours": {"open": "M1"},
+      "a grammar defect in the same string": {"open": "M1"}
+    }
+  },
+  "canonical-10": {
+    "open": "M1",
+    "scenarios": {
+      "invalid UTF-8 after a grammar error": {"open": "M1"},
+      "a number before a repeated name": {"open": "M1"}
+    }
+  },
+  "canonical-11": {
+    "open": "M1",
+    "scenarios": {
+      "a surrogate escape after the grammar broke": {"open": "M1"},
+      "a surrogate escape outside any quotes": {"open": "M1"}
+    }
+  },
+  "signing-1": {
+    "open": "M1",
+    "scenarios": {
+      "reference forms": {"open": "M1"},
+      "a small-order key": {"open": "M1"}
+    }
+  },
+  "signing-2": {
+    "open": "M1",
+    "scenarios": {
+      "the type URI comes from the operation": {"open": "M1"},
+      "signed by another key": {"open": "M1"},
+      "a malleated signature": {"open": "M1"}
+    }
+  },
+  "signing-4": {
+    "open": "M1",
+    "scenarios": {
+      "a placket URI as a payload type": {"open": "M1"}
+    }
+  },
+  "setup-contract-1": {
+    "open": "M1",
+    "scenarios": {
+      "a selector that is not a role": {"open": "M1"},
+      "a maybe without its rule": {"open": "M1"},
+      "a term that names a check": {"open": "M1"},
+      "a declaration edited after signing": {"open": "M1"}
+    }
+  },
+  "setup-contract-2": {
+    "open": "M1",
+    "scenarios": {
+      "one binding, two roles": {"open": "M1"},
+      "a binding that expires at the founding time": {"open": "M1"},
+      "a time the timestamp rule refuses in until": {"open": "M1"}
+    }
+  },
+  "setup-contract-3": {
+    "open": "M1",
+    "scenarios": {
+      "a binding by an unlisted principal": {"open": "M1"},
+      "a binding for another mediator": {"open": "M1"},
+      "a binding with no declaration": {"open": "M1"}
+    }
+  },
+  "setup-contract-4": {
+    "open": "M1",
+    "scenarios": {
+      "a card that loads a check": {"open": "M1"},
+      "a member the card does not list": {"open": "M1"}
+    }
+  },
+  "setup-contract-5": {
+    "open": "M1",
+    "scenarios": {
+      "the same set twice": {"open": "M1"},
+      "a policy role nobody holds": {"open": "M1"}
+    }
+  },
+  "setup-contract-6": {
+    "open": "M1",
+    "scenarios": {
+      "a stranger": {"open": "M1"},
+      "the mediator's own key": {"open": "M1"}
+    }
+  },
+  "setup-contract-7": {
+    "open": "M1",
+    "scenarios": {
+      "a class other than process": {"open": "M1"},
+      "the operator changes the id": {"open": "M1"}
+    }
+  },
+  "setup-contract-8": {
+    "open": "M1",
+    "scenarios": {
+      "two defects in one declaration": {"open": "M1"},
+      "defects in two declarations": {"open": "M1"}
+    }
+  },
+  "setup-contract-9": {
+    "open": "M1",
+    "scenarios": {
+      "a repeated member name": {"open": "M1"},
+      "an actor of the wrong type": {"open": "M1"},
+      "a term with a missing member": {"open": "M1"}
+    }
+  },
+  "setup-contract-10": {
+    "open": "M1",
+    "scenarios": {
+      "declarations out of order": {"open": "M1"},
+      "two bindings for one actor": {"open": "M1"}
+    }
+  },
+  "crossing-1": {
+    "open": "M1",
+    "scenarios": {
+      "a message from another Accord": {"open": "M1"},
+      "an unknown receiver": {"open": "M1"},
+      "a member the frame does not list": {"open": "M1"},
+      "a reserved gate": {"open": "M1"}
+    }
+  },
+  "crossing-2": {
+    "open": "M1",
+    "scenarios": {
+      "two bodies": {"open": "M1"},
+      "a url body": {"open": "M1"},
+      "a short salt": {"open": "M1"}
+    }
+  },
+  "crossing-3": {
+    "open": "M1",
+    "scenarios": {
+      "whoever holds the body and salt can show the part": {"open": "M1"},
+      "a delivery is fetched once": {"open": "M1"},
+      "no delivery for a block": {"open": "M1"}
+    }
+  },
+  "crossing-4": {
+    "open": "M1",
+    "scenarios": {
+      "an edited message": {"open": "M1"},
+      "a repeated sequence number": {"open": "M1"},
+      "a skipped sequence number": {"open": "M1"}
+    }
+  },
+  "crossing-6": {
+    "open": "M1",
+    "scenarios": {
+      "a repeated member behind a bad signature": {"open": "M1"},
+      "a repeated member under a good signature": {"open": "M1"},
+      "a repeated seq in the envelope": {"open": "M1"},
+      "two content defects": {"open": "M1"},
+      "a message that is not the one signed for": {"open": "M1"}
+    }
+  },
+  "crossing-7": {
+    "open": "M1",
+    "scenarios": {
+      "six rejections, then a pass": {"open": "M1"},
+      "a stranger's bytes are not read": {"open": "M1"}
+    }
+  },
+  "composition-1": {
+    "open": "M1",
+    "scenarios": {
+      "the applier's get term": {"open": "M1"},
+      "a role the binding does not give": {"open": "M1"}
+    }
+  },
+  "composition-2": {
+    "open": "M1",
+    "scenarios": {
+      "no get term": {"open": "M1"},
+      "a kind no term names": {"open": "M1"}
+    }
+  },
+  "composition-3": {
+    "open": "M1",
+    "scenarios": {
+      "no beside want": {"open": "M1"}
+    }
+  },
+  "composition-4": {
+    "open": "M1",
+    "scenarios": {
+      "no check runs in this version": {"open": "M1"}
+    }
+  },
+  "composition-5": {
+    "open": "M1",
+    "scenarios": {
+      "maybe rules that agree": {"open": "M1"},
+      "maybe rules that differ": {"open": "M1"},
+      "an answer that meets a maybe term": {"open": "M2"}
+    }
+  },
+  "composition-6": {
+    "open": "M1",
+    "scenarios": {
+      "need meets want": {"open": "M1"}
+    }
+  },
+  "maybe-1": {
+    "open": "M2",
+    "scenarios": {
+      "a proposal is asked about": {"open": "M2"},
+      "a deadline past the last time": {"open": "M2"}
+    }
+  },
+  "maybe-3": {
+    "open": "M2",
+    "scenarios": {
+      "an accept that passes": {"open": "M2"},
+      "an accept the asker's terms do not take": {"open": "M2"}
+    }
+  },
+  "maybe-4": {
+    "open": "M2",
+    "scenarios": {
+      "a decline": {"open": "M2"},
+      "a question nobody can answer": {"open": "M2"}
+    }
+  },
+  "maybe-5": {
+    "open": "M2",
+    "scenarios": {
+      "one receipt at the deadline": {"open": "M2"},
+      "before the deadline": {"open": "M2"}
+    }
+  },
+  "maybe-6": {
+    "open": "M2",
+    "scenarios": {
+      "the proposer answers its own proposal": {"open": "M2"}
+    }
+  },
+  "maybe-7": {
+    "open": "M2",
+    "scenarios": {
+      "a second answer": {"open": "M2"},
+      "an answer at the deadline": {"open": "M2"}
+    }
+  },
+  "maybe-8": {
+    "open": "M2",
+    "scenarios": {
+      "the delivered answer": {"open": "M2"}
+    }
+  },
+  "maybe-9": {
+    "open": "M2",
+    "scenarios": {
+      "a change returned to the asker": {"open": "M2"},
+      "an empty change": {"open": "M2"}
+    }
+  },
+  "maybe-10": {
+    "open": "M2",
+    "scenarios": {
+      "an accept releases the asked part with its digest unchanged": {"open": "M2"},
+      "a change returned to the asker and released to the receiver under one digest": {"open": "M2"},
+      "a release the module blocks queues nothing": {"open": "M2"},
+      "a release receipt echoes the question's envelope and counts as an echo for the asker only": {"open": "M2"},
+      "a decline releases nothing": {"open": "M2"}
+    }
+  },
+  "receipt-1": {
+    "open": "M1",
+    "scenarios": {
+      "the anatomy of a receipt": {"open": "M1"}
+    }
+  },
+  "receipt-2": {
+    "open": "M1",
+    "scenarios": {
+      "a block names the attempted part": {"open": "M1"}
+    }
+  },
+  "receipt-3": {
+    "open": "M1",
+    "scenarios": {
+      "the first receipt of a pair": {"open": "M1"}
+    }
+  },
+  "receipt-4": {
+    "open": "M1",
+    "scenarios": {
+      "a block with reason maybe": {"open": "M1"},
+      "a block with reason ok": {"open": "M1"},
+      "a resolution reason on a crossing receipt": {"open": "M1"}
+    }
+  },
+  "receipt-5": {
+    "open": "M1",
+    "scenarios": {
+      "two receipts in one pair": {"open": "M1"},
+      "the answer's own chain": {"open": "M2"}
+    }
+  },
+  "receipt-9": {
+    "open": "M1",
+    "scenarios": {
+      "an unlisted member": {"open": "M1"}
+    }
+  },
+  "receipt-10": {
+    "open": "M1",
+    "scenarios": {
+      "a timeout's time": {"open": "M2"},
+      "two mediators, one record": {"open": "M1"}
+    }
+  },
+  "crossing-5": {
+    "open": "M1",
+    "scenarios": {
+      "every give is echoed": {"open": "M1"},
+      "a resolution echoes the question's envelope": {"open": "M2"}
+    }
+  },
+  "receipt-6": {
+    "open": "M1",
+    "scenarios": {
+      "an edited receipt": {"open": "M1"},
+      "a receipt that names another mediator": {"open": "M1"},
+      "a removed middle receipt": {"open": "M1"},
+      "a release with no answer before it": {"open": "M2"},
+      "a give's receipt that echoes another member's envelope": {"open": "M1"},
+      "a second ask with an earlier question's envelope": {"open": "M2"},
+      "the first failure of the first failing receipt": {"open": "M1"},
+      "a mediator that is not a reference": {"open": "M1"}
+    }
+  },
+  "receipt-8": {
+    "open": "M1",
+    "scenarios": {
+      "a forged receipt shown": {"open": "M1"}
+    }
+  },
+  "receipt-7": {
+    "open": "M1",
+    "scenarios": {
+      "a removed last receipt": {"open": "M1"},
+      "an unfetched delivery": {"open": "M1"},
+      "a submission with no receipt": {"open": "M1"},
+      "a kept receipt from another Accord": {"open": "M1"},
+      "an echo matches both seq and hash": {"open": "M1"}
+    }
+  },
+  "conformance-vectors-1": {
+    "open": "M1",
+    "scenarios": {
+      "a vector's path": {"open": "M1"}
+    }
+  },
+  "conformance-vectors-2": {
+    "open": "M1",
+    "scenarios": {
+      "an answer's salt": {"open": "M2"}
+    }
+  },
+  "conformance-vectors-3": {
+    "open": "M1",
+    "scenarios": {
+      "a give, then the end state": {"open": "M1"}
+    }
+  },
+  "conformance-vectors-4": {
+    "open": "M1",
+    "scenarios": {
+      "a founding refusal": {"open": "M1"}
+    }
+  },
+  "conformance-vectors-5": {
+    "open": "M1",
+    "scenarios": {
+      "a receipt that differs in one byte": {"open": "M1"}
+    }
+  },
+  "conformance-vectors-6": {
+    "open": "M2",
+    "scenarios": {
+      "an accepted answer with release": {"open": "M2"},
+      "a change with release": {"open": "M2"}
+    }
+  },
+  "conformance-vectors-7": {
+    "open": "M2",
+    "scenarios": {
+      "a tick past a deadline": {"open": "M2"}
+    }
+  },
+  "conformance-vectors-8": {
+    "open": "M1",
+    "scenarios": {
+      "an input only hex can hold": {"open": "M1"}
+    }
+  },
+  "conformance-vectors-9": {
+    "open": "M1",
+    "scenarios": {
+      "a case variant": {"open": "M1"}
+    }
+  },
+  "conformance-vectors-10": {
+    "open": "M1",
+    "scenarios": {
+      "a refused example that validates": {"open": "M1"},
+      "before the first vector": {"open": "M1"}
+    }
+  },
+  "conformance-vectors-11": {
+    "open": "M1",
+    "scenarios": {
+      "a repeated top-level name": {"open": "M1"}
+    }
+  }
+}

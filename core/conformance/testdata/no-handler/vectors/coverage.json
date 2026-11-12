@@ -1,0 +1,4 @@
+{
+  "canonical-1": {"open": "M1", "scenarios": {"members sorted": {"open": "M1"}}},
+  "receipt-6": {"vectors": ["founding/a-stranger"], "scenarios": {"a chain that verifies": {"vectors": ["founding/a-stranger"]}}}
+}

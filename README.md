@@ -7,6 +7,7 @@ The repository is being built from its layout and rules up. Start with:
 - `AGENTS.md`: where everything goes, and the rules the code keeps, by name.
 - `CONTRIBUTING.md`: how a change is made and reviewed.
 - `spec/`: the protocol placket runs, operation by operation, and the formats it signs. `spec/README.md` says where to start.
-- `docs/adr/`: the decisions behind the layout and the core.
+- `vectors/`: the conformance vectors and their coverage list. `vectors/README.md` says how a vector is written and checked.
+- `docs/adr/`: the decisions behind the layout, the core and the conformance runner.
 
 `make ci` runs every check.
