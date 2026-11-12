@@ -14,8 +14,9 @@ import (
 var registered = Handlers{}
 
 // Default returns the handlers of the operations the core can run: every operation of
-// conformance-vectors-4. A scenario's resolve and tick steps are the next milestone's, and a step the
-// core cannot run yet is reported pending, which fails its vector.
+// conformance-vectors-4, and every step of a scenario, give, get, resolve and tick
+// (conformance-vectors-3). A step whose op the vector format does not have is reported pending,
+// which fails its vector.
 func Default() Handlers {
 	out := Handlers{}
 	for op, h := range registered {

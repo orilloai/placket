@@ -1,6 +1,7 @@
 package conformance
 
 import (
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"sort"
@@ -67,8 +68,23 @@ func runScenario(v Vector) []Part {
 				got = append(append([]byte(`{"delivery":`), d...), '}')
 			}
 			parts = append(parts, compare(name, got, s["expect"]))
+		case "resolve":
+			parts = append(parts, compare(name, resolveStep(med, s, ref), s["expect"]))
+		case "tick":
+			outs, err := med.Tick(s.str("at"))
+			var got []byte
+			if err != nil {
+				got = outcome(mediator.Outcome{}, err)
+			} else {
+				list := []any{}
+				for _, o := range outs {
+					list = append(list, json.RawMessage(outcome(o, nil)))
+				}
+				got = jsonOf(map[string]any{"receipts": list})
+			}
+			parts = append(parts, compare(name, got, s["expect"]))
 		default:
-			return append(parts, Part{Name: name, Pending: "a " + s.str("op") + " step, which answers or times out a question"})
+			return append(parts, Part{Name: name, Pending: "a " + s.str("op") + " step, which the core cannot run"})
 		}
 	}
 
@@ -118,7 +134,7 @@ func runScenario(v Vector) []Part {
 	return parts
 }
 
-// outcome writes a give's result as a vector states it.
+// outcome writes a receipt's outcome, or a rejection, as a vector states it.
 func outcome(o mediator.Outcome, err error) []byte {
 	var rej *mediator.Rejection
 	switch {
@@ -128,6 +144,41 @@ func outcome(o mediator.Outcome, err error) []byte {
 		return jsonOf(map[string]any{"error": err.Error()})
 	}
 	return jsonOf(map[string]any{"verdict": o.Verdict, "reason": o.Reason, "receiptId": o.ReceiptID, "receipt": json.RawMessage(o.Receipt)})
+}
+
+// resolveStep runs a resolve step (conformance-vectors-6): an answer by the member named in by, or by
+// the question's first answerer when by is absent, or the mediator's finding that nobody can answer.
+// It writes the resolution receipt's outcome as a vector states it, with the release receipt's
+// outcome under release when one was written, or the rejection.
+func resolveStep(med *mediator.Mediator, s members, ref func(string) string) []byte {
+	question, at := s.str("question"), s.str("at")
+	if s.str("action") == "undeliverable" {
+		return outcome(med.Undeliverable(question, at))
+	}
+	var by string
+	if s.has("by") {
+		by = ref(s.str("by"))
+	} else if l, ok := med.Answerers(question); ok && len(l) > 0 {
+		by = l[0]
+	}
+	var content struct {
+		Answer string `json:"answer"`
+	}
+	_ = json.Unmarshal(s["content"], &content)
+	salt, _ := hex.DecodeString(s.str("salt"))
+	var release bool
+	_ = json.Unmarshal(s["release"], &release)
+	outs, err := med.Resolve(by, question, mediator.Resolution{
+		Action: mediator.Action(s.str("action")), Answer: content.Answer, Salt: salt, Release: release,
+	}, at)
+	if err != nil || len(outs) == 0 {
+		return outcome(mediator.Outcome{}, err)
+	}
+	o := map[string]any{"verdict": outs[0].Verdict, "reason": outs[0].Reason, "receiptId": outs[0].ReceiptID, "receipt": json.RawMessage(outs[0].Receipt)}
+	if len(outs) > 1 {
+		o["release"] = json.RawMessage(outcome(outs[1], nil))
+	}
+	return jsonOf(o)
 }
 
 // receiptID reads a receipt's id without verifying it.
