@@ -1,0 +1,4 @@
+{
+  "canonical-1": {"vectors": ["canonical/absent"], "scenarios": {"members sorted": {"vectors": ["canonical/absent"]}}},
+  "receipt-6": {"open": "M1", "scenarios": {"a chain that verifies": {"open": "M1"}}}
+}

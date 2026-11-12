@@ -3,6 +3,7 @@ package clock_test
 import (
 	crand "crypto/rand"
 	"fmt"
+	//lint:ignore SA1019 io/ioutil is one of the packages this file shows a test may import
 	"io/ioutil"
 	"log"
 	mrand "math/rand"

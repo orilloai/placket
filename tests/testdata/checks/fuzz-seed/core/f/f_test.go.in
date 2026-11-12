@@ -1,0 +1,13 @@
+package f
+
+import "testing"
+
+// FuzzHalf passes on its f.Add seed; the committed seed in testdata/fuzz/FuzzHalf fails it.
+func FuzzHalf(f *testing.F) {
+	f.Add(4)
+	f.Fuzz(func(t *testing.T, n int) {
+		if n >= 0 && Half(n)*2 > n {
+			t.Fatalf("Half(%d) = %d", n, Half(n))
+		}
+	})
+}

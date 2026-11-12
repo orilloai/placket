@@ -1,0 +1,9 @@
+{
+  "vector": "receipts/a-chain",
+  "spec": "0.1",
+  "tests": "an empty list of receipts verifies",
+  "operation": "verify",
+  "receipts": [],
+  "reference": "ed25519:1111111111111111111111111111111111111111111111111111111111111111",
+  "expect": {"verified": 0}
+}

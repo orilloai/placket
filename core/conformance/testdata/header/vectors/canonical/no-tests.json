@@ -1,0 +1,7 @@
+{
+  "vector": "canonical/no-tests",
+  "spec": "0.1",
+  "operation": "canonical",
+  "inputText": "{}",
+  "expect": {"canonicalHex": "7b7d", "hash": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"}
+}

@@ -1,0 +1,8 @@
+{
+  "vector": "canonical/deep",
+  "spec": "0.1",
+  "tests": "an expected output in uppercase hex",
+  "operation": "canonical",
+  "inputText": "{}",
+  "expect": {"canonicalHex": "7B7D", "hash": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"}
+}
