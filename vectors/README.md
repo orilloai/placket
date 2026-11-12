@@ -55,7 +55,7 @@ A vector passes or fails. Nothing is skipped and nothing is pending in a green r
 
 ## The coverage list
 
-`coverage.json` maps every requirement id of `spec/ids.txt`, and every scenario of `spec/protocol.md` under it, to the vectors that cover it:
+`coverage.json` maps every requirement id of `spec/ids.txt`, and every scenario of `spec/protocol.md` under it, to what covers it:
 
 ```json
 "canonical-4": {
@@ -67,15 +67,25 @@ A vector passes or fails. Nothing is skipped and nothing is pending in a green r
 }
 ```
 
-An entry has either `vectors`, the names of the vectors that cover it, or `open`, the milestone that writes them (`M1`, `M2` or `M3`). The runner prints every open entry on each run, and fails when:
+An entry has either what covers it, or `open`, the milestone that writes its vectors (`M1`, `M2` or `M3`). What covers it is `vectors`, the names of the vectors that cover it, or `tests`, the Go tests that cover a scenario no vector operation can run, or both. A Go test is named as the directory of its package and its name, joined by a colon: `core/receipts:TestAForgedReceiptShowsAsARealOne`. An entry covered only in part also has `rest`, with `open`, the milestone that writes the rest, and `what`, one line saying what stays open, so it never reads as covered in full:
+
+```json
+"a proposal is asked about": {
+  "vectors": ["questions/a-proposal-is-asked-about"],
+  "rest": {"open": "M2", "what": "the question's deadline, which only a tick step shows"}
+}
+```
+
+The runner prints every open entry and every entry with a `rest` on each run, and fails when:
 
 - an id of `spec/ids.txt`, or a scenario of `spec/protocol.md`, has no entry;
 - an entry names an id or a scenario the text does not have;
 - an entry names a vector that is not here;
 - a vector here is named by no entry;
+- an entry, or its `tests` or `rest`, does not have the form above;
 - no vector is found while the list names one.
 
-With every entry open, as now, a run that finds no vector passes and prints what is still open. The change that adds a vector moves its entries from `open` to `vectors` in the same change.
+`tests/test_coverage_tests.sh`, which `make ci` runs, checks the Go tests: each one the list names exists and passes when run alone, and each scenario no vector operation can run names one.
 
 ## Format notes
 

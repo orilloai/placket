@@ -12,9 +12,10 @@ var milestones = map[string]bool{"M1": true, "M2": true, "M3": true}
 
 // checkCoverage reads vectors/coverage.json against spec/ids.txt and the scenarios of
 // spec/protocol.md. Every listed id and every scenario of the text has an entry; an entry names
-// vectors that exist, or is open with the milestone that writes them; every vector found is named
-// by some entry. found holds the vectors found, by name. It returns the problems and the open
-// entries.
+// vectors that exist, or Go tests, or both, or is open with the milestone that writes them; an entry
+// covered in part says in rest what stays open and its milestone; every vector found is named by
+// some entry. found holds the vectors found, by name. It returns the problems and the open entries.
+// Whether a named Go test exists and passes is tests/test_coverage_tests.sh's to check.
 func checkCoverage(spec, vectors fs.FS, found map[string]bool) ([]string, []Open) {
 	var problems []string
 	bad := func(s string) { problems = append(problems, s) }
@@ -64,16 +65,22 @@ func checkCoverage(spec, vectors fs.FS, found map[string]bool) ([]string, []Open
 			return nil
 		}
 		_, hasVectors := o.values["vectors"]
+		_, hasTests := o.values["tests"]
 		_, hasOpen := o.values["open"]
+		_, hasRest := o.values["rest"]
 		for _, m := range o.names {
-			if m != "vectors" && m != "open" && (m != "scenarios" || !withScenarios) {
+			if m != "vectors" && m != "tests" && m != "open" && m != "rest" && (m != "scenarios" || !withScenarios) {
 				bad(list + where + ": a member " + strconv.Quote(m) + " an entry does not have")
 				return nil
 			}
 		}
 		switch {
-		case hasVectors == hasOpen:
+		case hasTests && hasOpen && !hasVectors:
+			bad(list + where + ": an entry has either \"tests\" or \"open\", and this has both")
+		case (hasVectors || hasTests) == hasOpen:
 			bad(list + where + ": an entry has either \"vectors\" or \"open\", and this has " + map[bool]string{true: "both", false: "neither"}[hasVectors])
+		case hasOpen && hasRest:
+			bad(list + where + ": \"rest\" says what stays open of an entry covered in part, and this entry is open as a whole")
 		case hasOpen:
 			m, _ := o.values["open"].(string)
 			if !milestones[m] {
@@ -82,6 +89,19 @@ func checkCoverage(spec, vectors fs.FS, found map[string]bool) ([]string, []Open
 			}
 			open = append(open, Open{ID: id, Scenario: scenario, Milestone: m})
 		default:
+			if hasTests {
+				checkTests(o.values["tests"], func(s string) { bad(list + where + ": " + s) })
+			}
+			if hasRest {
+				if r, ok := rest(o.values["rest"]); !ok {
+					bad(list + where + ": \"rest\" is not an object of \"open\", the milestone that writes the rest, and \"what\", what stays open")
+				} else {
+					open = append(open, Open{ID: id, Scenario: scenario, Milestone: r.Milestone, Rest: r.Rest})
+				}
+			}
+			if !hasVectors {
+				break
+			}
 			l, ok := o.values["vectors"].([]any)
 			if !ok || len(l) == 0 {
 				bad(list + where + ": \"vectors\" is not a list of vectors")
@@ -190,4 +210,67 @@ func readScenarios(spec fs.FS) (map[string][]string, error) {
 		}
 	}
 	return out, nil
+}
+
+// checkTests reads an entry's tests: a non-empty list of Go tests, each named as the directory of its
+// package from the repository root, a colon and the test's name, such as
+// core/receipts:TestShowSaysNotVerified.
+func checkTests(v any, bad func(string)) {
+	l, ok := v.([]any)
+	if !ok || len(l) == 0 {
+		bad("\"tests\" is not a list of Go tests")
+		return
+	}
+	for _, x := range l {
+		s, ok := x.(string)
+		if !ok || !testName(s) {
+			bad(show(x) + " is not a Go test's name, its package's directory and its name joined by :")
+		}
+	}
+}
+
+// testName reports whether s is <dir>:<Name>: a directory of lowercase path segments and a Go test
+// function's name, Test followed by an upper-case letter, a digit or an underscore.
+func testName(s string) bool {
+	dir, name, ok := strings.Cut(s, ":")
+	if !ok || dir == "" || len(name) < 5 || !strings.HasPrefix(name, "Test") {
+		return false
+	}
+	for _, seg := range strings.Split(dir, "/") {
+		if seg == "" {
+			return false
+		}
+		for i := 0; i < len(seg); i++ {
+			c := seg[i]
+			if (c < 'a' || c > 'z') && (c < '0' || c > '9') && c != '-' && c != '_' {
+				return false
+			}
+		}
+	}
+	c := name[4]
+	if (c < 'A' || c > 'Z') && (c < '0' || c > '9') && c != '_' {
+		return false
+	}
+	for i := 5; i < len(name); i++ {
+		c := name[i]
+		if (c < 'a' || c > 'z') && (c < 'A' || c > 'Z') && (c < '0' || c > '9') && c != '_' {
+			return false
+		}
+	}
+	return true
+}
+
+// rest reads what stays open of an entry covered in part: exactly open, a milestone, and what, a
+// line saying what stays open.
+func rest(v any) (Open, bool) {
+	o, ok := v.(*object)
+	if !ok || len(o.names) != 2 {
+		return Open{}, false
+	}
+	m, ok1 := o.values["open"].(string)
+	w, ok2 := o.values["what"].(string)
+	if !ok1 || !ok2 || !milestones[m] || strings.TrimSpace(w) == "" || strings.Contains(w, "\n") {
+		return Open{}, false
+	}
+	return Open{Milestone: m, Rest: w}, true
 }
