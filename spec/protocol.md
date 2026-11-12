@@ -10,7 +10,7 @@ A requirement id is permanent. It is never reused and never renumbered, and an i
 
 These rules hold in every section.
 
-- **Bytes are read in their canonical form.** Everything hashed, signed or judged is read from the canonical bytes of canonical-1. Where an operation receives bytes, the first check that reads them as JSON returns `not-canonical` when the canonical form refuses them, and that code means nothing else anywhere.
+- **Bytes are read in their canonical form.** Everything hashed, signed or judged is read from the canonical bytes of canonical-1. Where an operation receives bytes, the first check that reads them as JSON returns `not-canonical` when the canonical form refuses them, with one exception: a give's envelope is read by the door's signature row, so envelope bytes the canonical form refuses, a repeated `seq` included, are `envelope-signature` (crossing-6). `not-canonical` means nothing else anywhere: bytes the canonical form refuses.
 - **The check that reads a member owns its defects.** A member that is missing, of the wrong JSON type, out of range, of the wrong form or not listed fails with the code of the check that reads it. An operation may open with one whole-shape check of its own; after it, a member belongs to the later check that reads it. No other rule decides a code for input off its format.
 - **Every format is closed.** An object holds exactly the members its format lists. A member has a meaning or is absent: no member is `null`, and a member that would carry nothing is left out. A member kept for a later version is reserved with a fixed shape, read for shape only, and changes no result in this version.
 - **One timestamp rule.** Every time in every format is written `YYYY-MM-DDTHH:MM:SSZ`: a date the Gregorian calendar has, a time of day from `00:00:00` to `23:59:59` in whole seconds, UTC, and no leap second (`timestamp.json`).
@@ -361,11 +361,11 @@ An actor holds a role only by a binding: a principal's signed statement that the
 - When it is founded
 - Then it is refused with `binding-expired`
 
-#### Scenario: a leap second in until
+#### Scenario: a time the timestamp rule refuses in until
 
-- Given a set whose binding's `until` is `2026-12-31T23:59:60Z`
-- When it is founded
-- Then it is refused with `invalid-shape`, since the timestamp rule allows no second 60
+- Given three sets, each with nothing else wrong, whose binding's `until` is `2026-12-31T23:59:60Z`, `2026-12-31T24:00:00Z` and `2027-02-29T00:00:00Z`
+- When each is founded
+- Then each is refused with `invalid-shape`, since the timestamp rule allows no second 60, no hour 24 and no day the calendar lacks
 
 ### setup-contract-3 Binding checks
 
@@ -536,7 +536,7 @@ A member's fetch returns the first delivery queued for it, once, or nothing when
 
 ### crossing-1 The crossing message
 
-A part crosses in an A2A protocol 1.0 message that carries the crossing extension, `https://placket.dev/crossing/0.1` (`message.json`). The message has exactly the members `messageId`, a non-empty string; `role`, `ROLE_AGENT` for a part a member gives and `ROLE_USER` for one the mediator forms from an answer (maybe-8, maybe-9); `parts`, the list of its one part; `extensions`, the list holding exactly the crossing extension's URI; and `metadata`, holding exactly one member, under that URI, the crossing extension's object. That object has `accord`, the Accord's id; `to`, the receiver's reference; and it may have `re`, the id of the receipt the message answers; `topic`, a non-empty string that groups crossings; and `gate`, a label reserved for a later version and read for shape only. The sender is not a member of the message: it is the caller, whose key signed the envelope. The door accepts either `role` from a member. No check reads `topic`, `gate` or `role` but for their shape, and no receipt or delivery carries `topic` or `gate`.
+A part crosses in an A2A protocol 1.0 message that carries the crossing extension, `https://placket.dev/crossing/0.1` (`message.json`). The message has exactly the members `messageId`, a non-empty string; `role`, `ROLE_AGENT` for a part a member gives and `ROLE_USER` for one the mediator forms from an answer (maybe-8, maybe-9); `parts`, the list of its one part; `extensions`, the list holding exactly the crossing extension's URI; and `metadata`, holding exactly one member, under that URI, the crossing extension's object. That object has `accord`, the Accord's id; `to`, the receiver's reference; and it may have `re`, the id of the receipt the message answers; `topic`, a non-empty string that groups crossings; and `gate`, reserved for a later version and read for shape only: lowercase letters and digits in words joined by single hyphens or underscores, at most 64 characters, such as `out_you`. The sender is not a member of the message: it is the caller, whose key signed the envelope (crossing-6). The extension has no `from`, so a give whose extension carries one is `extension-missing`, as for any member the frame does not list, whatever its value; no member of a message can name a sender other than the caller. The door accepts either `role` from a member. No check reads `topic`, `gate` or `role` but for their shape, and no receipt or delivery carries `topic` or `gate`.
 
 #### Scenario: a message from another Accord
 
@@ -552,9 +552,15 @@ A part crosses in an A2A protocol 1.0 message that carries the crossing extensio
 
 #### Scenario: a member the frame does not list
 
-- Given a member's correctly signed give whose message also has `contextId`, and separately one whose extension object has `from`
+- Given a member's correctly signed give whose message also has `contextId`, and separately one whose extension object has `from`, naming the caller or another member
 - When the door checks each
 - Then each is rejected with `extension-missing`
+
+#### Scenario: a reserved gate
+
+- Given a member's correctly signed give whose extension has `gate` `out_you`, and separately one with `gate` `Out_You`
+- When the door checks each
+- Then the first is decided as if it had no `gate`, and the second is rejected with `extension-missing`
 
 ### crossing-2 The part
 
@@ -580,7 +586,7 @@ The one part has exactly one body and the crossing extension's metadata (`part.j
 
 ### crossing-3 Digests, salts and deliveries
 
-A part is named in a receipt by its kind and its salted digest: the lowercase hex SHA-256 of the salt's bytes followed by the body's bytes. The first holder of a part mints its salt, at least 16 random bytes; the mediator mints the salt of every part it forms. No receipt carries a body or a salt. When a part passes, the mediator queues for its receiver a delivery (`delivery.json`): the receipt that passed it and its id, the part's `messageId`, `kind` and `salt`, the message's `re` when it has one, and the body, as `text`, `raw` or `data` as it crossed. A delivery holds nothing else. Deliveries are queued per receiver in the order of their receipts, and each is handed out once, to its receiver only, by a fetch. The mediator keeps no body or salt of a part that was blocked, or of a delivery once fetched.
+A part is named in a receipt by its kind and its salted digest: the lowercase hex SHA-256 of the salt's bytes followed by the body's bytes. The first holder of a part mints its salt, at least 16 random bytes; the mediator mints the salt of every part it forms. No receipt carries a body or a salt. When a part passes, the mediator queues for its receiver a delivery (`delivery.json`): the receipt that passed it and its id, the part's `messageId`, `kind` and `salt`, the message's `re` when it has one, and the body, as `text`, `raw` or `data` as it crossed. A delivery holds nothing else. Its format is frozen because a receiver checks the receipt and the digest with it and every scenario vector compares it member by member (conformance-vectors-5). A door hands a delivery out in a reply of its own format, and where the delivery's body is an answer or a changed version the door may attach beside it the call by which the answerer signed that answer. That call is the door's format, not a member of the delivery: no receipt covers it, and no check of this protocol reads it. Deliveries are queued per receiver in the order of their receipts, and each is handed out once, to its receiver only, by a fetch. The mediator keeps no body or salt of a part that was blocked, or of a delivery once fetched.
 
 #### Scenario: whoever holds the body and salt can show the part
 
@@ -624,7 +630,7 @@ The envelope is the sender's signed claim to one submission (`envelope.json`): `
 
 ### crossing-6 The door's order
 
-The door runs the rows of its table in order and returns the first that fails. It authenticates first: membership, then the envelope's signature under the caller's key, then the message's canonical bytes, then that the envelope's `hash` names those bytes and its `seq` is fresh, then the message's content. No member of the message is read before the message is known to be the one the caller signed for. The message is not read at all before the envelope's signature has verified, so a stranger's give is `not-a-member` and a member's give under a bad envelope signature is `envelope-signature`, whatever the message holds. Everything decided is read from the message's canonical bytes, so a member name repeated anywhere in the message is `not-canonical`, at row 3, whichever copy is wrong. Row 2 reads the envelope's bytes, its members' names and its `sig`, so bytes the canonical form refuses, a member missing or not listed, and a bad signature are all `envelope-signature`; the value of its `hash` belongs to row 4 and of its `seq` to row 5.
+The door runs the rows of its table in order and returns the first that fails. It authenticates first: membership, then the envelope's signature under the caller's key, then the message's canonical bytes, then that the envelope's `hash` names those bytes and its `seq` is fresh, then the message's content. No member of the message is read before the message is known to be the one the caller signed for. The caller is the sender because the envelope verified under the caller's key: no member of the message names the sender, and a `from` in the extension is a member the frame does not list, `extension-missing` at row 6 (crossing-1). The message is not read at all before the envelope's signature has verified, so a stranger's give is `not-a-member` and a member's give under a bad envelope signature is `envelope-signature`, whatever the message holds. Everything decided is read from the message's canonical bytes, so a member name repeated anywhere in the message is `not-canonical`, at row 3, whichever copy is wrong. Row 2 reads the envelope's bytes, its members' names and its `sig`, so bytes the canonical form refuses, a member missing or not listed, and a bad signature are all `envelope-signature`; the value of its `hash` belongs to row 4 and of its `seq` to row 5.
 
 #### Scenario: a repeated member behind a bad signature
 
@@ -637,6 +643,12 @@ The door runs the rows of its table in order and returns the first that fails. I
 - Given a member's give whose envelope verifies and whose message has the member `topic` twice, the second copy holding the correct value
 - When the door checks it
 - Then it is rejected with `not-canonical`
+
+#### Scenario: a repeated seq in the envelope
+
+- Given a member's give whose envelope bytes have the member `seq` twice, with a correct message
+- When the door checks it
+- Then it is rejected with `envelope-signature`, not `not-canonical`, since row 2 reads the envelope's bytes
 
 #### Scenario: two content defects
 
@@ -979,7 +991,7 @@ The statement's `subject` is a list of exactly one entry, the part the receipt i
 
 ### receipt-3 What a predicate holds
 
-The predicate (`predicate.json`) has exactly these members: `accord`, the Accord's id; `card`, the card hash; `mediator`, the mediator's reference; `kind`, `crossing` or `resolution`; `from` and `to`, the references of the receipt's two parties; `seq` and `prev`, its place in its chain (receipt-5); `at`, its time (receipt-10); `envelope`, the echoed envelope: `sender`, the reference of the key that signed it, and its `seq` and `hash` (crossing-5); `verdict`; and `reason`. A member a receipt cannot fill is absent, never `null`: `prev` is absent exactly when `seq` is 1, and no other member is ever absent.
+The predicate (`predicate.json`) has exactly these members: `accord`, the Accord's id; `card`, the card hash; `mediator`, the mediator's reference; `kind`, `crossing` or `resolution`; `from` and `to`, the references of the receipt's two parties; `seq` and `prev`, its place in its chain (receipt-5); `at`, its time (receipt-10); `envelope`, the echoed envelope: `sender`, the reference of the key that signed it, and its `seq` and `hash` (crossing-5); `verdict`; and `reason`. In a crossing receipt the envelope's `sender` is the receipt's `from`: a give's receipt echoes the giver's own envelope, and a release after an accept the asker's, which is the question's. A member a receipt cannot fill is absent, never `null`: `prev` is absent exactly when `seq` is 1, and no other member is ever absent.
 
 #### Scenario: the first receipt of a pair
 
@@ -1077,7 +1089,7 @@ A verifier needs only the mediator's reference and a list of receipts in the ord
 | 1 | Bytes | The receipt's bytes, and the bytes `payload` decodes to when it is a string of standard base64 in its one encoding (canonical-1) | `not-canonical` |
 | 2 | Payload type | `payloadType`: present, exactly `application/vnd.in-toto+json` | `payload-type` |
 | 3 | Signature | `payload` as standard base64 in its one encoding; `signatures`, exactly one entry with exactly `keyid`, the given mediator's reference, and `sig`, standard base64 of 64 bytes; the signature, over the pre-authentication encoding of the payload type and the payload's bytes, under the given mediator's key; and no member of the receipt but these three | `signature` |
-| 4 | Statement | The statement: exactly `_type`, `subject`, `predicateType` and `predicate`, with the values receipt-1 and receipt-2 give; the predicate's members as receipt-3, receipt-4, receipt-9 and receipt-10 give, but `mediator`, `seq` and `prev` | `statement-type` |
+| 4 | Statement | The statement: exactly `_type`, `subject`, `predicateType` and `predicate`, with the values receipt-1 and receipt-2 give; the predicate's members as receipt-3, receipt-4, receipt-9 and receipt-10 give, but `mediator`, `seq` and `prev`; and in a crossing receipt, the envelope's `sender` equal to its `from` (receipt-3) | `statement-type` |
 | 5 | Mediator named | The predicate's `mediator`: the given mediator's reference | `mediator` |
 | 6 | Chain | The predicate's `seq` and `prev`, against the receipt before it in the list from the same `from` to the same `to` (receipt-5) | `chain` |
 | 7 | Release | The receipt's place among the receipts before it that echo the same envelope (receipt-6) | `release` |
@@ -1086,13 +1098,13 @@ A verifier needs only the mediator's reference and a list of receipts in the ord
 
 A verifier checks receipts with the mediator's key alone and performs no key lookup: the mediator's reference comes from the verifier's caller, never from a receipt. A receipt edited after signing, or signed again by another key, fails `signature`. A receipt signed by the right key that names another mediator fails `mediator`. In each pair the first receipt in the list must have `seq` 1 and no `prev`, and each later one `seq` one above and `prev` the id of the one before; a receipt removed from the middle of a chain therefore fails `chain` at the receipt after it. A list cut short after any receipt, the journal's last receipts removed, still verifies (receipt-7). Row 7 reads questions from receipts, by this rule, which every reader of a journal applies and none restates:
 
-1. A crossing receipt with verdict `escalate` is a question, and its echoed envelope, `sender`, `seq` and `hash`, is its key.
-2. A later receipt that echoes the same envelope belongs to the latest question before it with that key.
+1. A crossing receipt with verdict `escalate` is a question, and its echoed envelope, `sender`, `seq` and `hash`, is its key. It always opens a question of its own and belongs to no question before it, even one with the same key, as after a shortened journal is resumed.
+2. A later receipt that is not a question and echoes the same envelope belongs to the latest question before it with that key. Since row 4 makes a question's `sender` its `from`, every receipt that belongs to a question names the question's `from` as `sender`.
 3. A question's closing receipt is the first receipt that belongs to it. It must be a resolution receipt addressed to the question's `from`. When its reason is `declined`, `cancelled`, `timeout` or `undeliverable`, its subject is the question's, name and digest. Otherwise its subject `name` is `answer` or `changed-version`, and when its verdict is `pass` it is the question's answer: an accept when the name is `answer`, a change when it is `changed-version`.
 4. After an answer, the receipt right after the closing receipt in the list may belong to the question: it is the release receipt. After an accept it is a crossing receipt from the question's `from` to its `to`, with the question's subject, verdict `pass` or `block`. After a change it is a resolution receipt from the answer's `from` to the question's `to`, with the answer's subject, and the question's `to` is neither its `from` nor the answer's `from`.
 5. Every other receipt that belongs to a question fails `release`: one before the closing receipt that is not a resolution addressed to the asker, a closing of the wrong subject, a second release, a release that is not right after its answer, one after a closing that is not an answer, one of the wrong form. So does a resolution receipt that belongs to no question.
 
-A release receipt with verdict `pass` released its part; one with verdict `block` is a blocked release, which queued nothing.
+A release receipt with verdict `pass` released its part; one with verdict `block` is a blocked release, which queued nothing. A crossing receipt whose envelope's `sender` is not its `from` fails `statement-type` at row 4, so a give's receipt cannot echo another member's envelope, and no envelope counts as echoed for its signer (crossing-5, receipt-7) by a receipt of someone else's give.
 
 #### Scenario: an edited receipt
 
@@ -1117,6 +1129,18 @@ A release receipt with verdict `pass` released its part; one with verdict `block
 - Given an ask's receipt followed by a release receipt that echoes its envelope, with no resolution between them
 - When the two are verified
 - Then they fail with `release` at index 1
+
+#### Scenario: a give's receipt that echoes another member's envelope
+
+- Given a correctly signed crossing receipt whose `from` is the proposer and whose envelope's `sender` is the decider
+- When it is verified
+- Then it fails with `statement-type` at index 0
+
+#### Scenario: a second ask with an earlier question's envelope
+
+- Given an ask's receipt, a second ask's receipt in the same chain that echoes the same envelope, and then a decline addressed to the asker that echoes it
+- When the three are verified
+- Then they verify: the second ask opens a question of its own and belongs to none, and the decline closes the second question, leaving the first with no closing
 
 #### Scenario: the first failure of the first failing receipt
 
@@ -1218,7 +1242,7 @@ A vector gives every input an implementation could choose or read from the world
 
 ### conformance-vectors-3 Scenario vectors
 
-A `scenario` vector founds one mediator from `founding` at `foundedAt`, run by the key named `mediator`, and applies its `steps` in order. A step is `give`, `get`, `resolve` or `tick`, and each names the time it runs at in `at`, but `get`, which reads no time. After the last step the runner compares `final`: `receipts`, every receipt the mediator wrote, in order, each with its id; `delivered`, for each party by name, the deliveries still queued for it, in order, a party with none left out; and `pending`, the ids of the questions still open, in the order they were opened. The runner also verifies `final.receipts` under the mediator's reference (section 8), and a list that fails fails the vector. Steps after a rejected step still run.
+A `scenario` vector founds one mediator from `founding` at `foundedAt`, run by the key named `mediator`, and applies its `steps` in order. A step is `give`, `get`, `resolve` or `tick`, and each names the time it runs at in `at`, but `get`, which reads no time. After the last step the runner compares `final`: `receipts`, every receipt the mediator wrote, in order, each with its id; `delivered`, for each party by name, the deliveries still queued for it, in order, a party with none left out; and `pending`, the ids of the questions still open, in the order they were opened. Every outcome a step expects names a receipt's `verdict` and `reason`, paired as receipt-4 says: a `give` step's is a crossing receipt's, never with a reason only a resolution receipt has; a `tick` step's are timeouts, `block` with reason `timeout`; and a `resolve` step's is its resolution receipt's, with its `release` composition's. The runner also verifies `final.receipts` under the mediator's reference (section 8), and a list that fails fails the vector. Steps after a rejected step still run.
 
 #### Scenario: a give, then the end state
 
@@ -1248,7 +1272,7 @@ The runner compares exactly. A rejection is compared by its code. An outcome is 
 
 ### conformance-vectors-6 The resolve step
 
-A `resolve` step has `question`, the id of the question's receipt, and `action`: `accepted`, `changed`, `declined`, `cancelled`, or `undeliverable`, the mediator's finding that nobody can be reached, which takes no caller. For `accepted` and `changed` it has `content.answer`, the answer's text or the version, which for `changed` is not empty, and `salt`, the salt the mediator mints. It may have `release`, `true`, for `accepted` and `changed` only; its `expect` then holds `release`, the release receipt's outcome, when one was written, and holds none when the step has no `release`. `by` names the member that answers; without it, the runner answers as the question's first answerer, by actor-reference order. `expect` is the outcome of the resolution receipt, or the rejection.
+A `resolve` step has `question`, the id of the question's receipt, and `action`: `accepted`, `changed`, `declined`, `cancelled`, or `undeliverable`, the mediator's finding that nobody can be reached, which takes no caller. For `accepted` and `changed` it has `content.answer`, the answer's text or the version, which for `changed` is not empty, and `salt`, the salt the mediator mints. It may have `release`, `true`, for `accepted` and `changed` only; its `expect` then holds `release`, the release receipt's outcome, when one was written, and holds none when the step has no `release`. `by` names the member that answers; without it, the runner answers as the question's first answerer, by actor-reference order. `expect` is the outcome of the resolution receipt, or the rejection. After `accepted` or `changed` that outcome is composition's, and so is the release's; after `declined`, `cancelled` or `undeliverable` it is `block` with that action as its reason.
 
 #### Scenario: an accepted answer with release
 
