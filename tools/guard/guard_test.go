@@ -300,7 +300,7 @@ func hasPlace(l, name string, places []string) bool {
 // allCases is every case of the checker's tests, for the test that each rule has one that refuses.
 func allCases(t *testing.T) []tcase {
 	var all []tcase
-	for _, cs := range [][]tcase{coreCases, parserCases, checksCases, specCases(t), schemaFetchCases(), ciCases(t), markerCases(t)} {
+	for _, cs := range [][]tcase{coreCases, parserCases, shadowCases, checksCases, specCases(t), schemaFetchCases(), ciCases(t), markerCases(t)} {
 		all = append(all, cs...)
 	}
 	return all

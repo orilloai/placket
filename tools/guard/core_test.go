@@ -127,6 +127,31 @@ var parserCases = []tcase{
 	}},
 }
 
+// A call of print, println or panic reaches a name of the package's own only when a file of the same
+// package clause that every build includes declares it. Otherwise the call is the built-in's, in some
+// build, and is refused.
+var shadowCases = []tcase{
+	// A name declared only in a file some build leaves out does not stand in for the built-in: the
+	// call is refused. Here the file is under a build line no build sets.
+	{name: "shadow-panic-constrained", fixture: "shadow-panic-constrained", refuse: []string{"core-no-panic"}, lines: []string{
+		`core/zz/zz.go:5: func Must() { panic("empty") }`,
+	}},
+	// Here the file is built only on one system, named by its suffix.
+	{name: "shadow-println-constrained", fixture: "shadow-println-constrained", refuse: []string{"core-no-world"}, lines: []string{
+		`core/zz/zz.go:5: func Hello() { println("hi") }`,
+	}},
+	// And a file the Go tool ignores by its name, one built for one architecture, one under an old
+	// build line, and one of another package clause.
+	{name: "shadow-elsewhere", fixture: "shadow-elsewhere", refuse: []string{"core-no-world", "core-no-panic"}, set: []string{
+		`core-no-world: core/a/a.go:5: func Say() { print("a") }`,
+		`core-no-panic: core/b/b.go:5: func Must() { panic("b") }`,
+		`core-no-world: core/c/c.go:5: func Hello() { println("c") }`,
+		`core-no-world: core/e/e.go:5: func Say() { print("e") }`,
+	}},
+}
+
 func TestCoreChecks(t *testing.T) { runCases(t, coreCases) }
 
 func TestParserSees(t *testing.T) { runCases(t, parserCases) }
+
+func TestShadowedBuiltins(t *testing.T) { runCases(t, shadowCases) }
