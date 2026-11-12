@@ -349,6 +349,37 @@ func main() {
 	}
 
 	vs = append(vs, reconcile()...)
+	// The receipts that close a question (section 6), as they chain and echo.
+	{
+		// In the ask-and-log Accord the decider is every question's first answerer, and a proposal's
+		// deadline is its give's time plus 3600 seconds.
+		proposal := func(id string) kit.Obj {
+			return kit.Message(id, accord, kit.Applier, kit.TextPart("proposal", kit.Salt("receipts "+id, 16), "The proposal "+id+"."))
+		}
+		s := kit.NewScene(askAndLog, kit.Mediator, kit.Proposer, kit.Applier, kit.Decider)
+		for i := 1; i <= 3; i++ {
+			s.Give(at(i), kit.Proposer, int64(i), note("echo-"+string(rune('0'+i))), kit.Applier, "pass", "ok")
+		}
+		q := s.Give(at(4), kit.Proposer, 4, proposal("echo-4"), kit.Applier, "escalate", "maybe")
+		decider := kit.Decider
+		s.Close(at(5), q, "declined", &decider, kit.Decider)
+		vs = append(vs, s.Vector("receipts/a-resolution-echoes-the-questions-envelope",
+			"crossing-5: a question asked with envelope seq 4 and its decline: the decline's receipt echoes the question's envelope, the proposer as sender, seq 4 and the proposal's message hash", askAndLog))
+
+		s = kit.NewScene(askAndLog, kit.Mediator, kit.Proposer, kit.Applier, kit.Decider)
+		q = s.Give(at(0), kit.Proposer, 1, proposal("chain-1"), kit.Applier, "escalate", "maybe")
+		s.Resolve(kit.Answer{At: at(1), Question: q, Action: "accepted", Text: "accepted", Salt: kit.Salt("receipts answer chain-1", 16),
+			By: kit.Decider, Verdict: kit.Verdict{Verdict: "pass", Reason: "ok"}})
+		vs = append(vs, s.Vector("receipts/the-answers-own-chain",
+			"receipt-5: the accept of an asked proposal is the first receipt from the decider to the proposer, so its seq is 1 and it has no prev", askAndLog))
+
+		s = kit.NewScene(askAndLog, kit.Mediator, kit.Proposer, kit.Applier, kit.Decider)
+		s.FoundedAt = "2026-11-02T08:00:00Z"
+		q = s.Give("2026-11-02T08:00:01Z", kit.Proposer, 1, proposal("timeout-1"), kit.Applier, "escalate", "maybe")
+		s.Tick("2026-11-02T09:00:05Z", kit.Timeout{Question: q, Deadline: "2026-11-02T09:00:01Z", From: kit.Decider})
+		vs = append(vs, s.Vector("receipts/a-timeouts-time",
+			"receipt-10: a question with deadline 2026-11-02T09:00:01Z, closed when time is passed to 09:00:05, has a timeout receipt whose at is the deadline", askAndLog))
+	}
 	kit.Main("receipts", vs)
 }
 

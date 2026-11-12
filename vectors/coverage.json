@@ -73,7 +73,7 @@
     "scenarios": {"a card that loads a check": {"vectors": ["founding/card-loads-a-check"]}, "a member the card does not list": {"vectors": ["founding/card-unlisted-member"]}}
   },
   "setup-contract-5": {
-    "vectors": ["founding/ask-and-log", "founding/ask-and-log-later", "founding/policy-role-nobody-holds", "founding/compose", "founding/policy-without-roles", "founding/own-no"],
+    "vectors": ["founding/ask-and-log", "founding/ask-and-log-later", "founding/policy-role-nobody-holds", "founding/compose", "founding/policy-without-roles", "founding/own-no", "founding/long-wait", "founding/unanswered", "founding/answer-under-maybe"],
     "scenarios": {"the same set twice": {"vectors": ["founding/ask-and-log", "founding/ask-and-log-later"]}, "a policy role nobody holds": {"vectors": ["founding/policy-role-nobody-holds"]}}
   },
   "setup-contract-6": {
@@ -137,49 +137,52 @@
     "scenarios": {"no check runs in this version": {"vectors": ["crossing/a-give-then-the-end-state", "crossing/need-meets-want", "crossing/maybe-rules-that-agree", "crossing/no-beside-want", "founding/term-names-a-check"]}}
   },
   "composition-5": {
-    "vectors": ["crossing/maybe-rules-that-agree", "crossing/maybe-rules-that-differ"],
-    "scenarios": {"maybe rules that agree": {"vectors": ["crossing/maybe-rules-that-agree"]}, "maybe rules that differ": {"vectors": ["crossing/maybe-rules-that-differ"]}, "an answer that meets a maybe term": {"open": "M2"}}
+    "vectors": ["crossing/maybe-rules-that-agree", "crossing/maybe-rules-that-differ", "crossing/an-answer-that-meets-a-maybe-term"],
+    "scenarios": {"maybe rules that agree": {"vectors": ["crossing/maybe-rules-that-agree"]}, "maybe rules that differ": {"vectors": ["crossing/maybe-rules-that-differ"]}, "an answer that meets a maybe term": {"vectors": ["crossing/an-answer-that-meets-a-maybe-term"]}}
   },
   "composition-6": {
     "vectors": ["crossing/need-meets-want"],
     "scenarios": {"need meets want": {"vectors": ["crossing/need-meets-want"]}}
   },
   "maybe-1": {
-    "vectors": ["questions/a-proposal-is-asked-about", "questions/open-questions-in-the-order-opened", "questions/the-asked-part-is-held"],
-    "rest": {"open": "M2", "what": "the question's deadline, which a tick step shows"},
-    "scenarios": {"a proposal is asked about": {"vectors": ["questions/a-proposal-is-asked-about"], "rest": {"open": "M2", "what": "the question's deadline, 2026-11-12T10:00:00Z, which only a tick step shows"}}, "a deadline past the last time": {"open": "M2"}}
+    "vectors": ["questions/a-proposal-is-asked-about", "questions/open-questions-in-the-order-opened", "questions/the-asked-part-is-held", "questions/the-deadline-of-an-asked-proposal", "questions/a-deadline-past-the-last-time"],
+    "scenarios": {"a proposal is asked about": {"vectors": ["questions/a-proposal-is-asked-about", "questions/the-deadline-of-an-asked-proposal"]}, "a deadline past the last time": {"vectors": ["questions/a-deadline-past-the-last-time"], "tests": ["core/mediator:TestADeadlineAtTheLastTime"]}}
   },
   "maybe-3": {
-    "open": "M2",
-    "scenarios": {"an accept that passes": {"open": "M2"}, "an accept the asker's terms do not take": {"open": "M2"}}
+    "vectors": ["questions/an-accept-that-passes", "questions/an-accept-the-askers-terms-do-not-take"],
+    "scenarios": {"an accept that passes": {"vectors": ["questions/an-accept-that-passes"]}, "an accept the asker's terms do not take": {"vectors": ["questions/an-accept-the-askers-terms-do-not-take"], "tests": ["core/mediator:TestABlockedAcceptReleasesNothing"]}}
   },
   "maybe-4": {
-    "open": "M2",
-    "scenarios": {"a decline": {"open": "M2"}, "a question nobody can answer": {"open": "M2"}}
+    "vectors": ["questions/a-decline-releases-nothing", "questions/a-cancel", "questions/an-undeliverable-question", "questions/a-question-nobody-can-answer"],
+    "scenarios": {"a decline": {"vectors": ["questions/a-decline-releases-nothing"]}, "a question nobody can answer": {"vectors": ["questions/a-question-nobody-can-answer"], "tests": ["core/mediator:TestNobodyCanAnswer"]}}
   },
   "maybe-5": {
-    "open": "M2",
-    "scenarios": {"one receipt at the deadline": {"open": "M2"}, "before the deadline": {"open": "M2"}}
+    "vectors": ["questions/one-receipt-at-the-deadline", "questions/before-the-deadline", "questions/the-deadline-of-an-asked-proposal"],
+    "scenarios": {"one receipt at the deadline": {"vectors": ["questions/one-receipt-at-the-deadline"]}, "before the deadline": {"vectors": ["questions/before-the-deadline"]}}
   },
   "maybe-6": {
-    "open": "M2",
-    "scenarios": {"the proposer answers its own proposal": {"open": "M2"}}
+    "vectors": ["questions/the-proposer-answers-its-own-proposal"],
+    "tests": ["core/mediator:TestAnAskerWhoHoldsTheRoleAnswers"],
+    "scenarios": {"the proposer answers its own proposal": {"vectors": ["questions/the-proposer-answers-its-own-proposal"], "tests": ["core/mediator:TestTheProposerIsNotAnAnswerer"]}}
   },
   "maybe-7": {
-    "open": "M2",
-    "scenarios": {"a second answer": {"open": "M2"}, "an answer at the deadline": {"open": "M2"}}
+    "vectors": ["questions/a-second-answer", "questions/an-answer-at-the-deadline"],
+    "tests": ["core/mediator:TestTheProposerOnAClosedQuestion"],
+    "scenarios": {"a second answer": {"vectors": ["questions/a-second-answer"]}, "an answer at the deadline": {"vectors": ["questions/an-answer-at-the-deadline"]}}
   },
   "maybe-8": {
-    "open": "M2",
-    "scenarios": {"the delivered answer": {"open": "M2"}}
+    "vectors": ["questions/an-accept-that-passes"],
+    "scenarios": {"the delivered answer": {"vectors": ["questions/an-accept-that-passes"]}}
   },
   "maybe-9": {
-    "open": "M2",
-    "scenarios": {"a change returned to the asker": {"open": "M2"}, "an empty change": {"open": "M2"}}
+    "vectors": ["questions/a-change-returned-to-the-asker"],
+    "tests": ["core/mediator:TestAnEmptyChange", "core/mediator:TestAShortSaltIsMisuse", "core/mediator:TestAnUnknownActionIsMisuse"],
+    "scenarios": {"a change returned to the asker": {"vectors": ["questions/a-change-returned-to-the-asker"]}, "an empty change": {"tests": ["core/mediator:TestAnEmptyChange"]}}
   },
   "maybe-10": {
-    "open": "M2",
-    "scenarios": {"an accept releases the asked part with its digest unchanged": {"open": "M2"}, "a change returned to the asker and released to the receiver under one digest": {"open": "M2"}, "an accept's release is decided again and passes": {"open": "M2"}, "a release receipt echoes the question's envelope and counts as an echo for the asker only": {"vectors": ["receipts/a-release-counts-as-an-echo-for-the-asker-only", "receipts/a-resolution-counts-as-an-echo-for-the-asker-only"], "rest": {"open": "M2", "what": "that a mediator's release receipt echoes the question's envelope, which needs an answer"}}, "a decline releases nothing": {"open": "M2"}}
+    "vectors": ["questions/an-accept-releases-the-asked-part", "questions/a-change-released-to-the-receiver", "questions/a-decline-releases-nothing", "questions/an-accept-the-askers-terms-do-not-take"],
+    "tests": ["core/mediator:TestAChangeReleasedToItsAnswerer", "core/mediator:TestAChangeReleasedToItsAsker", "core/mediator:TestABlockedAcceptReleasesNothing"],
+    "scenarios": {"an accept releases the asked part with its digest unchanged": {"vectors": ["questions/an-accept-releases-the-asked-part"]}, "a change returned to the asker and released to the receiver under one digest": {"vectors": ["questions/a-change-released-to-the-receiver"]}, "an accept's release is decided again and passes": {"vectors": ["questions/an-accept-releases-the-asked-part"]}, "a release receipt echoes the question's envelope and counts as an echo for the asker only": {"vectors": ["receipts/a-release-counts-as-an-echo-for-the-asker-only", "receipts/a-resolution-counts-as-an-echo-for-the-asker-only", "questions/an-accept-releases-the-asked-part", "questions/a-change-released-to-the-receiver"]}, "a decline releases nothing": {"vectors": ["questions/a-decline-releases-nothing"]}}
   },
   "receipt-1": {
     "vectors": ["receipts/three-gives-are-echoed", "receipts/a-chain-verifies", "receipts/a-statement-of-another-type"],
@@ -198,22 +201,21 @@
     "scenarios": {"a block with reason maybe": {"vectors": ["receipts/a-block-with-reason-maybe"]}, "a block with reason ok": {"vectors": ["receipts/a-block-with-reason-ok"]}, "a resolution reason on a crossing receipt": {"vectors": ["receipts/a-resolution-reason-on-a-crossing-receipt"]}}
   },
   "receipt-5": {
-    "vectors": ["receipts/three-gives-are-echoed", "receipts/each-pair-its-own-chain", "receipts/a-first-receipt-at-seq-2", "receipts/a-first-receipt-with-a-prev", "receipts/a-prev-that-is-not-the-one-before"],
-    "scenarios": {"two receipts in one pair": {"vectors": ["receipts/three-gives-are-echoed", "receipts/each-pair-its-own-chain"]}, "the answer's own chain": {"open": "M2"}}
+    "vectors": ["receipts/three-gives-are-echoed", "receipts/each-pair-its-own-chain", "receipts/a-first-receipt-at-seq-2", "receipts/a-first-receipt-with-a-prev", "receipts/a-prev-that-is-not-the-one-before", "receipts/the-answers-own-chain"],
+    "scenarios": {"two receipts in one pair": {"vectors": ["receipts/three-gives-are-echoed", "receipts/each-pair-its-own-chain"]}, "the answer's own chain": {"vectors": ["receipts/the-answers-own-chain"]}}
   },
   "receipt-9": {
     "vectors": ["receipts/an-unlisted-predicate-member"],
     "scenarios": {"an unlisted member": {"vectors": ["receipts/an-unlisted-predicate-member"]}}
   },
   "receipt-10": {
-    "vectors": ["receipts/three-gives-are-echoed", "receipts/a-time-with-second-60"],
+    "vectors": ["receipts/three-gives-are-echoed", "receipts/a-time-with-second-60", "receipts/a-timeouts-time"],
     "tests": ["core/mediator:TestTwoMediatorsOneRecord"],
-    "rest": {"open": "M2", "what": "a timeout's time, the question's deadline, which a tick writes"},
-    "scenarios": {"a timeout's time": {"open": "M2"}, "two mediators, one record": {"tests": ["core/mediator:TestTwoMediatorsOneRecord"]}}
+    "scenarios": {"a timeout's time": {"vectors": ["receipts/a-timeouts-time"]}, "two mediators, one record": {"tests": ["core/mediator:TestTwoMediatorsOneRecord"]}}
   },
   "crossing-5": {
-    "vectors": ["receipts/three-gives-are-echoed", "receipts/a-gives-receipt-echoes-another-members-envelope", "receipts/a-resolution-counts-as-an-echo-for-the-asker-only"],
-    "scenarios": {"every give is echoed": {"vectors": ["receipts/three-gives-are-echoed"]}, "a resolution echoes the question's envelope": {"open": "M2"}}
+    "vectors": ["receipts/three-gives-are-echoed", "receipts/a-gives-receipt-echoes-another-members-envelope", "receipts/a-resolution-counts-as-an-echo-for-the-asker-only", "receipts/a-resolution-echoes-the-questions-envelope"],
+    "scenarios": {"every give is echoed": {"vectors": ["receipts/three-gives-are-echoed"]}, "a resolution echoes the question's envelope": {"vectors": ["receipts/a-resolution-echoes-the-questions-envelope"]}}
   },
   "receipt-6": {
     "vectors": ["receipts/a-chain-verifies", "receipts/a-blocked-release", "receipts/a-change-and-its-release", "receipts/a-change-released-to-its-answerer", "receipts/a-change-released-under-another-digest", "receipts/a-closing-addressed-to-the-receiver", "receipts/a-closing-of-the-wrong-subject", "receipts/a-decline-closes-a-question", "receipts/a-decline-of-another-part", "receipts/a-gives-receipt-echoes-another-members-envelope", "receipts/a-keyid-of-another-mediator", "receipts/a-list-cut-short-verifies", "receipts/a-mediator-that-is-not-a-reference", "receipts/a-mediator-that-is-not-a-reference", "receipts/a-member-the-receipt-does-not-list", "receipts/a-receipt-that-names-another-mediator", "receipts/a-release-after-a-blocked-answer", "receipts/a-release-after-a-decline", "receipts/a-release-failure-before-a-later-row", "receipts/a-release-not-right-after-its-answer", "receipts/a-release-with-no-answer-before-it", "receipts/a-removed-middle-receipt", "receipts/a-resolution-that-belongs-to-no-question", "receipts/a-second-ask-with-an-earlier-questions-envelope", "receipts/a-second-release", "receipts/a-signature-of-63-bytes", "receipts/an-accept-and-its-release", "receipts/an-accepts-release-of-the-wrong-form", "receipts/an-edited-receipt", "receipts/an-empty-list-verifies", "receipts/payload-bytes-not-canonical", "receipts/payload-not-in-base64", "receipts/receipt-bytes-not-canonical", "receipts/signed-again-by-another-key", "receipts/the-first-failure-of-the-first-failing-receipt", "receipts/the-first-failure-of-the-first-failing-receipt", "receipts/two-signatures"],
@@ -232,9 +234,8 @@
     "scenarios": {"a vector's path": {"vectors": ["canonical/duplicate-key"], "tests": ["core/conformance:TestHeaderFirst"]}}
   },
   "conformance-vectors-2": {
-    "vectors": ["crossing/a-give-then-the-end-state", "founding/ask-and-log"],
-    "rest": {"open": "M2", "what": "an answer's salt, which a resolve step gives"},
-    "scenarios": {"an answer's salt": {"open": "M2"}}
+    "vectors": ["crossing/a-give-then-the-end-state", "founding/ask-and-log", "questions/an-accept-that-passes"],
+    "scenarios": {"an answer's salt": {"vectors": ["questions/an-accept-that-passes"]}}
   },
   "conformance-vectors-3": {
     "vectors": ["crossing/a-give-then-the-end-state"],
@@ -249,12 +250,12 @@
     "scenarios": {"a receipt that differs in one byte": {"tests": ["core/conformance:TestAReceiptDifferingInOneByteFails"]}}
   },
   "conformance-vectors-6": {
-    "open": "M2",
-    "scenarios": {"an accepted answer with release": {"open": "M2"}, "a change with release": {"open": "M2"}}
+    "vectors": ["questions/an-accept-releases-the-asked-part", "questions/a-change-released-to-the-receiver", "questions/a-cancel", "questions/a-change-returned-to-the-asker"],
+    "scenarios": {"an accepted answer with release": {"vectors": ["questions/an-accept-releases-the-asked-part"]}, "a change with release": {"vectors": ["questions/a-change-released-to-the-receiver"]}}
   },
   "conformance-vectors-7": {
-    "open": "M2",
-    "scenarios": {"a tick past a deadline": {"open": "M2"}}
+    "vectors": ["questions/one-receipt-at-the-deadline"],
+    "scenarios": {"a tick past a deadline": {"vectors": ["questions/one-receipt-at-the-deadline"]}}
   },
   "conformance-vectors-8": {
     "vectors": ["canonical/invalid-utf8-in-string"],
