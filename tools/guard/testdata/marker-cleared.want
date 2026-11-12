@@ -1,0 +1,16 @@
+scripts/clear.sh:3: PLACKET_IN_CI= make ci
+scripts/clear.sh:4: export PLACKET_IN_CI=""
+scripts/clear.sh:5: unset PLACKET_IN_CI
+scripts/clear.sh:6: unset -v HOME PLACKET_IN_CI
+scripts/clear.sh:7: env -u PLACKET_IN_CI make ci
+scripts/clear.sh:8: env --unset=PLACKET_IN_CI make ci
+scripts/clear.sh:9: env -i PATH="$PATH" make ci
+scripts/clear.sh:10: env - make ci
+tools/x/x_test.go:10: os.Unsetenv("PLACKET_IN_CI")
+tools/x/x_test.go:11: os.Clearenv()
+tools/x/x_test.go:12: t.Setenv("PLACKET_IN_CI", "")
+tools/x/x_test.go:14: cmd.Env = []string{"PATH=" + os.Getenv("PATH")}
+tools/x/x_test.go:15: _ = exec.Command("env", "-i", "make", "ci")
+tools/x/x_test.go:16: _ = exec.Command("env", "-u", "PLACKET_IN_CI", "make", "ci")
+tools/x/x_test.go:17: _ = exec.Cmd{Path: "make", Env: nil}
+tools/x/x_test.go:18: _ = []string{"PLACKET_IN_CI=", "X=1"}
