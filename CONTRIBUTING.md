@@ -16,7 +16,7 @@ How a change to placket is made and how it is reviewed. The rules a change keeps
 ## Making a change
 
 1. **Decide first.** If the change makes a decision that spans packages or would be expensive to reverse, write its record in `docs/adr/` (`NNNN-<slug>.md`, the next free number; context, decision, consequences) before or in the change that relies on it. If the change would alter what placket does for someone, what a capability covers, or what it must not do, stop and ask the maintainer. Any other choice is yours: take the sensible default and list it in the pull request, where it can be vetoed.
-2. **Behaviour in the text first.** A change in behaviour starts in the requirement text (`openspec/`) and the vectors (`vectors/`); the code follows. Behaviour that exists only in code is a finding. A frozen-format change carries its version note in the same change (`format-change-noted`).
+2. **Behaviour in the text first.** A change in behaviour starts in the requirement text (`spec/requirements/`) and the vectors (`vectors/`); the code follows. Behaviour that exists only in code is a finding. A frozen-format change carries its version note in the same change (`format-change-noted`).
 3. **Tests first, locked.** Write the tests before the implementation and commit them alone:
 
    ```
