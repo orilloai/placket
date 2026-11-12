@@ -41,8 +41,10 @@ cd "$repo" || exit 1
 set -e
 # core-no-deps: the core requires a module.
 printf '\nrequire example.com/dep v1.0.0\n' >>core/go.mod
-# root-module: a root module of the wrong name, with its require and replace of the core kept.
-printf 'module github.com/orilloai/placket/wrong\n\ngo 1.27\n\nrequire github.com/orilloai/placket/core v0.0.0\n\nreplace github.com/orilloai/placket/core => ./core\n' >go.mod
+# root-module: a root module whose replace names the core by another path than ./core. Its name and
+# its require are kept, and the path still leads to the core, so go list still works once the
+# adapters import packages of the root module.
+printf 'module github.com/orilloai/placket\n\ngo 1.27\n\nrequire github.com/orilloai/placket/core v0.0.0\n\nreplace github.com/orilloai/placket/core => ./core/../core\n' >go.mod
 # vectors-independent: a generator of the first group of the vectors' table imports a package the
 # group tests, in a file no build reads.
 row=$(awk -F '|' '/^## / { on = ($0 == "## Groups and the packages they test") }
