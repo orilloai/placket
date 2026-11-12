@@ -1,0 +1,11 @@
+{
+  "expect": {
+    "canonicalHex": "22612f625c6e22",
+    "hash": "sha256:1ec1994e47dbec97ab7d3379784f3c5c5b768d3cb06e751ce32f886a3f33716a"
+  },
+  "inputText": "\"a\\/b\\u000A\"",
+  "operation": "canonical",
+  "spec": "0.1",
+  "tests": "canonical-1: an escaped solidus is written as its byte, and a line feed as \\n",
+  "vector": "canonical/solidus-escape-read"
+}

@@ -1,0 +1,11 @@
+{
+  "expect": {
+    "canonicalHex": "5b31352c32352c2d3130305d",
+    "hash": "sha256:c44a0943d938830cb5fa8a2530408d2172ae1d59080f6667062b073bbafd4e50"
+  },
+  "inputText": "[1.5e1,2500e-2,-1.0E+2]",
+  "operation": "canonical",
+  "spec": "0.1",
+  "tests": "canonical-5: 1.5e1 and 2500e-2 are the integers 15 and 25",
+  "vector": "canonical/exponent-and-fraction"
+}

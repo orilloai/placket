@@ -1,0 +1,11 @@
+{
+  "expect": {
+    "canonicalHex": "5b312c3130302c302c305d",
+    "hash": "sha256:3e16190364d35964cda5de9a85c1fd25ec21d1bead4722a3ce6567aa33ab2206"
+  },
+  "inputText": "[1.0,1e2,-0,0e999999999]",
+  "operation": "canonical",
+  "spec": "0.1",
+  "tests": "canonical-5: 1.0, 1e2, -0 and 0e999999999 are 1, 100, 0 and 0",
+  "vector": "canonical/spellings-of-one-value"
+}

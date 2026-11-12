@@ -1,0 +1,11 @@
+{
+  "expect": {
+    "code": "fractional-number",
+    "offset": 5
+  },
+  "inputText": "{\"a\":0.5,\"a\":1}",
+  "operation": "canonical",
+  "spec": "0.1",
+  "tests": "canonical-10: a fraction in an earlier token comes before a later repeated name",
+  "vector": "canonical/number-before-repeated-name"
+}

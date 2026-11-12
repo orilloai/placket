@@ -1,0 +1,11 @@
+{
+  "expect": {
+    "canonicalHex": "5b393030373139393235343734303939312c2d393030373139393235343734303939315d",
+    "hash": "sha256:84bad60c1793654a7cdca854230af90af531ecc8f7656e2c7b2bd91890017b37"
+  },
+  "inputText": "[9007199254740991,-9007199254740991]",
+  "operation": "canonical",
+  "spec": "0.1",
+  "tests": "canonical-2: the ends of the safe range are accepted",
+  "vector": "canonical/range-ends"
+}

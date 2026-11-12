@@ -1,0 +1,11 @@
+{
+  "expect": {
+    "code": "invalid-string",
+    "offset": 1
+  },
+  "inputText": "\"\\ud800A\"",
+  "operation": "canonical",
+  "spec": "0.1",
+  "tests": "canonical-6: a high surrogate escape followed by a letter is invalid-string at its backslash",
+  "vector": "canonical/high-surrogate-then-a-letter"
+}

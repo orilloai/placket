@@ -1,0 +1,11 @@
+{
+  "expect": {
+    "code": "invalid-string",
+    "offset": 5
+  },
+  "inputHex": "5b312c2c22ff225d",
+  "operation": "canonical",
+  "spec": "0.1",
+  "tests": "canonical-10: invalid UTF-8 wins over an earlier grammar error",
+  "vector": "canonical/invalid-utf8-after-grammar-error"
+}

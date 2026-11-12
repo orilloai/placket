@@ -1,0 +1,11 @@
+{
+  "expect": {
+    "code": "invalid-json",
+    "offset": 8
+  },
+  "inputText": "\"\\ufdd0\\q\"",
+  "operation": "canonical",
+  "spec": "0.1",
+  "tests": "canonical-9: a grammar defect in the same string comes before its noncharacter",
+  "vector": "canonical/grammar-before-noncharacter"
+}

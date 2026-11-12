@@ -1,0 +1,11 @@
+{
+  "expect": {
+    "code": "invalid-string",
+    "offset": 2
+  },
+  "inputHex": "225cff22",
+  "operation": "canonical",
+  "spec": "0.1",
+  "tests": "canonical-6: invalid UTF-8 after a backslash is invalid-string at that byte",
+  "vector": "canonical/invalid-utf8-after-backslash"
+}

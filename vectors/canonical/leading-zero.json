@@ -1,0 +1,11 @@
+{
+  "expect": {
+    "code": "invalid-json",
+    "offset": 2
+  },
+  "inputText": "[01]",
+  "operation": "canonical",
+  "spec": "0.1",
+  "tests": "canonical-7: a digit after a leading zero is refused at that digit",
+  "vector": "canonical/leading-zero"
+}

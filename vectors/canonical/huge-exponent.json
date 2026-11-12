@@ -1,0 +1,11 @@
+{
+  "expect": {
+    "code": "unsafe-integer",
+    "offset": 0
+  },
+  "inputText": "1e999999999",
+  "operation": "canonical",
+  "spec": "0.1",
+  "tests": "canonical-5: a huge exponent is unsafe-integer",
+  "vector": "canonical/huge-exponent"
+}

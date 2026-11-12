@@ -1,0 +1,11 @@
+{
+  "expect": {
+    "code": "unsafe-integer",
+    "offset": 0
+  },
+  "inputText": "1e9223372036854775808",
+  "operation": "canonical",
+  "spec": "0.1",
+  "tests": "canonical-5: an exponent beyond 64 bits is read with saturation and is unsafe-integer",
+  "vector": "canonical/exponent-beyond-int64"
+}

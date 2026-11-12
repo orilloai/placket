@@ -1,0 +1,11 @@
+{
+  "expect": {
+    "canonicalHex": "7b22f09f9880223a322c22efac81223a317d",
+    "hash": "sha256:14dc6c14e11d686bbd1332452e5c8dc999ac1479def9c87e945308b1b27d469b"
+  },
+  "inputText": "{\"ﬁ\":1,\"😀\":2}",
+  "operation": "canonical",
+  "spec": "0.1",
+  "tests": "canonical-1: names sort by UTF-16 code units, so U+1F600 comes before U+FB01",
+  "vector": "canonical/names-by-utf16"
+}

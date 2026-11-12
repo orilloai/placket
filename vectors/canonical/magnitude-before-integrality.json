@@ -1,0 +1,11 @@
+{
+  "expect": {
+    "code": "unsafe-integer",
+    "offset": 0
+  },
+  "inputText": "12345678901234567.5",
+  "operation": "canonical",
+  "spec": "0.1",
+  "tests": "canonical-5: a value of 10^16 or more is unsafe-integer, fraction or not",
+  "vector": "canonical/magnitude-before-integrality"
+}

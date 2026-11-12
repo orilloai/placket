@@ -1,0 +1,11 @@
+{
+  "expect": {
+    "code": "duplicate-key",
+    "offset": 7
+  },
+  "inputText": "{\"a\":1,\"a\":2}",
+  "operation": "canonical",
+  "spec": "0.1",
+  "tests": "canonical-4: a repeated name is refused at the second name's quote",
+  "vector": "canonical/duplicate-key"
+}

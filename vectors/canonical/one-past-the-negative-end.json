@@ -1,0 +1,11 @@
+{
+  "expect": {
+    "code": "unsafe-integer",
+    "offset": 3
+  },
+  "inputText": "[1,-9007199254740992]",
+  "operation": "canonical",
+  "spec": "0.1",
+  "tests": "canonical-2: one past the negative end of the safe range is refused",
+  "vector": "canonical/one-past-the-negative-end"
+}

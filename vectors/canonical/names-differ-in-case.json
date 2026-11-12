@@ -1,0 +1,11 @@
+{
+  "expect": {
+    "canonicalHex": "7b22566563746f72223a312c22766563746f72223a327d",
+    "hash": "sha256:970b749f70d75fc58f4c0384904b9ab75f39bced4f5b8b4bdedc2e7d33346839"
+  },
+  "inputText": "{\"Vector\":1,\"vector\":2}",
+  "operation": "canonical",
+  "spec": "0.1",
+  "tests": "canonical-4: names that differ in case are different names",
+  "vector": "canonical/names-differ-in-case"
+}

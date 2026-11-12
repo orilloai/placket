@@ -1,0 +1,11 @@
+{
+  "expect": {
+    "code": "invalid-json",
+    "offset": 1
+  },
+  "inputText": "1,",
+  "operation": "canonical",
+  "spec": "0.1",
+  "tests": "canonical-7: data after the value is refused at its first byte",
+  "vector": "canonical/trailing-comma"
+}

@@ -1,0 +1,11 @@
+{
+  "expect": {
+    "code": "invalid-string",
+    "offset": 1
+  },
+  "inputHex": "22ff22",
+  "operation": "canonical",
+  "spec": "0.1",
+  "tests": "canonical-6: invalid UTF-8 inside a string is invalid-string at that byte",
+  "vector": "canonical/invalid-utf8-in-string"
+}

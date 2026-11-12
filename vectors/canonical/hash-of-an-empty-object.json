@@ -1,0 +1,11 @@
+{
+  "expect": {
+    "canonicalHex": "7b7d",
+    "hash": "sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
+  },
+  "inputText": "{ }",
+  "operation": "canonical",
+  "spec": "0.1",
+  "tests": "canonical-3: the typed hash of an empty object is the SHA-256 of the two bytes {}",
+  "vector": "canonical/hash-of-an-empty-object"
+}

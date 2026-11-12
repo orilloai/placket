@@ -1,0 +1,11 @@
+{
+  "expect": {
+    "code": "invalid-string",
+    "offset": 7
+  },
+  "inputText": "[1 2, \"\\ud800\"]",
+  "operation": "canonical",
+  "spec": "0.1",
+  "tests": "canonical-11: an unpaired surrogate escape in a quoted span wins after the grammar broke",
+  "vector": "canonical/surrogate-after-grammar-broke"
+}
