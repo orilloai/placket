@@ -154,9 +154,8 @@ func Build(subject Subject, predicate Predicate, key signing.Key) ([]byte, strin
 		"predicateType": PredicateType,
 		"predicate":     predicate.value(),
 	})
-	if _, ok := readStatement(statement); !ok || statement == nil ||
-		predicate.Seq < 1 || predicate.Seq > shape.MaxSafe || (predicate.Seq == 1) != (predicate.Prev == "") ||
-		(predicate.Prev != "" && !shape.Hash(predicate.Prev)) {
+	r, ok := readStatement(statement)
+	if _, placed := r.placed(); !ok || !placed {
 		return nil, "", &Error{Code: CodeStatement, Index: -1}
 	}
 	sig, err := signing.SignPayload(PayloadType, statement, key)
@@ -222,6 +221,29 @@ type reading struct {
 	Statement
 	mediator, seq, prev any
 	hasPrev             bool
+}
+
+// named reports whether the predicate's mediator has the form receipt-3 gives it, an actor
+// reference, whichever mediator it names.
+func (r reading) named() bool {
+	s, ok := r.mediator.(string)
+	return ok && isReference(s)
+}
+
+// placed reads the predicate's seq as receipt-10 gives it, a whole number from 1 to 2^53 - 1, and
+// reports whether its prev has the form receipt-3 gives it: a typed hash, present exactly when seq is
+// above 1. It reads the predicate alone, not the receipts before it.
+func (r reading) placed() (int64, bool) {
+	seq, ok := shape.Int(r.seq)
+	if !ok || r.hasPrev != (seq > 1) {
+		return 0, false
+	}
+	if r.hasPrev {
+		if s, ok := r.prev.(string); !ok || !shape.Hash(s) {
+			return 0, false
+		}
+	}
+	return seq, true
 }
 
 // readStatement reads a statement by row 4 of section 8: its members and values (receipt-1,
@@ -367,7 +389,10 @@ func cutPrefix(s, p string) (string, bool) {
 }
 
 // Decode reads a receipt's statement from its payload without verifying anything: not its
-// signature, its mediator, its chain or its place among questions (receipt-8). Whatever presents
+// signature, which mediator it names, its place in its chain or its place among questions
+// (receipt-8). It does hold every member to its form, as the verifier's rows 4 to 6 read it alone: a
+// mediator that is not an actor reference is refused with mediator, and a seq or prev of the wrong
+// form with chain, so nothing of an unverified receipt reaches its reader unread. Whatever presents
 // what it returns must say that the receipt was not verified.
 func Decode(receipt []byte) (Statement, error) {
 	v, _, err := shape.Decode(receipt)
@@ -386,6 +411,12 @@ func Decode(receipt []byte) (Statement, error) {
 	st, ok := readStatement(payload)
 	if !ok {
 		return Statement{}, &Error{Code: CodeStatementType, Index: 0}
+	}
+	if !st.named() {
+		return Statement{}, &Error{Code: CodeMediator, Index: 0}
+	}
+	if _, ok := st.placed(); !ok {
+		return Statement{}, &Error{Code: CodeChain, Index: 0}
 	}
 	return st.Statement, nil
 }

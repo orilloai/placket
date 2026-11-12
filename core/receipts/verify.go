@@ -4,7 +4,6 @@ import (
 	"sort"
 
 	"github.com/orilloai/placket/core/canonical"
-	"github.com/orilloai/placket/core/internal/shape"
 )
 
 // Verify checks a list of receipts, in the order the mediator wrote them, with the mediator's
@@ -45,7 +44,7 @@ func chain(mediator string, list [][]byte) ([]Statement, *Error) {
 		// Row 6.
 		pair := [2]string{st.Predicate.From, st.Predicate.To}
 		prev, seen := last[pair]
-		seq, ok := st.seqOK()
+		seq, ok := st.placed()
 		switch {
 		case !ok:
 			return out, &Error{Code: CodeChain, Index: i}
@@ -74,20 +73,6 @@ func one(receipt []byte, mediator string) (reading, Code) {
 		return reading{}, CodeMediator
 	}
 	return st, ""
-}
-
-// seqOK reads the predicate's seq as receipt-10 gives it, and its prev as a typed hash when present.
-func (r reading) seqOK() (int64, bool) {
-	if r.Predicate.Seq == 0 {
-		return 0, false
-	}
-	if r.hasPrev {
-		s, ok := r.prev.(string)
-		if !ok || !shape.Hash(s) {
-			return 0, false
-		}
-	}
-	return r.Predicate.Seq, true
 }
 
 // Role is what a receipt is in the questions of its list (receipt-6).
