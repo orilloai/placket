@@ -86,6 +86,9 @@
   ],
   "additionalProperties": false,
   "if": {
+    "required": [
+      "stance"
+    ],
     "properties": {
       "stance": {
         "const": "maybe"

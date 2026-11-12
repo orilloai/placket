@@ -763,6 +763,70 @@
       ],
       "additionalProperties": false
     },
+    "pairing": {
+      "description": "A verdict and its reason pair as receipt-4 says: pass with ok, escalate with maybe, and block with any reason but ok.",
+      "allOf": [
+        {
+          "if": {
+            "required": [
+              "verdict"
+            ],
+            "properties": {
+              "verdict": {
+                "const": "pass"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "reason": {
+                "const": "ok"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "verdict"
+            ],
+            "properties": {
+              "verdict": {
+                "const": "escalate"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "reason": {
+                "const": "maybe"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "verdict"
+            ],
+            "properties": {
+              "verdict": {
+                "const": "block"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "reason": {
+                "not": {
+                  "const": "ok"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
     "outcome": {
       "type": "object",
       "properties": {
@@ -789,7 +853,52 @@
         "receiptId",
         "receipt"
       ],
-      "additionalProperties": false
+      "additionalProperties": false,
+      "description": "A give's outcome: its crossing receipt, whose verdict and reason pair as receipt-4 says, and whose reason is never one only a resolution receipt has.",
+      "allOf": [
+        {
+          "$ref": "#/$defs/pairing"
+        },
+        {
+          "properties": {
+            "reason": {
+              "not": {
+                "enum": [
+                  "declined",
+                  "cancelled",
+                  "timeout",
+                  "undeliverable"
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
+    "tickOutcome": {
+      "type": "object",
+      "properties": {
+        "verdict": {
+          "const": "block"
+        },
+        "reason": {
+          "const": "timeout"
+        },
+        "receiptId": {
+          "$ref": "hash.json"
+        },
+        "receipt": {
+          "$ref": "receipt.json"
+        }
+      },
+      "required": [
+        "verdict",
+        "reason",
+        "receiptId",
+        "receipt"
+      ],
+      "additionalProperties": false,
+      "description": "A receipt a tick writes: the timeout of a question whose deadline it reached (maybe-5), block with reason timeout."
     },
     "rejection": {
       "type": "object",
@@ -1161,6 +1270,117 @@
               }
             }
           }
+        },
+        {
+          "if": {
+            "required": [
+              "action"
+            ],
+            "properties": {
+              "action": {
+                "enum": [
+                  "accepted",
+                  "changed"
+                ]
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "expect": {
+                "properties": {
+                  "reason": {
+                    "not": {
+                      "enum": [
+                        "declined",
+                        "cancelled",
+                        "timeout",
+                        "undeliverable"
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "action"
+            ],
+            "properties": {
+              "action": {
+                "const": "declined"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "expect": {
+                "properties": {
+                  "verdict": {
+                    "const": "block"
+                  },
+                  "reason": {
+                    "const": "declined"
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "action"
+            ],
+            "properties": {
+              "action": {
+                "const": "cancelled"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "expect": {
+                "properties": {
+                  "verdict": {
+                    "const": "block"
+                  },
+                  "reason": {
+                    "const": "cancelled"
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "action"
+            ],
+            "properties": {
+              "action": {
+                "const": "undeliverable"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "expect": {
+                "properties": {
+                  "verdict": {
+                    "const": "block"
+                  },
+                  "reason": {
+                    "const": "undeliverable"
+                  }
+                }
+              }
+            }
+          }
         }
       ]
     },
@@ -1176,7 +1396,7 @@
             "receipts": {
               "type": "array",
               "items": {
-                "$ref": "#/$defs/outcome"
+                "$ref": "#/$defs/tickOutcome"
               }
             }
           },
@@ -1270,7 +1490,13 @@
         "receiptId",
         "receipt"
       ],
-      "additionalProperties": false
+      "additionalProperties": false,
+      "description": "A resolve step's outcome: its resolution receipt, whose verdict and reason pair as receipt-4 says, and the release receipt's outcome when one was written.",
+      "allOf": [
+        {
+          "$ref": "#/$defs/pairing"
+        }
+      ]
     },
     "releaseOutcome": {
       "type": "object",
@@ -1297,7 +1523,27 @@
         "receiptId",
         "receipt"
       ],
-      "additionalProperties": false
+      "additionalProperties": false,
+      "description": "A release receipt's outcome (maybe-10): composition's verdict and reason, paired as receipt-4 says, never a reason only a closing has.",
+      "allOf": [
+        {
+          "$ref": "#/$defs/pairing"
+        },
+        {
+          "properties": {
+            "reason": {
+              "not": {
+                "enum": [
+                  "declined",
+                  "cancelled",
+                  "timeout",
+                  "undeliverable"
+                ]
+              }
+            }
+          }
+        }
+      ]
     }
   }
 }

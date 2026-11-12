@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://placket.dev/schema/0.1/predicate.json",
   "title": "Receipt predicate",
-  "description": "What a receipt states about one decision (receipt-3, receipt-4, receipt-9, receipt-10, crossing-5). A crossing receipt's verdict is pass, block or escalate; a resolution receipt's is pass or block. pass goes with reason ok and escalate with maybe; block goes with any other reason, maybe included. declined, cancelled, timeout and undeliverable are resolution reasons only. prev is absent exactly when seq is 1. envelope names the envelope a receipt echoes: the key that signed it, its seq and its hash.",
+  "description": "What a receipt states about one decision (receipt-3, receipt-4, receipt-9, receipt-10, crossing-5). A crossing receipt's verdict is pass, block or escalate; a resolution receipt's is pass or block. pass goes with reason ok and escalate with maybe; block goes with any other reason, maybe included. declined, cancelled, timeout and undeliverable are resolution reasons only. prev is absent exactly when seq is 1. envelope names the envelope a receipt echoes: the key that signed it, its seq and its hash. In a crossing receipt envelope.sender is from; a schema cannot compare two members, so the verifier's statement row checks it (receipt-3, receipt-6).",
   "type": "object",
   "properties": {
     "accord": {
