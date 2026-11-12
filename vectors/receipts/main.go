@@ -418,6 +418,19 @@ func reconcile() []kit.Vector {
 			list(foreign), kit.Obj{"applier": keptOf(nil)}, kit.Obj{"code": "presented", "index": 0}, accord, card),
 		reconcileVector("a-presented-list-that-fails", "section 9 row 1: a presented list that fails a row of section 8 fails with that row's code and index",
 			list(r2), kit.Obj{"applier": keptOf(nil)}, kit.Obj{"code": "chain", "index": 0}, accord, card),
+		// Two rows of section 9 failing at once: the earlier decides. A presented list that fails a row
+		// of section 8 comes before a presented receipt of another Accord and before a kept receipt that
+		// fails, and a presented receipt of another Accord before a kept receipt that fails.
+		reconcileVector("a-failing-list-and-another-accord", "section 9 rows 1 and 2: a list whose second receipt breaks its chain and whose first is of another Accord fails chain at 1",
+			list(foreign, r2), kit.Obj{"applier": keptOf(nil)}, kit.Obj{"code": "chain", "index": 1}, accord, card),
+		reconcileVector("a-failing-list-and-a-failing-kept-receipt", "section 9 rows 1 and 3: a list that fails chain comes before a kept receipt that blocked",
+			list(r2), kit.Obj{"applier": keptOf(nil, blocked)}, kit.Obj{"code": "chain", "index": 0}, accord, card),
+		reconcileVector("another-accord-and-a-failing-kept-receipt", "section 9 rows 2 and 3: a presented receipt of another Accord comes before a kept receipt that blocked",
+			list(foreign), kit.Obj{"applier": keptOf(nil, blocked)}, kit.Obj{"code": "presented", "index": 0}, accord, card),
+		// Parties are read in actor-reference order: the proposer's reference sorts before the
+		// applier's, though its name sorts after.
+		reconcileVector("kept-receipts-that-fail-for-two-parties", "section 9 row 3: when two parties' kept receipts fail, the party first in actor-reference order is named",
+			list(r1), kit.Obj{"applier": keptOf(nil, blocked), "proposer": keptOf(nil, r1)}, kit.Obj{"code": "kept", "actor": "proposer", "index": 0}, accord, card),
 		kit.Vector{Name: "receipts/a-reconciling-mediator-that-is-not-a-reference", Tests: "section 9 row 1: a mediator that is not a reference fails reference",
 			Operation: "reconcile", Members: kit.Obj{
 				"reference": "mediator", "accord": accord, "card": card, "parties": kit.Obj{"applier": kit.Applier.Ref},
@@ -442,5 +455,18 @@ func reconcile() []kit.Vector {
 			"applier":  keptOf([]any{kenv(1, qe.hash)}, release),
 		},
 		lists(nil, nil, []any{kit.Obj{"actor": "applier", "seq": 1}}), accord, card))
+	// The same question, with the decider, who answered and released it, keeping the question's
+	// envelope too: the change and its release are both from the decider, and neither counts as an
+	// echo for it. Missing lists parties in actor-reference order: the decider's reference sorts
+	// before the applier's.
+	vs = append(vs, reconcileVector("a-resolution-counts-as-an-echo-for-the-asker-only",
+		"receipt-7, crossing-5: a change and its release, both from the decider, echo the proposer's envelope and count for the proposer only, never for the decider that answered or the applier",
+		list(ask, change, release),
+		kit.Obj{
+			"proposer": keptOf([]any{kenv(1, qe.hash)}, change),
+			"applier":  keptOf([]any{kenv(1, qe.hash)}, release),
+			"decider":  keptOf([]any{kenv(1, qe.hash)}),
+		},
+		lists(nil, nil, []any{kit.Obj{"actor": "decider", "seq": 1}, kit.Obj{"actor": "applier", "seq": 1}}), accord, card))
 	return vs
 }

@@ -179,7 +179,7 @@
   },
   "maybe-10": {
     "open": "M2",
-    "scenarios": {"an accept releases the asked part with its digest unchanged": {"open": "M2"}, "a change returned to the asker and released to the receiver under one digest": {"open": "M2"}, "a release the module blocks queues nothing": {"open": "M2"}, "a release receipt echoes the question's envelope and counts as an echo for the asker only": {"vectors": ["receipts/a-release-counts-as-an-echo-for-the-asker-only"], "rest": {"open": "M2", "what": "that a mediator's release receipt echoes the question's envelope, which needs an answer"}}, "a decline releases nothing": {"open": "M2"}}
+    "scenarios": {"an accept releases the asked part with its digest unchanged": {"open": "M2"}, "a change returned to the asker and released to the receiver under one digest": {"open": "M2"}, "a release the module blocks queues nothing": {"open": "M2"}, "a release receipt echoes the question's envelope and counts as an echo for the asker only": {"vectors": ["receipts/a-release-counts-as-an-echo-for-the-asker-only", "receipts/a-resolution-counts-as-an-echo-for-the-asker-only"], "rest": {"open": "M2", "what": "that a mediator's release receipt echoes the question's envelope, which needs an answer"}}, "a decline releases nothing": {"open": "M2"}}
   },
   "receipt-1": {
     "vectors": ["receipts/three-gives-are-echoed", "receipts/a-chain-verifies", "receipts/a-statement-of-another-type"],
@@ -212,7 +212,7 @@
     "scenarios": {"a timeout's time": {"open": "M2"}, "two mediators, one record": {"tests": ["core/mediator:TestTwoMediatorsOneRecord"]}}
   },
   "crossing-5": {
-    "vectors": ["receipts/three-gives-are-echoed", "receipts/a-gives-receipt-echoes-another-members-envelope"],
+    "vectors": ["receipts/three-gives-are-echoed", "receipts/a-gives-receipt-echoes-another-members-envelope", "receipts/a-resolution-counts-as-an-echo-for-the-asker-only"],
     "scenarios": {"every give is echoed": {"vectors": ["receipts/three-gives-are-echoed"]}, "a resolution echoes the question's envelope": {"open": "M2"}}
   },
   "receipt-6": {
@@ -224,7 +224,7 @@
     "scenarios": {"a forged receipt shown": {"tests": ["core/receipts:TestAForgedReceiptShowsAsARealOne"]}}
   },
   "receipt-7": {
-    "vectors": ["receipts/a-removed-last-receipt", "receipts/an-unfetched-delivery", "receipts/a-submission-with-no-receipt", "receipts/a-kept-receipt-from-another-accord", "receipts/an-echo-matches-seq-and-hash", "receipts/a-kept-receipt-that-blocked", "receipts/a-kept-receipt-to-another-party", "receipts/a-presented-list-that-fails", "receipts/a-presented-receipt-from-another-accord", "receipts/a-reconciling-mediator-that-is-not-a-reference", "receipts/a-release-counts-as-an-echo-for-the-asker-only", "receipts/everything-matches"],
+    "vectors": ["receipts/a-removed-last-receipt", "receipts/an-unfetched-delivery", "receipts/a-submission-with-no-receipt", "receipts/a-kept-receipt-from-another-accord", "receipts/an-echo-matches-seq-and-hash", "receipts/a-kept-receipt-that-blocked", "receipts/a-kept-receipt-to-another-party", "receipts/a-presented-list-that-fails", "receipts/a-presented-receipt-from-another-accord", "receipts/a-reconciling-mediator-that-is-not-a-reference", "receipts/a-release-counts-as-an-echo-for-the-asker-only", "receipts/everything-matches", "receipts/a-resolution-counts-as-an-echo-for-the-asker-only", "receipts/a-failing-list-and-another-accord", "receipts/a-failing-list-and-a-failing-kept-receipt", "receipts/another-accord-and-a-failing-kept-receipt", "receipts/kept-receipts-that-fail-for-two-parties"],
     "scenarios": {"a removed last receipt": {"vectors": ["receipts/a-removed-last-receipt"]}, "an unfetched delivery": {"vectors": ["receipts/an-unfetched-delivery"]}, "a submission with no receipt": {"vectors": ["receipts/a-submission-with-no-receipt"]}, "a kept receipt from another Accord": {"vectors": ["receipts/a-kept-receipt-from-another-accord"]}, "an echo matches both seq and hash": {"vectors": ["receipts/an-echo-matches-seq-and-hash"]}}
   },
   "conformance-vectors-1": {
