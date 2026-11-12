@@ -1,13 +1,18 @@
 // Package mediator holds one founded Accord's state and runs its operations: a give, judged at the
 // door and decided by composition, whose receipt it writes and whose part it queues or holds as a
-// question, and a fetch of what was queued. It calls the capability packages for everything they
-// decide, and holds their results.
+// question; a fetch of what was queued; an answer, the finding that nobody can answer, and the
+// passing of time, which close a question and may release its part; and a reload of all of it from
+// what a journal holds. It calls the capability packages for everything they decide, and holds their
+// results.
 //
 // It holds state and operations for setup-contract-6 (membership at every operation),
 // crossing-1 to crossing-4 and crossing-6 (the door's check table, in order), crossing-7 (a rejection
 // changes nothing), crossing-3 (deliveries, queued per receiver and fetched once), maybe-1 (asking:
-// the held part and its question), receipt-5 (the chain of each pair) and receipt-10 (the same
-// inputs at the same times write the same receipts). Decision record 0006 says what it holds and why.
+// the held part and its question), maybe-3 to maybe-10 (section 6's check table, the three answers,
+// decline, cancel, undeliverable, timeout and release), crossing-5 (every closing and release echoes
+// the question's envelope), receipt-5 (the chain of each pair) and receipt-10 (the same inputs at
+// the same times write the same receipts). Decision record 0006 says what it holds and why, and
+// record 0008 how a reload rebuilds it.
 package mediator
 
 import (
@@ -55,6 +60,12 @@ const (
 	PartMetadata      RejectionCode = "part-metadata"
 )
 
+// Section 6's codes for an answer, after not-a-member (maybe-6, maybe-7).
+const (
+	NoOpenQuestion RejectionCode = "no-open-question"
+	NotAnAnswerer  RejectionCode = "not-an-answerer"
+)
+
 // Rejection is a rejected operation: the code of the first row that failed. A rejected operation
 // changes nothing (crossing-7). It carries nothing of the input.
 type Rejection struct{ Code RejectionCode }
@@ -64,25 +75,57 @@ func (r *Rejection) Error() string { return "mediator: rejected: " + string(r.Co
 // ErrorCode says what the caller's program did wrong, or that the mediator failed.
 type ErrorCode string
 
-// The codes of Error. None is a code of the protocol.
+// The codes of Error. None is a code of the protocol (record 0006, record 0008).
 const (
 	// CodeAt: a time that does not keep the timestamp rule.
 	CodeAt ErrorCode = "at"
 	// CodeInternal: a receipt or delivery the mediator could not write. No input causes it.
 	CodeInternal ErrorCode = "internal"
+	// CodeSalt: an accept or a change whose salt is shorter than MinSaltBytes (section 6).
+	CodeSalt ErrorCode = "salt"
+	// CodeAnswer: a change with an empty version (maybe-9).
+	CodeAnswer ErrorCode = "answer"
+	// CodeAction: an answer whose action is not one of the four (section 6).
+	CodeAction ErrorCode = "action"
+	// CodeUnfounded: an operation on a Mediator that neither Found nor Reload made.
+	CodeUnfounded ErrorCode = "unfounded"
+	// CodeJournal: a reloaded receipt that does not verify, or that names another Accord or card.
+	CodeJournal ErrorCode = "journal"
+	// CodeHeld: a reloaded delivery that no receipt of the list queued for its party.
+	CodeHeld ErrorCode = "held"
+	// CodeQuestion: a reloaded open entry that names no question the receipts leave open, or a
+	// question they leave open that no entry names.
+	CodeQuestion ErrorCode = "question"
 )
 
-// Error is a misuse of the mediator by its caller's program, or an internal failure. Founding's
-// refusals are setup's *Error, returned as they are.
-type Error struct{ Code ErrorCode }
+// Error is a misuse of the mediator by its caller's program, a record a reload refuses, or an
+// internal failure. Founding's refusals are setup's *Error, returned as they are. Index is the index
+// of the receipt or entry at fault, for journal, held and question, and for at when the time is an
+// open question's deadline; it is -1 otherwise. Err is the verifier's *Error a journal error wraps.
+type Error struct {
+	Code  ErrorCode
+	Index int
+	Err   error
+}
 
-func (e *Error) Error() string { return "mediator: " + string(e.Code) }
+func (e *Error) Error() string {
+	if e.Index < 0 {
+		return "mediator: " + string(e.Code)
+	}
+	return "mediator: " + string(e.Code) + ", index " + strconv.Itoa(e.Index)
+}
+
+// Unwrap returns the verifier's error a journal error wraps, or nil (record 0008).
+func (e *Error) Unwrap() error { return e.Err }
+
+// failure is an Error with no index.
+func failure(code ErrorCode) *Error { return &Error{Code: code, Index: -1} }
 
 // ErrOtherMediator is returned by Found for a set whose mediator.actor is not the key's reference:
 // no set is wrong for that, so it is not a founding code (setup-contract-7).
 var ErrOtherMediator = errors.New("mediator: the set names another mediator")
 
-// An Outcome is a give's decision: its receipt's verdict, reason, id and bytes.
+// An Outcome is a receipt the mediator wrote: its verdict, reason, id and bytes.
 type Outcome struct {
 	Verdict   string
 	Reason    string
@@ -103,23 +146,32 @@ type question struct {
 	delivery map[string]any // the part as it was given, as its delivery would carry it
 	envelope receipts.Envelope
 	subject  receipts.Subject
-	rule     setup.Rule
+	roles    []string // the role labels of the rule that may answer it
 	deadline string
+}
+
+// A queued delivery, and the id of the receipt that queued it.
+type queued struct {
+	id       string
+	delivery []byte
 }
 
 // A Mediator is one founded Accord and its state. One goroutine owns it: its methods are not safe
 // for concurrent use. It prints as a fixed text under every format verb, so neither its key nor a part
 // it holds reaches a log by accident (secrets-never-print).
 type Mediator struct {
-	accord    *setup.Accord
-	key       signing.Key
-	receipts  [][]byte
-	ids       []string
-	chains    map[[2]string]link
-	highest   map[string]int64
-	queues    map[string][][]byte
-	questions []*question
+	accord     *setup.Accord
+	key        signing.Key
+	receipts   [][]byte
+	statements []receipts.Statement
+	chains     map[[2]string]link
+	highest    map[string]int64
+	queues     map[string][]queued
+	questions  []*question
 }
+
+// founded reports whether Found or Reload made the mediator.
+func (m *Mediator) founded() bool { return m != nil && m.accord != nil }
 
 // Found founds the set at the founding time at, as the mediator whose key is key. A set founding
 // refuses returns setup's *Error; a set that names another mediator returns ErrOtherMediator
@@ -137,7 +189,7 @@ func Found(set []byte, key signing.Key, at string) (*Mediator, error) {
 		key:     key,
 		chains:  map[[2]string]link{},
 		highest: map[string]int64{},
-		queues:  map[string][][]byte{},
+		queues:  map[string][]queued{},
 	}, nil
 }
 
@@ -150,11 +202,21 @@ func (Mediator) GoString() string { return "mediator.Mediator" }
 // String prints the Mediator as a fixed text.
 func (Mediator) String() string { return "mediator.Mediator" }
 
-// Accord returns the Accord id (setup-contract-5).
-func (m *Mediator) Accord() string { return m.accord.ID() }
+// Accord returns the Accord id (setup-contract-5), or the empty string for a Mediator no one founded.
+func (m *Mediator) Accord() string {
+	if !m.founded() {
+		return ""
+	}
+	return m.accord.ID()
+}
 
-// Card returns the card hash (setup-contract-4).
-func (m *Mediator) Card() string { return m.accord.Card() }
+// Card returns the card hash (setup-contract-4), or the empty string for a Mediator no one founded.
+func (m *Mediator) Card() string {
+	if !m.founded() {
+		return ""
+	}
+	return m.accord.Card()
+}
 
 // Receipts returns every receipt the mediator wrote, in order, as copies.
 func (m *Mediator) Receipts() [][]byte {
@@ -178,6 +240,9 @@ func (m *Mediator) Pending() []string {
 // is queued (crossing-3). A caller that is not a member is rejected with not-a-member
 // (setup-contract-6). A fetch writes no receipt.
 func (m *Mediator) Get(caller string) ([]byte, error) {
+	if !m.founded() {
+		return nil, failure(CodeUnfounded)
+	}
 	if !m.accord.Member(caller) {
 		return nil, &Rejection{Code: NotAMember}
 	}
@@ -185,10 +250,10 @@ func (m *Mediator) Get(caller string) ([]byte, error) {
 	if len(q) == 0 {
 		return nil, nil
 	}
-	d := q[0]
+	d := q[0].delivery
 	// The queue's array keeps no reference to a fetched delivery: the mediator holds no body or salt
 	// of it once fetched (crossing-3).
-	q[0] = nil
+	q[0] = queued{}
 	if len(q) == 1 {
 		delete(m.queues, caller)
 	} else {
@@ -213,8 +278,11 @@ type give struct {
 // before any state changes: a pass queues the part for its receiver, an escalate holds it as a
 // question (maybe-1), and a block keeps nothing.
 func (m *Mediator) Give(caller string, message, envelope []byte, at string) (Outcome, error) {
+	if !m.founded() {
+		return Outcome{}, failure(CodeUnfounded)
+	}
 	if !shape.Timestamp(at) {
-		return Outcome{}, &Error{Code: CodeAt}
+		return Outcome{}, failure(CodeAt)
 	}
 	g, code := m.admit(caller, message, envelope)
 	if code != "" {
@@ -233,31 +301,32 @@ func (m *Mediator) Give(caller string, message, envelope []byte, at string) (Out
 	subject := receipts.Subject{Name: g.kind, Digest: g.digest}
 	receipt, id, err := receipts.Build(subject, pred, m.key)
 	if err != nil {
-		return Outcome{}, &Error{Code: CodeInternal}
+		return Outcome{}, failure(CodeInternal)
 	}
 	next.id = id
+	pred.Mediator = m.key.Reference()
 	var delivery []byte
 	var held *question
 	switch d.Verdict {
 	case composition.Pass:
 		if delivery = deliver(g.delivery, receipt, id); delivery == nil {
-			return Outcome{}, &Error{Code: CodeInternal}
+			return Outcome{}, failure(CodeInternal)
 		}
 	case composition.Escalate:
 		held = &question{
 			id: id, asker: caller, receiver: g.to, delivery: g.delivery,
-			envelope: pred.Envelope, subject: subject, rule: d.Rule,
+			envelope: pred.Envelope, subject: subject, roles: d.Rule.To,
 			deadline: shape.AddSeconds(at, d.Rule.Timeout),
 		}
 	}
 
 	// Every receipt and delivery is built; only now does the state change.
 	m.receipts = append(m.receipts, receipt)
-	m.ids = append(m.ids, id)
+	m.statements = append(m.statements, receipts.Statement{ID: id, Subject: subject, Predicate: pred})
 	m.chains[pair] = next
 	m.highest[caller] = g.seq
 	if delivery != nil {
-		m.queues[g.to] = append(m.queues[g.to], delivery)
+		m.queues[g.to] = append(m.queues[g.to], queued{id: id, delivery: delivery})
 	}
 	if held != nil {
 		m.questions = append(m.questions, held)
