@@ -1,0 +1,8 @@
+{
+  "vector": "canonical/a-fraction",
+  "spec": "0.1",
+  "tests": "a vector file holding a fraction",
+  "operation": "canonical",
+  "inputText": "{}",
+  "expect": {"code": "invalid-json", "offset": 0.5}
+}

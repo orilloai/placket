@@ -1,0 +1,32 @@
+{
+  "expect": {
+    "sig": "b341d090401b6847e96960168cbac1222562c3c2be30d82c080a503bc7cf415a76bfc11bcd6bd9f3584ab0771897a39e401383051d40b2f979eb6584e053d30f",
+    "signingBytesHex": "4453534576312033352068747470733a2f2f706c61636b65742e6465762f6465636c61726174696f6e2f302e3120313736207b226163746f72223a22656432353531393a37636633356233366239643537633632623966336435626532656234643339313437616661316237363235636430303332343433353233323534646633626561222c227465726d73223a5b7b22646972223a2267697665222c2273656c656374223a7b226b696e64223a5b226e6f7465225d7d2c227374616e6365223a2277616e74222c2277697468223a5b22726f6c653a6170706c696572225d7d5d7d"
+  },
+  "input": {
+    "actor": "ed25519:7cf35b36b9d57c62b9f3d5be2eb4d39147afa1b7625cd0032443523254df3bea",
+    "terms": [
+      {
+        "dir": "give",
+        "select": {
+          "kind": [
+            "note"
+          ]
+        },
+        "stance": "want",
+        "with": [
+          "role:applier"
+        ]
+      }
+    ]
+  },
+  "keys": {
+    "proposer": "d8eab9b5147bbc41c9fa836164a8932886ca26ae27b68c88e6714cef161b0983"
+  },
+  "operation": "sign",
+  "signer": "proposer",
+  "spec": "0.1",
+  "tests": "signing-2: a declaration's signing bytes and its actor's signature under the declaration type URI",
+  "typeUri": "https://placket.dev/declaration/0.1",
+  "vector": "signatures/sign-declaration"
+}

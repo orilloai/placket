@@ -1,0 +1,25 @@
+{
+  "expect": {
+    "code": "statement-type",
+    "index": 0
+  },
+  "operation": "verify",
+  "receipts": [
+    {
+      "receipt": {
+        "payload": "eyJfdHlwZSI6Imh0dHBzOi8vaW4tdG90by5pby9TdGF0ZW1lbnQvdjAuMSIsInByZWRpY2F0ZSI6eyJhY2NvcmQiOiJzaGEyNTY6NDJjMDNlYzNmOGFkMmRlMTllNWU0MGM3N2RkMzJhNDQ2OWI1ZmRhYjJlZTcyNGJlZmY3ZDVhZWQ2ODEwOWMxNiIsImF0IjoiMjAyNi0xMS0xMlQxMDowMDowMFoiLCJjYXJkIjoic2hhMjU2OjY5MGU1ZGJiNjc3MDRiNjBmYzQ3NTEyY2Q4ZjAyMTQzYTc4NzZlODg1Y2Y4NjVlNGJkZTc5ZWQ3ZmJlNWMzNTYiLCJlbnZlbG9wZSI6eyJoYXNoIjoic2hhMjU2OjI2NzBjZjEwZDU1ZGM5MTg2YThlNjgyNTA4YTBlYTA0MGY0OWFkZDczYmEzMjIwMzZlZTY3OGNiNzM0ODRjYmQiLCJzZW5kZXIiOiJlZDI1NTE5OjdjZjM1YjM2YjlkNTdjNjJiOWYzZDViZTJlYjRkMzkxNDdhZmExYjc2MjVjZDAwMzI0NDM1MjMyNTRkZjNiZWEiLCJzZXEiOjF9LCJmcm9tIjoiZWQyNTUxOTo3Y2YzNWIzNmI5ZDU3YzYyYjlmM2Q1YmUyZWI0ZDM5MTQ3YWZhMWI3NjI1Y2QwMDMyNDQzNTIzMjU0ZGYzYmVhIiwia2luZCI6ImNyb3NzaW5nIiwibWVkaWF0b3IiOiJlZDI1NTE5Ojg0MjU0ZjlkNTkzYjBmNzgxMWIxOGMwMGI2NTZhNzBmZTFhOTU5NWVkMzUzYzczMjg2ZWE4M2QzMDAyMjZlZDMiLCJyZWFzb24iOiJvayIsInNlcSI6MSwidG8iOiJlZDI1NTE5OmE4MDU4NjI3OWJhMTdjNTM2MGIwMjkwMThiZjAyNWJlMDE2OWZkYjAyMDg3ZTc3MzAxNzc0Yzk5ZWVkOTIxMTciLCJ2ZXJkaWN0IjoicGFzcyJ9LCJwcmVkaWNhdGVUeXBlIjoiaHR0cHM6Ly9wbGFja2V0LmRldi9yZWNlaXB0LzAuMSIsInN1YmplY3QiOlt7ImRpZ2VzdCI6eyJzYWx0ZWQtc2hhMjU2IjoiMWE2MzVlMjk2YzMxM2IxNmUzMDI1MmFjZTMyMDFmMjYyNjlkMmIzYjAzYzdlN2MzMmU3NWI4MWNhNjYyM2Y2YyJ9LCJuYW1lIjoibm90ZSJ9XX0=",
+        "payloadType": "application/vnd.in-toto+json",
+        "signatures": [
+          {
+            "keyid": "ed25519:84254f9d593b0f7811b18c00b656a70fe1a9595ed353c73286ea83d300226ed3",
+            "sig": "F2Gl3oNIxzCfFDh0gX3f+zVhPL/qXZzayqweIDnSvVAbwnaRo89A/LWxufwk4J1PFIqSyZpnUVXjZP/+wlMuBw=="
+          }
+        ]
+      }
+    }
+  ],
+  "reference": "ed25519:84254f9d593b0f7811b18c00b656a70fe1a9595ed353c73286ea83d300226ed3",
+  "spec": "0.1",
+  "tests": "receipt-1: a statement whose _type is not in-toto's Statement v1 fails statement-type",
+  "vector": "receipts/a-statement-of-another-type"
+}

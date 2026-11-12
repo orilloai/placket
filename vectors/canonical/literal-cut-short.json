@@ -1,0 +1,11 @@
+{
+  "expect": {
+    "code": "invalid-json",
+    "offset": 8
+  },
+  "inputText": "[1,2,tru]",
+  "operation": "canonical",
+  "spec": "0.1",
+  "tests": "canonical-7: tru could still begin true until the ]",
+  "vector": "canonical/literal-cut-short"
+}

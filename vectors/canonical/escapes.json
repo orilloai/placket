@@ -1,0 +1,11 @@
+{
+  "expect": {
+    "canonicalHex": "225c225c5c5c75303030315c74c3a97f22",
+    "hash": "sha256:c6907929143b81a54391f38ee7606a772117fd51b6677044fdbdab2257fe0d34"
+  },
+  "inputText": "\"\\\"\\\\\\u0001\\u0009\\u00e9\\u007f\"",
+  "operation": "canonical",
+  "spec": "0.1",
+  "tests": "canonical-1: only quotes, backslashes and controls are escaped; e-acute and U+007F are written as their bytes",
+  "vector": "canonical/escapes"
+}

@@ -1,0 +1,16 @@
+{
+  "expect": {
+    "valid": false
+  },
+  "input": {
+    "hash": "sha256:701cac486abd2ec9238eef33368ef0522e2f9e7419fbd3be96e25519a0296589",
+    "seq": 1,
+    "sig": "3b552953a04abae62c50b00ca991f48c0e128247826cf2158def6f8c358af79899b2d76fdd43c28073247f68c50066ebff8b7d1b44b42cac6d7cd225ad154209"
+  },
+  "operation": "verify-signature",
+  "reference": "ed25519:7cf35b36b9d57c62b9f3d5be2eb4d39147afa1b7625cd0032443523254df3bea",
+  "spec": "0.1",
+  "tests": "signing-2: an envelope signed by another key fails under the caller's",
+  "typeUri": "https://placket.dev/envelope/0.1",
+  "vector": "signatures/envelope-by-another-key"
+}

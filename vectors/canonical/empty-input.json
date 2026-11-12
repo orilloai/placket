@@ -1,0 +1,11 @@
+{
+  "expect": {
+    "code": "invalid-json",
+    "offset": 0
+  },
+  "inputHex": "",
+  "operation": "canonical",
+  "spec": "0.1",
+  "tests": "canonical-7: the empty input ends too soon and is refused at offset 0",
+  "vector": "canonical/empty-input"
+}

@@ -1,8 +1,8 @@
-// Package a defines a type URI.
+// Package a defines a type URI the protocol does not, so no constant of the core holds it.
 package a
 
-// Crossing is the extension URI.
-const Crossing = "https://placket.dev/crossing/0.1"
+// Crossing is a fixture's URI.
+const Crossing = "https://placket.dev/fixture/0.1"
 
 // Again names it a second time in the same file, which is allowed.
-var Again = "https://placket.dev/crossing/0.1"
+var Again = "https://placket.dev/fixture/0.1"

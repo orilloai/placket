@@ -1,0 +1,29 @@
+{
+  "expect": {
+    "valid": false
+  },
+  "input": {
+    "actor": "ed25519:7cf35b36b9d57c62b9f3d5be2eb4d39147afa1b7625cd0032443523254df3bea",
+    "sig": "b341d090401b6847e96960168cbac1222562c3c2be30d82c080a503bc7cf415a6393b778e7ceeb4b2fe7a71af79082b3401383051d40b2f979eb6584e053d31f",
+    "terms": [
+      {
+        "dir": "give",
+        "select": {
+          "kind": [
+            "note"
+          ]
+        },
+        "stance": "want",
+        "with": [
+          "role:applier"
+        ]
+      }
+    ]
+  },
+  "operation": "verify-signature",
+  "reference": "ed25519:7cf35b36b9d57c62b9f3d5be2eb4d39147afa1b7625cd0032443523254df3bea",
+  "spec": "0.1",
+  "tests": "signing-2: a valid signature whose S is replaced by S + L fails",
+  "typeUri": "https://placket.dev/declaration/0.1",
+  "vector": "signatures/malleated-signature"
+}

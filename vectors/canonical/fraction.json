@@ -1,0 +1,11 @@
+{
+  "expect": {
+    "code": "fractional-number",
+    "offset": 1
+  },
+  "inputText": "[0.5]",
+  "operation": "canonical",
+  "spec": "0.1",
+  "tests": "canonical-2: a fraction is refused",
+  "vector": "canonical/fraction"
+}

@@ -1,0 +1,11 @@
+{
+  "expect": {
+    "code": "duplicate-key",
+    "offset": 12
+  },
+  "inputText": "{\"a\":{\"b\":1,\"b\":2}}",
+  "operation": "canonical",
+  "spec": "0.1",
+  "tests": "canonical-4: a repeated name in a nested object is refused at its quote",
+  "vector": "canonical/duplicate-key-nested"
+}

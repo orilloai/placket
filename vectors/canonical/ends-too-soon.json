@@ -1,0 +1,11 @@
+{
+  "expect": {
+    "code": "invalid-json",
+    "offset": 3
+  },
+  "inputText": "[1,",
+  "operation": "canonical",
+  "spec": "0.1",
+  "tests": "canonical-7: an input that ends too soon is refused at its length",
+  "vector": "canonical/ends-too-soon"
+}

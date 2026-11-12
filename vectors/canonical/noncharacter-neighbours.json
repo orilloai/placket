@@ -1,0 +1,11 @@
+{
+  "expect": {
+    "canonicalHex": "5b22efb78f222c22efb7b0225d",
+    "hash": "sha256:b30f07f0ea1602221c86400128855035c9558c082747e8864d7517bf757f9e08"
+  },
+  "inputText": "[\"\\ufdcf\",\"\\ufdf0\"]",
+  "operation": "canonical",
+  "spec": "0.1",
+  "tests": "canonical-9: U+FDCF and U+FDF0 are not noncharacters",
+  "vector": "canonical/noncharacter-neighbours"
+}

@@ -1,0 +1,29 @@
+{
+  "expect": {
+    "valid": false
+  },
+  "input": {
+    "actor": "ed25519:7cf35b36b9d57c62b9f3d5be2eb4d39147afa1b7625cd0032443523254df3bea",
+    "sig": "b341d090401b6847e96960168cbac1222562c3c2be30d82c080a503bc7cf415a76bfc11bcd6bd9f3584ab0771897a39e401383051d40b2f979eb6584e053d30f",
+    "terms": [
+      {
+        "dir": "give",
+        "select": {
+          "kind": [
+            "note"
+          ]
+        },
+        "stance": "want",
+        "with": [
+          "role:applier"
+        ]
+      }
+    ]
+  },
+  "operation": "verify-signature",
+  "reference": "ecdsa:7cf35b36b9d57c62b9f3d5be2eb4d39147afa1b7625cd0032443523254df3bea",
+  "spec": "0.1",
+  "tests": "signing-1: a reference with the prefix ecdsa: names no actor",
+  "typeUri": "https://placket.dev/declaration/0.1",
+  "vector": "signatures/reference-other-prefix"
+}

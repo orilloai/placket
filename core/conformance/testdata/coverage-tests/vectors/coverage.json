@@ -1,0 +1,5 @@
+{
+  "canonical-1": {"vectors": ["canonical/sorted"], "tests": ["core/canonical:TestLessOrdersByUTF16"], "rest": {"open": "M2", "what": "the order of names outside the Basic Multilingual Plane"},
+    "scenarios": {"members sorted": {"tests": ["core/canonical:TestLessOrdersByUTF16", "core/conformance:TestVectors"]}}},
+  "receipt-6": {"tests": ["core/receipts:TestOneByteOfTheSignatureFails"], "scenarios": {"a chain that verifies": {"vectors": ["canonical/sorted"], "rest": {"open": "M3", "what": "a longer chain"}}}}
+}

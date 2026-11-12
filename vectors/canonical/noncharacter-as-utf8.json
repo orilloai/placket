@@ -1,0 +1,11 @@
+{
+  "expect": {
+    "code": "invalid-string",
+    "offset": 3
+  },
+  "inputHex": "5b312c2261efbfbe225d",
+  "operation": "canonical",
+  "spec": "0.1",
+  "tests": "canonical-9: U+FFFE written as its UTF-8 is invalid-string at the string's quote",
+  "vector": "canonical/noncharacter-as-utf8"
+}

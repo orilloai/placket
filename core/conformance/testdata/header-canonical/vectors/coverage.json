@@ -1,0 +1,4 @@
+{
+  "canonical-1": {"vectors": ["canonical/a-fraction"], "scenarios": {"members sorted": {"vectors": ["canonical/a-fraction"]}}},
+  "receipt-6": {"open": "M1", "scenarios": {"a chain that verifies": {"open": "M1"}}}
+}

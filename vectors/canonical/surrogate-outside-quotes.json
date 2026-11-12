@@ -1,0 +1,11 @@
+{
+  "expect": {
+    "code": "invalid-json",
+    "offset": 1
+  },
+  "inputText": "[\\ud800]",
+  "operation": "canonical",
+  "spec": "0.1",
+  "tests": "canonical-11: a surrogate escape outside every quoted span is a grammar defect",
+  "vector": "canonical/surrogate-outside-quotes"
+}

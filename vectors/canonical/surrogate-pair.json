@@ -1,0 +1,11 @@
+{
+  "expect": {
+    "canonicalHex": "22f09f988022",
+    "hash": "sha256:7a0c50b92434b015545fe93ab723db2d4b2cdd14a441405624a9ce8be29f1d5a"
+  },
+  "inputText": "\"\\ud83d\\ude00\"",
+  "operation": "canonical",
+  "spec": "0.1",
+  "tests": "canonical-6: an escaped surrogate pair is one code point, written as its UTF-8",
+  "vector": "canonical/surrogate-pair"
+}

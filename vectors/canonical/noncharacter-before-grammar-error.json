@@ -1,0 +1,11 @@
+{
+  "expect": {
+    "code": "invalid-string",
+    "offset": 1
+  },
+  "inputText": "[\"\\ufdd0\" x]",
+  "operation": "canonical",
+  "spec": "0.1",
+  "tests": "canonical-10: a noncharacter in an earlier token comes before a later grammar defect",
+  "vector": "canonical/noncharacter-before-grammar-error"
+}

@@ -1,0 +1,28 @@
+{
+  "expect": {
+    "valid": false
+  },
+  "input": {
+    "actor": "ed25519:7cf35b36b9d57c62b9f3d5be2eb4d39147afa1b7625cd0032443523254df3bea",
+    "terms": [
+      {
+        "dir": "give",
+        "select": {
+          "kind": [
+            "note"
+          ]
+        },
+        "stance": "want",
+        "with": [
+          "role:applier"
+        ]
+      }
+    ]
+  },
+  "operation": "verify-signature",
+  "reference": "ed25519:7cf35b36b9d57c62b9f3d5be2eb4d39147afa1b7625cd0032443523254df3bea",
+  "spec": "0.1",
+  "tests": "signing-2: an object with no sig fails",
+  "typeUri": "https://placket.dev/declaration/0.1",
+  "vector": "signatures/sig-missing"
+}

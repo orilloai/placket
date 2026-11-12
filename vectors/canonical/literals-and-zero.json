@@ -1,0 +1,11 @@
+{
+  "expect": {
+    "canonicalHex": "5b747275652c66616c73652c6e756c6c2c302c305d",
+    "hash": "sha256:53226a5a897d7957a9d6f52139fd2852144574998a71cc630aab80a2b3b3538c"
+  },
+  "inputText": "[ true , false , null , 0 , -0 ]",
+  "operation": "canonical",
+  "spec": "0.1",
+  "tests": "canonical-1: the three literals, and zero written as 0",
+  "vector": "canonical/literals-and-zero"
+}

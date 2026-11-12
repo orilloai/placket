@@ -1,0 +1,51 @@
+{
+  "accord": "sha256:42c03ec3f8ad2de19e5e40c77dd32a4469b5fdab2ee724beff7d5aed68109c16",
+  "card": "sha256:690e5dbb67704b60fc47512cd8f02143a7876e885cf865e4bde79ed7fbe5c356",
+  "expect": {
+    "code": "presented",
+    "index": 0
+  },
+  "kept": {
+    "applier": {
+      "delivered": [
+        {
+          "receipt": {
+            "payload": "eyJfdHlwZSI6Imh0dHBzOi8vaW4tdG90by5pby9TdGF0ZW1lbnQvdjEiLCJwcmVkaWNhdGUiOnsiYWNjb3JkIjoic2hhMjU2OjQyYzAzZWMzZjhhZDJkZTE5ZTVlNDBjNzdkZDMyYTQ0NjliNWZkYWIyZWU3MjRiZWZmN2Q1YWVkNjgxMDljMTYiLCJhdCI6IjIwMjYtMTEtMTJUMTA6MDA6MDBaIiwiY2FyZCI6InNoYTI1Njo2OTBlNWRiYjY3NzA0YjYwZmM0NzUxMmNkOGYwMjE0M2E3ODc2ZTg4NWNmODY1ZTRiZGU3OWVkN2ZiZTVjMzU2IiwiZW52ZWxvcGUiOnsiaGFzaCI6InNoYTI1Njo5ZTY3ZjE3ZmIxODNjNDg4MjA5NjdmYjU5YmUzN2U2MmFmNmY0MGJlNDdjYWM3MDA3ZWQxODM5ZmNlZTc1YTIyIiwic2VuZGVyIjoiZWQyNTUxOTo3Y2YzNWIzNmI5ZDU3YzYyYjlmM2Q1YmUyZWI0ZDM5MTQ3YWZhMWI3NjI1Y2QwMDMyNDQzNTIzMjU0ZGYzYmVhIiwic2VxIjoxfSwiZnJvbSI6ImVkMjU1MTk6N2NmMzViMzZiOWQ1N2M2MmI5ZjNkNWJlMmViNGQzOTE0N2FmYTFiNzYyNWNkMDAzMjQ0MzUyMzI1NGRmM2JlYSIsImtpbmQiOiJjcm9zc2luZyIsIm1lZGlhdG9yIjoiZWQyNTUxOTo4NDI1NGY5ZDU5M2IwZjc4MTFiMThjMDBiNjU2YTcwZmUxYTk1OTVlZDM1M2M3MzI4NmVhODNkMzAwMjI2ZWQzIiwicmVhc29uIjoibm8tbWF0Y2giLCJzZXEiOjEsInRvIjoiZWQyNTUxOTphODA1ODYyNzliYTE3YzUzNjBiMDI5MDE4YmYwMjViZTAxNjlmZGIwMjA4N2U3NzMwMTc3NGM5OWVlZDkyMTE3IiwidmVyZGljdCI6ImJsb2NrIn0sInByZWRpY2F0ZVR5cGUiOiJodHRwczovL3BsYWNrZXQuZGV2L3JlY2VpcHQvMC4xIiwic3ViamVjdCI6W3siZGlnZXN0Ijp7InNhbHRlZC1zaGEyNTYiOiI0Yjk1NmIwZmQxYzZlZGQwYjBiNWFmYWYzYjBjMDY4OTQ5NTM3OTdiNmExODQzYTRmNjQ4ZDA0MjFjZTJkNzkyIn0sIm5hbWUiOiJ0ZXN0cyJ9XX0=",
+            "payloadType": "application/vnd.in-toto+json",
+            "signatures": [
+              {
+                "keyid": "ed25519:84254f9d593b0f7811b18c00b656a70fe1a9595ed353c73286ea83d300226ed3",
+                "sig": "HaeKh3bjHB6VSyjnlKuqwmzzIa91FWHYnFhO+cllJMYFra56PgnBGD/gPvO3ks9fazRTVYFKZaTi7l1MgLMuAQ=="
+              }
+            ]
+          }
+        }
+      ],
+      "envelopes": []
+    }
+  },
+  "operation": "reconcile",
+  "parties": {
+    "applier": "ed25519:a80586279ba17c5360b029018bf025be0169fdb02087e77301774c99eed92117",
+    "decider": "ed25519:375dea8c4519dbae84fc9eb513e97eb4b693968ef37d52ac10da7b79250c6a22",
+    "proposer": "ed25519:7cf35b36b9d57c62b9f3d5be2eb4d39147afa1b7625cd0032443523254df3bea"
+  },
+  "receipts": [
+    {
+      "receipt": {
+        "payload": "eyJfdHlwZSI6Imh0dHBzOi8vaW4tdG90by5pby9TdGF0ZW1lbnQvdjEiLCJwcmVkaWNhdGUiOnsiYWNjb3JkIjoic2hhMjU2Ojc1MTVjN2UyNWJkNmRkZDI5OTQxNWQ1YWVmNGMwOGE2Zjc0ZWZlN2MwNDI4ZjM3NTMxMzE2OTMzZjZlZTg1MjMiLCJhdCI6IjIwMjYtMTEtMTJUMTA6MDA6MDBaIiwiY2FyZCI6InNoYTI1Njo2OTBlNWRiYjY3NzA0YjYwZmM0NzUxMmNkOGYwMjE0M2E3ODc2ZTg4NWNmODY1ZTRiZGU3OWVkN2ZiZTVjMzU2IiwiZW52ZWxvcGUiOnsiaGFzaCI6InNoYTI1NjphYjg5ZDJmMGI5OTE4MzZiMmI4MjcwZmNjODZiZThjZjQ3ODZjM2VjY2E5MzM1NDBkOTg4ZTg0OTZlNTdmZWFjIiwic2VuZGVyIjoiZWQyNTUxOTo3Y2YzNWIzNmI5ZDU3YzYyYjlmM2Q1YmUyZWI0ZDM5MTQ3YWZhMWI3NjI1Y2QwMDMyNDQzNTIzMjU0ZGYzYmVhIiwic2VxIjoxfSwiZnJvbSI6ImVkMjU1MTk6N2NmMzViMzZiOWQ1N2M2MmI5ZjNkNWJlMmViNGQzOTE0N2FmYTFiNzYyNWNkMDAzMjQ0MzUyMzI1NGRmM2JlYSIsImtpbmQiOiJjcm9zc2luZyIsIm1lZGlhdG9yIjoiZWQyNTUxOTo4NDI1NGY5ZDU5M2IwZjc4MTFiMThjMDBiNjU2YTcwZmUxYTk1OTVlZDM1M2M3MzI4NmVhODNkMzAwMjI2ZWQzIiwicmVhc29uIjoib2siLCJzZXEiOjEsInRvIjoiZWQyNTUxOTphODA1ODYyNzliYTE3YzUzNjBiMDI5MDE4YmYwMjViZTAxNjlmZGIwMjA4N2U3NzMwMTc3NGM5OWVlZDkyMTE3IiwidmVyZGljdCI6InBhc3MifSwicHJlZGljYXRlVHlwZSI6Imh0dHBzOi8vcGxhY2tldC5kZXYvcmVjZWlwdC8wLjEiLCJzdWJqZWN0IjpbeyJkaWdlc3QiOnsic2FsdGVkLXNoYTI1NiI6IjA0YTc2Zjg2NTg2YTNkOTc3MmMzZmYwZTdkZjE3NzIwZGNhZmZkMDkzNGIzM2M3YWNiNTJmZjBlYjU0NzAwNmQifSwibmFtZSI6ImJyaWVmIn1dfQ==",
+        "payloadType": "application/vnd.in-toto+json",
+        "signatures": [
+          {
+            "keyid": "ed25519:84254f9d593b0f7811b18c00b656a70fe1a9595ed353c73286ea83d300226ed3",
+            "sig": "V3au04MGPfcWKIE7v02eCt0zfDtcQFWv22+jPhza4KV6pKxOKoOEoa5L6dOu3wZ+M63zIdgqWXHxsC5yAg6EDg=="
+          }
+        ]
+      }
+    }
+  ],
+  "reference": "ed25519:84254f9d593b0f7811b18c00b656a70fe1a9595ed353c73286ea83d300226ed3",
+  "spec": "0.1",
+  "tests": "section 9 rows 2 and 3: a presented receipt of another Accord comes before a kept receipt that blocked",
+  "vector": "receipts/another-accord-and-a-failing-kept-receipt"
+}

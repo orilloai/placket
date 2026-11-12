@@ -2,6 +2,8 @@ package conformance
 
 import (
 	"io/fs"
+
+	"github.com/orilloai/placket/core/canonical"
 	"sort"
 	"strconv"
 	"strings"
@@ -35,10 +37,6 @@ type Handler func(Vector) []Part
 // Handlers names the handler of each operation. An operation with none fails every vector of it.
 type Handlers map[string]Handler
 
-// Default returns the handlers of the operations the core can run. The core has no package yet, so
-// it runs none: every vector fails at the operation check until its operation's handler is added.
-func Default() Handlers { return Handlers{} }
-
 // The checks a vector goes through, in order (section 10 of the protocol text).
 const (
 	CheckHeader    = "header"
@@ -64,11 +62,13 @@ type Result struct {
 func (r Result) Passed() bool { return r.Check == "" }
 
 // An Open entry of the coverage list is a requirement, or a scenario of one, that no vector covers
-// yet, with the milestone that writes its vector.
+// yet, with the milestone that writes its vector; or one covered in part, with what stays open.
 type Open struct {
 	ID        string
 	Scenario  string // empty for the requirement itself
 	Milestone string
+	// Rest is what stays open of an entry covered in part, and empty for an entry open as a whole.
+	Rest string
 }
 
 // A Report is the outcome of a run.
@@ -112,11 +112,15 @@ func (r Report) Lines() []string {
 		out = append(out, "fail: "+p)
 	}
 	for _, o := range r.Open {
-		if o.Scenario == "" {
-			out = append(out, "open: "+o.ID+": "+o.Milestone)
-		} else {
-			out = append(out, "open: "+o.ID+": scenario "+strconv.Quote(o.Scenario)+": "+o.Milestone)
+		line := "open: " + o.ID + ": "
+		if o.Scenario != "" {
+			line += "scenario " + strconv.Quote(o.Scenario) + ": "
 		}
+		line += o.Milestone
+		if o.Rest != "" {
+			line += ", in part: " + o.Rest
+		}
+		out = append(out, line)
 	}
 	out = append(out, plural(len(r.Results), "vector")+": "+strconv.Itoa(len(r.Results)-failed)+" passed, "+
 		strconv.Itoa(failed)+" failed; "+plural(len(r.Problems), "other failure")+"; "+plural(len(r.Open), "entry")+" open")
@@ -264,6 +268,12 @@ func runVector(p string, b []byte, schema *node, h Handlers) Result {
 	v, err := read(b)
 	if err != nil {
 		return fail(CheckHeader, err.Error())
+	}
+	// The runner's own reader refuses what the grammar, UTF-8 and repeated names refuse; the canonical
+	// form refuses the rest, a fraction or an integer outside the safe range among them
+	// (conformance-vectors-11).
+	if _, err := canonical.Form(b); err != nil {
+		return fail(CheckHeader, "the canonical form refuses the file: "+err.Error())
 	}
 	o, ok := v.(*object)
 	if !ok {

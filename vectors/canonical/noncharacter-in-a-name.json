@@ -1,0 +1,11 @@
+{
+  "expect": {
+    "code": "invalid-string",
+    "offset": 1
+  },
+  "inputText": "{\"\\uffff\":1}",
+  "operation": "canonical",
+  "spec": "0.1",
+  "tests": "canonical-9: U+FFFF in a member name is invalid-string at the name's quote",
+  "vector": "canonical/noncharacter-in-a-name"
+}

@@ -1,0 +1,11 @@
+{
+  "expect": {
+    "code": "invalid-string",
+    "offset": 1
+  },
+  "inputText": "[\"\\ufdd0\"]",
+  "operation": "canonical",
+  "spec": "0.1",
+  "tests": "canonical-9: U+FDD0 written as an escape is invalid-string at the string's quote",
+  "vector": "canonical/noncharacter-fdd0"
+}

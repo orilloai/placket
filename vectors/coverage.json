@@ -1,483 +1,275 @@
 {
   "canonical-1": {
-    "open": "M1",
-    "scenarios": {
-      "members sorted and whitespace dropped": {"open": "M1"},
-      "names sorted by UTF-16 code units": {"open": "M1"},
-      "only quotes, backslashes and controls are escaped": {"open": "M1"}
-    }
+    "vectors": ["canonical/members-sorted", "canonical/names-by-utf16", "canonical/escapes", "canonical/literals-and-zero", "canonical/solidus-escape-read"],
+    "scenarios": {"members sorted and whitespace dropped": {"vectors": ["canonical/members-sorted"]}, "names sorted by UTF-16 code units": {"vectors": ["canonical/names-by-utf16"]}, "only quotes, backslashes and controls are escaped": {"vectors": ["canonical/escapes"]}}
   },
   "canonical-2": {
-    "open": "M1",
-    "scenarios": {
-      "a fraction is refused": {"open": "M1"},
-      "the ends of the range are accepted": {"open": "M1"},
-      "one past the end is refused": {"open": "M1"}
-    }
+    "vectors": ["canonical/fraction", "canonical/range-ends", "canonical/one-past-the-end", "canonical/one-past-the-negative-end"],
+    "scenarios": {"a fraction is refused": {"vectors": ["canonical/fraction"]}, "the ends of the range are accepted": {"vectors": ["canonical/range-ends"]}, "one past the end is refused": {"vectors": ["canonical/one-past-the-end", "canonical/one-past-the-negative-end"]}}
   },
   "canonical-3": {
-    "open": "M1",
-    "scenarios": {
-      "the hash of an empty object": {"open": "M1"}
-    }
+    "vectors": ["canonical/hash-of-an-empty-object"],
+    "scenarios": {"the hash of an empty object": {"vectors": ["canonical/hash-of-an-empty-object"]}}
   },
   "canonical-4": {
-    "open": "M1",
-    "scenarios": {
-      "a repeated name": {"open": "M1"},
-      "a name repeated only after its escape is read": {"open": "M1"},
-      "names that differ in case": {"open": "M1"}
-    }
+    "vectors": ["canonical/duplicate-key", "canonical/duplicate-key-after-escape", "canonical/names-differ-in-case", "canonical/duplicate-key-nested"],
+    "scenarios": {"a repeated name": {"vectors": ["canonical/duplicate-key"]}, "a name repeated only after its escape is read": {"vectors": ["canonical/duplicate-key-after-escape"]}, "names that differ in case": {"vectors": ["canonical/names-differ-in-case"]}}
   },
   "canonical-5": {
-    "open": "M1",
-    "scenarios": {
-      "spellings of one value": {"open": "M1"},
-      "magnitude before integrality": {"open": "M1"},
-      "huge exponents": {"open": "M1"}
-    }
+    "vectors": ["canonical/spellings-of-one-value", "canonical/magnitude-before-integrality", "canonical/fraction-below-ten-to-the-sixteen", "canonical/huge-exponent", "canonical/exponent-beyond-int64", "canonical/huge-negative-exponent", "canonical/exponent-and-fraction"],
+    "scenarios": {"spellings of one value": {"vectors": ["canonical/spellings-of-one-value"]}, "magnitude before integrality": {"vectors": ["canonical/magnitude-before-integrality", "canonical/fraction-below-ten-to-the-sixteen"]}, "huge exponents": {"vectors": ["canonical/huge-exponent", "canonical/exponent-beyond-int64", "canonical/huge-negative-exponent"]}}
   },
   "canonical-6": {
-    "open": "M1",
-    "scenarios": {
-      "invalid UTF-8 inside a string": {"open": "M1"},
-      "after a backslash": {"open": "M1"},
-      "an unpaired surrogate escape": {"open": "M1"}
-    }
+    "vectors": ["canonical/invalid-utf8-in-string", "canonical/invalid-utf8-after-backslash", "canonical/non-ascii-after-backslash", "canonical/unpaired-high-surrogate", "canonical/unpaired-low-surrogate", "canonical/high-surrogate-then-a-letter", "canonical/invalid-utf8-outside-strings", "canonical/raw-control-in-string", "canonical/surrogate-pair"],
+    "scenarios": {"invalid UTF-8 inside a string": {"vectors": ["canonical/invalid-utf8-in-string"]}, "after a backslash": {"vectors": ["canonical/invalid-utf8-after-backslash", "canonical/non-ascii-after-backslash"]}, "an unpaired surrogate escape": {"vectors": ["canonical/unpaired-high-surrogate", "canonical/unpaired-low-surrogate", "canonical/high-surrogate-then-a-letter"]}}
   },
   "canonical-7": {
-    "open": "M1",
-    "scenarios": {
-      "the empty input and an input that ends too soon": {"open": "M1"},
-      "a byte order mark": {"open": "M1"},
-      "trailing data and a token cut short": {"open": "M1"}
-    }
+    "vectors": ["canonical/empty-input", "canonical/ends-too-soon", "canonical/byte-order-mark", "canonical/trailing-comma", "canonical/trailing-after-array", "canonical/literal-cut-short", "canonical/leading-zero", "canonical/whitespace-between-tokens"],
+    "scenarios": {"the empty input and an input that ends too soon": {"vectors": ["canonical/empty-input", "canonical/ends-too-soon"]}, "a byte order mark": {"vectors": ["canonical/byte-order-mark"]}, "trailing data and a token cut short": {"vectors": ["canonical/trailing-comma", "canonical/trailing-after-array", "canonical/literal-cut-short"]}}
   },
   "canonical-8": {
-    "open": "M1",
-    "scenarios": {
-      "depth 1000 and 1001": {"open": "M1"}
-    }
+    "vectors": ["canonical/depth-1000", "canonical/depth-1001"],
+    "scenarios": {"depth 1000 and 1001": {"vectors": ["canonical/depth-1000", "canonical/depth-1001"]}}
   },
   "canonical-9": {
-    "open": "M1",
-    "scenarios": {
-      "noncharacters and their neighbours": {"open": "M1"},
-      "a grammar defect in the same string": {"open": "M1"}
-    }
+    "vectors": ["canonical/noncharacter-fdd0", "canonical/noncharacter-in-a-name", "canonical/noncharacter-last-code-point", "canonical/noncharacter-neighbours", "canonical/grammar-before-noncharacter", "canonical/noncharacter-as-utf8"],
+    "scenarios": {"noncharacters and their neighbours": {"vectors": ["canonical/noncharacter-fdd0", "canonical/noncharacter-in-a-name", "canonical/noncharacter-last-code-point", "canonical/noncharacter-neighbours"]}, "a grammar defect in the same string": {"vectors": ["canonical/grammar-before-noncharacter"]}}
   },
   "canonical-10": {
-    "open": "M1",
-    "scenarios": {
-      "invalid UTF-8 after a grammar error": {"open": "M1"},
-      "a number before a repeated name": {"open": "M1"}
-    }
+    "vectors": ["canonical/invalid-utf8-after-grammar-error", "canonical/number-before-repeated-name", "canonical/noncharacter-before-grammar-error"],
+    "scenarios": {"invalid UTF-8 after a grammar error": {"vectors": ["canonical/invalid-utf8-after-grammar-error"]}, "a number before a repeated name": {"vectors": ["canonical/number-before-repeated-name"]}}
   },
   "canonical-11": {
-    "open": "M1",
-    "scenarios": {
-      "a surrogate escape after the grammar broke": {"open": "M1"},
-      "a surrogate escape outside any quotes": {"open": "M1"}
-    }
+    "vectors": ["canonical/surrogate-after-grammar-broke", "canonical/surrogate-outside-quotes"],
+    "scenarios": {"a surrogate escape after the grammar broke": {"vectors": ["canonical/surrogate-after-grammar-broke"]}, "a surrogate escape outside any quotes": {"vectors": ["canonical/surrogate-outside-quotes"]}}
   },
   "signing-1": {
-    "open": "M1",
-    "scenarios": {
-      "reference forms": {"open": "M1"},
-      "a small-order key": {"open": "M1"}
-    }
+    "vectors": ["signatures/reference-forms", "signatures/reference-uppercase", "signatures/reference-short", "signatures/reference-other-prefix", "signatures/small-order-key", "founding/small-order-actor"],
+    "scenarios": {"reference forms": {"vectors": ["signatures/reference-forms", "signatures/reference-uppercase", "signatures/reference-short", "signatures/reference-other-prefix"]}, "a small-order key": {"vectors": ["signatures/small-order-key", "founding/small-order-actor"]}}
   },
   "signing-2": {
-    "open": "M1",
-    "scenarios": {
-      "the type URI comes from the operation": {"open": "M1"},
-      "signed by another key": {"open": "M1"},
-      "a malleated signature": {"open": "M1"}
-    }
+    "vectors": ["signatures/binding-under-declaration-uri", "founding/binding-under-declaration-uri", "signatures/envelope-by-another-key", "crossing/an-envelope-by-another-key", "signatures/malleated-signature", "signatures/receipt-malleated-signature", "signatures/binding-verifies", "signatures/canonical-form-is-signed", "signatures/edited-after-signing", "signatures/envelope-verifies", "signatures/sig-missing", "signatures/sig-uppercase", "signatures/sign-binding", "signatures/sign-declaration", "signatures/sign-envelope", "signatures/sign-ignores-sig", "signatures/type-uri-of-the-operation"],
+    "scenarios": {"the type URI comes from the operation": {"vectors": ["signatures/binding-under-declaration-uri", "founding/binding-under-declaration-uri"]}, "signed by another key": {"vectors": ["signatures/envelope-by-another-key", "crossing/an-envelope-by-another-key"]}, "a malleated signature": {"vectors": ["signatures/malleated-signature", "signatures/receipt-malleated-signature"]}}
   },
   "signing-4": {
-    "open": "M1",
-    "scenarios": {
-      "a placket URI as a payload type": {"open": "M1"}
-    }
+    "vectors": ["signatures/receipt-verifies", "signatures/receipt-placket-payload-type", "signatures/registration-reserved"],
+    "tests": ["core/signing:TestPayloadSignaturesRefuseTheFourTypeURIs"],
+    "scenarios": {"a placket URI as a payload type": {"tests": ["core/signing:TestPayloadSignaturesRefuseTheFourTypeURIs"]}}
   },
   "setup-contract-1": {
-    "open": "M1",
-    "scenarios": {
-      "a selector that is not a role": {"open": "M1"},
-      "a maybe without its rule": {"open": "M1"},
-      "a term that names a check": {"open": "M1"},
-      "a declaration edited after signing": {"open": "M1"}
-    }
+    "vectors": ["founding/selector-not-a-role", "founding/maybe-without-resolve", "founding/term-names-a-check", "founding/declaration-edited", "founding/resolve-on-a-want"],
+    "scenarios": {"a selector that is not a role": {"vectors": ["founding/selector-not-a-role"]}, "a maybe without its rule": {"vectors": ["founding/maybe-without-resolve"]}, "a term that names a check": {"vectors": ["founding/term-names-a-check"]}, "a declaration edited after signing": {"vectors": ["founding/declaration-edited"]}}
   },
   "setup-contract-2": {
-    "open": "M1",
-    "scenarios": {
-      "one binding, two roles": {"open": "M1"},
-      "a binding that expires at the founding time": {"open": "M1"},
-      "a time the timestamp rule refuses in until": {"open": "M1"}
-    }
+    "vectors": ["founding/one-binding-two-roles", "founding/binding-expires-at-founding", "founding/until-second-60", "founding/until-hour-24", "founding/until-day-not-in-calendar"],
+    "scenarios": {"one binding, two roles": {"vectors": ["founding/one-binding-two-roles"]}, "a binding that expires at the founding time": {"vectors": ["founding/binding-expires-at-founding"]}, "a time the timestamp rule refuses in until": {"vectors": ["founding/until-second-60", "founding/until-hour-24", "founding/until-day-not-in-calendar"]}}
   },
   "setup-contract-3": {
-    "open": "M1",
-    "scenarios": {
-      "a binding by an unlisted principal": {"open": "M1"},
-      "a binding for another mediator": {"open": "M1"},
-      "a binding with no declaration": {"open": "M1"}
-    }
+    "vectors": ["founding/binding-unlisted-principal", "founding/binding-other-mediator", "founding/binding-without-declaration", "founding/declaration-without-binding"],
+    "scenarios": {"a binding by an unlisted principal": {"vectors": ["founding/binding-unlisted-principal"]}, "a binding for another mediator": {"vectors": ["founding/binding-other-mediator"]}, "a binding with no declaration": {"vectors": ["founding/binding-without-declaration"]}}
   },
   "setup-contract-4": {
-    "open": "M1",
-    "scenarios": {
-      "a card that loads a check": {"open": "M1"},
-      "a member the card does not list": {"open": "M1"}
-    }
+    "vectors": ["founding/card-loads-a-check", "founding/card-unlisted-member"],
+    "scenarios": {"a card that loads a check": {"vectors": ["founding/card-loads-a-check"]}, "a member the card does not list": {"vectors": ["founding/card-unlisted-member"]}}
   },
   "setup-contract-5": {
-    "open": "M1",
-    "scenarios": {
-      "the same set twice": {"open": "M1"},
-      "a policy role nobody holds": {"open": "M1"}
-    }
+    "vectors": ["founding/ask-and-log", "founding/ask-and-log-later", "founding/policy-role-nobody-holds", "founding/compose", "founding/policy-without-roles", "founding/own-no"],
+    "scenarios": {"the same set twice": {"vectors": ["founding/ask-and-log", "founding/ask-and-log-later"]}, "a policy role nobody holds": {"vectors": ["founding/policy-role-nobody-holds"]}}
   },
   "setup-contract-6": {
-    "open": "M1",
-    "scenarios": {
-      "a stranger": {"open": "M1"},
-      "the mediator's own key": {"open": "M1"}
-    }
+    "vectors": ["crossing/a-stranger", "crossing/the-mediators-own-key"],
+    "scenarios": {"a stranger": {"vectors": ["crossing/a-stranger"]}, "the mediator's own key": {"vectors": ["crossing/the-mediators-own-key"]}}
   },
   "setup-contract-7": {
-    "open": "M1",
-    "scenarios": {
-      "a class other than process": {"open": "M1"},
-      "the operator changes the id": {"open": "M1"}
-    }
+    "vectors": ["founding/runs-container", "founding/ask-and-log", "founding/operator-changes-the-id"],
+    "scenarios": {"a class other than process": {"vectors": ["founding/runs-container"]}, "the operator changes the id": {"vectors": ["founding/ask-and-log", "founding/operator-changes-the-id"]}}
   },
   "setup-contract-8": {
-    "open": "M1",
-    "scenarios": {
-      "two defects in one declaration": {"open": "M1"},
-      "defects in two declarations": {"open": "M1"}
-    }
+    "vectors": ["founding/two-defects-in-one-declaration", "founding/defects-in-two-declarations", "founding/unlisted-principal-and-expired", "founding/bad-binding-signature-and-other-mediator", "founding/bad-declaration-signature-and-term", "founding/shape-and-two-bindings-one-actor", "founding/two-bindings-one-actor-and-an-actor", "founding/maybe-without-resolve-and-a-bad-term", "founding/a-check-and-maybe-without-resolve", "founding/a-check-and-no-binding", "founding/a-bad-term-and-no-binding", "founding/unlisted-principal-and-bad-signature", "founding/other-mediator-and-expired", "founding/expired-and-a-binding-without-declaration", "founding/a-binding-without-declaration-and-a-role-nobody-holds"],
+    "scenarios": {"two defects in one declaration": {"vectors": ["founding/two-defects-in-one-declaration"]}, "defects in two declarations": {"vectors": ["founding/defects-in-two-declarations"]}}
   },
   "setup-contract-9": {
-    "open": "M1",
-    "scenarios": {
-      "a repeated member name": {"open": "M1"},
-      "an actor of the wrong type": {"open": "M1"},
-      "a term with a missing member": {"open": "M1"}
-    }
+    "vectors": ["founding/repeated-member", "founding/actor-a-number", "founding/actor-not-a-reference", "founding/term-missing-dir"],
+    "scenarios": {"a repeated member name": {"vectors": ["founding/repeated-member"]}, "an actor of the wrong type": {"vectors": ["founding/actor-a-number", "founding/actor-not-a-reference"]}, "a term with a missing member": {"vectors": ["founding/term-missing-dir"]}}
   },
   "setup-contract-10": {
-    "open": "M1",
-    "scenarios": {
-      "declarations out of order": {"open": "M1"},
-      "two bindings for one actor": {"open": "M1"}
-    }
+    "vectors": ["founding/declarations-out-of-order", "founding/two-bindings-one-actor"],
+    "scenarios": {"declarations out of order": {"vectors": ["founding/declarations-out-of-order"]}, "two bindings for one actor": {"vectors": ["founding/two-bindings-one-actor"]}}
   },
   "crossing-1": {
-    "open": "M1",
-    "scenarios": {
-      "a message from another Accord": {"open": "M1"},
-      "an unknown receiver": {"open": "M1"},
-      "a member the frame does not list": {"open": "M1"},
-      "a reserved gate": {"open": "M1"}
-    }
+    "vectors": ["crossing/a-message-from-another-accord", "crossing/an-unknown-receiver", "crossing/a-member-the-frame-does-not-list", "crossing/a-reserved-gate", "crossing/bodies-roles-and-replies"],
+    "scenarios": {"a message from another Accord": {"vectors": ["crossing/a-message-from-another-accord"]}, "an unknown receiver": {"vectors": ["crossing/an-unknown-receiver"]}, "a member the frame does not list": {"vectors": ["crossing/a-member-the-frame-does-not-list"]}, "a reserved gate": {"vectors": ["crossing/a-reserved-gate"]}}
   },
   "crossing-2": {
-    "open": "M1",
-    "scenarios": {
-      "two bodies": {"open": "M1"},
-      "a url body": {"open": "M1"},
-      "a short salt": {"open": "M1"}
-    }
+    "vectors": ["crossing/one-body", "crossing/a-url-body", "crossing/part-metadata", "crossing/bodies-roles-and-replies"],
+    "scenarios": {"two bodies": {"vectors": ["crossing/one-body"]}, "a url body": {"vectors": ["crossing/a-url-body"]}, "a short salt": {"vectors": ["crossing/part-metadata"]}}
   },
   "crossing-3": {
-    "open": "M1",
-    "scenarios": {
-      "whoever holds the body and salt can show the part": {"open": "M1"},
-      "a delivery is fetched once": {"open": "M1"},
-      "no delivery for a block": {"open": "M1"}
-    }
+    "vectors": ["crossing/a-give-then-the-end-state", "crossing/bodies-roles-and-replies", "crossing/a-delivery-is-fetched-once", "crossing/no-delivery-for-a-block"],
+    "scenarios": {"whoever holds the body and salt can show the part": {"vectors": ["crossing/a-give-then-the-end-state", "crossing/bodies-roles-and-replies"]}, "a delivery is fetched once": {"vectors": ["crossing/a-delivery-is-fetched-once"]}, "no delivery for a block": {"vectors": ["crossing/no-delivery-for-a-block"]}}
   },
   "crossing-4": {
-    "open": "M1",
-    "scenarios": {
-      "an edited message": {"open": "M1"},
-      "a repeated sequence number": {"open": "M1"},
-      "a skipped sequence number": {"open": "M1"}
-    }
+    "vectors": ["crossing/an-edited-message", "crossing/a-repeated-sequence-number", "crossing/a-skipped-sequence-number"],
+    "scenarios": {"an edited message": {"vectors": ["crossing/an-edited-message"]}, "a repeated sequence number": {"vectors": ["crossing/a-repeated-sequence-number"]}, "a skipped sequence number": {"vectors": ["crossing/a-skipped-sequence-number"]}}
   },
   "crossing-6": {
-    "open": "M1",
-    "scenarios": {
-      "a repeated member behind a bad signature": {"open": "M1"},
-      "a repeated member under a good signature": {"open": "M1"},
-      "a repeated seq in the envelope": {"open": "M1"},
-      "two content defects": {"open": "M1"},
-      "a message that is not the one signed for": {"open": "M1"}
-    }
+    "vectors": ["crossing/a-repeated-member-behind-a-bad-signature", "crossing/a-repeated-member-under-a-good-signature", "crossing/a-repeated-seq-in-the-envelope", "crossing/two-content-defects", "crossing/a-message-not-the-one-signed-for", "crossing/a-member-the-frame-does-not-list", "crossing/an-envelope-by-another-key", "crossing/two-defects-at-the-door"],
+    "scenarios": {"a repeated member behind a bad signature": {"vectors": ["crossing/a-repeated-member-behind-a-bad-signature"]}, "a repeated member under a good signature": {"vectors": ["crossing/a-repeated-member-under-a-good-signature"]}, "a repeated seq in the envelope": {"vectors": ["crossing/a-repeated-seq-in-the-envelope"]}, "two content defects": {"vectors": ["crossing/two-content-defects"]}, "a message that is not the one signed for": {"vectors": ["crossing/a-message-not-the-one-signed-for"]}}
   },
   "crossing-7": {
-    "open": "M1",
-    "scenarios": {
-      "six rejections, then a pass": {"open": "M1"},
-      "a stranger's bytes are not read": {"open": "M1"}
-    }
+    "vectors": ["crossing/six-rejections-then-a-pass", "crossing/a-strangers-bytes-are-not-read"],
+    "scenarios": {"six rejections, then a pass": {"vectors": ["crossing/six-rejections-then-a-pass"]}, "a stranger's bytes are not read": {"vectors": ["crossing/a-strangers-bytes-are-not-read"]}}
   },
   "composition-1": {
-    "open": "M1",
-    "scenarios": {
-      "the applier's get term": {"open": "M1"},
-      "a role the binding does not give": {"open": "M1"}
-    }
+    "vectors": ["crossing/the-appliers-get-term", "crossing/a-role-the-binding-does-not-give"],
+    "scenarios": {"the applier's get term": {"vectors": ["crossing/the-appliers-get-term"]}, "a role the binding does not give": {"vectors": ["crossing/a-role-the-binding-does-not-give"]}}
   },
   "composition-2": {
-    "open": "M1",
-    "scenarios": {
-      "no get term": {"open": "M1"},
-      "a kind no term names": {"open": "M1"}
-    }
+    "vectors": ["crossing/no-get-term", "crossing/no-delivery-for-a-block"],
+    "scenarios": {"no get term": {"vectors": ["crossing/no-get-term"]}, "a kind no term names": {"vectors": ["crossing/no-delivery-for-a-block"]}}
   },
   "composition-3": {
-    "open": "M1",
-    "scenarios": {
-      "no beside want": {"open": "M1"}
-    }
+    "vectors": ["crossing/no-beside-want", "crossing/the-senders-own-no"],
+    "scenarios": {"no beside want": {"vectors": ["crossing/no-beside-want"]}}
   },
   "composition-4": {
-    "open": "M1",
-    "scenarios": {
-      "no check runs in this version": {"open": "M1"}
-    }
+    "vectors": ["crossing/a-give-then-the-end-state", "crossing/need-meets-want", "crossing/maybe-rules-that-agree", "crossing/no-beside-want", "founding/term-names-a-check"],
+    "scenarios": {"no check runs in this version": {"vectors": ["crossing/a-give-then-the-end-state", "crossing/need-meets-want", "crossing/maybe-rules-that-agree", "crossing/no-beside-want", "founding/term-names-a-check"]}}
   },
   "composition-5": {
-    "open": "M1",
-    "scenarios": {
-      "maybe rules that agree": {"open": "M1"},
-      "maybe rules that differ": {"open": "M1"},
-      "an answer that meets a maybe term": {"open": "M2"}
-    }
+    "vectors": ["crossing/maybe-rules-that-agree", "crossing/maybe-rules-that-differ"],
+    "scenarios": {"maybe rules that agree": {"vectors": ["crossing/maybe-rules-that-agree"]}, "maybe rules that differ": {"vectors": ["crossing/maybe-rules-that-differ"]}, "an answer that meets a maybe term": {"open": "M2"}}
   },
   "composition-6": {
-    "open": "M1",
-    "scenarios": {
-      "need meets want": {"open": "M1"}
-    }
+    "vectors": ["crossing/need-meets-want"],
+    "scenarios": {"need meets want": {"vectors": ["crossing/need-meets-want"]}}
   },
   "maybe-1": {
-    "open": "M2",
-    "scenarios": {
-      "a proposal is asked about": {"open": "M2"},
-      "a deadline past the last time": {"open": "M2"}
-    }
+    "vectors": ["questions/a-proposal-is-asked-about", "questions/open-questions-in-the-order-opened", "questions/the-asked-part-is-held"],
+    "rest": {"open": "M2", "what": "the question's deadline, which a tick step shows"},
+    "scenarios": {"a proposal is asked about": {"vectors": ["questions/a-proposal-is-asked-about"], "rest": {"open": "M2", "what": "the question's deadline, 2026-11-12T10:00:00Z, which only a tick step shows"}}, "a deadline past the last time": {"open": "M2"}}
   },
   "maybe-3": {
     "open": "M2",
-    "scenarios": {
-      "an accept that passes": {"open": "M2"},
-      "an accept the asker's terms do not take": {"open": "M2"}
-    }
+    "scenarios": {"an accept that passes": {"open": "M2"}, "an accept the asker's terms do not take": {"open": "M2"}}
   },
   "maybe-4": {
     "open": "M2",
-    "scenarios": {
-      "a decline": {"open": "M2"},
-      "a question nobody can answer": {"open": "M2"}
-    }
+    "scenarios": {"a decline": {"open": "M2"}, "a question nobody can answer": {"open": "M2"}}
   },
   "maybe-5": {
     "open": "M2",
-    "scenarios": {
-      "one receipt at the deadline": {"open": "M2"},
-      "before the deadline": {"open": "M2"}
-    }
+    "scenarios": {"one receipt at the deadline": {"open": "M2"}, "before the deadline": {"open": "M2"}}
   },
   "maybe-6": {
     "open": "M2",
-    "scenarios": {
-      "the proposer answers its own proposal": {"open": "M2"}
-    }
+    "scenarios": {"the proposer answers its own proposal": {"open": "M2"}}
   },
   "maybe-7": {
     "open": "M2",
-    "scenarios": {
-      "a second answer": {"open": "M2"},
-      "an answer at the deadline": {"open": "M2"}
-    }
+    "scenarios": {"a second answer": {"open": "M2"}, "an answer at the deadline": {"open": "M2"}}
   },
   "maybe-8": {
     "open": "M2",
-    "scenarios": {
-      "the delivered answer": {"open": "M2"}
-    }
+    "scenarios": {"the delivered answer": {"open": "M2"}}
   },
   "maybe-9": {
     "open": "M2",
-    "scenarios": {
-      "a change returned to the asker": {"open": "M2"},
-      "an empty change": {"open": "M2"}
-    }
+    "scenarios": {"a change returned to the asker": {"open": "M2"}, "an empty change": {"open": "M2"}}
   },
   "maybe-10": {
     "open": "M2",
-    "scenarios": {
-      "an accept releases the asked part with its digest unchanged": {"open": "M2"},
-      "a change returned to the asker and released to the receiver under one digest": {"open": "M2"},
-      "a release the module blocks queues nothing": {"open": "M2"},
-      "a release receipt echoes the question's envelope and counts as an echo for the asker only": {"open": "M2"},
-      "a decline releases nothing": {"open": "M2"}
-    }
+    "scenarios": {"an accept releases the asked part with its digest unchanged": {"open": "M2"}, "a change returned to the asker and released to the receiver under one digest": {"open": "M2"}, "a release the module blocks queues nothing": {"open": "M2"}, "a release receipt echoes the question's envelope and counts as an echo for the asker only": {"vectors": ["receipts/a-release-counts-as-an-echo-for-the-asker-only", "receipts/a-resolution-counts-as-an-echo-for-the-asker-only"], "rest": {"open": "M2", "what": "that a mediator's release receipt echoes the question's envelope, which needs an answer"}}, "a decline releases nothing": {"open": "M2"}}
   },
   "receipt-1": {
-    "open": "M1",
-    "scenarios": {
-      "the anatomy of a receipt": {"open": "M1"}
-    }
+    "vectors": ["receipts/three-gives-are-echoed", "receipts/a-chain-verifies", "receipts/a-statement-of-another-type"],
+    "scenarios": {"the anatomy of a receipt": {"vectors": ["receipts/three-gives-are-echoed", "receipts/a-chain-verifies", "receipts/a-statement-of-another-type"]}}
   },
   "receipt-2": {
-    "open": "M1",
-    "scenarios": {
-      "a block names the attempted part": {"open": "M1"}
-    }
+    "vectors": ["receipts/each-pair-its-own-chain", "receipts/two-subjects"],
+    "scenarios": {"a block names the attempted part": {"vectors": ["receipts/each-pair-its-own-chain"]}}
   },
   "receipt-3": {
-    "open": "M1",
-    "scenarios": {
-      "the first receipt of a pair": {"open": "M1"}
-    }
+    "vectors": ["receipts/three-gives-are-echoed"],
+    "scenarios": {"the first receipt of a pair": {"vectors": ["receipts/three-gives-are-echoed"]}}
   },
   "receipt-4": {
-    "open": "M1",
-    "scenarios": {
-      "a block with reason maybe": {"open": "M1"},
-      "a block with reason ok": {"open": "M1"},
-      "a resolution reason on a crossing receipt": {"open": "M1"}
-    }
+    "vectors": ["receipts/a-block-with-reason-maybe", "receipts/a-block-with-reason-ok", "receipts/a-resolution-reason-on-a-crossing-receipt", "receipts/a-reserved-check-reason", "receipts/an-escalate-resolution"],
+    "scenarios": {"a block with reason maybe": {"vectors": ["receipts/a-block-with-reason-maybe"]}, "a block with reason ok": {"vectors": ["receipts/a-block-with-reason-ok"]}, "a resolution reason on a crossing receipt": {"vectors": ["receipts/a-resolution-reason-on-a-crossing-receipt"]}}
   },
   "receipt-5": {
-    "open": "M1",
-    "scenarios": {
-      "two receipts in one pair": {"open": "M1"},
-      "the answer's own chain": {"open": "M2"}
-    }
+    "vectors": ["receipts/three-gives-are-echoed", "receipts/each-pair-its-own-chain", "receipts/a-first-receipt-at-seq-2", "receipts/a-first-receipt-with-a-prev", "receipts/a-prev-that-is-not-the-one-before"],
+    "scenarios": {"two receipts in one pair": {"vectors": ["receipts/three-gives-are-echoed", "receipts/each-pair-its-own-chain"]}, "the answer's own chain": {"open": "M2"}}
   },
   "receipt-9": {
-    "open": "M1",
-    "scenarios": {
-      "an unlisted member": {"open": "M1"}
-    }
+    "vectors": ["receipts/an-unlisted-predicate-member"],
+    "scenarios": {"an unlisted member": {"vectors": ["receipts/an-unlisted-predicate-member"]}}
   },
   "receipt-10": {
-    "open": "M1",
-    "scenarios": {
-      "a timeout's time": {"open": "M2"},
-      "two mediators, one record": {"open": "M1"}
-    }
+    "vectors": ["receipts/three-gives-are-echoed", "receipts/a-time-with-second-60"],
+    "tests": ["core/mediator:TestTwoMediatorsOneRecord"],
+    "rest": {"open": "M2", "what": "a timeout's time, the question's deadline, which a tick writes"},
+    "scenarios": {"a timeout's time": {"open": "M2"}, "two mediators, one record": {"tests": ["core/mediator:TestTwoMediatorsOneRecord"]}}
   },
   "crossing-5": {
-    "open": "M1",
-    "scenarios": {
-      "every give is echoed": {"open": "M1"},
-      "a resolution echoes the question's envelope": {"open": "M2"}
-    }
+    "vectors": ["receipts/three-gives-are-echoed", "receipts/a-gives-receipt-echoes-another-members-envelope", "receipts/a-resolution-counts-as-an-echo-for-the-asker-only"],
+    "scenarios": {"every give is echoed": {"vectors": ["receipts/three-gives-are-echoed"]}, "a resolution echoes the question's envelope": {"open": "M2"}}
   },
   "receipt-6": {
-    "open": "M1",
-    "scenarios": {
-      "an edited receipt": {"open": "M1"},
-      "a receipt that names another mediator": {"open": "M1"},
-      "a removed middle receipt": {"open": "M1"},
-      "a release with no answer before it": {"open": "M2"},
-      "a give's receipt that echoes another member's envelope": {"open": "M1"},
-      "a second ask with an earlier question's envelope": {"open": "M2"},
-      "the first failure of the first failing receipt": {"open": "M1"},
-      "a mediator that is not a reference": {"open": "M1"}
-    }
+    "vectors": ["receipts/a-chain-verifies", "receipts/a-blocked-release", "receipts/a-change-and-its-release", "receipts/a-change-released-to-its-answerer", "receipts/a-change-released-under-another-digest", "receipts/a-closing-addressed-to-the-receiver", "receipts/a-closing-of-the-wrong-subject", "receipts/a-decline-closes-a-question", "receipts/a-decline-of-another-part", "receipts/a-gives-receipt-echoes-another-members-envelope", "receipts/a-keyid-of-another-mediator", "receipts/a-list-cut-short-verifies", "receipts/a-mediator-that-is-not-a-reference", "receipts/a-mediator-that-is-not-a-reference", "receipts/a-member-the-receipt-does-not-list", "receipts/a-receipt-that-names-another-mediator", "receipts/a-release-after-a-blocked-answer", "receipts/a-release-after-a-decline", "receipts/a-release-failure-before-a-later-row", "receipts/a-release-not-right-after-its-answer", "receipts/a-release-with-no-answer-before-it", "receipts/a-removed-middle-receipt", "receipts/a-resolution-that-belongs-to-no-question", "receipts/a-second-ask-with-an-earlier-questions-envelope", "receipts/a-second-release", "receipts/a-signature-of-63-bytes", "receipts/an-accept-and-its-release", "receipts/an-accepts-release-of-the-wrong-form", "receipts/an-edited-receipt", "receipts/an-empty-list-verifies", "receipts/payload-bytes-not-canonical", "receipts/payload-not-in-base64", "receipts/receipt-bytes-not-canonical", "receipts/signed-again-by-another-key", "receipts/the-first-failure-of-the-first-failing-receipt", "receipts/the-first-failure-of-the-first-failing-receipt", "receipts/two-signatures"],
+    "scenarios": {"an edited receipt": {"vectors": ["receipts/an-edited-receipt"]}, "a receipt that names another mediator": {"vectors": ["receipts/a-receipt-that-names-another-mediator"]}, "a removed middle receipt": {"vectors": ["receipts/a-removed-middle-receipt"]}, "a release with no answer before it": {"vectors": ["receipts/a-release-with-no-answer-before-it"]}, "a give's receipt that echoes another member's envelope": {"vectors": ["receipts/a-gives-receipt-echoes-another-members-envelope"]}, "a second ask with an earlier question's envelope": {"vectors": ["receipts/a-second-ask-with-an-earlier-questions-envelope"]}, "the first failure of the first failing receipt": {"vectors": ["receipts/the-first-failure-of-the-first-failing-receipt"]}, "a mediator that is not a reference": {"vectors": ["receipts/a-mediator-that-is-not-a-reference"]}}
   },
   "receipt-8": {
-    "open": "M1",
-    "scenarios": {
-      "a forged receipt shown": {"open": "M1"}
-    }
+    "tests": ["core/receipts:TestAForgedReceiptShowsAsARealOne"],
+    "scenarios": {"a forged receipt shown": {"tests": ["core/receipts:TestAForgedReceiptShowsAsARealOne"]}}
   },
   "receipt-7": {
-    "open": "M1",
-    "scenarios": {
-      "a removed last receipt": {"open": "M1"},
-      "an unfetched delivery": {"open": "M1"},
-      "a submission with no receipt": {"open": "M1"},
-      "a kept receipt from another Accord": {"open": "M1"},
-      "an echo matches both seq and hash": {"open": "M1"}
-    }
+    "vectors": ["receipts/a-removed-last-receipt", "receipts/an-unfetched-delivery", "receipts/a-submission-with-no-receipt", "receipts/a-kept-receipt-from-another-accord", "receipts/an-echo-matches-seq-and-hash", "receipts/a-kept-receipt-that-blocked", "receipts/a-kept-receipt-to-another-party", "receipts/a-presented-list-that-fails", "receipts/a-presented-receipt-from-another-accord", "receipts/a-reconciling-mediator-that-is-not-a-reference", "receipts/a-release-counts-as-an-echo-for-the-asker-only", "receipts/everything-matches", "receipts/a-resolution-counts-as-an-echo-for-the-asker-only", "receipts/a-failing-list-and-another-accord", "receipts/a-failing-list-and-a-failing-kept-receipt", "receipts/another-accord-and-a-failing-kept-receipt", "receipts/kept-receipts-that-fail-for-two-parties"],
+    "scenarios": {"a removed last receipt": {"vectors": ["receipts/a-removed-last-receipt"]}, "an unfetched delivery": {"vectors": ["receipts/an-unfetched-delivery"]}, "a submission with no receipt": {"vectors": ["receipts/a-submission-with-no-receipt"]}, "a kept receipt from another Accord": {"vectors": ["receipts/a-kept-receipt-from-another-accord"]}, "an echo matches both seq and hash": {"vectors": ["receipts/an-echo-matches-seq-and-hash"]}}
   },
   "conformance-vectors-1": {
-    "open": "M1",
-    "scenarios": {
-      "a vector's path": {"open": "M1"}
-    }
+    "vectors": ["canonical/duplicate-key"],
+    "scenarios": {"a vector's path": {"vectors": ["canonical/duplicate-key"], "tests": ["core/conformance:TestHeaderFirst"]}}
   },
   "conformance-vectors-2": {
-    "open": "M1",
-    "scenarios": {
-      "an answer's salt": {"open": "M2"}
-    }
+    "vectors": ["crossing/a-give-then-the-end-state", "founding/ask-and-log"],
+    "rest": {"open": "M2", "what": "an answer's salt, which a resolve step gives"},
+    "scenarios": {"an answer's salt": {"open": "M2"}}
   },
   "conformance-vectors-3": {
-    "open": "M1",
-    "scenarios": {
-      "a give, then the end state": {"open": "M1"}
-    }
+    "vectors": ["crossing/a-give-then-the-end-state"],
+    "scenarios": {"a give, then the end state": {"vectors": ["crossing/a-give-then-the-end-state"]}}
   },
   "conformance-vectors-4": {
-    "open": "M1",
-    "scenarios": {
-      "a founding refusal": {"open": "M1"}
-    }
+    "vectors": ["founding/binding-unlisted-principal"],
+    "scenarios": {"a founding refusal": {"vectors": ["founding/binding-unlisted-principal"]}}
   },
   "conformance-vectors-5": {
-    "open": "M1",
-    "scenarios": {
-      "a receipt that differs in one byte": {"open": "M1"}
-    }
+    "tests": ["core/conformance:TestAReceiptDifferingInOneByteFails"],
+    "scenarios": {"a receipt that differs in one byte": {"tests": ["core/conformance:TestAReceiptDifferingInOneByteFails"]}}
   },
   "conformance-vectors-6": {
     "open": "M2",
-    "scenarios": {
-      "an accepted answer with release": {"open": "M2"},
-      "a change with release": {"open": "M2"}
-    }
+    "scenarios": {"an accepted answer with release": {"open": "M2"}, "a change with release": {"open": "M2"}}
   },
   "conformance-vectors-7": {
     "open": "M2",
-    "scenarios": {
-      "a tick past a deadline": {"open": "M2"}
-    }
+    "scenarios": {"a tick past a deadline": {"open": "M2"}}
   },
   "conformance-vectors-8": {
-    "open": "M1",
-    "scenarios": {
-      "an input only hex can hold": {"open": "M1"}
-    }
+    "vectors": ["canonical/invalid-utf8-in-string"],
+    "scenarios": {"an input only hex can hold": {"vectors": ["canonical/invalid-utf8-in-string"]}}
   },
   "conformance-vectors-9": {
-    "open": "M1",
-    "scenarios": {
-      "a case variant": {"open": "M1"}
-    }
+    "tests": ["core/conformance:TestVectorAgainstSchemaFails"],
+    "scenarios": {"a case variant": {"tests": ["core/conformance:TestVectorAgainstSchemaFails"]}}
   },
   "conformance-vectors-10": {
-    "open": "M1",
-    "scenarios": {
-      "a refused example that validates": {"open": "M1"},
-      "before the first vector": {"open": "M1"}
-    }
+    "tests": ["core/conformance:TestARefusedVectorExampleThatValidatesFails", "core/conformance:TestEmptyVectorsPass", "core/conformance:TestSchemaExamples"],
+    "scenarios": {"a refused example that validates": {"tests": ["core/conformance:TestARefusedVectorExampleThatValidatesFails"]}, "before the first vector": {"tests": ["core/conformance:TestEmptyVectorsPass"]}}
   },
   "conformance-vectors-11": {
-    "open": "M1",
-    "scenarios": {
-      "a repeated top-level name": {"open": "M1"}
-    }
+    "tests": ["core/conformance:TestHeaderFirst"],
+    "scenarios": {"a repeated top-level name": {"tests": ["core/conformance:TestHeaderFirst"]}}
   }
 }

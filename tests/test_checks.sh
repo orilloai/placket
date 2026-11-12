@@ -143,8 +143,8 @@ passes independent-allowed
 # test file and a comment pass.
 refused constants-twice constants-once \
 	'adapters/local/local.go:5: "application/vnd.placket.call+json" is also in core/b/b.go' \
-	'core/a/a.go:5: "https://placket.dev/crossing/0.1" is also in core/b/b.go' \
-	'core/b/b.go:5: "https://placket.dev/crossing/0.1" is also in core/a/a.go' \
+	'core/a/a.go:5: "https://placket.dev/fixture/0.1" is also in core/b/b.go' \
+	'core/b/b.go:5: "https://placket.dev/fixture/0.1" is also in core/a/a.go' \
 	'core/b/b.go:8: "application/vnd.placket.call+json" is also in adapters/local/local.go'
 
 # product-words-once: the core spells neither "ask" nor "released" as a whole literal, in either quote
