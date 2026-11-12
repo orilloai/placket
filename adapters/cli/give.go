@@ -96,15 +96,15 @@ func (s *session) message(to, kind string, b body, re, topic string) ([]byte, bo
 }
 
 // send gives one part as the session's key, under the state directory's lock, which the caller
-// holds (state-lock): at the next seq, its envelope recorded before the call is sent and removed
-// again only on a refusal. It prints the outcome, keeps the part when asked, and returns the outcome,
-// or nil and the exit code.
+// holds (state-lock): at the next seq, above the seq file and every envelope recorded, so a give
+// whose reply was lost never has its seq used again; its envelope recorded before the call is sent
+// and removed again only on a refusal. It prints the outcome, keeps the part when asked, and returns
+// the outcome, or nil and the exit code.
 func (s *session) send(to, kind string, b body, re, topic string, keep bool) (*mediator.Outcome, int) {
-	last, err := s.dir.Seq()
+	seq, err := s.dir.Next()
 	if err != nil {
 		return nil, s.r.failed(err)
 	}
-	seq := last + 1
 	msg, ok := s.message(to, kind, b, re, topic)
 	if !ok {
 		return nil, s.r.tool(codeRand)

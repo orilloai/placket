@@ -6,7 +6,8 @@
 //	lock             empty; held under an exclusive flock while a socket command runs (state-lock)
 //	seq              the last envelope seq the mediator took, in decimal, and a line feed; absent is 0
 //	envelopes.jsonl  one {"hash","seq"} per envelope signed, appended before the call is sent and
-//	                 removed again only on a rejection, so a lost submission shows as missing (crossing-5)
+//	                 removed again only on a rejection, so a lost submission shows as missing (crossing-5);
+//	                 the next seq is above both this file's highest and the seq file's
 //	delivered.jsonl  one receipt per line, the receipt of each delivery fetched
 //	kept.jsonl       one part per line that the actor chose to keep: a part it gave,
 //	                 {"message","receipt"}, the message as standard base64 of its exact bytes; or a
@@ -216,6 +217,25 @@ func (d *Dir) Seq() (int64, error) {
 		return 0, &Error{Code: CodeState, File: FileSeq}
 	}
 	return n, nil
+}
+
+// Next returns the seq for the next envelope: one above the larger of the seq file and the highest
+// seq in envelopes.jsonl. An envelope line stays when its call got no reply, and the mediator may
+// have taken that seq even though the seq file never heard of it; a seq may skip numbers, so the
+// next give never reuses one (crossing-4).
+func (d *Dir) Next() (int64, error) {
+	last, err := d.Seq()
+	if err != nil {
+		return 0, err
+	}
+	envs, err := d.Envelopes()
+	if err != nil {
+		return 0, err
+	}
+	for _, e := range envs {
+		last = max(last, e.Seq)
+	}
+	return last + 1, nil
 }
 
 // ParseSeq reads a seq file's bytes: a decimal integer of at least 1 with no leading zero, and a
