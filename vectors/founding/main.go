@@ -175,6 +175,31 @@ func main() {
 		}
 	}
 
+	// Two defects in each pair of neighbouring rows the text orders that one set can fail together.
+	// Rows 9 and 10 cannot: a declaration with no binding has no principal to read.
+	containerTwoBindings := put(base(), "bindings", append(list(base(), "bindings"),
+		binding(kit.Proposer, kit.Principal, kit.Mediator, kit.Until, "proposer", "applier")), true)
+	containerTwoBindings["mediator"].(kit.Obj)["runs"] = "container"
+	twoBindingsAlice := put(base(), "bindings", append(list(base(), "bindings"),
+		binding(kit.Proposer, kit.Principal, kit.Mediator, kit.Until, "proposer", "applier")), true)
+	aliceDecl := kit.Declaration(kit.Stranger, kit.Term("want", "get", []string{"proposer"}, []string{"note"}))
+	aliceDecl["actor"] = "alice"
+	twoBindingsAlice = put(twoBindingsAlice, "declarations", append(list(twoBindingsAlice, "declarations"), aliceDecl), true)
+	maybeThenBadTerm := withProposerTerms(maybeBare, badTerm)
+	checkThenMaybe := withProposerTerms(check, maybeBare)
+	checkNoBinding := remove(withProposerTerms(check), "bindings", kit.Proposer)
+	badTermNoBinding := remove(withProposerTerms(badTerm), "bindings", kit.Proposer)
+	// The binding's principal is unlisted and its signature is another binding's.
+	unlistedBadSig := binding(kit.Proposer, kit.OtherPrincipal, kit.Mediator, kit.Until, "proposer")
+	unlistedBadSig["sig"] = binding(kit.Proposer, kit.Principal, kit.Mediator, kit.Until, "proposer")["sig"]
+	unlistedBadSig = replace(base(), "bindings", kit.Proposer, unlistedBadSig)
+	// The binding names another mediator and expired at founding, signed by the policy's principal.
+	otherMediatorExpired := replace(base(), "bindings", kit.Proposer, binding(kit.Proposer, kit.Principal, kit.OtherMediator, at, "proposer"))
+	// The proposer's binding expired and the decider's declaration is gone, its binding kept.
+	expiredNoDeclaration := remove(untilAt(at), "declarations", kit.Decider)
+	// The decider's declaration is gone, its binding kept, and the policy still lists its role.
+	noDeclarationRole := remove(base(), "declarations", kit.Decider)
+
 	actorNumber := base()
 	numberDecl := kit.Declaration(kit.Stranger, kit.Term("want", "get", []string{"proposer"}, []string{"note"}))
 	numberDecl["actor"] = 7
@@ -209,6 +234,7 @@ func main() {
 		accepted("ask-and-log", "setup-contract-5: the ask-and-log set founds to the typed hash of its canonical bytes", base(), at),
 		accepted("ask-and-log-later", "setup-contract-5: the same set founded at another time founds to the same Accord id", base(), "2027-06-01T12:30:00Z"),
 		accepted("compose", "setup-contract-5: the set of the composition scenarios founds", kit.Compose().Build(), at),
+		accepted("own-no", "setup-contract-5: the set of the scenario in which the sender refuses founds", kit.OwnNo().Build(), at),
 		accepted("one-binding-two-roles", "setup-contract-2: one binding gives an actor two of the policy's three roles, the third held by another", twoRoles, at),
 		accepted("operator-changes-the-id", "setup-contract-7: a set differing from ask-and-log only in its operator founds to another id", otherOperator, at),
 		accepted("policy-without-roles", "setup-contract-5: a policy whose roles are empty founds", noRoles, at),
@@ -235,6 +261,16 @@ func main() {
 		refused("unlisted-principal-and-expired", "setup-contract-8: a binding's unlisted principal comes before its expiry", unlistedExpired, "binding-principal"),
 		refused("bad-binding-signature-and-other-mediator", "setup-contract-8: a binding's bad signature comes before the other mediator it names", otherMediatorBadSig, "binding-signature"),
 		refused("bad-declaration-signature-and-term", "setup-contract-8: a declaration's bad signature comes before its malformed term", editedBadTerm, "declaration-signature"),
+		refused("shape-and-two-bindings-one-actor", "setup-contract-8: a set's defect of shape comes before two bindings for one actor", containerTwoBindings, "invalid-shape"),
+		refused("two-bindings-one-actor-and-an-actor", "setup-contract-8: two bindings for one actor come before a declaration whose actor is no reference", twoBindingsAlice, "binding-duplicate"),
+		refused("maybe-without-resolve-and-a-bad-term", "setup-contract-8: a malformed term comes before a maybe term with no resolve listed ahead of it", maybeThenBadTerm, "term-invalid"),
+		refused("a-check-and-maybe-without-resolve", "setup-contract-8: a maybe term with no resolve comes before a check named by a term listed ahead of it", checkThenMaybe, "maybe-without-resolve"),
+		refused("a-check-and-no-binding", "setup-contract-8: a check a term names comes before the declaration's missing binding", checkNoBinding, "check-unknown"),
+		refused("a-bad-term-and-no-binding", "setup-contract-8: a malformed term comes before the declaration's missing binding", badTermNoBinding, "term-invalid"),
+		refused("unlisted-principal-and-bad-signature", "setup-contract-8: a binding's unlisted principal comes before its bad signature", unlistedBadSig, "binding-principal"),
+		refused("other-mediator-and-expired", "setup-contract-8: the other mediator a binding names comes before its expiry", otherMediatorExpired, "binding-mediator"),
+		refused("expired-and-a-binding-without-declaration", "setup-contract-8: a declaration's expired binding comes before a binding with no declaration", expiredNoDeclaration, "binding-expired"),
+		refused("a-binding-without-declaration-and-a-role-nobody-holds", "setup-contract-8: a binding with no declaration comes before a policy role no declaring actor holds", noDeclarationRole, "declaration-missing"),
 		{Name: "founding/repeated-member", Tests: "setup-contract-9: a repeated member name is not-canonical", Operation: "found", Members: kit.Obj{
 			"inputText": `{"policy":{},"policy":{}}`, "foundedAt": at, "expect": kit.Obj{"code": "not-canonical"}}},
 		refused("actor-a-number", "setup-contract-9: a declaration's actor that is the number 7 is invalid-shape", actorNumber, "invalid-shape"),

@@ -73,7 +73,7 @@
     "scenarios": {"a card that loads a check": {"vectors": ["founding/card-loads-a-check"]}, "a member the card does not list": {"vectors": ["founding/card-unlisted-member"]}}
   },
   "setup-contract-5": {
-    "vectors": ["founding/ask-and-log", "founding/ask-and-log-later", "founding/policy-role-nobody-holds", "founding/compose", "founding/policy-without-roles"],
+    "vectors": ["founding/ask-and-log", "founding/ask-and-log-later", "founding/policy-role-nobody-holds", "founding/compose", "founding/policy-without-roles", "founding/own-no"],
     "scenarios": {"the same set twice": {"vectors": ["founding/ask-and-log", "founding/ask-and-log-later"]}, "a policy role nobody holds": {"vectors": ["founding/policy-role-nobody-holds"]}}
   },
   "setup-contract-6": {
@@ -85,7 +85,7 @@
     "scenarios": {"a class other than process": {"vectors": ["founding/runs-container"]}, "the operator changes the id": {"vectors": ["founding/ask-and-log", "founding/operator-changes-the-id"]}}
   },
   "setup-contract-8": {
-    "vectors": ["founding/two-defects-in-one-declaration", "founding/defects-in-two-declarations", "founding/unlisted-principal-and-expired", "founding/bad-binding-signature-and-other-mediator", "founding/bad-declaration-signature-and-term"],
+    "vectors": ["founding/two-defects-in-one-declaration", "founding/defects-in-two-declarations", "founding/unlisted-principal-and-expired", "founding/bad-binding-signature-and-other-mediator", "founding/bad-declaration-signature-and-term", "founding/shape-and-two-bindings-one-actor", "founding/two-bindings-one-actor-and-an-actor", "founding/maybe-without-resolve-and-a-bad-term", "founding/a-check-and-maybe-without-resolve", "founding/a-check-and-no-binding", "founding/a-bad-term-and-no-binding", "founding/unlisted-principal-and-bad-signature", "founding/other-mediator-and-expired", "founding/expired-and-a-binding-without-declaration", "founding/a-binding-without-declaration-and-a-role-nobody-holds"],
     "scenarios": {"two defects in one declaration": {"vectors": ["founding/two-defects-in-one-declaration"]}, "defects in two declarations": {"vectors": ["founding/defects-in-two-declarations"]}}
   },
   "setup-contract-9": {

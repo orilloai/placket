@@ -40,6 +40,25 @@ func AskAndLog() Set {
 	}
 }
 
+// OwnNo is the Accord of the scenario in which the sender refuses: the proposer wants to give a
+// draft to the applier and also refuses to give it, and the applier wants to get it, so the only
+// refusal is on the sender's side (composition-3).
+func OwnNo() Set {
+	return Set{
+		Mediator: Mediator, Operator: Operator, Principal: Principal,
+		Roles: []string{"proposer", "applier"},
+		Parties: []Party{
+			{Key: Proposer, Roles: []string{"proposer"}, Terms: []Obj{
+				Term("want", "give", []string{"applier"}, []string{"draft"}),
+				Term("no", "give", []string{"applier"}, []string{"draft"}),
+			}},
+			{Key: Applier, Roles: []string{"applier"}, Terms: []Obj{
+				Term("want", "get", []string{"proposer"}, []string{"draft"}),
+			}},
+		},
+	}
+}
+
 // Compose is the Accord of the composition scenarios: one kind per row of section 5, each given by
 // the proposer to the applier.
 //
