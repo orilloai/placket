@@ -98,7 +98,9 @@ The runner prints every open entry and every entry with a `rest` on each run, an
 
 A change to a frozen format, the vector format included, carries a note here and in its row of `spec/frozen-formats.md`, in the same change (`format-change-noted`).
 
-None yet: the vector format is at version 0.1 as written. The coverage list is this directory's own record, not a frozen format; its `tests` and `rest` members were added with the first vectors.
+- 0.1, before release: the register gains the answer call, the door's signed call that accepts or changes an answer, which parties keep beside the delivery it came with (`spec/frozen-formats.md`). No vector holds one, and no vector changes.
+
+The vector format is at version 0.1 as written. The coverage list is this directory's own record, not a frozen format; its `tests` and `rest` members were added with the first vectors.
 
 ## Known limits
 
