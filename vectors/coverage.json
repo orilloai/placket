@@ -44,14 +44,15 @@
     "scenarios": {"a surrogate escape after the grammar broke": {"vectors": ["canonical/surrogate-after-grammar-broke"]}, "a surrogate escape outside any quotes": {"vectors": ["canonical/surrogate-outside-quotes"]}}
   },
   "signing-1": {
-    "open": "M1",
-    "scenarios": {"reference forms": {"open": "M1"}, "a small-order key": {"open": "M1"}}
+    "vectors": ["signatures/reference-forms", "signatures/reference-uppercase", "signatures/reference-short", "signatures/reference-other-prefix", "signatures/small-order-key"],
+    "scenarios": {"reference forms": {"vectors": ["signatures/reference-forms", "signatures/reference-uppercase", "signatures/reference-short", "signatures/reference-other-prefix"]}, "a small-order key": {"vectors": ["signatures/small-order-key"]}}
   },
   "signing-2": {
-    "open": "M1",
-    "scenarios": {"the type URI comes from the operation": {"open": "M1"}, "signed by another key": {"open": "M1"}, "a malleated signature": {"open": "M1"}}
+    "vectors": ["signatures/binding-under-declaration-uri", "signatures/envelope-by-another-key", "signatures/malleated-signature", "signatures/receipt-malleated-signature", "signatures/binding-verifies", "signatures/canonical-form-is-signed", "signatures/edited-after-signing", "signatures/envelope-verifies", "signatures/sig-missing", "signatures/sig-uppercase", "signatures/sign-binding", "signatures/sign-declaration", "signatures/sign-envelope", "signatures/sign-ignores-sig", "signatures/type-uri-of-the-operation"],
+    "scenarios": {"the type URI comes from the operation": {"vectors": ["signatures/binding-under-declaration-uri"]}, "signed by another key": {"vectors": ["signatures/envelope-by-another-key"]}, "a malleated signature": {"vectors": ["signatures/malleated-signature", "signatures/receipt-malleated-signature"]}}
   },
   "signing-4": {
+    "vectors": ["signatures/receipt-verifies", "signatures/receipt-placket-payload-type", "signatures/registration-reserved"],
     "tests": ["core/signing:TestPayloadSignaturesRefuseTheFourTypeURIs"],
     "scenarios": {"a placket URI as a payload type": {"tests": ["core/signing:TestPayloadSignaturesRefuseTheFourTypeURIs"]}}
   },
@@ -204,9 +205,8 @@
     "scenarios": {"an unlisted member": {"open": "M1"}}
   },
   "receipt-10": {
-    "tests": ["core/mediator:TestTwoMediatorsOneRecord"],
-    "rest": {"open": "M2", "what": "a timeout's time, the question's deadline, which a tick writes"},
-    "scenarios": {"a timeout's time": {"open": "M2"}, "two mediators, one record": {"tests": ["core/mediator:TestTwoMediatorsOneRecord"]}}
+    "open": "M1",
+    "scenarios": {"a timeout's time": {"open": "M2"}, "two mediators, one record": {"open": "M1"}}
   },
   "crossing-5": {
     "open": "M1",
@@ -217,8 +217,8 @@
     "scenarios": {"an edited receipt": {"open": "M1"}, "a receipt that names another mediator": {"open": "M1"}, "a removed middle receipt": {"open": "M1"}, "a release with no answer before it": {"open": "M2"}, "a give's receipt that echoes another member's envelope": {"open": "M1"}, "a second ask with an earlier question's envelope": {"open": "M2"}, "the first failure of the first failing receipt": {"open": "M1"}, "a mediator that is not a reference": {"open": "M1"}}
   },
   "receipt-8": {
-    "tests": ["core/receipts:TestAForgedReceiptShowsAsARealOne"],
-    "scenarios": {"a forged receipt shown": {"tests": ["core/receipts:TestAForgedReceiptShowsAsARealOne"]}}
+    "open": "M1",
+    "scenarios": {"a forged receipt shown": {"open": "M1"}}
   },
   "receipt-7": {
     "open": "M1",
@@ -226,7 +226,7 @@
   },
   "conformance-vectors-1": {
     "vectors": ["canonical/duplicate-key"],
-    "scenarios": {"a vector's path": {"vectors": ["canonical/duplicate-key"], "tests": ["core/conformance:TestHeaderFirst"]}}
+    "scenarios": {"a vector's path": {"vectors": ["canonical/duplicate-key"]}}
   },
   "conformance-vectors-2": {
     "open": "M1",
@@ -241,8 +241,8 @@
     "scenarios": {"a founding refusal": {"open": "M1"}}
   },
   "conformance-vectors-5": {
-    "tests": ["core/conformance:TestAReceiptDifferingInOneByteFails"],
-    "scenarios": {"a receipt that differs in one byte": {"tests": ["core/conformance:TestAReceiptDifferingInOneByteFails"]}}
+    "open": "M1",
+    "scenarios": {"a receipt that differs in one byte": {"open": "M1"}}
   },
   "conformance-vectors-6": {
     "open": "M2",
@@ -257,15 +257,15 @@
     "scenarios": {"an input only hex can hold": {"vectors": ["canonical/invalid-utf8-in-string"]}}
   },
   "conformance-vectors-9": {
-    "tests": ["core/conformance:TestVectorAgainstSchemaFails"],
-    "scenarios": {"a case variant": {"tests": ["core/conformance:TestVectorAgainstSchemaFails"]}}
+    "open": "M1",
+    "scenarios": {"a case variant": {"open": "M1"}}
   },
   "conformance-vectors-10": {
-    "tests": ["core/conformance:TestARefusedVectorExampleThatValidatesFails", "core/conformance:TestEmptyVectorsPass", "core/conformance:TestSchemaExamples"],
-    "scenarios": {"a refused example that validates": {"tests": ["core/conformance:TestARefusedVectorExampleThatValidatesFails"]}, "before the first vector": {"tests": ["core/conformance:TestEmptyVectorsPass"]}}
+    "open": "M1",
+    "scenarios": {"a refused example that validates": {"open": "M1"}, "before the first vector": {"open": "M1"}}
   },
   "conformance-vectors-11": {
-    "tests": ["core/conformance:TestHeaderFirst"],
-    "scenarios": {"a repeated top-level name": {"tests": ["core/conformance:TestHeaderFirst"]}}
+    "open": "M1",
+    "scenarios": {"a repeated top-level name": {"open": "M1"}}
   }
 }

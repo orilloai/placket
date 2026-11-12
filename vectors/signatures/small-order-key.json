@@ -1,0 +1,29 @@
+{
+  "expect": {
+    "valid": false
+  },
+  "input": {
+    "actor": "ed25519:26e8958fc2b227b045c3f489f2ef98f0d5dfac05d3c63339b13802886d53fc05",
+    "sig": "b341d090401b6847e96960168cbac1222562c3c2be30d82c080a503bc7cf415a76bfc11bcd6bd9f3584ab0771897a39e401383051d40b2f979eb6584e053d30f",
+    "terms": [
+      {
+        "dir": "give",
+        "select": {
+          "kind": [
+            "note"
+          ]
+        },
+        "stance": "want",
+        "with": [
+          "role:applier"
+        ]
+      }
+    ]
+  },
+  "operation": "verify-signature",
+  "reference": "ed25519:26e8958fc2b227b045c3f489f2ef98f0d5dfac05d3c63339b13802886d53fc05",
+  "spec": "0.1",
+  "tests": "signing-1: a key that is a point of order 8 signs nothing",
+  "typeUri": "https://placket.dev/declaration/0.1",
+  "vector": "signatures/small-order-key"
+}

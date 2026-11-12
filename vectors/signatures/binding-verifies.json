@@ -1,0 +1,21 @@
+{
+  "expect": {
+    "valid": true
+  },
+  "input": {
+    "actor": "ed25519:7cf35b36b9d57c62b9f3d5be2eb4d39147afa1b7625cd0032443523254df3bea",
+    "mediator": "ed25519:84254f9d593b0f7811b18c00b656a70fe1a9595ed353c73286ea83d300226ed3",
+    "principal": "ed25519:7953e3ee4311c21f4990662dbe506689868533db6fb93a77351351e8d6119574",
+    "roles": [
+      "proposer"
+    ],
+    "sig": "f8fca8535231bec534f63dd94a5f9148c5ecbb34b8067691e1dd9ebc56559bed9a0f00a129e5a44c23f5fa441e60d51c23a0a32209b46635f54844295798b706",
+    "until": "2027-11-12T00:00:00Z"
+  },
+  "operation": "verify-signature",
+  "reference": "ed25519:7953e3ee4311c21f4990662dbe506689868533db6fb93a77351351e8d6119574",
+  "spec": "0.1",
+  "tests": "signing-2: a binding verifies under the binding type URI by its principal",
+  "typeUri": "https://placket.dev/binding/0.1",
+  "vector": "signatures/binding-verifies"
+}

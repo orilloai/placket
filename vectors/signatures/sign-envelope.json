@@ -1,0 +1,19 @@
+{
+  "expect": {
+    "sig": "6f97b76114017e670b2ed8cc1b6110aa59985fef67b7743cdea6df50e5403c01a68491d65385d07b7cca430dd4d4ba30a6e7d297e2bfbad092e935ceb315160b",
+    "signingBytesHex": "4453534576312033322068747470733a2f2f706c61636b65742e6465762f656e76656c6f70652f302e31203930207b2268617368223a227368613235363a37303163616334383661626432656339323338656566333333363865663035323265326639653734313966626433626539366532353531396130323936353839222c22736571223a317d"
+  },
+  "input": {
+    "hash": "sha256:701cac486abd2ec9238eef33368ef0522e2f9e7419fbd3be96e25519a0296589",
+    "seq": 1
+  },
+  "keys": {
+    "proposer": "d8eab9b5147bbc41c9fa836164a8932886ca26ae27b68c88e6714cef161b0983"
+  },
+  "operation": "sign",
+  "signer": "proposer",
+  "spec": "0.1",
+  "tests": "signing-2: an envelope's signing bytes and its sender's signature under the envelope type URI",
+  "typeUri": "https://placket.dev/envelope/0.1",
+  "vector": "signatures/sign-envelope"
+}
