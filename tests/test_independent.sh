@@ -5,11 +5,14 @@
 #
 # - Typed hashes (canonical-3): canonical vectors' hashes, Accord ids, card hashes, message hashes in
 #   envelopes and receipts, and receipt ids.
-# - Salted digests (crossing-3): every accepted give's part and every delivery, against its receipt.
+# - Salted digests (crossing-3): every accepted give's part and every delivery, against its receipt;
+#   and every accepted or changed answer of a resolve step, its salt and its text, against its
+#   resolution receipt and, for a change, its release.
 # - Actors' signatures (signing-2): sign vectors, re-signed with the signer's seed; valid
 #   verify-signature vectors; every declaration and binding of an accepted set; every accepted
 #   give's envelope.
-# - Receipts' signatures (section 8, row 3): every receipt a scenario writes or delivers, and every
+# - Receipts' signatures (section 8, row 3): every receipt a scenario writes, delivers, or expects of a
+#   give, resolve or tick step, a resolve step's release included, and every
 #   receipt a verify or reconcile vector expects to pass that row. A receipt expected to fail
 #   signature whose form is sound, so that only its signed bytes or its signer can be wrong, must be
 #   refused by openssl. Every other refusal rests on the text's hand derivation, and is not counted.
@@ -280,10 +283,13 @@ for f in "$V"/*/*.json; do
 		card=sha256:$(sha "$tmp/card")
 		med=$(refof "$(jq -r '.keys[.mediator]' "$f")")
 		# Every receipt written: its id, its signature, its Accord and card, and its prev. The
-		# escalates' re-computed ids, in the order written, are the open questions.
+		# escalates' re-computed ids, in the order written, less those a later resolution receipt
+		# closes, are the open questions: a resolution receipt belongs to the latest escalate before it
+		# that echoes the same envelope (receipt-6).
 		nr=$(jq '.final.receipts | length' "$f")
 		: >"$tmp/chain"
-		: >"$tmp/escalates"
+		: >"$tmp/asks"
+		: >"$tmp/closed"
 		i=0
 		while [ "$i" -lt "$nr" ]; do
 			jq ".final.receipts[$i].receipt" "$f" >"$tmp/r"
@@ -292,15 +298,21 @@ for f in "$V"/*/*.json; do
 					counted "$g"
 				else bad "$n: receipt $i names another Accord or card"; fi
 				chained "$n: receipt $i" "$g" "$tmp/chain"
-				[ "$(jq -r .predicate.verdict "$tmp/statement")" = escalate ] && echo "sha256:$(sha "$tmp/statement")" >>"$tmp/escalates"
+				echoed=$(jq -r '.predicate.envelope | "\(.sender) \(.seq) \(.hash)"' "$tmp/statement")
+				if [ "$(jq -r .predicate.verdict "$tmp/statement")" = escalate ]; then
+					echo "sha256:$(sha "$tmp/statement") $echoed" >>"$tmp/asks"
+				elif [ "$(jq -r .predicate.kind "$tmp/statement")" = resolution ]; then
+					awk -v k="$echoed" '{ e = $2 " " $3 " " $4 } e == k { id = $1 } END { if (id != "") print id }' "$tmp/asks" >>"$tmp/closed"
+				fi
 			fi
 			i=$((i + 1))
 		done
 		# Every pending id is the re-computed id of its escalate receipt, the k-th open question the
-		# k-th escalate written: no question is answered in this version (maybe-1).
+		# k-th escalate written that no resolution closed (maybe-1).
+		awk 'FILENAME == ARGV[1] { closed[$1] = 1; next } !($1 in closed) { print $1 }' "$tmp/closed" "$tmp/asks" >"$tmp/escalates"
 		jq -r '.final.pending[]' "$f" >"$tmp/pending"
 		if [ "$(wc -l <"$tmp/pending")" -ne "$(wc -l <"$tmp/escalates")" ]; then
-			bad "$n: final.pending holds $(wc -l <"$tmp/pending" | tr -d ' ') ids for $(wc -l <"$tmp/escalates" | tr -d ' ') escalate receipts"
+			bad "$n: final.pending holds $(wc -l <"$tmp/pending" | tr -d ' ') ids for $(wc -l <"$tmp/escalates" | tr -d ' ') escalate receipts no resolution closes"
 		else
 			k=1
 			while read -r id; do
@@ -332,6 +344,49 @@ for f in "$V"/*/*.json; do
 						digestcheck "$n: step $i" "$g" "$tmp/part" "$tmp/st"
 					fi
 				fi
+				;;
+			resolve)
+				# The resolution receipt and the release receipt, re-verified; an accepted or changed
+				# answer's salted digest re-computed from the step's salt and text, against the
+				# resolution's subject and, for a change, the release's; an accept's release against
+				# the question's subject, the asked part.
+				if jq -e "$s.expect | has(\"receipt\")" "$f" >/dev/null; then
+					action=$(jq -r "$s.action" "$f")
+					jq "$s.expect.receipt" "$f" >"$tmp/r"
+					if receiptcheck "$n: step $i" "$g" "$tmp/r" "$med" "$(jq -r "$s.expect.receiptId" "$f")"; then
+						cp "$tmp/statement" "$tmp/st"
+						if [ "$action" = accepted ] || [ "$action" = changed ]; then
+							jq -c "{salt: $s.salt, text: $s.content.answer}" "$f" >"$tmp/answer"
+							digestcheck "$n: step $i: the answer" "$g" "$tmp/answer" "$tmp/st"
+						fi
+					fi
+					if jq -e "$s.expect | has(\"release\")" "$f" >/dev/null; then
+						jq "$s.expect.release.receipt" "$f" >"$tmp/r"
+						if receiptcheck "$n: step $i: the release" "$g" "$tmp/r" "$med" "$(jq -r "$s.expect.release.receiptId" "$f")"; then
+							cp "$tmp/statement" "$tmp/rst"
+							if [ "$action" = changed ]; then
+								digestcheck "$n: step $i: the released version" "$g" "$tmp/answer" "$tmp/rst"
+							else
+								qi=$(jq --arg q "$(jq -r "$s.question" "$f")" '[.final.receipts[].receiptId] | index($q) // -1' "$f")
+								if [ "$qi" -ge 0 ]; then
+									jq -r ".final.receipts[$qi].receipt.payload" "$f" | base64 -d >"$tmp/qst"
+									if [ "$(jq -c .subject "$tmp/qst")" = "$(jq -c .subject "$tmp/rst")" ]; then counted "$g"; else bad "$n: step $i: the release names another part than the question's"; fi
+								else
+									bad "$n: step $i: the question is no receipt written"
+								fi
+							fi
+						fi
+					fi
+				fi
+				;;
+			tick)
+				nt=$(jq "$s.expect.receipts | length" "$f")
+				k=0
+				while [ "$k" -lt "$nt" ]; do
+					jq "$s.expect.receipts[$k].receipt" "$f" >"$tmp/r"
+					receiptcheck "$n: step $i: timeout $k" "$g" "$tmp/r" "$med" "$(jq -r "$s.expect.receipts[$k].receiptId" "$f")"
+					k=$((k + 1))
+				done
 				;;
 			get)
 				if jq -e "$s.expect | has(\"delivery\")" "$f" >/dev/null; then

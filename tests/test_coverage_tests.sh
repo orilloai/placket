@@ -1,7 +1,8 @@
 #!/bin/sh
 # The coverage list's Go tests (runner-no-silent-pass): every Go test vectors/coverage.json names
 # exists and passes when run alone, so a name in the list cannot stand for a test that never ran; and
-# each scenario no vector operation can run names a Go test in its entry.
+# each scenario listed below, every one no vector operation can run among them, names a Go test in
+# its entry.
 #
 # A Go test is named in an entry's "tests" as the directory of its package from the repository root,
 # a colon and its name, such as core/receipts:TestAForgedReceiptShowsAsARealOne
@@ -22,18 +23,24 @@ bad() { say "FAIL: $*"; failed=1; }
 command -v jq >/dev/null 2>&1 || { say "FAIL: jq: not found"; exit 1; }
 [ -f "$list" ] || { say "FAIL: vectors/coverage.json: missing"; exit 1; }
 
-# The scenarios no vector operation can run, each covered by a Go test: the requirement id and the
+# The scenarios each covered by a Go test: those no vector operation can run, such as a change with
+# an empty version, which the vector format refuses, and those whose Go test also proves what the
+# runner cannot see, such as an empty list of answerers that is not nil. The requirement id and the
 # scenario's title, separated by a tab.
 required='receipt-8	a forged receipt shown
 signing-4	a placket URI as a payload type
-receipt-10	two mediators, one record'
+receipt-10	two mediators, one record
+maybe-9	an empty change
+maybe-1	a deadline past the last time
+maybe-4	a question nobody can answer
+maybe-6	the proposer answers its own proposal'
 
 printf '%s\n' "$required" | while IFS='	' read -r id title; do
 	n=$(jq -r --arg i "$id" --arg s "$title" '.[$i].scenarios[$s].tests // [] | length' "$list" 2>/dev/null)
 	if [ "${n:-0}" -gt 0 ]; then
 		say "ok   $id: scenario \"$title\" names $n Go test(s)"
 	else
-		say "FAIL: $id: scenario \"$title\" names no Go test, and no vector operation can run it"
+		say "FAIL: $id: scenario \"$title\" names no Go test"
 		echo fail >>"$tmp/failed"
 	fi
 done
