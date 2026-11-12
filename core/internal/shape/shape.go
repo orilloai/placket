@@ -59,13 +59,13 @@ func Timestamp(s string) bool {
 	return err == nil && t.Format(layout) == s
 }
 
-// AddSeconds returns the timestamp n seconds after ts, which keeps the timestamp rule; a time past
-// LastTime is LastTime (maybe-1).
+// AddSeconds returns the timestamp n seconds after ts; a time past LastTime is LastTime (maybe-1). A
+// ts that does not keep the timestamp rule gives the empty string.
 func AddSeconds(ts string, n int64) string {
-	t, err := time.Parse(layout, ts)
-	if err != nil {
+	if !Timestamp(ts) {
 		return ""
 	}
+	t, _ := time.Parse(layout, ts)
 	last, _ := time.Parse(layout, LastTime)
 	if n >= last.Unix()-t.Unix() {
 		return LastTime
