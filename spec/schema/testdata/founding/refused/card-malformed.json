@@ -1,0 +1,156 @@
+{
+  "bindings": [
+    {
+      "actor": "ed25519:810950cac0d0a30abe5ced6fdf42b93bb3da913b29d142a20ef043ca9691cd31",
+      "mediator": "ed25519:22cdf8245c3ce6fb391597095e59b2eb3e3cdfda6ab4b606cc3acd9d2d40ed77",
+      "principal": "ed25519:534b70c488c3bdeb57b19682f11c7d18cdb43087760a253b4fb0cb8f6d251b99",
+      "roles": [
+        "applier"
+      ],
+      "sig": "1830a9546d5d304f7ed1dfef4edc2505b7101056240f2dd0265df860f44edae187e347d6617ae6e07d9a7ad8f004473511687a0a6a9e85cb8a2f858ec4270e05",
+      "until": "2027-11-12T00:00:00Z"
+    },
+    {
+      "actor": "ed25519:bd1f151e8df833afd6d6758375655dfdf2099acc4bc9100b0f292937773b3b0a",
+      "mediator": "ed25519:22cdf8245c3ce6fb391597095e59b2eb3e3cdfda6ab4b606cc3acd9d2d40ed77",
+      "principal": "ed25519:534b70c488c3bdeb57b19682f11c7d18cdb43087760a253b4fb0cb8f6d251b99",
+      "roles": [
+        "proposer"
+      ],
+      "sig": "9fee9a3aef66890489a125979bf6a185e5b7651e9ce16a2f0b6debe5229f27ae0e5bd26d91d83b8403e14e485370e9f100bbdd72ab23abd65137417e9b6df10f",
+      "until": "2027-11-12T00:00:00Z"
+    },
+    {
+      "actor": "ed25519:f6d4d58bc4586df0ad896a617867d6e12e2ec318bf26edd23a1f18de99039f41",
+      "mediator": "ed25519:22cdf8245c3ce6fb391597095e59b2eb3e3cdfda6ab4b606cc3acd9d2d40ed77",
+      "principal": "ed25519:534b70c488c3bdeb57b19682f11c7d18cdb43087760a253b4fb0cb8f6d251b99",
+      "roles": [
+        "decider"
+      ],
+      "sig": "4e7f7e08c46401199b1d1a21fd6cab785cef29f1019d453fb73f3ca8ac289bb49504f9c2ae94965cca9935de2436f659853b9b184779ef1a412a499c2f15e20b",
+      "until": "2027-11-12T00:00:00Z"
+    }
+  ],
+  "card": {
+    "checks": [],
+    "judges": [],
+    "spec": "0.1"
+  },
+  "declarations": [
+    {
+      "actor": "ed25519:810950cac0d0a30abe5ced6fdf42b93bb3da913b29d142a20ef043ca9691cd31",
+      "sig": "107c2c7a6069a2d7961e52017678264b75f27be4d70999454dfb07dfe08edd7502128e88fa9b2fbcd9f710a21633f37409027a23f38c80368e8a4e002abaf604",
+      "terms": [
+        {
+          "dir": "get",
+          "select": {
+            "kind": [
+              "proposal"
+            ]
+          },
+          "stance": "want",
+          "with": [
+            "role:proposer"
+          ]
+        },
+        {
+          "dir": "get",
+          "select": {
+            "kind": [
+              "changed-version"
+            ]
+          },
+          "stance": "want",
+          "with": [
+            "role:decider"
+          ]
+        }
+      ]
+    },
+    {
+      "actor": "ed25519:bd1f151e8df833afd6d6758375655dfdf2099acc4bc9100b0f292937773b3b0a",
+      "sig": "be022216bb5877aca8783f88bfc1e64df421eeb457b8b568a8062088bfe3c7ad8b7945a4384fe2093b3ccc6902a1552571235222431ed35d57fd253da3696b0f",
+      "terms": [
+        {
+          "dir": "give",
+          "resolve": {
+            "timeout": 3600,
+            "to": [
+              "role:decider"
+            ]
+          },
+          "select": {
+            "kind": [
+              "proposal"
+            ]
+          },
+          "stance": "maybe",
+          "with": [
+            "role:applier"
+          ]
+        },
+        {
+          "dir": "get",
+          "select": {
+            "kind": [
+              "answer",
+              "changed-version",
+              "comment"
+            ]
+          },
+          "stance": "want",
+          "with": [
+            "role:decider"
+          ]
+        }
+      ]
+    },
+    {
+      "actor": "ed25519:f6d4d58bc4586df0ad896a617867d6e12e2ec318bf26edd23a1f18de99039f41",
+      "sig": "89f298d80115efed32aeac496428f4a5e619b358a0efb0d9f8509af65e34fa879ed79f32c8f19ea23ec30f6fa0c1373c3fd8ba8b191c5529d186b6d3b6704e07",
+      "terms": [
+        {
+          "dir": "give",
+          "select": {
+            "kind": [
+              "answer",
+              "changed-version",
+              "comment"
+            ]
+          },
+          "stance": "want",
+          "with": [
+            "role:proposer"
+          ]
+        },
+        {
+          "dir": "give",
+          "select": {
+            "kind": [
+              "changed-version"
+            ]
+          },
+          "stance": "want",
+          "with": [
+            "role:applier"
+          ]
+        }
+      ]
+    }
+  ],
+  "mediator": {
+    "actor": "ed25519:22cdf8245c3ce6fb391597095e59b2eb3e3cdfda6ab4b606cc3acd9d2d40ed77",
+    "operator": "ed25519:1d3ad8a548b300920ee217ac79ad61a527a0d388f28f6deb76828cca2d3d13d0",
+    "runs": "process"
+  },
+  "policy": {
+    "principals": [
+      "ed25519:534b70c488c3bdeb57b19682f11c7d18cdb43087760a253b4fb0cb8f6d251b99"
+    ],
+    "roles": [
+      "applier",
+      "decider",
+      "proposer"
+    ]
+  }
+}

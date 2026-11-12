@@ -1,0 +1,11 @@
+{
+  "vector": "canonical/members-sorted-and-no-whitespace",
+  "spec": "0.1",
+  "tests": "Members are sorted and whitespace between tokens is dropped.",
+  "operation": "canonical",
+  "inputText": "{ \"b\": 1, \"a\": [ true ] }",
+  "expect": {
+    "code": "not-canonical",
+    "offset": 0
+  }
+}

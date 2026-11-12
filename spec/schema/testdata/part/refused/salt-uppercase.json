@@ -1,0 +1,9 @@
+{
+  "metadata": {
+    "https://placket.dev/crossing/0.1": {
+      "kind": "proposal",
+      "salt": "ABABABABABABABABABABABABABABABAB"
+    }
+  },
+  "text": "Rename the field total to amount in invoices."
+}

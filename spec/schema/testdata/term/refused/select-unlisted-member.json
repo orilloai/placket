@@ -1,0 +1,13 @@
+{
+  "stance": "want",
+  "dir": "get",
+  "with": [
+    "role:decider"
+  ],
+  "select": {
+    "kind": [
+      "answer"
+    ],
+    "topic": "x"
+  }
+}

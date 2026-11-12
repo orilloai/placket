@@ -1,0 +1,11 @@
+{
+  "vector": "founding/repeated-member-is-not-canonical",
+  "spec": "0.1",
+  "tests": "A set with a repeated member name is refused before its shape is read.",
+  "operation": "found",
+  "inputText": "{\"policy\":{},\"policy\":{}}",
+  "foundedAt": "2026-11-12T08:00:00Z",
+  "expect": {
+    "code": "not-canonical"
+  }
+}

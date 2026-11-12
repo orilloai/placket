@@ -1,0 +1,29 @@
+{
+  "actor": "ed25519:810950cac0d0a30abe5ced6fdf42b93bb3da913b29d142a20ef043ca9691cd31",
+  "terms": [
+    {
+      "dir": "get",
+      "select": {
+        "kind": [
+          "proposal"
+        ]
+      },
+      "stance": "want",
+      "with": [
+        "role:proposer"
+      ]
+    },
+    {
+      "dir": "get",
+      "select": {
+        "kind": [
+          "changed-version"
+        ]
+      },
+      "stance": "want",
+      "with": [
+        "role:decider"
+      ]
+    }
+  ]
+}

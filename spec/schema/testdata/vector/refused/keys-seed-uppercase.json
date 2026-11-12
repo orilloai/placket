@@ -1,0 +1,44 @@
+{
+  "vector": "signatures/declaration-signing-bytes",
+  "spec": "0.1",
+  "tests": "A declaration is signed over its canonical bytes without sig, under the declaration type URI.",
+  "operation": "sign",
+  "keys": {
+    "applier": "D9EB059317C1AC847C691D9D13D6648FCD3C10F8D1D66EA2098A76F72041F7A9"
+  },
+  "input": {
+    "actor": "ed25519:810950cac0d0a30abe5ced6fdf42b93bb3da913b29d142a20ef043ca9691cd31",
+    "terms": [
+      {
+        "dir": "get",
+        "select": {
+          "kind": [
+            "proposal"
+          ]
+        },
+        "stance": "want",
+        "with": [
+          "role:proposer"
+        ]
+      },
+      {
+        "dir": "get",
+        "select": {
+          "kind": [
+            "changed-version"
+          ]
+        },
+        "stance": "want",
+        "with": [
+          "role:decider"
+        ]
+      }
+    ]
+  },
+  "typeUri": "https://placket.dev/declaration/0.1",
+  "signer": "applier",
+  "expect": {
+    "signingBytesHex": "4453534576312033352068747470733a2f2f706c61636b65742e6465762f6465636c61726174696f6e2f302e3120323732207b226163746f72223a22656432353531393a38313039353063616330643061333061626535636564366664663432623933626233646139313362323964313432613230656630343363613936393163643331222c227465726d73223a5b7b22646972223a22676574222c2273656c656374223a7b226b696e64223a5b2270726f706f73616c225d7d2c227374616e6365223a2277616e74222c2277697468223a5b22726f6c653a70726f706f736572225d7d2c7b22646972223a22676574222c2273656c656374223a7b226b696e64223a5b226368616e6765642d76657273696f6e225d7d2c227374616e6365223a2277616e74222c2277697468223a5b22726f6c653a64656369646572225d7d5d7d",
+    "sig": "107c2c7a6069a2d7961e52017678264b75f27be4d70999454dfb07dfe08edd7502128e88fa9b2fbcd9f710a21633f37409027a23f38c80368e8a4e002abaf604"
+  }
+}

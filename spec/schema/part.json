@@ -1,0 +1,90 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://placket.dev/schema/0.1/part.json",
+  "title": "Part",
+  "description": "The one part of a crossing message (crossing-2): exactly one body, as text, as raw bytes in standard base64, or as a JSON value, and under the crossing extension its kind and its salt of at least 16 bytes in lowercase hex. A url body counts as the one body, so a part with url and another body has two, and a part whose one body is url is refused by a rule of its own, since url is not a body of this version (crossing-2).",
+  "type": "object",
+  "properties": {
+    "text": {
+      "type": "string"
+    },
+    "raw": {
+      "$ref": "#/$defs/base64"
+    },
+    "data": {
+      "not": {
+        "type": "null"
+      }
+    },
+    "url": {
+      "description": "A url body, whatever its value. It counts as the part's one body, and a part whose body is url is refused by its own rule (crossing-2, url-unsupported)."
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "https://placket.dev/crossing/0.1": {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "$ref": "term.json#/$defs/kind"
+            },
+            "salt": {
+              "$ref": "#/$defs/salt"
+            }
+          },
+          "required": [
+            "kind",
+            "salt"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "https://placket.dev/crossing/0.1"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "metadata"
+  ],
+  "additionalProperties": false,
+  "oneOf": [
+    {
+      "required": [
+        "text"
+      ]
+    },
+    {
+      "required": [
+        "raw"
+      ]
+    },
+    {
+      "required": [
+        "data"
+      ]
+    },
+    {
+      "required": [
+        "url"
+      ]
+    }
+  ],
+  "not": {
+    "required": [
+      "url"
+    ]
+  },
+  "$defs": {
+    "base64": {
+      "description": "Standard base64 with padding, in the one encoding that decodes and encodes back to itself.",
+      "type": "string",
+      "pattern": "^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/][AQgw]==|[A-Za-z0-9+/]{2}[AEIMQUYcgkosw048]=)?$"
+    },
+    "salt": {
+      "type": "string",
+      "pattern": "^(?:[0-9a-f]{2}){16,}$"
+    }
+  }
+}

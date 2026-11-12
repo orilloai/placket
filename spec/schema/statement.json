@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://placket.dev/schema/0.1/statement.json",
+  "title": "Receipt statement",
+  "description": "The payload of a receipt: an in-toto Statement v1 whose one subject is the part judged, named by its kind, with its salted digest in lowercase hex, and whose predicate is placket's (receipt-1, receipt-2).",
+  "type": "object",
+  "properties": {
+    "_type": {
+      "const": "https://in-toto.io/Statement/v1"
+    },
+    "subject": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 1,
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "$ref": "term.json#/$defs/kind"
+          },
+          "digest": {
+            "type": "object",
+            "properties": {
+              "salted-sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              }
+            },
+            "required": [
+              "salted-sha256"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "name",
+          "digest"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "predicateType": {
+      "const": "https://placket.dev/receipt/0.1"
+    },
+    "predicate": {
+      "$ref": "predicate.json"
+    }
+  },
+  "required": [
+    "_type",
+    "subject",
+    "predicateType",
+    "predicate"
+  ],
+  "additionalProperties": false
+}

@@ -1,0 +1,130 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://placket.dev/schema/0.1/term.json",
+  "title": "Term",
+  "description": "One side of what may cross (setup-contract-1, composition-1): a stance, a direction, the roles of the other side, the kinds it selects, and for a maybe the rule that resolves it. checks is a reserved slot: a v1 card loads no check, so founding refuses any term that names one (setup-contract-1).",
+  "type": "object",
+  "properties": {
+    "stance": {
+      "enum": [
+        "need",
+        "want",
+        "maybe",
+        "no"
+      ]
+    },
+    "dir": {
+      "enum": [
+        "give",
+        "get"
+      ]
+    },
+    "with": {
+      "$ref": "#/$defs/selectors"
+    },
+    "select": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/kind"
+          }
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "additionalProperties": false
+    },
+    "checks": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "$ref": "#/$defs/label"
+          },
+          "corpus": {
+            "$ref": "#/$defs/label"
+          }
+        },
+        "required": [
+          "name",
+          "corpus"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "resolve": {
+      "type": "object",
+      "properties": {
+        "to": {
+          "$ref": "#/$defs/selectors"
+        },
+        "timeout": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        }
+      },
+      "required": [
+        "to",
+        "timeout"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "stance",
+    "dir",
+    "with",
+    "select"
+  ],
+  "additionalProperties": false,
+  "if": {
+    "required": [
+      "stance"
+    ],
+    "properties": {
+      "stance": {
+        "const": "maybe"
+      }
+    }
+  },
+  "then": {
+    "required": [
+      "resolve"
+    ]
+  },
+  "else": {
+    "not": {
+      "required": [
+        "resolve"
+      ]
+    }
+  },
+  "$defs": {
+    "label": {
+      "type": "string",
+      "maxLength": 64,
+      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+    },
+    "kind": {
+      "$ref": "#/$defs/label"
+    },
+    "selectors": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "maxLength": 69,
+        "pattern": "^role:[a-z0-9]+(?:-[a-z0-9]+)*$"
+      }
+    }
+  }
+}

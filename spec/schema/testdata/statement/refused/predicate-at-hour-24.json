@@ -1,0 +1,29 @@
+{
+  "_type": "https://in-toto.io/Statement/v1",
+  "predicate": {
+    "accord": "sha256:26f6de282cb5b5b3f9e4d93046306b95974e796572c6aee9e10aec0652567189",
+    "at": "2026-11-12T24:00:00Z",
+    "card": "sha256:1aeeb6d581d8d29e1298145764d3df8d4c343ce775f3bc42af57cb205bbfaf6f",
+    "envelope": {
+      "hash": "sha256:c897a06a63e729739c4e4bcc36e0d219cdd476e6a1c54131137ae24f2266b92f",
+      "sender": "ed25519:bd1f151e8df833afd6d6758375655dfdf2099acc4bc9100b0f292937773b3b0a",
+      "seq": 1
+    },
+    "from": "ed25519:bd1f151e8df833afd6d6758375655dfdf2099acc4bc9100b0f292937773b3b0a",
+    "kind": "crossing",
+    "mediator": "ed25519:22cdf8245c3ce6fb391597095e59b2eb3e3cdfda6ab4b606cc3acd9d2d40ed77",
+    "reason": "maybe",
+    "seq": 1,
+    "to": "ed25519:810950cac0d0a30abe5ced6fdf42b93bb3da913b29d142a20ef043ca9691cd31",
+    "verdict": "escalate"
+  },
+  "predicateType": "https://placket.dev/receipt/0.1",
+  "subject": [
+    {
+      "digest": {
+        "salted-sha256": "a9f3000838016f7dd0d31fca4b857dd5645c3cd01ae36cbac3de404befe04b2b"
+      },
+      "name": "proposal"
+    }
+  ]
+}

@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://placket.dev/schema/0.1/declaration.json",
+  "title": "Declaration",
+  "description": "An actor's own terms, signed by that actor under https://placket.dev/declaration/0.1 (setup-contract-1, signing-2).",
+  "type": "object",
+  "properties": {
+    "actor": {
+      "$ref": "reference.json"
+    },
+    "terms": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "term.json"
+      }
+    },
+    "sig": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{128}$"
+    }
+  },
+  "required": [
+    "actor",
+    "terms",
+    "sig"
+  ],
+  "additionalProperties": false
+}

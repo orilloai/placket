@@ -1,0 +1,12 @@
+{
+  "dir": "give",
+  "select": {
+    "kind": [
+      "proposal"
+    ]
+  },
+  "stance": "maybe",
+  "with": [
+    "role:applier"
+  ]
+}
