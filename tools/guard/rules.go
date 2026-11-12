@@ -45,6 +45,8 @@ func init() {
 		{name: "core-imports", why: "nothing under core/ imports adapters/, cmd/ or recipes/, and no import path is written with an escape", check: coreImports},
 		{name: "core-no-world", why: "no non-test code in core/ reads the clock, randomness, the environment or files, or touches the network, the process or memory, or prints; the core is Go alone, without cgo or other sources, and no import path is written with an escape", check: coreNoWorld},
 		{name: "core-no-panic", why: "no non-test code in core/ calls panic", check: coreNoPanic},
+		{name: "specs-name-behaviour", why: "the requirement text names behaviour under the ids spec/ids.txt lists, each once with a scenario, and never Go code", ordered: true, check: specsNameBehaviour},
+		{name: "schemas-hold", why: "every schema compiles from the tree with nothing fetched, holds against its examples and has a row in the register", ordered: true, check: schemasHold},
 		{name: "product-words-once", why: "the core never spells the outcome words the command line owns", check: productWordsOnce},
 	}
 }
