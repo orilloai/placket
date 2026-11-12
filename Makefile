@@ -46,13 +46,21 @@ START = t0=$$(date +%s); (
 END = ); rc=$$?; echo "time: $@: $$(($$(date +%s) - t0))s"; exit $$rc
 
 # WORK is this checkout's scratch directory, outside the tree: the checker's binary and the shared test
-# run's output. Each run of guard and tests writes it afresh before anything reads it.
+# run's output. Each run of guard and tests writes it afresh before anything reads it. Its path is
+# fixed, so each of them first makes it with mode 700 (OWN_WORK), and uses it only when it is a
+# directory, not a symbolic link, owned by the user running make and writable by no one else;
+# otherwise it stops.
 WORK := $(or $(TMPDIR),/tmp)/placket-make-$(shell printf '%s' '$(CURDIR)' | cksum | cut -d' ' -f1)
 GUARD = $(WORK)/guard
+OWN_WORK = mkdir -m 700 "$(WORK)" 2>/dev/null || :; \
+	if [ -L "$(WORK)" ] || [ ! -d "$(WORK)" ] || [ ! -O "$(WORK)" ]; then \
+		echo "$@: $(WORK): not a directory of this user's own; remove it"; exit 1; fi; \
+	case $$(ls -ld "$(WORK)") in d????-??-*) ;; *) \
+		echo "$@: $(WORK): writable by others; remove it"; exit 1;; esac
 
 # guard: the checker, built once from tools/guard/, its own module.
 guard:
-	@$(START) set -e; mkdir -p "$(WORK)"; \
+	@$(START) set -e; $(OWN_WORK); \
 		(cd tools/guard && go build -o "$(GUARD)" .) || { echo "$@: tools/guard: does not build"; exit 1; }; \
 		echo "$@: ok" $(END)
 
@@ -119,7 +127,7 @@ secrets:
 # module and fails only when a module's packages cannot be listed: the steps that read it judge it.
 TESTS = $(WORK)/tests
 tests:
-	@$(START) set -e; rm -rf "$(TESTS)"; mkdir -p "$(TESTS)"; : >"$(TESTS)/modules"; \
+	@$(START) set -e; $(OWN_WORK); rm -rf "$(TESTS)"; mkdir "$(TESTS)"; : >"$(TESTS)/modules"; \
 		for m in $$($(MODULES)); do \
 			pkgs=$$(cd "$$m" && go list ./...) || { echo "$@: $$m: go list failed"; exit 1; }; \
 			[ -n "$$pkgs" ] || continue; \
