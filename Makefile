@@ -188,3 +188,10 @@ runner-no-silent-pass:
 # The repository's own shell tests.
 scripts:
 	@$(START) set -e; for t in tests/test_*.sh; do [ -e "$$t" ] || continue; echo "== $$t"; sh "$$t"; done $(END)
+
+# demo: the worked example, ask and log, run by hand: three parties' commands against one window,
+# a restart, and the journal verified and exported. Not a step of ci: tests/test_demo.sh runs the
+# same script in scripts.
+.PHONY: demo
+demo:
+	@sh scripts/demo.sh
