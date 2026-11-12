@@ -307,6 +307,74 @@ func main() {
 		s.Give(at(0), kit.Proposer, 1, of(askAndLog, "proposal-1", "proposal"), kit.Applier, "escalate", "maybe")
 		add("the-appliers-get-term", "composition-1: the applier's get term names role:proposer, which the proposer's binding gives, so it matches", s, askAndLog)
 	}
+	{
+		// Each give fails two neighbouring rows of the door's table, and the earlier row decides; none
+		// changes anything, so the last give at seq 2 is the second of the pair (crossing-6).
+		s := scene(askAndLog)
+		s.Give(at(0), kit.Proposer, 1, note("note-1", "First."), kit.Applier, "pass", "ok")
+		steps := []struct {
+			code   string
+			seq    int64
+			edit   bool // the message changes after its envelope is signed
+			change func(m kit.Obj)
+		}{
+			// Rows 4 and 5: a message changed after signing, at a seq already accepted.
+			{"envelope-hash", 1, true, nil},
+			// Rows 5 and 6: a seq already accepted, and a member the frame does not list.
+			{"envelope-sequence", 1, false, func(m kit.Obj) { m["contextId"] = "c-1" }},
+			// Rows 6 and 7: an re, a topic or a gate of the wrong form, and a receiver who is no member.
+			{"extension-missing", 2, false, func(m kit.Obj) { kit.Ext(m)["re"] = "receipt-1"; kit.Ext(m)["to"] = kit.Stranger.Ref }},
+			{"extension-missing", 2, false, func(m kit.Obj) { kit.Ext(m)["topic"] = ""; kit.Ext(m)["to"] = kit.Stranger.Ref }},
+			{"extension-missing", 2, false, func(m kit.Obj) { kit.Ext(m)["gate"] = "Out_You"; kit.Ext(m)["to"] = kit.Stranger.Ref }},
+			// Rows 7 and 8: a receiver who is no member, and another Accord.
+			{"receiver-unknown", 2, false, func(m kit.Obj) { kit.Ext(m)["to"] = kit.Stranger.Ref; kit.Ext(m)["accord"] = kit.HashOf(compose) }},
+			// Rows 9 and 10: two parts, the first with no body.
+			{"one-part", 2, false, func(m kit.Obj) {
+				delete(kit.PartOf(m), "text")
+				m["parts"] = append(m["parts"].([]any), kit.TextPart("note", kit.Salt("second", 16), "Second."))
+			}},
+			// Rows 10 and 11: a url body beside a member the part does not list.
+			{"one-body", 2, false, func(m kit.Obj) {
+				p := kit.PartOf(m)
+				delete(p, "text")
+				p["url"], p["note"] = "https://example.com/a", "x"
+			}},
+			// Rows 11 and 12: a url body with a salt too short, and a url that is no string with no
+			// metadata at all.
+			{"url-unsupported", 2, false, func(m kit.Obj) {
+				p := kit.PartOf(m)
+				delete(p, "text")
+				p["url"] = "https://example.com/a"
+				p["metadata"].(kit.Obj)[kit.Extension].(kit.Obj)["salt"] = kit.Salt("short", 8)
+			}},
+			{"url-unsupported", 2, false, func(m kit.Obj) {
+				p := kit.PartOf(m)
+				delete(p, "text")
+				delete(p, "metadata")
+				p["url"] = 7
+			}},
+		}
+		for i, st := range steps {
+			m := note("pair-"+string(rune('a'+i)), "Two defects.")
+			if st.change != nil {
+				st.change(m)
+			}
+			env := kit.Envelope(st.seq, kit.Canon(m), kit.Proposer)
+			if st.edit {
+				kit.PartOf(m)["text"] = "Two defectS."
+			}
+			s.Reject(at(1+i), kit.Proposer, st.code, kit.Obj{"message": m}, kit.Obj{"envelope": env})
+		}
+		s.Give(at(1+len(steps)), kit.Proposer, 2, note("note-2", "Second."), kit.Applier, "pass", "ok")
+		add("two-defects-at-the-door", "crossing-6: a give failing rows 4 and 5, 5 and 6, 6 and 7 by its re, topic or gate, 7 and 8, 9 and 10, 10 and 11, or 11 and 12 is rejected with the earlier row's code, and none changes the next seq", s, askAndLog)
+	}
+	{
+		own := kit.OwnNo().Build()
+		s := kit.NewScene(own, kit.Mediator, kit.Proposer, kit.Applier)
+		s.Give(at(0), kit.Proposer, 1, of(own, "draft-1", "draft"), kit.Applier, "block", "no-match")
+		s.Get(kit.Applier)
+		add("the-senders-own-no", "composition-3: the sender's own matching no give term beside its matching want, with the receiver's want, is block, no-match", s, own)
+	}
 	compo := []struct{ name, tests, kind, verdict, reason string }{
 		{"a-role-the-binding-does-not-give", "composition-1: a get term naming role:auditor does not match a sender the binding does not make an auditor", "audit", "block", "no-match"},
 		{"no-get-term", "composition-2: a sender's matching give term and no get term of the receiver is block, no-match", "sketch", "block", "no-match"},

@@ -113,7 +113,7 @@
     "scenarios": {"an edited message": {"vectors": ["crossing/an-edited-message"]}, "a repeated sequence number": {"vectors": ["crossing/a-repeated-sequence-number"]}, "a skipped sequence number": {"vectors": ["crossing/a-skipped-sequence-number"]}}
   },
   "crossing-6": {
-    "vectors": ["crossing/a-repeated-member-behind-a-bad-signature", "crossing/a-repeated-member-under-a-good-signature", "crossing/a-repeated-seq-in-the-envelope", "crossing/two-content-defects", "crossing/a-message-not-the-one-signed-for", "crossing/a-member-the-frame-does-not-list", "crossing/an-envelope-by-another-key"],
+    "vectors": ["crossing/a-repeated-member-behind-a-bad-signature", "crossing/a-repeated-member-under-a-good-signature", "crossing/a-repeated-seq-in-the-envelope", "crossing/two-content-defects", "crossing/a-message-not-the-one-signed-for", "crossing/a-member-the-frame-does-not-list", "crossing/an-envelope-by-another-key", "crossing/two-defects-at-the-door"],
     "scenarios": {"a repeated member behind a bad signature": {"vectors": ["crossing/a-repeated-member-behind-a-bad-signature"]}, "a repeated member under a good signature": {"vectors": ["crossing/a-repeated-member-under-a-good-signature"]}, "a repeated seq in the envelope": {"vectors": ["crossing/a-repeated-seq-in-the-envelope"]}, "two content defects": {"vectors": ["crossing/two-content-defects"]}, "a message that is not the one signed for": {"vectors": ["crossing/a-message-not-the-one-signed-for"]}}
   },
   "crossing-7": {
@@ -129,7 +129,7 @@
     "scenarios": {"no get term": {"vectors": ["crossing/no-get-term"]}, "a kind no term names": {"vectors": ["crossing/no-delivery-for-a-block"]}}
   },
   "composition-3": {
-    "vectors": ["crossing/no-beside-want"],
+    "vectors": ["crossing/no-beside-want", "crossing/the-senders-own-no"],
     "scenarios": {"no beside want": {"vectors": ["crossing/no-beside-want"]}}
   },
   "composition-4": {
