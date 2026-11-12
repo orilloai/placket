@@ -11,6 +11,7 @@ Each rule has a short public name. A check in `make ci` starts its message with 
 | `core/` | The Go core, a module of its own (`github.com/orilloai/placket/core`) with no dependency. One package per protocol capability, named for it. Nothing that touches the world. |
 | `docs/adr/` | Decision records, `NNNN-<slug>.md` from 0001: any decision that spans packages or would be expensive to reverse, written ahead of the change built on it. |
 | `tests/` | The repository's shell tests, `tests/test_*.sh`, which `make ci` runs; their fixtures under `tests/testdata/`. |
+| `tools/guard/` | The checker: one Go program, a module of its own, whose rules are the checks of `make ci` that read the tree. Its Go tests prove each rule's planted faults; their fixtures are under `tools/guard/testdata/`. A check, changed only in a rules change. |
 | `spec/` | The protocol: `protocol.md`, the normative requirement text, one document organized by operation; `schema/` and `frozen-formats.md`, the frozen formats' schemas and the register of what binds each. |
 | `vectors/` | Conformance vectors, generated, and the coverage list. |
 | `review/` | The review passes. The maintainer's to change. |
@@ -99,11 +100,12 @@ Fixtures for any check go under a `testdata/` directory. Go's tools skip it, and
 
 ### How changes are made
 
-- **`machine-rules-in-ci`**: every rule a machine can check is checked by `make ci`, the one entry point, and GitHub runs it on every push and pull request. A rule no machine can check stays on the reviewer's list. Why: a rule that only a reviewer enforces is enforced only when the reviewer remembers.
+- **`machine-rules-in-ci`**: every rule a machine can check is checked by `make ci`, the one entry point, and GitHub runs it on every push and pull request. A rule no machine can check stays on the reviewer's list. Why: a rule that only a reviewer enforces is enforced only when the reviewer remembers. *`make ci` checks that every tool it runs is pinned to an exact version, and that its `ci` target names every rule of the checker and every step.*
 - **`decisions-recorded-first`**: any decision spanning packages, or expensive to reverse, gets its record in `docs/adr/` ahead of the change built on it. Why: the reason is lost once the code is written around it.
 - **`change-is-one-capability`**: a protocol change is one capability, and its design lists every exported name it adds, by package and signature, so a builder never invents an entry point. Why: a reviewer can hold one capability in mind; a builder should not have to design the API.
 - **`deltas-stop-for-intent`**: a change to the requirement text that alters observable behaviour, a capability's scope or what it must not do stops for the maintainer. Anything else is the builder's choice, listed in the design and the pull request where the maintainer can veto it. Why: the maintainer rules intent; builders keep building.
 - **`format-change-noted`**: a change to a frozen format (a new type URI, reason or code, or a member emitted that was absent) carries a version note in the register and the vectors' README in the same change. A door format is not frozen and takes no note. Why: a verifier elsewhere must learn of a format change from the text, not from a failure.
+- **`ci-stays-fast`**: `make ci` runs each step once, and every step prints its time. `make ci` exports a marker, `PLACKET_IN_CI=1`, to every step, and a `make ci` started where the marker is already set stops before any step, whatever `-k` says, printing `ci-stays-fast: refused: make ci inside make ci`. No script or test clears the marker: no empty assignment, `unset`, `env -u PLACKET_IN_CI`, `env -i`, `os.Unsetenv`, `os.Clearenv`, or Go `Env` list that does not start from `os.Environ()`. Setting it to a value, or reading it, is fine. Why: a test that runs the whole of `make ci` again multiplies its time, and a writer pays for `make ci` twice a round. *`make ci` checks it: the `Makefile` refuses the nested run, and the checker refuses a `.sh` or `_test.go` file outside `testdata/` that clears the marker. The workflow's timeout is the hard limit.*
 - **`schemas-hold`**: every frozen format's schema compiles as JSON Schema draft 2020-12 from the tree, with nothing fetched; its accepted examples validate and its refused examples are refused; and every schema file is named by a row of the register. Why: a schema no example tests, or that the register does not name, drifts from the text unseen. *`make ci` checks it.*
 
 ## Code principles
@@ -133,21 +135,27 @@ In short, `CONTRIBUTING.md` in full:
 - A reviewer of a code change runs mutation testing and reports which broken lines the tests did not notice.
 - Review stops when findings reach diminishing returns; what is left goes to a follow-up, named in the pull request.
 
+## What `make ci` prints
+
+Every step of `make ci` is a target of its own, so `make <rule>` runs one check. The checks that read the tree are the rules of the checker in `tools/guard/`, built once by the step `guard`.
+
+- A check of the tree prints `<rule>: ok` when it passes. When it refuses, every line it prints starts `<rule>: <file>`, with `:<line>` where the fault has a line, or is an indented detail line under one, and its last line is `<rule>: refused: <why> (AGENTS.md, <rule>)`. `schemas-hold` first prints one count line per schema that holds, `schemas-hold: <schema>: ok, <n> accepted, <n> refused`.
+- A toolchain step (`vet`, `lint`, `vulnerabilities`, `secrets`, `race`, `fuzz-seeds`, `coverage-reported`) prints `<step>: ok`, or `<step>: <module>: refused` after the tool's own output. `race`, `fuzz-seeds` and `coverage-reported` read one shared test run per module, the step `tests`, with the race detector and coverage, that also runs every fuzz test on its seed corpus.
+- Every step then prints its time on a line of its own, `time: <step>: <n>s`, whether it passed or refused. No time fails a step.
+- The two lines that name no file are the time lines and `ci-stays-fast: refused: make ci inside make ci`.
+
 ## Known limits of the checks
 
-The four core checks in `make ci` are line-based greps over `core/`, not a type-aware analysis. Three refusals keep the greps reading what the Go tool builds:
+The checks that read the tree are rules of one Go program, `tools/guard/` (`docs/adr/0007-one-checker.md`). It reads Go with the standard library's parser and resolves names without types; it reads `go.mod` files, the `Makefile`, scripts and the requirement text as lines. What that sees, and what it still misses:
 
-- Every check refuses a symbolic link anywhere under `core/`, `core/` and `core/go.mod` included: the greps do not follow a link, and the Go tool does.
-- `core-imports` and `core-no-world` refuse an import path written with an escape, such as `"\x6fs"` for `os`: any backslash on an import line is refused, because a grep reads the path as written and Go reads it unquoted.
-- `core-no-world` refuses cgo and every non-Go source file outside `testdata/` (see the rule above).
-
-What the greps match, and what they miss:
-
-- Every check removes comments before matching: a `//` comment to the end of its line, and a `/* */` comment, which may span lines. A name in a comment passes. Comment markers inside a string or rune literal, a raw string over several lines included, are text, and the code after the literal is checked.
-- A selector the checks name is matched across what Go allows after its dot: spaces, a comment, or a line break (`time.` on one line and `Now()` on the next).
-- An import line is the line of an `import` declaration or a line inside its parentheses, in the form `gofmt` writes. Code `gofmt` would rewrite fails `make ci` anyway, in the module's format step, which reads every Go file of a module outside `testdata/`, a file built only for another system included.
-- `core-no-panic` matches `panic(` as a word in code, string literals included: `"panic("` inside a string is refused. This is a known false positive; write the string another way.
-- `core-no-world` refuses the packages it names by import path, under any alias, so a renamed `os` or `net` is caught. The calls of `time` it names are matched as whole names, so a type such as `time.Ticker` passes; `fmt.Print` is matched as a prefix, for `Printf` and `Println`. The calls of `time` and `fmt` it names are matched only under those package names: a renamed or dot import of `time` or `fmt` gets past it, and the reviewer reads the imports.
+- Every rule reads every `.go` file in its scope, whatever its build constraints, and refuses a file it cannot parse, at the line of the error; no file is skipped. Code `gofmt` would rewrite fails `make ci` anyway, in the `modules` step, which reads every Go file of a module outside `testdata/`.
+- The checker does not follow a symbolic link, and the Go tool does. So every check of the core, and `product-words-once`, refuses a link anywhere under `core/`, `core/` and `core/go.mod` included, and `vectors-independent` refuses one under `vectors/`.
+- An import path written with an escape, such as `"\x6fs"` for `os`, is refused by `core-imports` and `core-no-world` whatever it spells, and by `vectors-independent` in a generator: a reader of the text would not see the path the Go tool reads.
+- A comment is never code, and a string is never an import: `"panic("`, `"os"` or an adapters path inside a string that is not an import path passes. `core-no-world` refuses cgo (`import "C"`) and every non-Go source file outside `testdata/`.
+- `core-no-world` refuses the packages it names by import path, under any name. The calls of `time` it names, and `fmt.Print*`, are refused wherever they are referred to, called or not, through whatever name the file imports `time` or `fmt` under; a dot import of either is refused itself. `os.Getenv` and `os.Open` are matched by the name `os` too. Names are resolved without types, so a local variable that shadows an import's name is read as the package: a false positive, and the fix is another name.
+- `print`, `println` and `panic` are refused as calls of the built-ins. A call through a selector, such as a field `s.print(...)`, passes, and so does a call of a function the package declares at its top level under that name. A parameter or local variable of that name is read as the built-in: a false positive.
 - `core-no-world` allows `fmt.Fprint*` and `fmt.Sprint*`: writing to an `io.Writer` the caller passes in is not printing, and the core cannot reach `os.Stdout` without importing `os`. A standard-library call that reaches the world inside itself, such as `time.LoadLocation` reading the time zone files, is not matched; the reviewer catches it.
-- `core-no-world` matches an import path it refuses, and a call of `print(` or `println(` as a word, anywhere in code, string literals included: `"os"` in a string, or a function of the core's own named `print`, is refused. These are known false positives; spell them another way. A call through a dot, such as a field `s.print(...)`, is not a call of the built-in and passes, and so does `"C"` in a string that is not an import path.
-- `core-imports` matches the import path in any file under `core/`, wherever it appears in code, including in a string.
+- `vectors-independent` reads a generator's imports, and refuses a string literal that spells the path of a package its group tests. A package reached through another package is not seen (`vectors/README.md`, Known limits).
+- `constants-once` and `claims-stop-at-crossing` read string literals as written, escapes included; a constant built from pieces, or a word spelled with an escape, is not seen. `product-words-once` reads a literal's value.
+- `machine-rules-in-ci` reads each `go run` and `go install` as written, and a tool named by a `make` variable from its assignment in the same file; a version spelled through a shell variable or another program is not seen. It reads `ci`'s prerequisites as literal target names: a variable there names nothing.
+- `ci-stays-fast` reads each line of a `.sh` or `_test.go` file. It misses a clear spelled through a variable (`unset "$v"`) or another program, and a `make ci` reached in some way that loses the environment; the workflow's timeout backstops it. A Go `Env` list set on a line that does not name `os.Environ()` is refused, even when the list was built from it elsewhere: build it on that line.

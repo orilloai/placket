@@ -8,7 +8,7 @@ How a change to placket is made and how it is reviewed. The rules a change keeps
 - Read the decision records in `docs/adr/` that touch your change.
 - Know which kind of change you are making. There are three, and they never mix:
   1. **A protocol or code change**: requirement text, formats, vectors, Go code.
-  2. **A rules change**: `AGENTS.md`, this file, `review/`, or a check in `make ci`.
+  2. **A rules change**: `AGENTS.md`, this file, `review/`, or a check in `make ci`: the `Makefile`'s checks and steps and the checker in `tools/guard/` with its tests.
   3. **A workflow change**: anything under `.github/workflows/`.
 
   A rules or workflow change is its own pull request, flagged as such, and only the maintainer merges it. A change cannot alter the checks that judge it.
@@ -25,7 +25,7 @@ How a change to placket is made and how it is reviewed. The rules a change keeps
 
    That commit touches only test files (`*_test.go`, anything under a `testdata/` directory, anything under `tests/`). Every test it adds must fail at that commit and pass, not skip, at the head of the branch; the `lock` check runs each one at both points. Test files change only in such commits: a later need for new or changed tests is a new lock commit, so every test change is in plain sight. Never weaken, skip or delete a test to get a change through.
 4. **Then the code**, in small commits.
-5. **Run `make ci`** before you push. It runs the guardrail checks (`core-no-deps`, `core-imports`, `core-no-world`, `core-no-panic`), then every Go module's format, vet and tests, then `tests/test_*.sh`. A refusal starts with the rule's name and names the file and line; look the name up in `AGENTS.md`. GitHub runs the same `make ci` on every push and pull request, and that run is the one that counts.
+5. **Run `make ci`** before you push. It builds the checker in `tools/guard/` (`guard`) and runs each of its rules, the checks that read the tree (`core-no-deps`, `core-imports`, `core-no-world`, `core-no-panic`, `specs-name-behaviour`, `schemas-hold`, `vectors-independent`, `constants-once`, `product-words-once`, `claims-stop-at-crossing`, `main-is-thin`, `root-module`, `machine-rules-in-ci`, `ci-stays-fast`); then every Go module's format (`modules`), `vet`, `lint`, `vulnerabilities` and `secrets`; one test run per module with the race detector and coverage (`tests`), which `race`, `fuzz-seeds` and `coverage-reported` read; the conformance runner (`runner-no-silent-pass`); and `tests/test_*.sh` (`scripts`). `make <step>` runs one of them. A refusal starts with the rule's name and names the file and line; look the name up in `AGENTS.md`. Every step prints its time. Never run `make ci` from inside a test: a nested run is refused (`ci-stays-fast`). GitHub runs the same `make ci` on every push and pull request, and that run is the one that counts.
 
 ## Commits
 
