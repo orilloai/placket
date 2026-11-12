@@ -12,6 +12,7 @@ package mediator
 
 import (
 	"errors"
+	"fmt"
 	"strconv"
 
 	"github.com/orilloai/placket/core/canonical"
@@ -107,7 +108,8 @@ type question struct {
 }
 
 // A Mediator is one founded Accord and its state. One goroutine owns it: its methods are not safe
-// for concurrent use.
+// for concurrent use. It prints as a fixed text under every format verb, so neither its key nor a part
+// it holds reaches a log by accident (secrets-never-print).
 type Mediator struct {
 	accord    *setup.Accord
 	key       signing.Key
@@ -138,6 +140,15 @@ func Found(set []byte, key signing.Key, at string) (*Mediator, error) {
 		queues:  map[string][][]byte{},
 	}, nil
 }
+
+// Format prints the Mediator as a fixed text, whatever the verb.
+func (Mediator) Format(f fmt.State, _ rune) { _, _ = f.Write([]byte("mediator.Mediator")) }
+
+// GoString prints the Mediator as a fixed text.
+func (Mediator) GoString() string { return "mediator.Mediator" }
+
+// String prints the Mediator as a fixed text.
+func (Mediator) String() string { return "mediator.Mediator" }
 
 // Accord returns the Accord id (setup-contract-5).
 func (m *Mediator) Accord() string { return m.accord.ID() }
