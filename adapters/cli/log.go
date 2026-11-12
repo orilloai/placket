@@ -28,7 +28,7 @@ func logCommand(r *run, args []string) int {
 	if (*format != "json" && *format != "csv") || (*withWords && *noWords) {
 		return r.tool(codeFormat)
 	}
-	list, err := journal.ReadReceipts(*dir)
+	list, err := journal.ReadReceipts(*dir, r.stderr)
 	if err != nil {
 		return r.failed(err)
 	}

@@ -63,7 +63,7 @@ func verifyCommand(r *run, args []string) int {
 	if !r.parse(fs, args, "mediator", "receipts") {
 		return r.tool(codeUsage)
 	}
-	list, err := journal.ReadReceipts(*dir)
+	list, err := journal.ReadReceipts(*dir, r.stderr)
 	if err != nil {
 		return r.failed(err)
 	}

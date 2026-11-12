@@ -8,8 +8,8 @@
 //	                 at the first start and never again. The window holds an exclusive flock on it
 //	                 while it runs; a second window on the same journal is refused, journal-locked.
 //	receipts.jsonl   one receipt per line, the DSSE envelope's JSON exactly as the mediator returned
-//	                 it, in the order written. Appended and synced before the reply; the receipts of
-//	                 one call in one write.
+//	                 it, in the order written. Made empty at the first start, before the accord file;
+//	                 appended and synced before the reply; the receipts of one call in one write.
 //	questions.jsonl  one line per ask, {"deadline","question","roles"}: the question's id, its
 //	                 deadline and the role labels that may answer it, never a byte of its part.
 //	                 Written before the ask's receipt, and kept after the question closes.
@@ -234,8 +234,17 @@ func (j *Journal) RemoveStrays(r *Record) error {
 	return nil
 }
 
-// Found writes the accord file of a journal no window has founded an Accord in.
+// Found writes the accord file of a journal no window has founded an Accord in, and an empty
+// receipts.jsonl beside it, so that a founded journal always has one for its readers.
 func (j *Journal) Found(accord, card, mediatorRef, foundedAt string) error {
+	f, err := os.OpenFile(j.path(FileReceipts), os.O_WRONLY|os.O_CREATE, 0o600)
+	if err != nil {
+		return &Error{Code: CodeJournal, File: FileReceipts}
+	}
+	serr := f.Sync()
+	if err := errors.Join(serr, f.Close()); err != nil {
+		return &Error{Code: CodeJournal, File: FileReceipts}
+	}
 	line, _ := json.Marshal(accordLine{Accord: accord, Card: card, FoundedAt: foundedAt, Mediator: mediatorRef})
 	c, _ := canonical.Form(line)
 	if _, err := j.lock.WriteAt(append(c, '\n'), 0); err != nil || j.lock.Sync() != nil {
@@ -385,10 +394,13 @@ func (j *Journal) Read() (*Record, error) {
 		return nil, &Error{Code: CodeJournal, File: FileAccord}
 	}
 	if len(b) == 0 {
-		for _, name := range []string{FileReceipts, FileQuestions} {
-			if _, err := os.Stat(j.path(name)); !errors.Is(err, fs.ErrNotExist) {
-				return nil, &Error{Code: CodeJournal, File: FileAccord, Line: 1}
-			}
+		// Found writes an empty receipts.jsonl before the accord file: a start stopped between the
+		// two left a journal no Accord was founded in.
+		if fi, err := os.Stat(j.path(FileReceipts)); !errors.Is(err, fs.ErrNotExist) && (err != nil || fi.Size() != 0) {
+			return nil, &Error{Code: CodeJournal, File: FileAccord, Line: 1}
+		}
+		if _, err := os.Stat(j.path(FileQuestions)); !errors.Is(err, fs.ErrNotExist) {
+			return nil, &Error{Code: CodeJournal, File: FileAccord, Line: 1}
 		}
 		return &Record{Empty: true}, nil
 	}
@@ -489,21 +501,23 @@ func (j *Journal) Read() (*Record, error) {
 // repairedLines reads the whole lines of the file name, after removing an unterminated last line
 // with a line on the error writer. A missing file has none.
 func (j *Journal) repairedLines(name string) ([][]byte, error) {
-	f, err := os.OpenFile(j.path(name), os.O_RDWR, 0)
+	b, err := os.ReadFile(j.path(name))
 	if errors.Is(err, fs.ErrNotExist) {
 		return [][]byte{}, nil
 	}
 	if err != nil {
 		return nil, &Error{Code: CodeJournal, File: name}
 	}
-	defer f.Close()
-	b, err := io.ReadAll(f)
-	if err != nil {
-		return nil, &Error{Code: CodeJournal, File: name}
-	}
 	if len(b) > 0 && b[len(b)-1] != '\n' {
+		// Opened for writing only when there is a line to cut.
 		keep := bytes.LastIndexByte(b, '\n') + 1
-		if err := f.Truncate(int64(keep)); err != nil || f.Sync() != nil {
+		f, err := os.OpenFile(j.path(name), os.O_RDWR, 0)
+		if err != nil {
+			return nil, &Error{Code: CodeJournal, File: name}
+		}
+		terr := f.Truncate(int64(keep))
+		serr := f.Sync()
+		if err := errors.Join(terr, serr, f.Close()); err != nil {
 			return nil, &Error{Code: CodeJournal, File: name}
 		}
 		fmt.Fprintf(j.stderr, "journal: %s line %d had no line feed and was never answered; removed\n", name, bytes.Count(b[:keep], []byte{'\n'})+1)
@@ -585,12 +599,11 @@ func (j *Journal) TakeHeld(receiptID string) ([]byte, error) {
 
 // ReadReceipts reads the receipts of the journal directory dir, one per whole line of
 // receipts.jsonl, in file order, as verify, reconcile and log read them. It takes no lock and
-// writes nothing; an unterminated last line was never answered and is left out.
-func ReadReceipts(dir string) ([][]byte, error) {
+// writes nothing. A directory with no receipts.jsonl is no journal: CodeJournal, naming the file,
+// since every window writes one when it founds. A last line with no line feed is left out, with one
+// line on stderr saying the file was cut there.
+func ReadReceipts(dir string, stderr io.Writer) ([][]byte, error) {
 	b, err := os.ReadFile(filepath.Join(dir, FileReceipts))
-	if errors.Is(err, fs.ErrNotExist) {
-		return [][]byte{}, nil
-	}
 	if err != nil {
 		return nil, &Error{Code: CodeJournal, File: FileReceipts}
 	}
@@ -598,6 +611,9 @@ func ReadReceipts(dir string) ([][]byte, error) {
 	for {
 		i := bytes.IndexByte(b, '\n')
 		if i < 0 {
+			if len(b) > 0 {
+				fmt.Fprintf(stderr, "journal: %s line %d has no line feed; the file was cut there, and the line is left out\n", FileReceipts, len(out)+1)
+			}
 			return out, nil
 		}
 		out = append(out, b[:i:i])
