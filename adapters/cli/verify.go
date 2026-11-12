@@ -55,8 +55,9 @@ func (r *run) notVerified(err error) int {
 // verifyCommand is `verify --mediator M --receipts DIR [--founding S]`: receipts.Verify over the
 // journal's receipts under the mediator's reference alone. It prints each predicate on standard
 // output, and on standard error the count, the Accord, the operator and the module when the founding
-// set is given, the counts of verdicts, questions and releases, the claim and the scope line. On a
-// failure it prints the code and the line, and none of these.
+// set is given, the counts of verdicts, questions and releases, the claim and the scope line. A
+// founding set is tool error founding unless it founds the receipts' Accord and its mediator is M.
+// On a failure it prints the code and the line, and none of these.
 func verifyCommand(r *run, args []string) int {
 	fs := flags("verify")
 	med, dir, founding := fs.String("mediator", "", "the mediator"), fs.String("receipts", "", "journal directory"), fs.String("founding", "", "the founding set")
@@ -90,8 +91,9 @@ func verifyCommand(r *run, args []string) int {
 		if len(st) > 0 {
 			at = st[0].Predicate.At
 		}
+		// The set must be the journal's Accord and name the key the receipts were verified under.
 		a, err := setup.Found(set, at)
-		if err != nil || a.ID() != accord {
+		if err != nil || a.ID() != accord || a.Mediator() != *med {
 			return r.tool(codeFound)
 		}
 		module = moduleLines(set)
