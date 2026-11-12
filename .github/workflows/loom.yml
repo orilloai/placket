@@ -93,6 +93,9 @@ jobs:
     # A unit's pull request head was already checked on its wip/ push; the run on the PR would repeat it.
     if: github.event_name == 'push' || !startsWith(github.head_ref, 'unit/')
     runs-on: ubuntu-24.04
+    # Twice make ci's three-minute target: a run that slows to this is stopped, and the log's
+    # per-step time lines name the slow step.
+    timeout-minutes: 6
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
