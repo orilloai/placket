@@ -186,6 +186,9 @@ func (m *Mediator) Get(caller string) ([]byte, error) {
 		return nil, nil
 	}
 	d := q[0]
+	// The queue's array keeps no reference to a fetched delivery: the mediator holds no body or salt
+	// of it once fetched (crossing-3).
+	q[0] = nil
 	if len(q) == 1 {
 		delete(m.queues, caller)
 	} else {
