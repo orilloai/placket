@@ -179,7 +179,7 @@
   },
   "maybe-10": {
     "open": "M2",
-    "scenarios": {"an accept releases the asked part with its digest unchanged": {"open": "M2"}, "a change returned to the asker and released to the receiver under one digest": {"open": "M2"}, "a release the module blocks queues nothing": {"open": "M2"}, "a release receipt echoes the question's envelope and counts as an echo for the asker only": {"vectors": ["receipts/a-release-counts-as-an-echo-for-the-asker-only", "receipts/a-resolution-counts-as-an-echo-for-the-asker-only"], "rest": {"open": "M2", "what": "that a mediator's release receipt echoes the question's envelope, which needs an answer"}}, "a decline releases nothing": {"open": "M2"}}
+    "scenarios": {"an accept releases the asked part with its digest unchanged": {"open": "M2"}, "a change returned to the asker and released to the receiver under one digest": {"open": "M2"}, "an accept's release is decided again and passes": {"open": "M2"}, "a release receipt echoes the question's envelope and counts as an echo for the asker only": {"vectors": ["receipts/a-release-counts-as-an-echo-for-the-asker-only", "receipts/a-resolution-counts-as-an-echo-for-the-asker-only"], "rest": {"open": "M2", "what": "that a mediator's release receipt echoes the question's envelope, which needs an answer"}}, "a decline releases nothing": {"open": "M2"}}
   },
   "receipt-1": {
     "vectors": ["receipts/three-gives-are-echoed", "receipts/a-chain-verifies", "receipts/a-statement-of-another-type"],

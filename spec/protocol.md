@@ -938,11 +938,11 @@ A release receipt consumes no sequence number of any sender. A question has at m
 - When the decider changes it, asking for release
 - Then two resolution receipts are written, from the decider to the proposer and from the decider to the applier, both `pass`, `ok`, of kind `changed-version` with one digest, both echoing the question's envelope; the version is queued for both; and the proposal is never queued for the applier
 
-#### Scenario: a release the module blocks queues nothing
+#### Scenario: an accept's release is decided again and passes
 
-- Given an accepted answer that passed, and a decision module of a later version, one that loads a check, that returns `block` for the held part at the release
-- When the release is decided
-- Then the release receipt is a crossing receipt from the asker to the receiver, `block` with the module's reason, and nothing is queued for the receiver; the answer stays queued for the asker
+- Given an open question in the ask-and-log Accord, opened by the proposer's `maybe` term for a proposal to the applier
+- When the decider accepts it, asking for release, and the proposal is decided again from the proposer to the applier
+- Then that decision is `escalate` once more, which is not a block, so the release receipt is `pass`, `ok`, the proposal is queued for the applier, and the answer stays queued for the proposer
 
 #### Scenario: a release receipt echoes the question's envelope and counts as an echo for the asker only
 
