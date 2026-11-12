@@ -1,0 +1,78 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://placket.dev/schema/0.1/message.json",
+  "title": "Crossing message",
+  "description": "An A2A message (A2A protocol 1.0) carrying exactly one part and the crossing extension, https://placket.dev/crossing/0.1 (crossing-1). The extension names the Accord, the receiver, and optionally the receipt the message answers (re), a topic, and the reserved gate, read for shape only.",
+  "type": "object",
+  "properties": {
+    "messageId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "role": {
+      "enum": [
+        "ROLE_AGENT",
+        "ROLE_USER"
+      ]
+    },
+    "parts": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 1,
+      "items": {
+        "$ref": "part.json"
+      }
+    },
+    "extensions": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 1,
+      "items": {
+        "const": "https://placket.dev/crossing/0.1"
+      }
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "https://placket.dev/crossing/0.1": {
+          "type": "object",
+          "properties": {
+            "accord": {
+              "$ref": "hash.json"
+            },
+            "to": {
+              "$ref": "reference.json"
+            },
+            "re": {
+              "$ref": "hash.json"
+            },
+            "topic": {
+              "type": "string",
+              "minLength": 1
+            },
+            "gate": {
+              "$ref": "term.json#/$defs/label"
+            }
+          },
+          "required": [
+            "accord",
+            "to"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "https://placket.dev/crossing/0.1"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "messageId",
+    "role",
+    "parts",
+    "extensions",
+    "metadata"
+  ],
+  "additionalProperties": false
+}

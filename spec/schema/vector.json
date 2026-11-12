@@ -1,0 +1,1303 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://placket.dev/schema/0.1/vector.json",
+  "title": "Conformance vector",
+  "description": "One conformance vector (conformance-vectors-1 to conformance-vectors-11). Every object is closed. The header is vector, spec and tests; operation says what the vector runs and which other members it holds.",
+  "type": "object",
+  "properties": {
+    "vector": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*/[a-z0-9]+(?:-[a-z0-9]+)*$"
+    },
+    "spec": {
+      "const": "0.1"
+    },
+    "tests": {
+      "type": "string",
+      "pattern": "^[^\\n]*[^\\s\\n][^\\n]*$"
+    },
+    "operation": {
+      "enum": [
+        "canonical",
+        "sign",
+        "verify-signature",
+        "found",
+        "scenario",
+        "verify",
+        "reconcile"
+      ]
+    },
+    "keys": {
+      "type": "object",
+      "minProperties": 1,
+      "propertyNames": {
+        "$ref": "term.json#/$defs/label"
+      },
+      "additionalProperties": {
+        "type": "string",
+        "pattern": "^[0-9a-f]{64}$"
+      }
+    },
+    "input": true,
+    "inputText": {
+      "type": "string"
+    },
+    "inputHex": {
+      "$ref": "#/$defs/hex"
+    },
+    "typeUri": {
+      "type": "string"
+    },
+    "signer": {
+      "$ref": "#/$defs/name"
+    },
+    "reference": {
+      "type": "string"
+    },
+    "mediator": {
+      "$ref": "#/$defs/name"
+    },
+    "founding": {
+      "$ref": "founding.json"
+    },
+    "foundedAt": {
+      "$ref": "timestamp.json"
+    },
+    "steps": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/step"
+      }
+    },
+    "final": {
+      "$ref": "#/$defs/final"
+    },
+    "receipts": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/receiptBytes"
+      }
+    },
+    "accord": {
+      "type": "string"
+    },
+    "card": {
+      "type": "string"
+    },
+    "kept": {
+      "type": "object",
+      "minProperties": 1,
+      "propertyNames": {
+        "$ref": "term.json#/$defs/label"
+      },
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "envelopes": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "seq": {
+                  "$ref": "predicate.json#/$defs/seq"
+                },
+                "hash": {
+                  "$ref": "hash.json"
+                }
+              },
+              "required": [
+                "seq",
+                "hash"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "delivered": {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/receiptBytes"
+            }
+          }
+        },
+        "required": [
+          "envelopes",
+          "delivered"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "expect": {
+      "type": "object"
+    },
+    "parties": {
+      "type": "object",
+      "minProperties": 1,
+      "propertyNames": {
+        "$ref": "term.json#/$defs/label"
+      },
+      "additionalProperties": {
+        "$ref": "reference.json"
+      }
+    }
+  },
+  "required": [
+    "vector",
+    "spec",
+    "tests",
+    "operation"
+  ],
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "operation": {
+            "const": "canonical"
+          }
+        }
+      },
+      "then": {
+        "propertyNames": {
+          "enum": [
+            "vector",
+            "spec",
+            "tests",
+            "operation",
+            "inputText",
+            "inputHex",
+            "expect"
+          ]
+        },
+        "required": [
+          "expect"
+        ],
+        "oneOf": [
+          {
+            "required": [
+              "inputText"
+            ]
+          },
+          {
+            "required": [
+              "inputHex"
+            ]
+          }
+        ],
+        "properties": {
+          "expect": {
+            "$ref": "#/$defs/canonicalExpect"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "operation": {
+            "const": "sign"
+          }
+        }
+      },
+      "then": {
+        "propertyNames": {
+          "enum": [
+            "vector",
+            "spec",
+            "tests",
+            "operation",
+            "keys",
+            "input",
+            "typeUri",
+            "signer",
+            "expect"
+          ]
+        },
+        "required": [
+          "keys",
+          "input",
+          "typeUri",
+          "signer",
+          "expect"
+        ],
+        "properties": {
+          "expect": {
+            "$ref": "#/$defs/signExpect"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "operation": {
+            "const": "verify-signature"
+          }
+        }
+      },
+      "then": {
+        "propertyNames": {
+          "enum": [
+            "vector",
+            "spec",
+            "tests",
+            "operation",
+            "input",
+            "inputText",
+            "inputHex",
+            "typeUri",
+            "reference",
+            "expect"
+          ]
+        },
+        "required": [
+          "typeUri",
+          "reference",
+          "expect"
+        ],
+        "oneOf": [
+          {
+            "required": [
+              "input"
+            ]
+          },
+          {
+            "required": [
+              "inputText"
+            ]
+          },
+          {
+            "required": [
+              "inputHex"
+            ]
+          }
+        ],
+        "properties": {
+          "expect": {
+            "$ref": "#/$defs/verifySignatureExpect"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "operation": {
+            "const": "found"
+          }
+        }
+      },
+      "then": {
+        "propertyNames": {
+          "enum": [
+            "vector",
+            "spec",
+            "tests",
+            "operation",
+            "input",
+            "inputText",
+            "inputHex",
+            "foundedAt",
+            "expect"
+          ]
+        },
+        "required": [
+          "foundedAt",
+          "expect"
+        ],
+        "oneOf": [
+          {
+            "required": [
+              "input"
+            ]
+          },
+          {
+            "required": [
+              "inputText"
+            ]
+          },
+          {
+            "required": [
+              "inputHex"
+            ]
+          }
+        ],
+        "properties": {
+          "expect": {
+            "$ref": "#/$defs/foundExpect"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "operation": {
+            "const": "scenario"
+          }
+        }
+      },
+      "then": {
+        "propertyNames": {
+          "enum": [
+            "vector",
+            "spec",
+            "tests",
+            "operation",
+            "keys",
+            "mediator",
+            "founding",
+            "foundedAt",
+            "steps",
+            "final"
+          ]
+        },
+        "required": [
+          "keys",
+          "mediator",
+          "founding",
+          "foundedAt",
+          "steps",
+          "final"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "operation": {
+            "const": "verify"
+          }
+        }
+      },
+      "then": {
+        "propertyNames": {
+          "enum": [
+            "vector",
+            "spec",
+            "tests",
+            "operation",
+            "receipts",
+            "reference",
+            "expect"
+          ]
+        },
+        "required": [
+          "receipts",
+          "reference",
+          "expect"
+        ],
+        "properties": {
+          "expect": {
+            "$ref": "#/$defs/verifyExpect"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "operation": {
+            "const": "reconcile"
+          }
+        }
+      },
+      "then": {
+        "propertyNames": {
+          "enum": [
+            "vector",
+            "spec",
+            "tests",
+            "operation",
+            "receipts",
+            "reference",
+            "accord",
+            "card",
+            "kept",
+            "expect",
+            "parties"
+          ]
+        },
+        "required": [
+          "receipts",
+          "reference",
+          "accord",
+          "card",
+          "kept",
+          "expect",
+          "parties"
+        ],
+        "properties": {
+          "expect": {
+            "$ref": "#/$defs/reconcileExpect"
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "hex": {
+      "type": "string",
+      "pattern": "^(?:[0-9a-f]{2})*$"
+    },
+    "name": {
+      "$ref": "term.json#/$defs/label"
+    },
+    "receiptBytes": {
+      "type": "object",
+      "properties": {
+        "receipt": true,
+        "receiptText": {
+          "type": "string"
+        },
+        "receiptHex": {
+          "$ref": "#/$defs/hex"
+        }
+      },
+      "minProperties": 1,
+      "maxProperties": 1,
+      "additionalProperties": false
+    },
+    "canonicalExpect": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "canonicalHex": {
+              "$ref": "#/$defs/hex",
+              "minLength": 2
+            },
+            "hash": {
+              "$ref": "hash.json"
+            }
+          },
+          "required": [
+            "canonicalHex",
+            "hash"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "code": {
+              "enum": [
+                "invalid-json",
+                "invalid-string",
+                "duplicate-key",
+                "fractional-number",
+                "unsafe-integer"
+              ]
+            },
+            "offset": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            }
+          },
+          "required": [
+            "code",
+            "offset"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "signExpect": {
+      "type": "object",
+      "properties": {
+        "signingBytesHex": {
+          "$ref": "#/$defs/hex",
+          "minLength": 2
+        },
+        "sig": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{128}$"
+        }
+      },
+      "required": [
+        "signingBytesHex",
+        "sig"
+      ],
+      "additionalProperties": false
+    },
+    "verifySignatureExpect": {
+      "type": "object",
+      "properties": {
+        "valid": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "valid"
+      ],
+      "additionalProperties": false
+    },
+    "foundExpect": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "accord": {
+              "$ref": "hash.json"
+            },
+            "card": {
+              "$ref": "hash.json"
+            }
+          },
+          "required": [
+            "accord",
+            "card"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "code": {
+              "enum": [
+                "not-canonical",
+                "invalid-shape",
+                "binding-duplicate",
+                "actor-reference",
+                "declaration-signature",
+                "term-invalid",
+                "maybe-without-resolve",
+                "check-unknown",
+                "binding-missing",
+                "binding-principal",
+                "binding-signature",
+                "binding-mediator",
+                "binding-expired",
+                "declaration-missing",
+                "role-missing"
+              ]
+            }
+          },
+          "required": [
+            "code"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "verifyCode": {
+      "enum": [
+        "reference",
+        "not-canonical",
+        "payload-type",
+        "signature",
+        "statement-type",
+        "mediator",
+        "chain",
+        "release"
+      ]
+    },
+    "verifyExpect": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "verified": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          "required": [
+            "verified"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "code": {
+              "const": "reference"
+            }
+          },
+          "required": [
+            "code"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "code": {
+              "$ref": "#/$defs/verifyCode",
+              "not": {
+                "const": "reference"
+              }
+            },
+            "index": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          "required": [
+            "code",
+            "index"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "reconcileExpect": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "removed": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/actorReceipt"
+              }
+            },
+            "unrecorded": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/actorReceipt"
+              }
+            },
+            "missing": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "actor": {
+                    "$ref": "#/$defs/name"
+                  },
+                  "seq": {
+                    "$ref": "predicate.json#/$defs/seq"
+                  }
+                },
+                "required": [
+                  "actor",
+                  "seq"
+                ],
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": [
+            "removed",
+            "unrecorded",
+            "missing"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "code": {
+              "const": "reference"
+            }
+          },
+          "required": [
+            "code"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "code": {
+              "enum": [
+                "not-canonical",
+                "payload-type",
+                "signature",
+                "statement-type",
+                "mediator",
+                "chain",
+                "release",
+                "presented"
+              ]
+            },
+            "index": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          "required": [
+            "code",
+            "index"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "code": {
+              "const": "kept"
+            },
+            "actor": {
+              "$ref": "#/$defs/name"
+            },
+            "index": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          "required": [
+            "code",
+            "actor",
+            "index"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "actorReceipt": {
+      "type": "object",
+      "properties": {
+        "actor": {
+          "$ref": "#/$defs/name"
+        },
+        "receiptId": {
+          "$ref": "hash.json"
+        }
+      },
+      "required": [
+        "actor",
+        "receiptId"
+      ],
+      "additionalProperties": false
+    },
+    "outcome": {
+      "type": "object",
+      "properties": {
+        "verdict": {
+          "enum": [
+            "pass",
+            "block",
+            "escalate"
+          ]
+        },
+        "reason": {
+          "$ref": "predicate.json#/properties/reason"
+        },
+        "receiptId": {
+          "$ref": "hash.json"
+        },
+        "receipt": {
+          "$ref": "receipt.json"
+        }
+      },
+      "required": [
+        "verdict",
+        "reason",
+        "receiptId",
+        "receipt"
+      ],
+      "additionalProperties": false
+    },
+    "rejection": {
+      "type": "object",
+      "properties": {
+        "rejection": {
+          "enum": [
+            "not-a-member",
+            "envelope-signature",
+            "not-canonical",
+            "extension-missing",
+            "receiver-unknown",
+            "accord-mismatch",
+            "envelope-hash",
+            "envelope-sequence",
+            "one-part",
+            "one-body",
+            "url-unsupported",
+            "part-metadata",
+            "no-open-question",
+            "not-an-answerer"
+          ]
+        }
+      },
+      "required": [
+        "rejection"
+      ],
+      "additionalProperties": false
+    },
+    "step": {
+      "type": "object",
+      "properties": {
+        "op": {
+          "enum": [
+            "give",
+            "get",
+            "resolve",
+            "tick"
+          ]
+        }
+      },
+      "required": [
+        "op"
+      ],
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "op": {
+                "const": "give"
+              }
+            }
+          },
+          "then": {
+            "$ref": "#/$defs/give"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "op": {
+                "const": "get"
+              }
+            }
+          },
+          "then": {
+            "$ref": "#/$defs/get"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "op": {
+                "const": "resolve"
+              }
+            }
+          },
+          "then": {
+            "$ref": "#/$defs/resolve"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "op": {
+                "const": "tick"
+              }
+            }
+          },
+          "then": {
+            "$ref": "#/$defs/tick"
+          }
+        }
+      ]
+    },
+    "give": {
+      "properties": {
+        "op": true,
+        "at": {
+          "$ref": "timestamp.json"
+        },
+        "as": {
+          "$ref": "#/$defs/name"
+        },
+        "message": true,
+        "messageText": {
+          "type": "string"
+        },
+        "messageHex": {
+          "$ref": "#/$defs/hex"
+        },
+        "envelope": true,
+        "envelopeText": {
+          "type": "string"
+        },
+        "envelopeHex": {
+          "$ref": "#/$defs/hex"
+        },
+        "expect": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/outcome"
+            },
+            {
+              "$ref": "#/$defs/rejection"
+            }
+          ]
+        }
+      },
+      "required": [
+        "at",
+        "as",
+        "expect"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "oneOf": [
+            {
+              "required": [
+                "message"
+              ]
+            },
+            {
+              "required": [
+                "messageText"
+              ]
+            },
+            {
+              "required": [
+                "messageHex"
+              ]
+            }
+          ]
+        },
+        {
+          "oneOf": [
+            {
+              "required": [
+                "envelope"
+              ]
+            },
+            {
+              "required": [
+                "envelopeText"
+              ]
+            },
+            {
+              "required": [
+                "envelopeHex"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "get": {
+      "properties": {
+        "op": true,
+        "as": {
+          "$ref": "#/$defs/name"
+        },
+        "expect": {
+          "oneOf": [
+            {
+              "type": "object",
+              "properties": {
+                "delivery": {
+                  "$ref": "delivery.json"
+                }
+              },
+              "required": [
+                "delivery"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "none": {
+                  "const": true
+                }
+              },
+              "required": [
+                "none"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "$ref": "#/$defs/rejection"
+            }
+          ]
+        }
+      },
+      "required": [
+        "as",
+        "expect"
+      ],
+      "additionalProperties": false
+    },
+    "resolve": {
+      "properties": {
+        "op": true,
+        "at": {
+          "$ref": "timestamp.json"
+        },
+        "question": {
+          "$ref": "hash.json"
+        },
+        "action": {
+          "enum": [
+            "accepted",
+            "changed",
+            "declined",
+            "cancelled",
+            "undeliverable"
+          ]
+        },
+        "by": {
+          "$ref": "#/$defs/name"
+        },
+        "content": {
+          "type": "object",
+          "properties": {
+            "answer": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "answer"
+          ],
+          "additionalProperties": false
+        },
+        "salt": {
+          "$ref": "part.json#/$defs/salt"
+        },
+        "release": {
+          "const": true
+        },
+        "expect": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/resolveOutcome"
+            },
+            {
+              "$ref": "#/$defs/rejection"
+            }
+          ]
+        }
+      },
+      "required": [
+        "at",
+        "question",
+        "action",
+        "expect"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "action": {
+                "enum": [
+                  "accepted",
+                  "changed"
+                ]
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "content",
+              "salt"
+            ]
+          },
+          "else": {
+            "not": {
+              "anyOf": [
+                {
+                  "required": [
+                    "content"
+                  ]
+                },
+                {
+                  "required": [
+                    "salt"
+                  ]
+                },
+                {
+                  "required": [
+                    "release"
+                  ]
+                }
+              ]
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "action": {
+                "const": "changed"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "content": {
+                "properties": {
+                  "answer": {
+                    "minLength": 1
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "action": {
+                "const": "undeliverable"
+              }
+            }
+          },
+          "then": {
+            "not": {
+              "required": [
+                "by"
+              ]
+            }
+          }
+        },
+        {
+          "if": {
+            "not": {
+              "required": [
+                "release"
+              ]
+            }
+          },
+          "then": {
+            "properties": {
+              "expect": {
+                "not": {
+                  "required": [
+                    "release"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "tick": {
+      "properties": {
+        "op": true,
+        "at": {
+          "$ref": "timestamp.json"
+        },
+        "expect": {
+          "type": "object",
+          "properties": {
+            "receipts": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/outcome"
+              }
+            }
+          },
+          "required": [
+            "receipts"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "at",
+        "expect"
+      ],
+      "additionalProperties": false
+    },
+    "final": {
+      "type": "object",
+      "properties": {
+        "receipts": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "receiptId": {
+                "$ref": "hash.json"
+              },
+              "receipt": {
+                "$ref": "receipt.json"
+              }
+            },
+            "required": [
+              "receiptId",
+              "receipt"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "delivered": {
+          "type": "object",
+          "propertyNames": {
+            "$ref": "term.json#/$defs/label"
+          },
+          "additionalProperties": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "$ref": "delivery.json"
+            }
+          }
+        },
+        "pending": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "$ref": "hash.json"
+          }
+        }
+      },
+      "required": [
+        "receipts",
+        "delivered",
+        "pending"
+      ],
+      "additionalProperties": false
+    },
+    "resolveOutcome": {
+      "type": "object",
+      "properties": {
+        "verdict": {
+          "enum": [
+            "pass",
+            "block"
+          ]
+        },
+        "reason": {
+          "$ref": "predicate.json#/properties/reason"
+        },
+        "receiptId": {
+          "$ref": "hash.json"
+        },
+        "receipt": {
+          "$ref": "receipt.json"
+        },
+        "release": {
+          "$ref": "#/$defs/releaseOutcome"
+        }
+      },
+      "required": [
+        "verdict",
+        "reason",
+        "receiptId",
+        "receipt"
+      ],
+      "additionalProperties": false
+    },
+    "releaseOutcome": {
+      "type": "object",
+      "properties": {
+        "verdict": {
+          "enum": [
+            "pass",
+            "block"
+          ]
+        },
+        "reason": {
+          "$ref": "predicate.json#/properties/reason"
+        },
+        "receiptId": {
+          "$ref": "hash.json"
+        },
+        "receipt": {
+          "$ref": "receipt.json"
+        }
+      },
+      "required": [
+        "verdict",
+        "reason",
+        "receiptId",
+        "receipt"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

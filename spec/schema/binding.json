@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://placket.dev/schema/0.1/binding.json",
+  "title": "Binding",
+  "description": "A principal's statement of the roles an actor holds under one mediator until a time, signed by the principal under https://placket.dev/binding/0.1 (setup-contract-2, setup-contract-3).",
+  "type": "object",
+  "properties": {
+    "actor": {
+      "$ref": "reference.json"
+    },
+    "principal": {
+      "$ref": "reference.json"
+    },
+    "roles": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "$ref": "term.json#/$defs/label"
+      }
+    },
+    "mediator": {
+      "$ref": "reference.json"
+    },
+    "until": {
+      "$ref": "timestamp.json"
+    },
+    "sig": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{128}$"
+    }
+  },
+  "required": [
+    "actor",
+    "principal",
+    "roles",
+    "mediator",
+    "until",
+    "sig"
+  ],
+  "additionalProperties": false
+}

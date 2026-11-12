@@ -1,0 +1,79 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://placket.dev/schema/0.1/founding.json",
+  "title": "Founding set",
+  "description": "Everything an Accord is founded from; its typed hash is the Accord id (setup-contract-5). The order of declarations and bindings, by actor reference, is a rule of the text (setup-contract-10) that a schema cannot state.",
+  "type": "object",
+  "properties": {
+    "policy": {
+      "type": "object",
+      "properties": {
+        "roles": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "$ref": "term.json#/$defs/label"
+          }
+        },
+        "principals": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "reference.json"
+          }
+        }
+      },
+      "required": [
+        "roles",
+        "principals"
+      ],
+      "additionalProperties": false
+    },
+    "mediator": {
+      "type": "object",
+      "properties": {
+        "actor": {
+          "$ref": "reference.json"
+        },
+        "operator": {
+          "$ref": "reference.json"
+        },
+        "runs": {
+          "const": "process"
+        }
+      },
+      "required": [
+        "actor",
+        "operator",
+        "runs"
+      ],
+      "additionalProperties": false
+    },
+    "card": {
+      "$ref": "card.json"
+    },
+    "declarations": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "declaration.json"
+      }
+    },
+    "bindings": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "binding.json"
+      }
+    }
+  },
+  "required": [
+    "policy",
+    "mediator",
+    "card",
+    "declarations",
+    "bindings"
+  ],
+  "additionalProperties": false
+}

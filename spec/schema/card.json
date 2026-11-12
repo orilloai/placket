@@ -1,0 +1,75 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://placket.dev/schema/0.1/card.json",
+  "title": "Card",
+  "description": "What can change a verdict under an Accord, hashed into every receipt (setup-contract-4): the protocol version, the decision module's kernel, and two reserved lists. judges is read for shape only. checks names the checks the module loads; it is empty in v1.",
+  "type": "object",
+  "properties": {
+    "spec": {
+      "const": "0.1"
+    },
+    "kernel": {
+      "type": "object",
+      "properties": {
+        "version": {
+          "$ref": "#/$defs/version"
+        },
+        "hash": {
+          "$ref": "hash.json"
+        }
+      },
+      "required": [
+        "version",
+        "hash"
+      ],
+      "additionalProperties": false
+    },
+    "judges": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/component"
+      }
+    },
+    "checks": {
+      "type": "array",
+      "maxItems": 0,
+      "items": {
+        "$ref": "#/$defs/component"
+      }
+    }
+  },
+  "required": [
+    "spec",
+    "kernel",
+    "judges",
+    "checks"
+  ],
+  "additionalProperties": false,
+  "$defs": {
+    "version": {
+      "type": "string",
+      "maxLength": 64,
+      "pattern": "^[0-9a-z]+(?:[.+-][0-9a-z]+)*$"
+    },
+    "component": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "$ref": "term.json#/$defs/label"
+        },
+        "version": {
+          "$ref": "#/$defs/version"
+        },
+        "hash": {
+          "$ref": "hash.json"
+        }
+      },
+      "required": [
+        "name",
+        "version",
+        "hash"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

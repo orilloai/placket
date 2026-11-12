@@ -1,0 +1,190 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://placket.dev/schema/0.1/predicate.json",
+  "title": "Receipt predicate",
+  "description": "What a receipt states about one decision (receipt-3, receipt-4, receipt-9, receipt-10, crossing-5). A crossing receipt's verdict is pass, block or escalate; a resolution receipt's is pass or block. pass goes with reason ok and escalate with maybe; block goes with any other reason, maybe included. declined, cancelled, timeout and undeliverable are resolution reasons only. prev is absent exactly when seq is 1. envelope names the envelope a receipt echoes: the key that signed it, its seq and its hash.",
+  "type": "object",
+  "properties": {
+    "accord": {
+      "$ref": "hash.json"
+    },
+    "card": {
+      "$ref": "hash.json"
+    },
+    "mediator": {
+      "$ref": "reference.json"
+    },
+    "kind": {
+      "enum": [
+        "crossing",
+        "resolution"
+      ]
+    },
+    "from": {
+      "$ref": "reference.json"
+    },
+    "to": {
+      "$ref": "reference.json"
+    },
+    "seq": {
+      "$ref": "#/$defs/seq"
+    },
+    "prev": {
+      "$ref": "hash.json"
+    },
+    "at": {
+      "$ref": "timestamp.json"
+    },
+    "envelope": {
+      "type": "object",
+      "properties": {
+        "sender": {
+          "$ref": "reference.json"
+        },
+        "seq": {
+          "$ref": "#/$defs/seq"
+        },
+        "hash": {
+          "$ref": "hash.json"
+        }
+      },
+      "required": [
+        "sender",
+        "seq",
+        "hash"
+      ],
+      "additionalProperties": false
+    },
+    "verdict": {
+      "enum": [
+        "pass",
+        "block",
+        "escalate"
+      ]
+    },
+    "reason": {
+      "type": "string",
+      "pattern": "^(?:ok|no-match|maybe|declined|cancelled|timeout|undeliverable|check:[a-z0-9]+(?:-[a-z0-9]+)*)$"
+    }
+  },
+  "required": [
+    "accord",
+    "card",
+    "mediator",
+    "kind",
+    "from",
+    "to",
+    "seq",
+    "at",
+    "envelope",
+    "verdict",
+    "reason"
+  ],
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "seq": {
+            "const": 1
+          }
+        }
+      },
+      "then": {
+        "not": {
+          "required": [
+            "prev"
+          ]
+        }
+      },
+      "else": {
+        "required": [
+          "prev"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "verdict": {
+            "const": "pass"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "reason": {
+            "const": "ok"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "verdict": {
+            "const": "escalate"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "kind": {
+            "const": "crossing"
+          },
+          "reason": {
+            "const": "maybe"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "verdict": {
+            "const": "block"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "reason": {
+            "not": {
+              "const": "ok"
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "kind": {
+            "const": "crossing"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "reason": {
+            "not": {
+              "enum": [
+                "declined",
+                "cancelled",
+                "timeout",
+                "undeliverable"
+              ]
+            }
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "seq": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 9007199254740991
+    }
+  }
+}
