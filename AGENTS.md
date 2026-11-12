@@ -22,8 +22,7 @@ Placket v1 is built in four milestones, each resting on the one before:
 | `core/` | The Go core, a module of its own (`github.com/orilloai/placket/core`) with no dependency. One package per protocol capability, named for it. Nothing that touches the world. | M0 (empty); packages from M1 |
 | `docs/adr/` | Decision records, `NNNN-<slug>.md` from 0001: any decision that spans packages or would be expensive to reverse, written ahead of the change built on it. | M0 |
 | `tests/` | The repository's shell tests, `tests/test_*.sh`, which `make ci` runs; their fixtures under `tests/testdata/`. | M0 |
-| `spec/requirements/` | The normative requirement text, one file per capability. | M0 |
-| `spec/schema/`, `spec/frozen-formats.md` | The frozen formats: their schemas, and the register of what binds each. | M0 |
+| `spec/` | The protocol: `protocol.md`, the normative requirement text, one document organized by operation; `schema/` and `frozen-formats.md`, the frozen formats' schemas and the register of what binds each. | M0 |
 | `vectors/` | Conformance vectors, generated, and the coverage list. | M0 (format, coverage list); M1 and M2 (vectors) |
 | `review/` | The review passes. The maintainer's to change. | M0 |
 | `adapters/` | Doors and stores: the socket door, the journal, key files, the state directory, the log export, the command line. | M3 |
@@ -132,7 +131,7 @@ Fixtures for any check go under a `testdata/` directory. Go's tools skip it, and
 In short, `CONTRIBUTING.md` in full:
 
 - **Tests first.** A change's tests land in their own commit, marked `Loom-Lock: tests`, before the code. Each new test fails at that commit and passes at the head. Tests change only in such a commit, in plain sight.
-- **Behaviour is written down before it is coded.** A change in what placket does starts in the requirement text (`spec/requirements/`) and the vectors (`vectors/`); code alone is never where behaviour lives.
+- **Behaviour is written down before it is coded.** A change in what placket does starts in the requirement text (`spec/protocol.md`) and the vectors (`vectors/`); code alone is never where behaviour lives.
 - **Changes to rules, workflows or review stand alone**, and only the maintainer merges them: this file, `CONTRIBUTING.md`, `.github/workflows/`, `review/`, and the checks in `make ci`. Never part of a feature change.
 - **`make ci` passes** before a push. GitHub's run is the one that counts.
 - **Decisions are recorded first** (`decisions-recorded-first`), and a change that would alter intent stops for the maintainer (`deltas-stop-for-intent`).
