@@ -1,0 +1,31 @@
+{
+  "actor": "ed25519:810950cac0d0a30abe5ced6fdf42b93bb3da913b29d142a20ef043ca9691cd31",
+  "sig": "107c2c7a6069a2d7961e52017678264b75f27be4d70999454dfb07dfe08edd7502128e88fa9b2fbcd9f710a21633f37409027a23f38c80368e8a4e002abaf604",
+  "terms": [
+    {
+      "dir": "get",
+      "select": {
+        "kind": [
+          "proposal"
+        ]
+      },
+      "stance": "want",
+      "with": [
+        "role:proposer"
+      ]
+    },
+    {
+      "dir": "get",
+      "select": {
+        "kind": [
+          "changed-version"
+        ]
+      },
+      "stance": "want",
+      "with": [
+        "role:decider"
+      ]
+    }
+  ],
+  "by": "ed25519:534b70c488c3bdeb57b19682f11c7d18cdb43087760a253b4fb0cb8f6d251b99"
+}

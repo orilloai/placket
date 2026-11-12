@@ -1,0 +1,11 @@
+{
+  "stance": "want",
+  "dir": "get",
+  "with": [],
+  "select": {
+    "kind": [
+      "answer",
+      "changed-version"
+    ]
+  }
+}

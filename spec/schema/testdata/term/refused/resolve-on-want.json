@@ -1,0 +1,19 @@
+{
+  "stance": "want",
+  "dir": "get",
+  "with": [
+    "role:decider"
+  ],
+  "select": {
+    "kind": [
+      "answer",
+      "changed-version"
+    ]
+  },
+  "resolve": {
+    "timeout": 3600,
+    "to": [
+      "role:decider"
+    ]
+  }
+}

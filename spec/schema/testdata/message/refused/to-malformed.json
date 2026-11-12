@@ -1,0 +1,25 @@
+{
+  "extensions": [
+    "https://placket.dev/crossing/0.1"
+  ],
+  "messageId": "6f1c2a4e-8d3b-4f7a-9c21-0b5e7d9a3f10",
+  "metadata": {
+    "https://placket.dev/crossing/0.1": {
+      "accord": "sha256:26f6de282cb5b5b3f9e4d93046306b95974e796572c6aee9e10aec0652567189",
+      "to": "applier",
+      "topic": "invoices"
+    }
+  },
+  "parts": [
+    {
+      "metadata": {
+        "https://placket.dev/crossing/0.1": {
+          "kind": "proposal",
+          "salt": "e3b0c44298fc1c149afbf4c8996fb924"
+        }
+      },
+      "text": "Rename the field total to amount in invoices."
+    }
+  ],
+  "role": "ROLE_AGENT"
+}

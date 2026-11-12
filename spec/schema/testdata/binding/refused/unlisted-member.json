@@ -1,0 +1,11 @@
+{
+  "actor": "ed25519:810950cac0d0a30abe5ced6fdf42b93bb3da913b29d142a20ef043ca9691cd31",
+  "mediator": "ed25519:22cdf8245c3ce6fb391597095e59b2eb3e3cdfda6ab4b606cc3acd9d2d40ed77",
+  "principal": "ed25519:534b70c488c3bdeb57b19682f11c7d18cdb43087760a253b4fb0cb8f6d251b99",
+  "roles": [
+    "applier"
+  ],
+  "sig": "1830a9546d5d304f7ed1dfef4edc2505b7101056240f2dd0265df860f44edae187e347d6617ae6e07d9a7ad8f004473511687a0a6a9e85cb8a2f858ec4270e05",
+  "until": "2027-11-12T00:00:00Z",
+  "note": "x"
+}

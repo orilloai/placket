@@ -1,0 +1,11 @@
+{
+  "vector": "canonical/invalid-utf8-in-a-string",
+  "spec": "0.1",
+  "tests": "A byte that starts no UTF-8 sequence is refused at its offset.",
+  "operation": "canonical",
+  "inputHex": "22ff22",
+  "expect": {
+    "code": "invalid-string",
+    "offset": 1
+  }
+}

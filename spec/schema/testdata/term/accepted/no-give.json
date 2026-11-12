@@ -1,0 +1,12 @@
+{
+  "stance": "no",
+  "dir": "give",
+  "with": [
+    "role:applier"
+  ],
+  "select": {
+    "kind": [
+      "tests"
+    ]
+  }
+}

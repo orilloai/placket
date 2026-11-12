@@ -1,0 +1,15 @@
+{
+  "vector": "receipts/mediator-not-a-reference",
+  "spec": "0.1",
+  "tests": "A mediator that is not an actor reference is refused before any receipt is read.",
+  "operation": "verify",
+  "receipts": [
+    {
+      "receiptText": "not read"
+    }
+  ],
+  "reference": "mediator",
+  "expect": {
+    "code": "reference"
+  }
+}

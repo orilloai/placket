@@ -1,0 +1,16 @@
+{
+  "dir": "give",
+  "resolve": {
+    "timeout": 3600,
+    "to": []
+  },
+  "select": {
+    "kind": [
+      "proposal"
+    ]
+  },
+  "stance": "maybe",
+  "with": [
+    "role:applier"
+  ]
+}

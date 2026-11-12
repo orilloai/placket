@@ -1,0 +1,18 @@
+{
+  "stance": "want",
+  "dir": "get",
+  "with": [
+    "role:decider"
+  ],
+  "select": {
+    "kind": [
+      "answer",
+      "changed-version"
+    ]
+  },
+  "checks": [
+    {
+      "name": "forbidden"
+    }
+  ]
+}
