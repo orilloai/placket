@@ -36,20 +36,31 @@ type tcase struct {
 	set []string
 }
 
-// copyRepo copies the repository, without .git/ and the fixtures of the tests, into a new directory.
-// Each file is a hard link to the live one where the file system allows it, so the copy is quick; the
-// helpers that change the copy replace a file and never write into it, so the live tree never changes.
+// copyRepo copies the repository, without .git and the fixtures of the tests, into a new directory.
 func copyRepo(t *testing.T) string {
+	t.Helper()
+	return copyTree(t, live)
+}
+
+// copyTree copies the tree at src, without .git and the fixtures of the tests, into a new directory.
+// .git is left out whether it is a directory or, in a worktree or a submodule, a file. Each file is a
+// hard link to the source's where the file system allows it, so the copy is quick; the helpers that
+// change the copy replace a file and never write into it, so the source never changes.
+func copyTree(t *testing.T, src string) string {
 	t.Helper()
 	dst := t.TempDir()
 	skip := map[string]bool{".git": true, "tests/testdata": true, "tools/guard/testdata": true}
-	err := filepath.WalkDir(live, func(p string, d fs.DirEntry, err error) error {
+	err := filepath.WalkDir(src, func(p string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
-		rel, _ := filepath.Rel(live, p)
+		rel, _ := filepath.Rel(src, p)
 		if skip[filepath.ToSlash(rel)] {
-			return filepath.SkipDir
+			// SkipDir on a file would skip the rest of its directory: only a directory is skipped whole.
+			if d.IsDir() {
+				return filepath.SkipDir
+			}
+			return nil
 		}
 		to := filepath.Join(dst, rel)
 		if d.Type().IsRegular() && os.Link(p, to) == nil {
@@ -300,7 +311,7 @@ func hasPlace(l, name string, places []string) bool {
 // allCases is every case of the checker's tests, for the test that each rule has one that refuses.
 func allCases(t *testing.T) []tcase {
 	var all []tcase
-	for _, cs := range [][]tcase{coreCases, parserCases, shadowCases, checksCases, specCases(t), schemaFetchCases(), ciCases(t), markerCases(t)} {
+	for _, cs := range [][]tcase{coreCases, parserCases, shadowCases, checksCases, specCases(t), schemaFetchCases(), ciCases(t), markerCases(t), gitCases} {
 		all = append(all, cs...)
 	}
 	return all
@@ -372,4 +383,37 @@ func TestCommand(t *testing.T) {
 	if rc := run(live, nil, &b); rc != 2 {
 		t.Fatalf("got %d and %q; want 2", rc, b.String())
 	}
+}
+
+// gitFile is what a worktree or a submodule has at .git in place of the directory.
+const gitFile = "gitdir: /elsewhere/.git/worktrees/placket\n"
+
+// The tree's .git is left out, whatever it is: a directory with all below it, or the one file of a
+// worktree or a submodule, and then only that file, so every rule still reads the rest of the tree.
+var gitCases = []tcase{
+	{name: "git-file-panic", fixture: "panic-call", setup: func(t *testing.T, dir string) { write(t, dir, ".git", gitFile) },
+		refuse: []string{"core-no-panic"}, at: []string{"core/p/p.go:7"}},
+	{name: "git-file-clean", setup: func(t *testing.T, dir string) { write(t, dir, ".git", gitFile) }},
+	{name: "git-dir-unread", setup: func(t *testing.T, dir string) {
+		write(t, dir, ".git/HEAD", "ref: refs/heads/main\n")
+		write(t, dir, ".git/core/p/p.go", "package p\n\nfunc F( {\n\tpanic(\"x\")\n}\n")
+	}},
+}
+
+func TestGitEntry(t *testing.T) {
+	// The copy the cases start from leaves out a .git file and nothing after it.
+	src := t.TempDir()
+	write(t, src, ".git", gitFile)
+	write(t, src, "core/p/p.go", "package p\n")
+	write(t, src, "zz.txt", "z\n")
+	dst := copyTree(t, src)
+	for _, rel := range []string{"core/p/p.go", "zz.txt"} {
+		if _, err := os.Stat(filepath.Join(dst, filepath.FromSlash(rel))); err != nil {
+			t.Fatalf("the copy of a tree with a .git file lacks %s: %v", rel, err)
+		}
+	}
+	if _, err := os.Lstat(filepath.Join(dst, ".git")); !os.IsNotExist(err) {
+		t.Fatalf("the copy holds the .git file: %v", err)
+	}
+	runCases(t, gitCases)
 }
