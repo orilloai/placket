@@ -51,5 +51,5 @@ How a change to placket is made and how it is reviewed. The rules a change keeps
 - **Against the rules, by name.** The reviewer reads the diff against `AGENTS.md`. A finding names the rule (`core-no-world`), the file and line, and what is wrong.
 - **Beyond the machine.** `make ci` passing is the floor. The reviewer reads what no check sees: the imports of every file changed in `core/`, where logic sits, whether each test compares exactly, whether each new exported name traces to a requirement or a decision.
 - **The tests themselves.** The reviewer confirms the tests came first and were red, that every test change is in a `Loom-Lock: tests` commit, and that no test, check or workflow was weakened. A change to `make ci`'s checks outside a rules change is a finding.
-- **Mutation testing.** From the first code milestone, the reviewer of a code change breaks lines on purpose and reports which ones the tests did not notice.
+- **Mutation testing.** The reviewer of a code change breaks lines on purpose and reports which ones the tests did not notice.
 - **When to stop.** When findings reach diminishing returns, the review stops and what is left goes to a follow-up, named in the pull request.
