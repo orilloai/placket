@@ -49,21 +49,27 @@ const maxSafe = 1<<53 - 1
 // table of section 1: a Unicode defect anywhere first (canonical-6, canonical-11), then the first token
 // in input order with a defect, grammar before noncharacter before repeated name before number
 // (canonical-10). A refusal outputs no bytes.
+//
+// It reads the input once, writing each token's canonical bytes into one buffer in input order, and
+// then writes the members of each object whose names were out of order in their sorted order, copying
+// each byte once more at most: its cost grows with the input's size, not with its depth.
 func Form(input []byte) ([]byte, error) {
 	if off, ok := unicodeDefect(input); ok {
 		return nil, &Error{Code: InvalidString, Offset: off}
 	}
-	p := parser{in: input}
+	p := parser{in: input, out: make([]byte, 0, len(input)), within: [][]int{nil}}
 	p.skipSpace()
-	out, err := p.value(0)
-	if err != nil {
+	if err := p.value(0); err != nil {
 		return nil, err
 	}
 	p.skipSpace()
 	if p.pos != len(input) {
 		return nil, &Error{Code: InvalidJSON, Offset: p.pos}
 	}
-	return out, nil
+	if !p.reorder {
+		return p.out, nil
+	}
+	return p.emit(make([]byte, 0, len(p.out)), span{end: len(p.out), objects: p.within[0]}), nil
 }
 
 // unicodeDefect finds row 1's defect: the first byte of an ill-formed UTF-8 sequence, or the
@@ -162,6 +168,54 @@ func hexDigit(c byte) (byte, bool) {
 type parser struct {
 	in  []byte
 	pos int
+	// out holds the canonical bytes of every token read, in input order.
+	out []byte
+	// scratch holds the code points of the string being read.
+	scratch []byte
+	// objects are the objects whose members are out of order, or that hold one, as spans of out.
+	objects []object
+	// within is a stack: its top lists, by index into objects, those that closed directly inside the
+	// member being read, or at the top level.
+	within [][]int
+	// reorder reports whether any object's members were out of order.
+	reorder bool
+}
+
+// A span is a stretch of out, and the objects of p.objects directly inside it, in input order.
+type span struct {
+	start, end int
+	objects    []int
+}
+
+// An object is an object's stretch of out and its members, "name":value each, in canonical order.
+type object struct {
+	start, end int
+	members    []member
+}
+
+type member struct {
+	name []uint16
+	span
+}
+
+// emit appends the canonical bytes of s: its bytes as read, with each object inside it written in
+// canonical order.
+func (p *parser) emit(dst []byte, s span) []byte {
+	at := s.start
+	for _, i := range s.objects {
+		o := &p.objects[i]
+		dst = append(dst, p.out[at:o.start]...)
+		dst = append(dst, '{')
+		for j, m := range o.members {
+			if j > 0 {
+				dst = append(dst, ',')
+			}
+			dst = p.emit(dst, m.span)
+		}
+		dst = append(dst, '}')
+		at = o.end
+	}
+	return append(dst, p.out[at:s.end]...)
 }
 
 func (p *parser) fail(code Code, at int) error { return &Error{Code: code, Offset: at} }
@@ -178,28 +232,29 @@ func (p *parser) skipSpace() {
 }
 
 // value reads one value at the current position, at the given depth of enclosing arrays and
-// objects, and returns its canonical bytes.
-func (p *parser) value(depth int) ([]byte, error) {
+// objects, and writes its canonical bytes to out.
+func (p *parser) value(depth int) error {
 	if p.pos >= len(p.in) {
-		return nil, p.fail(InvalidJSON, len(p.in))
+		return p.fail(InvalidJSON, len(p.in))
 	}
 	switch c := p.in[p.pos]; {
 	case c == '{':
 		if depth >= MaxDepth {
-			return nil, p.fail(InvalidJSON, p.pos)
+			return p.fail(InvalidJSON, p.pos)
 		}
 		return p.object(depth + 1)
 	case c == '[':
 		if depth >= MaxDepth {
-			return nil, p.fail(InvalidJSON, p.pos)
+			return p.fail(InvalidJSON, p.pos)
 		}
 		return p.array(depth + 1)
 	case c == '"':
 		s, err := p.str()
 		if err != nil {
-			return nil, err
+			return err
 		}
-		return appendString(nil, s), nil
+		p.out = appendString(p.out, s)
+		return nil
 	case c == '-' || (c >= '0' && c <= '9'):
 		return p.number()
 	case c == 't':
@@ -209,131 +264,139 @@ func (p *parser) value(depth int) ([]byte, error) {
 	case c == 'n':
 		return p.literal("null")
 	}
-	return nil, p.fail(InvalidJSON, p.pos)
+	return p.fail(InvalidJSON, p.pos)
 }
 
-func (p *parser) literal(word string) ([]byte, error) {
+func (p *parser) literal(word string) error {
 	for i := 0; i < len(word); i++ {
 		if p.pos >= len(p.in) {
-			return nil, p.fail(InvalidJSON, len(p.in))
+			return p.fail(InvalidJSON, len(p.in))
 		}
 		if p.in[p.pos] != word[i] {
-			return nil, p.fail(InvalidJSON, p.pos)
+			return p.fail(InvalidJSON, p.pos)
 		}
 		p.pos++
 	}
-	return []byte(word), nil
+	p.out = append(p.out, word...)
+	return nil
 }
 
-func (p *parser) array(depth int) ([]byte, error) {
+func (p *parser) array(depth int) error {
 	p.pos++ // [
-	out := []byte{'['}
+	p.out = append(p.out, '[')
 	p.skipSpace()
 	if p.pos < len(p.in) && p.in[p.pos] == ']' {
 		p.pos++
-		return append(out, ']'), nil
+		p.out = append(p.out, ']')
+		return nil
 	}
 	for {
-		v, err := p.value(depth)
-		if err != nil {
-			return nil, err
+		if err := p.value(depth); err != nil {
+			return err
 		}
-		out = append(out, v...)
 		p.skipSpace()
 		if p.pos >= len(p.in) {
-			return nil, p.fail(InvalidJSON, len(p.in))
+			return p.fail(InvalidJSON, len(p.in))
 		}
 		switch p.in[p.pos] {
 		case ',':
 			p.pos++
-			out = append(out, ',')
+			p.out = append(p.out, ',')
 			p.skipSpace()
 		case ']':
 			p.pos++
-			return append(out, ']'), nil
+			p.out = append(p.out, ']')
+			return nil
 		default:
-			return nil, p.fail(InvalidJSON, p.pos)
+			return p.fail(InvalidJSON, p.pos)
 		}
 	}
 }
 
-type member struct {
-	name  []uint16
-	bytes []byte // the canonical name and value, "name":value
-}
-
-func (p *parser) object(depth int) ([]byte, error) {
+func (p *parser) object(depth int) error {
+	start := len(p.out)
 	p.pos++ // {
+	p.out = append(p.out, '{')
 	p.skipSpace()
 	if p.pos < len(p.in) && p.in[p.pos] == '}' {
 		p.pos++
-		return []byte("{}"), nil
+		p.out = append(p.out, '}')
+		return nil
 	}
 	var members []member
 	seen := map[string]bool{}
+	sorted := true
 	for {
 		if p.pos >= len(p.in) {
-			return nil, p.fail(InvalidJSON, len(p.in))
+			return p.fail(InvalidJSON, len(p.in))
 		}
 		if p.in[p.pos] != '"' {
-			return nil, p.fail(InvalidJSON, p.pos)
+			return p.fail(InvalidJSON, p.pos)
 		}
 		at := p.pos
-		name, err := p.str()
+		s, err := p.str()
 		if err != nil {
-			return nil, err
+			return err
 		}
+		name := string(s)
 		if seen[name] {
-			return nil, p.fail(DuplicateKey, at)
+			return p.fail(DuplicateKey, at)
 		}
 		seen[name] = true
 		p.skipSpace()
 		if p.pos >= len(p.in) {
-			return nil, p.fail(InvalidJSON, len(p.in))
+			return p.fail(InvalidJSON, len(p.in))
 		}
 		if p.in[p.pos] != ':' {
-			return nil, p.fail(InvalidJSON, p.pos)
+			return p.fail(InvalidJSON, p.pos)
 		}
 		p.pos++
 		p.skipSpace()
-		v, err := p.value(depth)
-		if err != nil {
-			return nil, err
+		m := member{name: utf16.Encode([]rune(name)), span: span{start: len(p.out)}}
+		p.out = appendString(p.out, s)
+		p.out = append(p.out, ':')
+		p.within = append(p.within, nil)
+		if err := p.value(depth); err != nil {
+			return err
 		}
-		b := appendString(nil, name)
-		b = append(b, ':')
-		b = append(b, v...)
-		members = append(members, member{name: utf16.Encode([]rune(name)), bytes: b})
+		m.end = len(p.out)
+		m.objects = p.within[len(p.within)-1]
+		p.within = p.within[:len(p.within)-1]
+		if len(members) > 0 && !less16(members[len(members)-1].name, m.name) {
+			sorted = false
+		}
+		members = append(members, m)
 		p.skipSpace()
 		if p.pos >= len(p.in) {
-			return nil, p.fail(InvalidJSON, len(p.in))
+			return p.fail(InvalidJSON, len(p.in))
 		}
 		switch p.in[p.pos] {
 		case ',':
 			p.pos++
+			p.out = append(p.out, ',')
 			p.skipSpace()
 			continue
 		case '}':
 			p.pos++
+			p.out = append(p.out, '}')
 		default:
-			return nil, p.fail(InvalidJSON, p.pos)
+			return p.fail(InvalidJSON, p.pos)
 		}
 		break
 	}
-	sort.Slice(members, func(i, j int) bool { return less16(members[i].name, members[j].name) })
-	n := 2
-	for _, m := range members {
-		n += len(m.bytes) + 1
-	}
-	out := make([]byte, 0, n)
-	out = append(out, '{')
-	for i, m := range members {
-		if i > 0 {
-			out = append(out, ',')
+	top := len(p.within) - 1
+	if sorted {
+		// The object is written as read; the objects inside its members are the enclosing span's.
+		for _, m := range members {
+			p.within[top] = append(p.within[top], m.objects...)
 		}
-		out = append(out, m.bytes...)
+		return nil
 	}
-	return append(out, '}'), nil
+	sort.Slice(members, func(i, j int) bool { return less16(members[i].name, members[j].name) })
+	p.reorder = true
+	p.within[top] = append(p.within[top], len(p.objects))
+	p.objects = append(p.objects, object{start: start, end: len(p.out), members: members})
+	return nil
 }
 
 // less16 orders two names by their UTF-16 code units (canonical-1).
@@ -352,31 +415,33 @@ func Less(a, b string) bool {
 	return less16(utf16.Encode([]rune(a)), utf16.Encode([]rune(b)))
 }
 
-// str reads a string or member name, its escapes read, and judges its noncharacters once it closed
-// (canonical-6, canonical-9). Row 1 has already found every unpaired surrogate escape.
-func (p *parser) str() (string, error) {
+// str reads a string or member name, its escapes read, and judges its noncharacters once it
+// closed (canonical-6, canonical-9). Row 1 has already found every unpaired surrogate escape. What it
+// returns is p.scratch, valid until the next string is read.
+func (p *parser) str() ([]byte, error) {
 	open := p.pos
 	p.pos++
-	var out []byte
+	out := p.scratch[:0]
 	nonchar := false
 	for {
 		if p.pos >= len(p.in) {
-			return "", p.fail(InvalidJSON, len(p.in))
+			return nil, p.fail(InvalidJSON, len(p.in))
 		}
 		c := p.in[p.pos]
 		switch {
 		case c == '"':
 			p.pos++
+			p.scratch = out
 			if nonchar {
-				return "", p.fail(InvalidString, open)
+				return nil, p.fail(InvalidString, open)
 			}
-			return string(out), nil
+			return out, nil
 		case c < 0x20:
-			return "", p.fail(InvalidJSON, p.pos)
+			return nil, p.fail(InvalidJSON, p.pos)
 		case c == '\\':
 			r, err := p.escape()
 			if err != nil {
-				return "", err
+				return nil, err
 			}
 			if noncharacter(r) {
 				nonchar = true
@@ -473,7 +538,7 @@ func noncharacter(r rune) bool {
 }
 
 // appendString writes s between quotes with exactly the escapes canonical-1 allows.
-func appendString(out []byte, s string) []byte {
+func appendString(out []byte, s []byte) []byte {
 	const hexDigits = "0123456789abcdef"
 	out = append(out, '"')
 	for i := 0; i < len(s); i++ {
@@ -507,7 +572,7 @@ func appendString(out []byte, s string) []byte {
 // number reads a number token and judges its exact value (canonical-2, canonical-5). The grammar is
 // RFC 8259's: an optional minus, an integer part with no leading zero, an optional fraction and an
 // optional exponent. The exponent's digits are read with saturation at 2^40.
-func (p *parser) number() ([]byte, error) {
+func (p *parser) number() error {
 	start := p.pos
 	neg := false
 	if p.in[p.pos] == '-' {
@@ -515,7 +580,7 @@ func (p *parser) number() ([]byte, error) {
 		p.pos++
 	}
 	if p.pos >= len(p.in) {
-		return nil, p.fail(InvalidJSON, len(p.in))
+		return p.fail(InvalidJSON, len(p.in))
 	}
 	intStart := p.pos
 	switch c := p.in[p.pos]; {
@@ -526,17 +591,17 @@ func (p *parser) number() ([]byte, error) {
 			p.pos++
 		}
 	default:
-		return nil, p.fail(InvalidJSON, p.pos)
+		return p.fail(InvalidJSON, p.pos)
 	}
 	intDigits := p.in[intStart:p.pos]
 	var fracDigits []byte
 	if p.pos < len(p.in) && p.in[p.pos] == '.' {
 		p.pos++
 		if p.pos >= len(p.in) {
-			return nil, p.fail(InvalidJSON, len(p.in))
+			return p.fail(InvalidJSON, len(p.in))
 		}
 		if !isDigit(p.in[p.pos]) {
-			return nil, p.fail(InvalidJSON, p.pos)
+			return p.fail(InvalidJSON, p.pos)
 		}
 		fs := p.pos
 		for p.pos < len(p.in) && isDigit(p.in[p.pos]) {
@@ -549,18 +614,18 @@ func (p *parser) number() ([]byte, error) {
 	if p.pos < len(p.in) && (p.in[p.pos] == 'e' || p.in[p.pos] == 'E') {
 		p.pos++
 		if p.pos >= len(p.in) {
-			return nil, p.fail(InvalidJSON, len(p.in))
+			return p.fail(InvalidJSON, len(p.in))
 		}
 		eneg := false
 		if p.in[p.pos] == '+' || p.in[p.pos] == '-' {
 			eneg = p.in[p.pos] == '-'
 			p.pos++
 			if p.pos >= len(p.in) {
-				return nil, p.fail(InvalidJSON, len(p.in))
+				return p.fail(InvalidJSON, len(p.in))
 			}
 		}
 		if !isDigit(p.in[p.pos]) {
-			return nil, p.fail(InvalidJSON, p.pos)
+			return p.fail(InvalidJSON, p.pos)
 		}
 		for p.pos < len(p.in) && isDigit(p.in[p.pos]) {
 			if exp < saturate {
@@ -588,7 +653,8 @@ func (p *parser) number() ([]byte, error) {
 	}
 	digits = digits[lead:]
 	if len(digits) == 0 {
-		return []byte("0"), nil
+		p.out = append(p.out, '0')
+		return nil
 	}
 	for digits[len(digits)-1] == '0' {
 		digits = digits[:len(digits)-1]
@@ -596,10 +662,10 @@ func (p *parser) number() ([]byte, error) {
 	}
 	// The magnitude is at least 10^(len-1+e) and below 10^(len+e).
 	if int64(len(digits))-1+e >= 16 {
-		return nil, p.fail(UnsafeInteger, start)
+		return p.fail(UnsafeInteger, start)
 	}
 	if e < 0 {
-		return nil, p.fail(FractionalNumber, start)
+		return p.fail(FractionalNumber, start)
 	}
 	var v uint64
 	for _, d := range digits {
@@ -609,13 +675,13 @@ func (p *parser) number() ([]byte, error) {
 		v *= 10
 	}
 	if v > maxSafe {
-		return nil, p.fail(UnsafeInteger, start)
+		return p.fail(UnsafeInteger, start)
 	}
-	out := strconv.AppendUint(nil, v, 10)
 	if neg {
-		out = append([]byte{'-'}, out...)
+		p.out = append(p.out, '-')
 	}
-	return out, nil
+	p.out = strconv.AppendUint(p.out, v, 10)
+	return nil
 }
 
 func isDigit(c byte) bool { return c >= '0' && c <= '9' }
