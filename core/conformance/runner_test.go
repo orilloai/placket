@@ -103,8 +103,10 @@ func TestPendingPartFails(t *testing.T) {
 
 func TestOperationWithoutHandlerFails(t *testing.T) {
 	t.Parallel()
+	withoutFound := Default()
+	delete(withoutFound, "found")
 	for name, h := range map[string]Handlers{
-		"the default handlers":            Default(),
+		"the default handlers but found":  withoutFound,
 		"a handler for another operation": {"verify": passing("verified")},
 		"a nil handler":                   {"found": nil},
 	} {
