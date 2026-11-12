@@ -53,6 +53,8 @@ func init() {
 		{name: "claims-stop-at-crossing", why: "nothing placket prints speaks of what a receiver does with content after receipt", check: claimsStopAtCrossing},
 		{name: "main-is-thin", why: "cmd/placket/main.go stays under 40 lines and every command is tested from adapters/cli", check: mainIsThin},
 		{name: "root-module", why: "the root module requires the core and replaces it with ./core, and no go.work is committed", check: rootModule},
+		{name: "machine-rules-in-ci", why: "every tool make ci runs is pinned to an exact version, and make ci runs every check and step", check: machineRulesInCI},
+		{name: "ci-stays-fast", why: "no test or script clears PLACKET_IN_CI, the marker that stops a make ci inside make ci", check: ciStaysFast},
 	}
 }
 
