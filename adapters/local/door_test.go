@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/base64"
 	"encoding/json"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -62,7 +63,7 @@ func TestTheDoorChecksInOrder(t *testing.T) {
 			t.Fatalf("%s: got door %q, rejection %q, error %q, %v", x.name, rep.Door, rep.Rejection, rep.Error, err)
 		}
 	}
-	if !bytes.Equal(w.receipts(t), before) || len(snapshot(t, w.journal)) != len(journal) {
+	if !bytes.Equal(w.receipts(t), before) || !reflect.DeepEqual(snapshot(t, w.journal), journal) {
 		t.Fatal("a refused call wrote to the journal")
 	}
 	// The nonce of every refused call is still free: the same nonce now passes, once.

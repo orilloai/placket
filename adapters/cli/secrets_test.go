@@ -61,6 +61,49 @@ func TestNoCommandPrintsASeed(t *testing.T) {
 	if err := json.Unmarshal([]byte(decider.stdout), &shown); err != nil || shown.ID != q || shown.Message != "Rename the table orders." || shown.Form != "text" {
 		t.Fatalf("the decider's questions: %v", decider)
 	}
+	// A raw part is shown by its form and size alone, and a data part as its canonical JSON.
+	parts := map[string]string{"raw": "\x00\x01\x02 a raw part", "data": `{"b": [1, 2], "a": "x\u00e9"}`}
+	asked := map[string]string{}
+	for _, form := range []string{"raw", "data"} {
+		f := filepath.Join(s.dir, form+".part")
+		if err := os.WriteFile(f, []byte(parts[form]), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		r := run(t, env(), s.as("proposer", "give", "--to", s.refs["applier"], "--kind", "proposal", "--file", f, "--as", form)...)
+		if r.code != 4 {
+			t.Fatalf("give --as %s: %v", form, r)
+		}
+		asked[last(r.stdout)] = form
+	}
+	r := must(t, s.as("decider", "questions")...)
+	add(r)
+	seen := 0
+	for _, l := range strings.Split(strings.TrimSuffix(r.stdout, "\n"), "\n") {
+		var o struct{ ID, Deadline string }
+		if err := json.Unmarshal([]byte(l), &o); err != nil {
+			t.Fatal(err)
+		}
+		head := `{"asker":"` + s.refs["proposer"] + `","deadline":"` + o.Deadline + `","form":"`
+		var want string
+		switch asked[o.ID] {
+		case "raw":
+			want = head + `raw","id":"` + o.ID + `","kind":"proposal","size":14}`
+		case "data":
+			want = head + `data","id":"` + o.ID + `","kind":"proposal","message":"{\"a\":\"xé\",\"b\":[1,2]}"}`
+		default:
+			continue
+		}
+		seen++
+		if l != want {
+			t.Fatalf("the decider's question of a %s part:\n got %s\nwant %s", asked[o.ID], l, want)
+		}
+	}
+	if seen != 2 {
+		t.Fatalf("the decider's questions: %v", r)
+	}
+	for q := range asked {
+		must(t, s.as("decider", "cancel", "--question", q)...)
+	}
 	add(must(t, s.as("proposer", "result", "--question", s.accepted)...))
 	add(run(t, env(), s.as("proposer", "give", "--to", s.refs["applier"], "--kind", "proposal", "--text", "x")...))
 	add(must(t, s.as("decider", "cancel", "--question", q)...))
@@ -87,7 +130,7 @@ func TestNoCommandPrintsASeed(t *testing.T) {
 			}
 		}
 	}
-	secrets = append(secrets, "Rename", "Drop the column", "Delete the table", "Someone reads it.", "Kept seven years.", "Keep notes")
+	secrets = append(secrets, "Rename", "Drop the column", "Delete the table", "Someone reads it.", "Kept seven years.", "Keep notes", "a raw part", `"b":[1,2]`)
 	for _, x := range secrets {
 		if strings.Contains(lines, x) {
 			t.Fatalf("the window printed %q:\n%s", x, lines)

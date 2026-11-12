@@ -148,7 +148,7 @@ func (failing) Create(path string, b []byte) error { return journal.OS.Create(pa
 func (failing) Remove(path string) error           { return journal.OS.Remove(path) }
 
 // TestAJournalWriteThatFails is LOG-15: a journal write fails, through an injected writer and in a
-// read-only directory. The call gets no reply, the window returns the failure, and the next start
+// read-only journal. The call gets no reply, the window returns the failure, and the next start
 // reloads what the disk holds: the held file whose receipt never reached the journal is removed, and
 // the next give takes the same seq.
 func TestAJournalWriteThatFails(t *testing.T) {
@@ -161,9 +161,11 @@ func TestAJournalWriteThatFails(t *testing.T) {
 		if how == "injected" {
 			cfg.Disk = failing{}
 		} else {
+			// A read-only journal: its directory, and its receipts file when a start made one.
 			if err := os.Chmod(w.journal, 0o500); err != nil {
 				t.Fatal(err)
 			}
+			_ = os.Chmod(filepath.Join(w.journal, journal.FileReceipts), 0o400)
 		}
 		win = start(t, cfg)
 		msg := w.message(t, "n-1", key(t, "applier").Reference(), "note", "text", "A note.", "")
@@ -184,6 +186,7 @@ func TestAJournalWriteThatFails(t *testing.T) {
 			t.Fatalf("%s: the window did not end", how)
 		}
 		_ = os.Chmod(w.journal, 0o700)
+		_ = os.Chmod(filepath.Join(w.journal, journal.FileReceipts), 0o600)
 		win = start(t, w.window(t))
 		if !strings.Contains(win.stderr.String(), "a delivery whose receipt was never journaled") {
 			t.Fatalf("%s: stderr %q", how, win.stderr.String())

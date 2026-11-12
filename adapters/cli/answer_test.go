@@ -7,8 +7,11 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
+	"github.com/orilloai/placket/adapters/keyfile"
 	"github.com/orilloai/placket/adapters/local"
+	"github.com/orilloai/placket/core/mediator"
 )
 
 // open gives a proposal without waiting and returns its question.
@@ -177,5 +180,80 @@ func TestTheAnswerCallTravelsWithTheAnswer(t *testing.T) {
 	}
 	if r.stderr != "" {
 		t.Fatalf("log noted: %s", r.stderr)
+	}
+
+	// The proposer's kept answer, its call replaced by one that does not verify against the row: the
+	// row is not answer_signed, and log says which call it left out; the changed row still is.
+	call := func(who, accord, question string, action mediator.Action, answer string) []byte {
+		t.Helper()
+		k, err := keyfile.Read(a.key(who))
+		if err != nil {
+			t.Fatal(err)
+		}
+		line, err := local.SignCall(k, local.OpResolve, accord, time.Now(), bytes.Repeat([]byte{9}, 16), local.ResolveArgs(question, action, answer))
+		if err != nil {
+			t.Fatal(err)
+		}
+		c, code := local.ParseCall(line)
+		if code != "" {
+			t.Fatalf("parse: %s", code)
+		}
+		return local.AnswerCall(c)
+	}
+	good := call("decider", a.id, accepted, mediator.Accepted, "Yes.")
+	var sig struct{ Call, Sig string }
+	if err := json.Unmarshal(good, &sig); err != nil {
+		t.Fatal(err)
+	}
+	flipped := []byte(sig.Sig)
+	flipped[0] = map[bool]byte{true: 'B', false: 'A'}[flipped[0] == 'A']
+	badSig, _ := json.Marshal(map[string]string{"call": sig.Call, "sig": string(flipped)})
+	other := "sha256:" + strings.Repeat("0", 64)
+	for _, c := range []struct {
+		name string
+		call []byte
+	}{
+		{"a signature changed", badSig},
+		{"signed by the asker", call("proposer", a.id, accepted, mediator.Accepted, "Yes.")},
+		{"another Accord", call("decider", other, accepted, mediator.Accepted, "Yes.")},
+		{"another question", call("decider", a.id, changed, mediator.Accepted, "Yes.")},
+		{"another action", call("decider", a.id, accepted, mediator.Changed, "Yes.")},
+		{"another text", call("decider", a.id, accepted, mediator.Accepted, "No.")},
+	} {
+		dir := copyDir(t, a.state("proposer"))
+		p := filepath.Join(dir, "kept.jsonl")
+		b, _ := os.ReadFile(p)
+		var out []string
+		id := ""
+		for _, l := range strings.Split(strings.TrimSuffix(string(b), "\n"), "\n") {
+			var o map[string]json.RawMessage
+			if err := json.Unmarshal([]byte(l), &o); err != nil {
+				t.Fatal(err)
+			}
+			if str(o["kind"]) == "answer" {
+				o["answerCall"] = c.call
+				id = str(o["receiptId"])
+				nb, _ := json.Marshal(o)
+				l = string(nb)
+			}
+			out = append(out, l)
+		}
+		if id == "" {
+			t.Fatalf("%s: no kept answer", c.name)
+		}
+		if err := os.WriteFile(p, []byte(strings.Join(out, "\n")+"\n"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		r := must(t, "log", "--mediator", a.refs["mediator"], "--receipts", a.journal(), "--format", "json", "--kept", dir)
+		var lg struct {
+			Rows []map[string]any `json:"rows"`
+		}
+		if err := json.Unmarshal([]byte(r.stdout), &lg); err != nil || len(lg.Rows) != 2 {
+			t.Fatalf("%s: log: %v", c.name, r)
+		}
+		if lg.Rows[0]["answer_signed"] != "" || lg.Rows[1]["answer_signed"] != "yes" ||
+			r.stderr != "the answer call kept with receipt "+id+" does not verify; left out\n" {
+			t.Fatalf("%s: rows %v; stderr %q", c.name, lg.Rows, r.stderr)
+		}
 	}
 }
