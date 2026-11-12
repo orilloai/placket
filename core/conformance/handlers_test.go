@@ -6,6 +6,7 @@ import (
 	"os"
 	"reflect"
 	"sort"
+	"strconv"
 	"strings"
 	"testing"
 	"testing/fstest"
@@ -76,20 +77,75 @@ func TestAReceiptDifferingInOneByteFails(t *testing.T) {
 	}
 }
 
-// TestAStepTheCoreCannotRunIsPending adds a resolve step to a scenario vector: the core answers no
-// question in this version, so the step is pending and the vector fails (runner-no-silent-pass).
+// TestAStepTheCoreCannotRunIsPending adds to a scenario vector a step whose op no handler runs,
+// which the vector schema refuses but the handler, called directly, still reaches: the step is
+// pending, and a pending step fails its vector (runner-no-silent-pass).
 func TestAStepTheCoreCannotRunIsPending(t *testing.T) {
 	t.Parallel()
 	v := vectorFile(t, "questions/a-proposal-is-asked-about")
 	pending := v["final"].(map[string]any)["pending"].([]any)
 	v["steps"] = append(v["steps"].([]any), map[string]any{
-		"op": "resolve", "at": "2026-11-12T09:30:00Z", "question": pending[0], "action": "declined",
+		"op": "evaluate", "at": "2026-11-12T09:30:00Z", "question": pending[0],
 		"expect": map[string]any{"rejection": "no-open-question"},
 	})
 	parts := runParts(t, v)
 	last := parts[len(parts)-1]
-	if last.Name != "step-2" || last.Pending == "" {
+	if last.Name != "step-2" || last.Pending == "" || last.Failure != "" {
 		t.Fatalf("parts %+v", parts)
+	}
+}
+
+// TestResolveAndTickStepsCompareExactly changes one expected value of a resolve step, of its
+// release, and of a tick step, and checks that each vector then fails at that step
+// (conformance-vectors-5, conformance-vectors-6, conformance-vectors-7).
+func TestResolveAndTickStepsCompareExactly(t *testing.T) {
+	t.Parallel()
+	expectOf := func(v map[string]any, i int) map[string]any {
+		return v["steps"].([]any)[i].(map[string]any)["expect"].(map[string]any)
+	}
+	for _, c := range []struct {
+		name   string
+		step   int
+		change func(v map[string]any)
+	}{
+		{"questions/an-accept-releases-the-asked-part", 1, func(v map[string]any) { expectOf(v, 1)["reason"] = "maybe"; expectOf(v, 1)["verdict"] = "block" }},
+		{"questions/an-accept-releases-the-asked-part", 1, func(v map[string]any) {
+			expectOf(v, 1)["release"].(map[string]any)["receiptId"] = "sha256:" + strings.Repeat("0", 64)
+		}},
+		{"questions/an-accept-releases-the-asked-part", 1, func(v map[string]any) { delete(expectOf(v, 1), "release") }},
+		{"questions/a-change-released-to-the-receiver", 1, func(v map[string]any) {
+			v["steps"].([]any)[1].(map[string]any)["salt"] = strings.Repeat("ab", 16)
+		}},
+		{"questions/one-receipt-at-the-deadline", 1, func(v map[string]any) { expectOf(v, 1)["receipts"] = []any{} }},
+		{"questions/before-the-deadline", 1, func(v map[string]any) {
+			expectOf(v, 1)["receipts"] = vectorFile(t, "questions/one-receipt-at-the-deadline")["steps"].([]any)[1].(map[string]any)["expect"].(map[string]any)["receipts"]
+		}},
+	} {
+		v := vectorFile(t, c.name)
+		for _, p := range runParts(t, v) {
+			if p.Failure != "" || p.Pending != "" {
+				t.Fatalf("%s as written: part %s: %s%s", c.name, p.Name, p.Failure, p.Pending)
+			}
+		}
+		c.change(v)
+		parts := runParts(t, v)
+		if len(parts) <= c.step || parts[c.step].Name != "step-"+strconv.Itoa(c.step) || parts[c.step].Failure == "" {
+			t.Fatalf("%s: a changed expectation passed: %+v", c.name, parts)
+		}
+	}
+}
+
+// TestEveryVectorRunsAndNoEntryIsOpen runs the repository's vectors: every vector passes, so no part
+// is pending, and the coverage list leaves no entry open, in whole or in part (conformance-vectors-6,
+// conformance-vectors-7, runner-no-silent-pass).
+func TestEveryVectorRunsAndNoEntryIsOpen(t *testing.T) {
+	t.Parallel()
+	r := Run(os.DirFS(repoSpec), os.DirFS(repoVectors), Default())
+	if !r.Passed() || len(r.Results) == 0 {
+		t.Fatalf("the run failed: %q", r.Problems)
+	}
+	if len(r.Open) != 0 {
+		t.Fatalf("%d coverage entries are open, the first %+v", len(r.Open), r.Open[0])
 	}
 }
 

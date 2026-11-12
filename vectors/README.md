@@ -2,7 +2,7 @@
 
 A conformance vector states inputs and the exact results an implementation of the placket protocol must produce from them. Section 10 of `spec/protocol.md` defines what a vector is, and `spec/schema/vector.json` is its format. This directory holds the vectors, the generators that write them, the coverage list that says which requirement each one covers, and this file.
 
-The vectors cover the canonical form, signing, founding, the door and composition, receipts, verifying and reconciling, and asking: every requirement of sections 1 to 5 and 7 to 9, and maybe-1. Answering a question, its deadline and release come with the next milestone; the coverage list names them open, with the milestone that writes them.
+The vectors cover every section of the protocol: the canonical form, signing, founding, the door and composition, questions with their answers, deadlines and release, receipts, verifying and reconciling. The coverage list leaves no requirement and no scenario open.
 
 ## Layout
 
@@ -41,7 +41,7 @@ A vector's expected result never comes from the code it tests (`vectors-independ
 - **Every input an implementation could choose is given** (conformance-vectors-2): keys as seeds, salts, message ids and times. A key's seed is the SHA-256 of `placket vectors: key ` and its name, and a salt's bytes come from the SHA-256 of a label, so every run writes the same bytes.
 - **Every accepted set and every accepted give is given as hex.** An accepted `found` vector gives its set as `inputHex`, its canonical bytes; every scenario's `founding` is, in canonical form, the set of an accepted `found` vector; and an accepted give gives its message as `messageHex` and its envelope as `envelopeHex`.
 - **Every hash and signature is checked independently** by `tests/test_independent.sh`, which `make ci` runs. With OpenSSL 3.0 or later and shell tools, and no placket code, it re-computes the typed hashes, the salted digests, the actors' signatures and the receipts' signatures the vectors carry, prints the `openssl` version and a count per group, and fails on any one that does not hold. Where a preimage is canonical bytes the vector does not hold as hex, it rebuilds them with `jq` and proves them canonical, or fails.
-- **A planted fault changes no byte.** `tests/test_vectors_independent.sh`, which `make ci` runs, plants a fault in turn in each package a group tests, runs the group's generator in a copy of the tree, and checks that no vector byte changed and that the runner fails on the group.
+- **A planted fault changes no byte.** `tests/test_vectors_independent.sh`, which `make ci` runs, plants each of its faults in turn in each package a group tests, runs the group's generator in a copy of the tree, and checks that no vector byte changed and that the runner fails on the group.
 - **A landed vector is never edited to match the code.** It changes only with a format note (below), when the format itself changes.
 
 The independent check needs these tools: `openssl` (OpenSSL 3.0 or later; LibreSSL is refused), `jq`, `basenc` and `base64` (GNU coreutils), `od`, `sed`, `grep`, `awk`, `tr` and `wc`.
@@ -56,7 +56,7 @@ The runner is the Go package `core/conformance`; `make ci` runs it over this dir
 2. **Schema.** The whole vector, against `spec/schema/vector.json`, at every depth. The runner reads the schema itself: it refuses a schema keyword it does not implement instead of passing over it, and it checks the schema against its own accepted and refused examples before any vector.
 3. **Inputs.** Each byte input given exactly once, in one of its forms, and every hex form decodes.
 4. **Operation.** The runner has a handler for the vector's operation. A vector whose operation no handler runs fails; it is not skipped.
-5. **Results.** The handler reports each part it compared. A part that differs fails the vector, and so does a pending part, one the handler cannot run yet, and a handler that reports no part at all. A scenario's `resolve` or `tick` step is pending until the core answers questions.
+5. **Results.** The handler reports each part it compared. A part that differs fails the vector, and so does a pending part, one the handler cannot run yet, and a handler that reports no part at all.
 
 A vector passes or fails. Nothing is skipped and nothing is pending in a green run.
 
@@ -103,5 +103,5 @@ None yet: the vector format is at version 0.1 as written. The coverage list is t
 ## Known limits
 
 - `vectors-independent` reads import paths as written. A generator that reaches a tested package through another package it may import is not seen; the generators' module, which requires nothing, the kit's import test and the planted-fault run cover that.
-- The planted-fault run plants one fault per package, written in `tests/test_vectors_independent.sh` against the package's code as it is. A fault whose text the code no longer holds fails the run rather than passing, and is rewritten with the code.
+- The planted-fault run plants the faults listed in `tests/test_vectors_independent.sh`, at least one per package a group tests and two in the mediator, one in a give and one in an answer, written against the package's code as it is. A fault whose text the code no longer holds fails the run rather than passing, and is rewritten with the code.
 - The independent check proves a rebuilt preimage canonical only when it is printable ASCII with no escape. Every preimage the vectors rebuild is; one that is not fails the check and must be given as hex.

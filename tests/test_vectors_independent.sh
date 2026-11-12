@@ -2,10 +2,11 @@
 # The planted-fault test of vectors-independent: a vector's expected bytes never come from the code
 # the vector tests.
 #
-# For each group of the table "Groups and the packages they test" in vectors/README.md, and each
-# core package its row names, it copies the repository without .git, plants that package's fault
-# below in the copy, runs the group's generator there, and checks that no byte of the group's vectors
-# changed and that the conformance runner fails on a vector of the group. A group's generator is the
+# For each group of the table "Groups and the packages they test" in vectors/README.md, each core
+# package its row names, and each of that package's faults in the list below, it copies the
+# repository without .git, plants the fault in the copy, runs the group's generator there, and checks
+# that no byte of the group's vectors changed and that the conformance runner fails on a vector of
+# the group. A group's generator is the
 # Go command in vectors/<group>/, run from vectors/ as `go run ./<group>`. Before any fault, the
 # generators run on a clean copy must write exactly the vectors committed. It fails when the table
 # lists no group, when a group has no generator, when a package of a row has no fault here, and when
@@ -22,20 +23,19 @@ checked=0
 say() { echo "vectors-independent test: $*"; }
 bad() { say "FAIL: $*"; failed=1; }
 
-# fault <package>: set file, old and new to the file, the text and its replacement that plant one
-# fault in the package: a change of logic that compiles and that some vector of every group testing
-# the package notices.
-fault() {
-	case "$1" in
-	canonical) file=core/canonical/canonical.go old='return a[i] < b[i]' new='return a[i] > b[i]' ;;
-	signing) file=core/signing/signing.go old='b.WriteString("DSSEv1 ")' new='b.WriteString("DSSEv2 ")' ;;
-	setup) file=core/setup/setup.go old='return until <= at' new='return until < at' ;;
-	composition) file=core/composition/composition.go old='if sent == 0 || got == 0 {' new='if sent == 0 && got == 0 {' ;;
-	receipts) file=core/receipts/receipts.go old='"application/vnd.in-toto+json"' new='"application/vnd.in-toto+jsom"' ;;
-	mediator) file=core/mediator/mediator.go old='next := link{seq: last.seq + 1}' new='next := link{seq: last.seq + 2}' ;;
-	*) return 1 ;;
-	esac
-}
+# The planted faults, one a line: the package, the file, the text and its replacement, separated by
+# tabs. Each is a change of logic that compiles and that some vector of every group testing the
+# package notices. A package may have more than one; the mediator has one in Give and one in Resolve.
+faults='canonical	core/canonical/canonical.go	return a[i] < b[i]	return a[i] > b[i]
+signing	core/signing/signing.go	b.WriteString("DSSEv1 ")	b.WriteString("DSSEv2 ")
+setup	core/setup/setup.go	return until <= at	return until < at
+composition	core/composition/composition.go	if sent == 0 || got == 0 {	if sent == 0 && got == 0 {
+receipts	core/receipts/receipts.go	"application/vnd.in-toto+json"	"application/vnd.in-toto+jsom"
+mediator	core/mediator/mediator.go	next := link{seq: last.seq + 1}	next := link{seq: last.seq + 2}
+mediator	core/mediator/questions.go	digest := receipts.Digest(r.Salt, []byte(r.Answer))	digest := receipts.Digest([]byte(r.Answer), r.Salt)'
+
+# faultsOf <package>: the package's lines of the list.
+faultsOf() { printf '%s\n' "$faults" | awk -F'\t' -v p="$1" '$1 == p'; }
 
 # copy <dir>: the repository, without .git, in <dir>.
 copy() {
@@ -80,42 +80,56 @@ for g in $groups; do
 done
 [ "$failed" -eq 0 ] || exit 1
 
+# plant <group> <package> <file> <old> <new> <label>: plant one fault and judge the group under it.
+plant() {
+	_g=$1 _p=$2 _file=$3 _old=$4 _new=$5 _l=$6
+	copy "$tmp/fault"
+	if ! awk -v old="$_old" -v new="$_new" '
+		{ i = index($0, old); if (i) { $0 = substr($0, 1, i - 1) new substr($0, i + length(old)); n++ } print }
+		END { if (n != 1) exit 3 }' "$root/$_file" >"$tmp/fault/$_file"; then
+		bad "$_g, $_l: the fault's text is not in $_file exactly once"
+		echo fail >>"$tmp/failed"
+		return
+	fi
+	if ! generate "$tmp/fault" "$_g"; then
+		bad "$_g, $_l: the generator failed with the fault planted"
+		sed 's/^/    /' "$tmp/gen.out"
+		echo fail >>"$tmp/failed"
+		return
+	fi
+	if ! diff -r "$root/vectors/$_g" "$tmp/fault/vectors/$_g" >"$tmp/diff"; then
+		bad "$_g, $_l: a vector byte changed with a fault in $_p"
+		head -n 20 "$tmp/diff" | sed 's/^/    /'
+		echo fail >>"$tmp/failed"
+		return
+	fi
+	(cd "$tmp/fault/core/conformance" && go test -count=1 -run '^TestVectors$' .) >"$tmp/run" 2>&1 </dev/null
+	if grep -q "^runner-no-silent-pass: fail: vectors/$_g/" "$tmp/run"; then
+		say "ok   $_g, $_l: no vector byte changed, and the runner fails on $(grep -c "^runner-no-silent-pass: fail: vectors/$_g/" "$tmp/run") of the group's vectors"
+		echo ok >>"$tmp/checked"
+	else
+		bad "$_g, $_l: the runner fails on no vector of the group with a fault in $_p"
+		grep -m 5 'fail\|FAIL' "$tmp/run" | sed 's/^/    /'
+		echo fail >>"$tmp/failed"
+	fi
+}
+
 printf '%s\n' "$table" | while read -r g pkgs; do
 	for p in $(printf '%s' "$pkgs" | tr ',' ' '); do
-		if ! fault "$p"; then
+		n=$(faultsOf "$p" | wc -l | tr -d ' ')
+		if [ "$n" -eq 0 ]; then
 			bad "$g: no fault is written here for the package $p"
 			echo fail >>"$tmp/failed"
 			continue
 		fi
-		copy "$tmp/fault"
-		if ! awk -v old="$old" -v new="$new" '
-			{ i = index($0, old); if (i) { $0 = substr($0, 1, i - 1) new substr($0, i + length(old)); n++ } print }
-			END { if (n != 1) exit 3 }' "$root/$file" >"$tmp/fault/$file"; then
-			bad "$g, $p: the fault's text is not in $file exactly once"
-			echo fail >>"$tmp/failed"
-			continue
-		fi
-		if ! generate "$tmp/fault" "$g"; then
-			bad "$g, $p: the generator failed with the fault planted"
-			sed 's/^/    /' "$tmp/gen.out"
-			echo fail >>"$tmp/failed"
-			continue
-		fi
-		if ! diff -r "$root/vectors/$g" "$tmp/fault/vectors/$g" >"$tmp/diff"; then
-			bad "$g, $p: a vector byte changed with a fault in $p"
-			head -n 20 "$tmp/diff" | sed 's/^/    /'
-			echo fail >>"$tmp/failed"
-			continue
-		fi
-		(cd "$tmp/fault/core/conformance" && go test -count=1 -run '^TestVectors$' .) >"$tmp/run" 2>&1
-		if grep -q "^runner-no-silent-pass: fail: vectors/$g/" "$tmp/run"; then
-			say "ok   $g, $p: no vector byte changed, and the runner fails on $(grep -c "^runner-no-silent-pass: fail: vectors/$g/" "$tmp/run") of the group's vectors"
-			echo ok >>"$tmp/checked"
-		else
-			bad "$g, $p: the runner fails on no vector of the group with a fault in $p"
-			grep -m 5 'fail\|FAIL' "$tmp/run" | sed 's/^/    /'
-			echo fail >>"$tmp/failed"
-		fi
+		i=1
+		while [ "$i" -le "$n" ]; do
+			line=$(faultsOf "$p" | sed -n "${i}p")
+			label=$p
+			[ "$n" -gt 1 ] && label="$p, fault $i of $n"
+			plant "$g" "$p" "$(printf '%s' "$line" | cut -f2)" "$(printf '%s' "$line" | cut -f3)" "$(printf '%s' "$line" | cut -f4)" "$label" </dev/null
+			i=$((i + 1))
+		done
 	done
 done
 

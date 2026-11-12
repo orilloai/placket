@@ -97,3 +97,29 @@ func Compose() Set {
 		},
 	}
 }
+
+// LongWait is the ask-and-log Accord with the largest timeout the term format holds, 2^53 - 1
+// seconds, so that every deadline is past the last time a timestamp can write (maybe-1).
+func LongWait() Set {
+	s := AskAndLog()
+	s.Parties[0].Terms[0] = Maybe("give", []string{"applier"}, []string{"proposal"}, []string{"decider"}, 9007199254740991)
+	return s
+}
+
+// Unanswered is the ask-and-log Accord whose proposals are asked about by auditor, a role no binding
+// gives and the policy does not list, which founding accepts (setup-contract-5): its questions have
+// no answerer (maybe-4).
+func Unanswered() Set {
+	s := AskAndLog()
+	s.Parties[0].Terms[0] = Maybe("give", []string{"applier"}, []string{"proposal"}, []string{"auditor"}, 3600)
+	return s
+}
+
+// AnswerUnderMaybe is the ask-and-log Accord in which the proposer gets answers from the decider
+// under a maybe term of its own, asked about by the decider within 60 seconds, so an accepted answer
+// meets a maybe term (composition-5).
+func AnswerUnderMaybe() Set {
+	s := AskAndLog()
+	s.Parties[0].Terms[2] = Maybe("get", []string{"decider"}, []string{"answer"}, []string{"decider"}, 60)
+	return s
+}

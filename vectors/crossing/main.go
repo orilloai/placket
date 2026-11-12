@@ -388,5 +388,16 @@ func main() {
 		s.Give(at(0), kit.Proposer, 1, of(compose, c.kind+"-1", c.kind), kit.Applier, c.verdict, c.reason)
 		add(c.name, c.tests, s, compose)
 	}
+	{
+		// The proposer gets answers from the decider under a maybe term, so the decider's accept, a
+		// part the mediator formed, meets a maybe term: block, maybe, and no second question opens.
+		set := kit.AnswerUnderMaybe().Build()
+		s := scene(set)
+		q := s.Give(at(0), kit.Proposer, 1, of(set, "proposal-1", "proposal"), kit.Applier, "escalate", "maybe")
+		s.Resolve(kit.Answer{At: at(1), Question: q, Action: "accepted", Text: "accepted", Salt: kit.Salt("crossing answer-1", 16),
+			By: kit.Decider, Verdict: kit.Verdict{Verdict: "block", Reason: "maybe"}})
+		s.Get(kit.Proposer)
+		add("an-answer-that-meets-a-maybe-term", "composition-5: an accept decided from the decider to a proposer that gets answers under a maybe term is block, maybe; nothing is queued and no question opens", s, set)
+	}
 	kit.Main("crossing", vs)
 }

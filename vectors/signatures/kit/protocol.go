@@ -225,11 +225,24 @@ type Scene struct {
 	Accord, Card string
 	Mediator     Key
 	Keys         map[string]Key
-	chains       map[[2]string]link
-	written      []any
-	queues       map[string][]any
-	pending      []any
-	steps        []any
+	// FoundedAt is the time the scenario founds its set at; NewScene sets it to the kit's.
+	FoundedAt string
+	chains    map[[2]string]link
+	written   []any
+	queues    map[string][]any
+	pending   []any
+	held      map[string]heldPart
+	steps     []any
+}
+
+// A heldPart is what a question holds (maybe-1): its asker and receiver, the echoed envelope, the
+// asked part's kind and digest, and the part as its delivery would carry it.
+type heldPart struct {
+	asker, receiver Key
+	eseq            int64
+	ehash           string
+	kind, digest    string
+	delivery        Obj
 }
 
 type link struct {
@@ -242,6 +255,7 @@ func NewScene(set Obj, mediator Key, keys ...Key) *Scene {
 	s := &Scene{
 		Accord: HashOf(set), Card: HashOf(set["card"]), Mediator: mediator,
 		Keys: map[string]Key{}, chains: map[[2]string]link{}, queues: map[string][]any{},
+		held: map[string]heldPart{}, FoundedAt: FoundedAt,
 	}
 	for _, k := range keys {
 		s.Keys[k.Name] = k
@@ -280,19 +294,161 @@ func (s *Scene) Give(at string, from Key, seq int64, message Obj, to Key, verdic
 		"messageHex": HexOf(m), "envelopeHex": HexOf(Canon(env)),
 		"expect": Obj{"verdict": verdict, "reason": reason, "receiptId": id, "receipt": r},
 	})
+	d := Obj{"messageId": message["messageId"], "kind": meta["kind"], "salt": meta["salt"]}
+	_, body := Body(p)
+	d[body] = p[body]
+	if re, ok := Ext(message)["re"]; ok {
+		d["re"] = re
+	}
 	switch verdict {
 	case "pass":
-		d := Obj{"receiptId": id, "receipt": r, "messageId": message["messageId"], "kind": meta["kind"], "salt": meta["salt"]}
-		_, body := Body(p)
-		d[body] = p[body]
-		if re, ok := Ext(message)["re"]; ok {
-			d["re"] = re
-		}
-		s.queues[to.Name] = append(s.queues[to.Name], d)
+		s.queue(to, d, r, id)
 	case "escalate":
 		s.pending = append(s.pending, id)
+		s.held[id] = heldPart{asker: from, receiver: to, eseq: seq, ehash: Hash(m),
+			kind: meta["kind"].(string), digest: Digest(p), delivery: d}
 	}
 	return id
+}
+
+// queue queues for to a delivery of the part's members, with the receipt that passed it
+// (crossing-3).
+func (s *Scene) queue(to Key, part Obj, receipt Obj, id string) {
+	d := Copy(part).(Obj)
+	d["receiptId"], d["receipt"] = id, receipt
+	s.queues[to.Name] = append(s.queues[to.Name], d)
+}
+
+// closeQuestion takes a question off the open list.
+func (s *Scene) closeQuestion(q string) {
+	var open []any
+	for _, p := range s.pending {
+		if p != q {
+			open = append(open, p)
+		}
+	}
+	s.pending = open
+	delete(s.held, q)
+}
+
+// A Verdict is a receipt's verdict and reason, as a generator derives them by hand.
+type Verdict struct{ Verdict, Reason string }
+
+func outcome(v Verdict, r Obj, id string) Obj {
+	return Obj{"verdict": v.Verdict, "reason": v.Reason, "receiptId": id, "receipt": r}
+}
+
+// An Answer is a resolve step of an accept or a change (conformance-vectors-6): its time, its
+// question, its action, the answer's text or the version, and the salt the mediator mints for it,
+// in hex; the answerer, named in the step's by unless OmitBy, when the runner answers as the first
+// answerer; the resolution's verdict and reason, derived by hand; whether the step asks for
+// release; and the release receipt's verdict and reason, or nil when none is written.
+type Answer struct {
+	At, Question, Action, Text, Salt string
+	By                               Key
+	OmitBy                           bool
+	Verdict                          Verdict
+	Release                          bool
+	Released                         *Verdict
+}
+
+// Resolve adds an accept or a change and writes what maybe-3, maybe-8, maybe-9 and maybe-10 say it
+// writes: the answer or the version, a part of kind answer or changed-version formed with messageId
+// answer: or change: and the question's id, its re the question, its text body and the step's salt;
+// its resolution receipt from the answerer to the asker, echoing the question's envelope; on a pass,
+// the part queued for the asker; and when the generator names a release receipt, that receipt:
+// after an accept, a crossing receipt from the asker to the receiver naming the asked part, which on
+// a pass queues the held part as given; after a change, a resolution receipt from the answerer to the
+// receiver naming the version, which on a pass queues the version. The question closes.
+func (s *Scene) Resolve(a Answer) {
+	h := s.held[a.Question]
+	kind, prefix := "answer", "answer:"
+	if a.Action == "changed" {
+		kind, prefix = "changed-version", "change:"
+	}
+	part := Obj{"messageId": prefix + a.Question, "kind": kind, "re": a.Question, "salt": a.Salt, "text": a.Text}
+	digest := Sum(FromHex(a.Salt), []byte(a.Text))
+	r, id := s.Write("resolution", a.By, h.asker, kind, digest, a.At, h.asker, h.eseq, h.ehash, a.Verdict.Verdict, a.Verdict.Reason)
+	expect := outcome(a.Verdict, r, id)
+	if a.Verdict.Verdict == "pass" {
+		s.queue(h.asker, part, r, id)
+	}
+	if a.Released != nil {
+		var rr Obj
+		var rid string
+		if a.Action == "accepted" {
+			rr, rid = s.Write("crossing", h.asker, h.receiver, h.kind, h.digest, a.At, h.asker, h.eseq, h.ehash, a.Released.Verdict, a.Released.Reason)
+			if a.Released.Verdict == "pass" {
+				s.queue(h.receiver, h.delivery, rr, rid)
+			}
+		} else {
+			rr, rid = s.Write("resolution", a.By, h.receiver, kind, digest, a.At, h.asker, h.eseq, h.ehash, a.Released.Verdict, a.Released.Reason)
+			if a.Released.Verdict == "pass" {
+				s.queue(h.receiver, part, rr, rid)
+			}
+		}
+		expect["release"] = outcome(*a.Released, rr, rid)
+	}
+	step := Obj{"op": "resolve", "at": a.At, "question": a.Question, "action": a.Action,
+		"content": Obj{"answer": a.Text}, "salt": a.Salt, "expect": expect}
+	if !a.OmitBy {
+		step["by"] = a.By.Name
+	}
+	if a.Release {
+		step["release"] = true
+	}
+	s.steps = append(s.steps, step)
+	s.closeQuestion(a.Question)
+}
+
+// Close adds a decline, a cancel or an undeliverable (maybe-4): a resolution receipt from from, the
+// question's first answerer or the mediator, derived by hand, to the asker, block with the action as
+// its reason, naming the asked part and echoing the question's envelope. by names the answerer in the
+// step, and is nil for an undeliverable, which takes no caller. Nothing is queued, and the question
+// closes.
+func (s *Scene) Close(at, question, action string, by *Key, from Key) {
+	h := s.held[question]
+	r, id := s.Write("resolution", from, h.asker, h.kind, h.digest, at, h.asker, h.eseq, h.ehash, "block", action)
+	step := Obj{"op": "resolve", "at": at, "question": question, "action": action, "expect": outcome(Verdict{"block", action}, r, id)}
+	if by != nil {
+		step["by"] = by.Name
+	}
+	s.steps = append(s.steps, step)
+	s.closeQuestion(question)
+}
+
+// Refuse adds a resolve step rejected with code, which writes nothing (section 6). An accept or a
+// change carries its text and salt; by is nil for an undeliverable.
+func (s *Scene) Refuse(at, question, action string, by *Key, text, salt, code string) {
+	step := Obj{"op": "resolve", "at": at, "question": question, "action": action, "expect": Obj{"rejection": code}}
+	if by != nil {
+		step["by"] = by.Name
+	}
+	if action == "accepted" || action == "changed" {
+		step["content"], step["salt"] = Obj{"answer": text}, salt
+	}
+	s.steps = append(s.steps, step)
+}
+
+// A Timeout is a question a tick closes: its id, its deadline and the receipt's from, the first
+// answerer or the mediator, each derived by hand.
+type Timeout struct {
+	Question, Deadline string
+	From               Key
+}
+
+// Tick adds a tick step at at and writes, in order, a timeout for each question the generator says
+// it reaches (maybe-5): a resolution receipt from the first answerer to the asker, block, timeout,
+// at the deadline, naming the asked part and echoing the question's envelope.
+func (s *Scene) Tick(at string, closes ...Timeout) {
+	list := []any{}
+	for _, c := range closes {
+		h := s.held[c.Question]
+		r, id := s.Write("resolution", c.From, h.asker, h.kind, h.digest, c.Deadline, h.asker, h.eseq, h.ehash, "block", "timeout")
+		list = append(list, outcome(Verdict{"block", "timeout"}, r, id))
+		s.closeQuestion(c.Question)
+	}
+	s.steps = append(s.steps, Obj{"op": "tick", "at": at, "expect": Obj{"receipts": list}})
 }
 
 // Reject adds a give step the door rejects with code: it writes nothing and changes nothing
@@ -343,7 +499,7 @@ func (s *Scene) Vector(name, tests string, set Obj) Vector {
 	receipts := append([]any{}, s.written...)
 	pending := append([]any{}, s.pending...)
 	return Vector{Name: name, Tests: tests, Operation: "scenario", Members: Obj{
-		"keys": keys, "mediator": s.Mediator.Name, "founding": set, "foundedAt": FoundedAt,
+		"keys": keys, "mediator": s.Mediator.Name, "founding": set, "foundedAt": s.FoundedAt,
 		"steps": append([]any(nil), s.steps...),
 		"final": Obj{"receipts": receipts, "delivered": delivered, "pending": pending},
 	}}
