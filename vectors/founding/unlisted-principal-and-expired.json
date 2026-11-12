@@ -1,0 +1,170 @@
+{
+  "expect": {
+    "code": "binding-principal"
+  },
+  "foundedAt": "2026-11-12T08:00:00Z",
+  "input": {
+    "bindings": [
+      {
+        "actor": "ed25519:375dea8c4519dbae84fc9eb513e97eb4b693968ef37d52ac10da7b79250c6a22",
+        "mediator": "ed25519:84254f9d593b0f7811b18c00b656a70fe1a9595ed353c73286ea83d300226ed3",
+        "principal": "ed25519:7953e3ee4311c21f4990662dbe506689868533db6fb93a77351351e8d6119574",
+        "roles": [
+          "decider"
+        ],
+        "sig": "5a1324b8d219b11017d61cb89d2bef3a5f7b58602679419d2a14e804beb1aacb6d2b303e468a936bb2f0fd62f67b6dfd8acc695839dd7456bb62e87e1862830f",
+        "until": "2027-11-12T00:00:00Z"
+      },
+      {
+        "actor": "ed25519:7cf35b36b9d57c62b9f3d5be2eb4d39147afa1b7625cd0032443523254df3bea",
+        "mediator": "ed25519:84254f9d593b0f7811b18c00b656a70fe1a9595ed353c73286ea83d300226ed3",
+        "principal": "ed25519:147684db66bf4970733e769d486669f62e3a25239182cb911c95aa8223671061",
+        "roles": [
+          "proposer"
+        ],
+        "sig": "32d416b38f7a434f5d4595047a1a2adebbe7fc99647a34dc8ce2739babdf3126f64e008a9965b2b0d517486e1e4bf2b1364de6743cde60547ba404df45f73c05",
+        "until": "2026-11-12T08:00:00Z"
+      },
+      {
+        "actor": "ed25519:a80586279ba17c5360b029018bf025be0169fdb02087e77301774c99eed92117",
+        "mediator": "ed25519:84254f9d593b0f7811b18c00b656a70fe1a9595ed353c73286ea83d300226ed3",
+        "principal": "ed25519:7953e3ee4311c21f4990662dbe506689868533db6fb93a77351351e8d6119574",
+        "roles": [
+          "applier"
+        ],
+        "sig": "59b40e37b4e9f574d968ce6e17584a87a4fcf36e400c6b6b57a61088459a43f615fde22dbe5c5e59c4301a5f815010d7fe635c701e9339be15c792adad484004",
+        "until": "2027-11-12T00:00:00Z"
+      }
+    ],
+    "card": {
+      "checks": [],
+      "judges": [],
+      "kernel": {
+        "hash": "sha256:a8755bef6ff188c2dc6b74377a73c6a49d612fc44915675db9d2795bb5b99475",
+        "version": "0.1.0"
+      },
+      "spec": "0.1"
+    },
+    "declarations": [
+      {
+        "actor": "ed25519:375dea8c4519dbae84fc9eb513e97eb4b693968ef37d52ac10da7b79250c6a22",
+        "sig": "316c890d952df9fddbb2b50ea255bf2fb584d32cc8cf73d0226eff87cce4036f500277b2469c875a9037adbb901ceac72354874b93e4774d75103b7e8fccc00e",
+        "terms": [
+          {
+            "dir": "give",
+            "select": {
+              "kind": [
+                "answer",
+                "changed-version"
+              ]
+            },
+            "stance": "want",
+            "with": [
+              "role:proposer",
+              "role:applier"
+            ]
+          }
+        ]
+      },
+      {
+        "actor": "ed25519:7cf35b36b9d57c62b9f3d5be2eb4d39147afa1b7625cd0032443523254df3bea",
+        "sig": "2f0b765521a0114cf2c7a6c534c2fdee936383adb5ae306e129909efa045fd86884e8de2fc6440f3528303cde34e47808f71b6d9867b0cc9098f49c80e138102",
+        "terms": [
+          {
+            "dir": "give",
+            "resolve": {
+              "timeout": 3600,
+              "to": [
+                "role:decider"
+              ]
+            },
+            "select": {
+              "kind": [
+                "proposal"
+              ]
+            },
+            "stance": "maybe",
+            "with": [
+              "role:applier"
+            ]
+          },
+          {
+            "dir": "give",
+            "select": {
+              "kind": [
+                "note"
+              ]
+            },
+            "stance": "want",
+            "with": [
+              "role:applier"
+            ]
+          },
+          {
+            "dir": "get",
+            "select": {
+              "kind": [
+                "answer",
+                "changed-version"
+              ]
+            },
+            "stance": "want",
+            "with": [
+              "role:decider"
+            ]
+          }
+        ]
+      },
+      {
+        "actor": "ed25519:a80586279ba17c5360b029018bf025be0169fdb02087e77301774c99eed92117",
+        "sig": "a8de4390b6d13517b7304fca7faa74223a4a244d96a6b2f0f3d0c65931c308c385f89f5c0b5ef6e119d1e183526631bd0ff955287e885826a53dc0c64ca1850f",
+        "terms": [
+          {
+            "dir": "get",
+            "select": {
+              "kind": [
+                "proposal",
+                "note"
+              ]
+            },
+            "stance": "want",
+            "with": [
+              "role:proposer"
+            ]
+          },
+          {
+            "dir": "get",
+            "select": {
+              "kind": [
+                "changed-version"
+              ]
+            },
+            "stance": "want",
+            "with": [
+              "role:decider"
+            ]
+          }
+        ]
+      }
+    ],
+    "mediator": {
+      "actor": "ed25519:84254f9d593b0f7811b18c00b656a70fe1a9595ed353c73286ea83d300226ed3",
+      "operator": "ed25519:30f97501d13dd5589fc04e36ba98ccca1e44f52c1b3f578f1aca3c57c2181fbc",
+      "runs": "process"
+    },
+    "policy": {
+      "principals": [
+        "ed25519:7953e3ee4311c21f4990662dbe506689868533db6fb93a77351351e8d6119574"
+      ],
+      "roles": [
+        "proposer",
+        "applier",
+        "decider"
+      ]
+    }
+  },
+  "operation": "found",
+  "spec": "0.1",
+  "tests": "setup-contract-8: a binding's unlisted principal comes before its expiry",
+  "vector": "founding/unlisted-principal-and-expired"
+}

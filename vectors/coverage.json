@@ -44,12 +44,12 @@
     "scenarios": {"a surrogate escape after the grammar broke": {"vectors": ["canonical/surrogate-after-grammar-broke"]}, "a surrogate escape outside any quotes": {"vectors": ["canonical/surrogate-outside-quotes"]}}
   },
   "signing-1": {
-    "vectors": ["signatures/reference-forms", "signatures/reference-uppercase", "signatures/reference-short", "signatures/reference-other-prefix", "signatures/small-order-key"],
-    "scenarios": {"reference forms": {"vectors": ["signatures/reference-forms", "signatures/reference-uppercase", "signatures/reference-short", "signatures/reference-other-prefix"]}, "a small-order key": {"vectors": ["signatures/small-order-key"]}}
+    "vectors": ["signatures/reference-forms", "signatures/reference-uppercase", "signatures/reference-short", "signatures/reference-other-prefix", "signatures/small-order-key", "founding/small-order-actor"],
+    "scenarios": {"reference forms": {"vectors": ["signatures/reference-forms", "signatures/reference-uppercase", "signatures/reference-short", "signatures/reference-other-prefix"]}, "a small-order key": {"vectors": ["signatures/small-order-key", "founding/small-order-actor"]}}
   },
   "signing-2": {
-    "vectors": ["signatures/binding-under-declaration-uri", "signatures/envelope-by-another-key", "signatures/malleated-signature", "signatures/receipt-malleated-signature", "signatures/binding-verifies", "signatures/canonical-form-is-signed", "signatures/edited-after-signing", "signatures/envelope-verifies", "signatures/sig-missing", "signatures/sig-uppercase", "signatures/sign-binding", "signatures/sign-declaration", "signatures/sign-envelope", "signatures/sign-ignores-sig", "signatures/type-uri-of-the-operation"],
-    "scenarios": {"the type URI comes from the operation": {"vectors": ["signatures/binding-under-declaration-uri"]}, "signed by another key": {"vectors": ["signatures/envelope-by-another-key"]}, "a malleated signature": {"vectors": ["signatures/malleated-signature", "signatures/receipt-malleated-signature"]}}
+    "vectors": ["signatures/binding-under-declaration-uri", "founding/binding-under-declaration-uri", "signatures/envelope-by-another-key", "signatures/malleated-signature", "signatures/receipt-malleated-signature", "signatures/binding-verifies", "signatures/canonical-form-is-signed", "signatures/edited-after-signing", "signatures/envelope-verifies", "signatures/sig-missing", "signatures/sig-uppercase", "signatures/sign-binding", "signatures/sign-declaration", "signatures/sign-envelope", "signatures/sign-ignores-sig", "signatures/type-uri-of-the-operation"],
+    "scenarios": {"the type URI comes from the operation": {"vectors": ["signatures/binding-under-declaration-uri", "founding/binding-under-declaration-uri"]}, "signed by another key": {"vectors": ["signatures/envelope-by-another-key"]}, "a malleated signature": {"vectors": ["signatures/malleated-signature", "signatures/receipt-malleated-signature"]}}
   },
   "signing-4": {
     "vectors": ["signatures/receipt-verifies", "signatures/receipt-placket-payload-type", "signatures/registration-reserved"],
@@ -57,44 +57,44 @@
     "scenarios": {"a placket URI as a payload type": {"tests": ["core/signing:TestPayloadSignaturesRefuseTheFourTypeURIs"]}}
   },
   "setup-contract-1": {
-    "open": "M1",
-    "scenarios": {"a selector that is not a role": {"open": "M1"}, "a maybe without its rule": {"open": "M1"}, "a term that names a check": {"open": "M1"}, "a declaration edited after signing": {"open": "M1"}}
+    "vectors": ["founding/selector-not-a-role", "founding/maybe-without-resolve", "founding/term-names-a-check", "founding/declaration-edited", "founding/resolve-on-a-want"],
+    "scenarios": {"a selector that is not a role": {"vectors": ["founding/selector-not-a-role"]}, "a maybe without its rule": {"vectors": ["founding/maybe-without-resolve"]}, "a term that names a check": {"vectors": ["founding/term-names-a-check"]}, "a declaration edited after signing": {"vectors": ["founding/declaration-edited"]}}
   },
   "setup-contract-2": {
-    "open": "M1",
-    "scenarios": {"one binding, two roles": {"open": "M1"}, "a binding that expires at the founding time": {"open": "M1"}, "a time the timestamp rule refuses in until": {"open": "M1"}}
+    "vectors": ["founding/one-binding-two-roles", "founding/binding-expires-at-founding", "founding/until-second-60", "founding/until-hour-24", "founding/until-day-not-in-calendar"],
+    "scenarios": {"one binding, two roles": {"vectors": ["founding/one-binding-two-roles"]}, "a binding that expires at the founding time": {"vectors": ["founding/binding-expires-at-founding"]}, "a time the timestamp rule refuses in until": {"vectors": ["founding/until-second-60", "founding/until-hour-24", "founding/until-day-not-in-calendar"]}}
   },
   "setup-contract-3": {
-    "open": "M1",
-    "scenarios": {"a binding by an unlisted principal": {"open": "M1"}, "a binding for another mediator": {"open": "M1"}, "a binding with no declaration": {"open": "M1"}}
+    "vectors": ["founding/binding-unlisted-principal", "founding/binding-other-mediator", "founding/binding-without-declaration", "founding/declaration-without-binding"],
+    "scenarios": {"a binding by an unlisted principal": {"vectors": ["founding/binding-unlisted-principal"]}, "a binding for another mediator": {"vectors": ["founding/binding-other-mediator"]}, "a binding with no declaration": {"vectors": ["founding/binding-without-declaration"]}}
   },
   "setup-contract-4": {
-    "open": "M1",
-    "scenarios": {"a card that loads a check": {"open": "M1"}, "a member the card does not list": {"open": "M1"}}
+    "vectors": ["founding/card-loads-a-check", "founding/card-unlisted-member"],
+    "scenarios": {"a card that loads a check": {"vectors": ["founding/card-loads-a-check"]}, "a member the card does not list": {"vectors": ["founding/card-unlisted-member"]}}
   },
   "setup-contract-5": {
-    "open": "M1",
-    "scenarios": {"the same set twice": {"open": "M1"}, "a policy role nobody holds": {"open": "M1"}}
+    "vectors": ["founding/ask-and-log", "founding/ask-and-log-later", "founding/policy-role-nobody-holds", "founding/compose", "founding/policy-without-roles"],
+    "scenarios": {"the same set twice": {"vectors": ["founding/ask-and-log", "founding/ask-and-log-later"]}, "a policy role nobody holds": {"vectors": ["founding/policy-role-nobody-holds"]}}
   },
   "setup-contract-6": {
     "open": "M1",
     "scenarios": {"a stranger": {"open": "M1"}, "the mediator's own key": {"open": "M1"}}
   },
   "setup-contract-7": {
-    "open": "M1",
-    "scenarios": {"a class other than process": {"open": "M1"}, "the operator changes the id": {"open": "M1"}}
+    "vectors": ["founding/runs-container", "founding/ask-and-log", "founding/operator-changes-the-id"],
+    "scenarios": {"a class other than process": {"vectors": ["founding/runs-container"]}, "the operator changes the id": {"vectors": ["founding/ask-and-log", "founding/operator-changes-the-id"]}}
   },
   "setup-contract-8": {
-    "open": "M1",
-    "scenarios": {"two defects in one declaration": {"open": "M1"}, "defects in two declarations": {"open": "M1"}}
+    "vectors": ["founding/two-defects-in-one-declaration", "founding/defects-in-two-declarations", "founding/unlisted-principal-and-expired", "founding/bad-binding-signature-and-other-mediator", "founding/bad-declaration-signature-and-term"],
+    "scenarios": {"two defects in one declaration": {"vectors": ["founding/two-defects-in-one-declaration"]}, "defects in two declarations": {"vectors": ["founding/defects-in-two-declarations"]}}
   },
   "setup-contract-9": {
-    "open": "M1",
-    "scenarios": {"a repeated member name": {"open": "M1"}, "an actor of the wrong type": {"open": "M1"}, "a term with a missing member": {"open": "M1"}}
+    "vectors": ["founding/repeated-member", "founding/actor-a-number", "founding/actor-not-a-reference", "founding/term-missing-dir"],
+    "scenarios": {"a repeated member name": {"vectors": ["founding/repeated-member"]}, "an actor of the wrong type": {"vectors": ["founding/actor-a-number", "founding/actor-not-a-reference"]}, "a term with a missing member": {"vectors": ["founding/term-missing-dir"]}}
   },
   "setup-contract-10": {
-    "open": "M1",
-    "scenarios": {"declarations out of order": {"open": "M1"}, "two bindings for one actor": {"open": "M1"}}
+    "vectors": ["founding/declarations-out-of-order", "founding/two-bindings-one-actor"],
+    "scenarios": {"declarations out of order": {"vectors": ["founding/declarations-out-of-order"]}, "two bindings for one actor": {"vectors": ["founding/two-bindings-one-actor"]}}
   },
   "crossing-1": {
     "open": "M1",
@@ -133,8 +133,8 @@
     "scenarios": {"no beside want": {"open": "M1"}}
   },
   "composition-4": {
-    "open": "M1",
-    "scenarios": {"no check runs in this version": {"open": "M1"}}
+    "vectors": ["founding/term-names-a-check"],
+    "scenarios": {"no check runs in this version": {"vectors": ["founding/term-names-a-check"]}}
   },
   "composition-5": {
     "open": "M1",
@@ -229,7 +229,8 @@
     "scenarios": {"a vector's path": {"vectors": ["canonical/duplicate-key"]}}
   },
   "conformance-vectors-2": {
-    "open": "M1",
+    "vectors": ["founding/ask-and-log"],
+    "rest": {"open": "M2", "what": "an answer's salt, which a resolve step gives"},
     "scenarios": {"an answer's salt": {"open": "M2"}}
   },
   "conformance-vectors-3": {
@@ -237,8 +238,8 @@
     "scenarios": {"a give, then the end state": {"open": "M1"}}
   },
   "conformance-vectors-4": {
-    "open": "M1",
-    "scenarios": {"a founding refusal": {"open": "M1"}}
+    "vectors": ["founding/binding-unlisted-principal"],
+    "scenarios": {"a founding refusal": {"vectors": ["founding/binding-unlisted-principal"]}}
   },
   "conformance-vectors-5": {
     "open": "M1",

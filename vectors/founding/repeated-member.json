@@ -1,0 +1,11 @@
+{
+  "expect": {
+    "code": "not-canonical"
+  },
+  "foundedAt": "2026-11-12T08:00:00Z",
+  "inputText": "{\"policy\":{},\"policy\":{}}",
+  "operation": "found",
+  "spec": "0.1",
+  "tests": "setup-contract-9: a repeated member name is not-canonical",
+  "vector": "founding/repeated-member"
+}
