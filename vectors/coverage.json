@@ -145,8 +145,9 @@
     "scenarios": {"need meets want": {"vectors": ["crossing/need-meets-want"]}}
   },
   "maybe-1": {
-    "open": "M2",
-    "scenarios": {"a proposal is asked about": {"open": "M2"}, "a deadline past the last time": {"open": "M2"}}
+    "vectors": ["questions/a-proposal-is-asked-about", "questions/open-questions-in-the-order-opened", "questions/the-asked-part-is-held"],
+    "rest": {"open": "M2", "what": "the question's deadline, which a tick step shows"},
+    "scenarios": {"a proposal is asked about": {"vectors": ["questions/a-proposal-is-asked-about"], "rest": {"open": "M2", "what": "the question's deadline, 2026-11-12T10:00:00Z, which only a tick step shows"}}, "a deadline past the last time": {"open": "M2"}}
   },
   "maybe-3": {
     "open": "M2",
@@ -206,8 +207,9 @@
   },
   "receipt-10": {
     "vectors": ["receipts/three-gives-are-echoed", "receipts/a-time-with-second-60"],
+    "tests": ["core/mediator:TestTwoMediatorsOneRecord"],
     "rest": {"open": "M2", "what": "a timeout's time, the question's deadline, which a tick writes"},
-    "scenarios": {"a timeout's time": {"open": "M2"}, "two mediators, one record": {"open": "M1"}}
+    "scenarios": {"a timeout's time": {"open": "M2"}, "two mediators, one record": {"tests": ["core/mediator:TestTwoMediatorsOneRecord"]}}
   },
   "crossing-5": {
     "vectors": ["receipts/three-gives-are-echoed", "receipts/a-gives-receipt-echoes-another-members-envelope"],
@@ -227,7 +229,7 @@
   },
   "conformance-vectors-1": {
     "vectors": ["canonical/duplicate-key"],
-    "scenarios": {"a vector's path": {"vectors": ["canonical/duplicate-key"]}}
+    "scenarios": {"a vector's path": {"vectors": ["canonical/duplicate-key"], "tests": ["core/conformance:TestHeaderFirst"]}}
   },
   "conformance-vectors-2": {
     "vectors": ["crossing/a-give-then-the-end-state", "founding/ask-and-log"],
@@ -243,8 +245,8 @@
     "scenarios": {"a founding refusal": {"vectors": ["founding/binding-unlisted-principal"]}}
   },
   "conformance-vectors-5": {
-    "open": "M1",
-    "scenarios": {"a receipt that differs in one byte": {"open": "M1"}}
+    "tests": ["core/conformance:TestAReceiptDifferingInOneByteFails"],
+    "scenarios": {"a receipt that differs in one byte": {"tests": ["core/conformance:TestAReceiptDifferingInOneByteFails"]}}
   },
   "conformance-vectors-6": {
     "open": "M2",
@@ -259,15 +261,15 @@
     "scenarios": {"an input only hex can hold": {"vectors": ["canonical/invalid-utf8-in-string"]}}
   },
   "conformance-vectors-9": {
-    "open": "M1",
-    "scenarios": {"a case variant": {"open": "M1"}}
+    "tests": ["core/conformance:TestVectorAgainstSchemaFails"],
+    "scenarios": {"a case variant": {"tests": ["core/conformance:TestVectorAgainstSchemaFails"]}}
   },
   "conformance-vectors-10": {
-    "open": "M1",
-    "scenarios": {"a refused example that validates": {"open": "M1"}, "before the first vector": {"open": "M1"}}
+    "tests": ["core/conformance:TestARefusedVectorExampleThatValidatesFails", "core/conformance:TestEmptyVectorsPass", "core/conformance:TestSchemaExamples"],
+    "scenarios": {"a refused example that validates": {"tests": ["core/conformance:TestARefusedVectorExampleThatValidatesFails"]}, "before the first vector": {"tests": ["core/conformance:TestEmptyVectorsPass"]}}
   },
   "conformance-vectors-11": {
-    "open": "M1",
-    "scenarios": {"a repeated top-level name": {"open": "M1"}}
+    "tests": ["core/conformance:TestHeaderFirst"],
+    "scenarios": {"a repeated top-level name": {"tests": ["core/conformance:TestHeaderFirst"]}}
   }
 }
