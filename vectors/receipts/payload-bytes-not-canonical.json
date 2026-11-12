@@ -1,0 +1,25 @@
+{
+  "expect": {
+    "code": "not-canonical",
+    "index": 0
+  },
+  "operation": "verify",
+  "receipts": [
+    {
+      "receipt": {
+        "payload": "eyJhIjoxLCJhIjoyfQ==",
+        "payloadType": "application/vnd.in-toto+json",
+        "signatures": [
+          {
+            "keyid": "ed25519:84254f9d593b0f7811b18c00b656a70fe1a9595ed353c73286ea83d300226ed3",
+            "sig": "jtfPVad2hykpz34my376kERYFbzL2s4bOdP61JjxjAvfC27Dgdwd4IqgsoXAzXlHuZ4GR4Ggmqth4/JIfwhYBw=="
+          }
+        ]
+      }
+    }
+  ],
+  "reference": "ed25519:84254f9d593b0f7811b18c00b656a70fe1a9595ed353c73286ea83d300226ed3",
+  "spec": "0.1",
+  "tests": "section 8 row 1: a payload whose bytes repeat a name is not-canonical",
+  "vector": "receipts/payload-bytes-not-canonical"
+}

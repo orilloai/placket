@@ -178,51 +178,52 @@
   },
   "maybe-10": {
     "open": "M2",
-    "scenarios": {"an accept releases the asked part with its digest unchanged": {"open": "M2"}, "a change returned to the asker and released to the receiver under one digest": {"open": "M2"}, "a release the module blocks queues nothing": {"open": "M2"}, "a release receipt echoes the question's envelope and counts as an echo for the asker only": {"open": "M2"}, "a decline releases nothing": {"open": "M2"}}
+    "scenarios": {"an accept releases the asked part with its digest unchanged": {"open": "M2"}, "a change returned to the asker and released to the receiver under one digest": {"open": "M2"}, "a release the module blocks queues nothing": {"open": "M2"}, "a release receipt echoes the question's envelope and counts as an echo for the asker only": {"vectors": ["receipts/a-release-counts-as-an-echo-for-the-asker-only"], "rest": {"open": "M2", "what": "that a mediator's release receipt echoes the question's envelope, which needs an answer"}}, "a decline releases nothing": {"open": "M2"}}
   },
   "receipt-1": {
-    "open": "M1",
-    "scenarios": {"the anatomy of a receipt": {"open": "M1"}}
+    "vectors": ["receipts/three-gives-are-echoed", "receipts/a-chain-verifies", "receipts/a-statement-of-another-type"],
+    "scenarios": {"the anatomy of a receipt": {"vectors": ["receipts/three-gives-are-echoed", "receipts/a-chain-verifies", "receipts/a-statement-of-another-type"]}}
   },
   "receipt-2": {
-    "open": "M1",
-    "scenarios": {"a block names the attempted part": {"open": "M1"}}
+    "vectors": ["receipts/each-pair-its-own-chain", "receipts/two-subjects"],
+    "scenarios": {"a block names the attempted part": {"vectors": ["receipts/each-pair-its-own-chain"]}}
   },
   "receipt-3": {
-    "open": "M1",
-    "scenarios": {"the first receipt of a pair": {"open": "M1"}}
+    "vectors": ["receipts/three-gives-are-echoed"],
+    "scenarios": {"the first receipt of a pair": {"vectors": ["receipts/three-gives-are-echoed"]}}
   },
   "receipt-4": {
-    "open": "M1",
-    "scenarios": {"a block with reason maybe": {"open": "M1"}, "a block with reason ok": {"open": "M1"}, "a resolution reason on a crossing receipt": {"open": "M1"}}
+    "vectors": ["receipts/a-block-with-reason-maybe", "receipts/a-block-with-reason-ok", "receipts/a-resolution-reason-on-a-crossing-receipt", "receipts/a-reserved-check-reason", "receipts/an-escalate-resolution"],
+    "scenarios": {"a block with reason maybe": {"vectors": ["receipts/a-block-with-reason-maybe"]}, "a block with reason ok": {"vectors": ["receipts/a-block-with-reason-ok"]}, "a resolution reason on a crossing receipt": {"vectors": ["receipts/a-resolution-reason-on-a-crossing-receipt"]}}
   },
   "receipt-5": {
-    "open": "M1",
-    "scenarios": {"two receipts in one pair": {"open": "M1"}, "the answer's own chain": {"open": "M2"}}
+    "vectors": ["receipts/three-gives-are-echoed", "receipts/each-pair-its-own-chain", "receipts/a-first-receipt-at-seq-2", "receipts/a-first-receipt-with-a-prev", "receipts/a-prev-that-is-not-the-one-before"],
+    "scenarios": {"two receipts in one pair": {"vectors": ["receipts/three-gives-are-echoed", "receipts/each-pair-its-own-chain"]}, "the answer's own chain": {"open": "M2"}}
   },
   "receipt-9": {
-    "open": "M1",
-    "scenarios": {"an unlisted member": {"open": "M1"}}
+    "vectors": ["receipts/an-unlisted-predicate-member"],
+    "scenarios": {"an unlisted member": {"vectors": ["receipts/an-unlisted-predicate-member"]}}
   },
   "receipt-10": {
-    "open": "M1",
+    "vectors": ["receipts/three-gives-are-echoed", "receipts/a-time-with-second-60"],
+    "rest": {"open": "M2", "what": "a timeout's time, the question's deadline, which a tick writes"},
     "scenarios": {"a timeout's time": {"open": "M2"}, "two mediators, one record": {"open": "M1"}}
   },
   "crossing-5": {
-    "open": "M1",
-    "scenarios": {"every give is echoed": {"open": "M1"}, "a resolution echoes the question's envelope": {"open": "M2"}}
+    "vectors": ["receipts/three-gives-are-echoed", "receipts/a-gives-receipt-echoes-another-members-envelope"],
+    "scenarios": {"every give is echoed": {"vectors": ["receipts/three-gives-are-echoed"]}, "a resolution echoes the question's envelope": {"open": "M2"}}
   },
   "receipt-6": {
-    "open": "M1",
-    "scenarios": {"an edited receipt": {"open": "M1"}, "a receipt that names another mediator": {"open": "M1"}, "a removed middle receipt": {"open": "M1"}, "a release with no answer before it": {"open": "M2"}, "a give's receipt that echoes another member's envelope": {"open": "M1"}, "a second ask with an earlier question's envelope": {"open": "M2"}, "the first failure of the first failing receipt": {"open": "M1"}, "a mediator that is not a reference": {"open": "M1"}}
+    "vectors": ["receipts/a-chain-verifies", "receipts/a-blocked-release", "receipts/a-change-and-its-release", "receipts/a-change-released-to-its-answerer", "receipts/a-change-released-under-another-digest", "receipts/a-closing-addressed-to-the-receiver", "receipts/a-closing-of-the-wrong-subject", "receipts/a-decline-closes-a-question", "receipts/a-decline-of-another-part", "receipts/a-gives-receipt-echoes-another-members-envelope", "receipts/a-keyid-of-another-mediator", "receipts/a-list-cut-short-verifies", "receipts/a-mediator-that-is-not-a-reference", "receipts/a-mediator-that-is-not-a-reference", "receipts/a-member-the-receipt-does-not-list", "receipts/a-receipt-that-names-another-mediator", "receipts/a-release-after-a-blocked-answer", "receipts/a-release-after-a-decline", "receipts/a-release-failure-before-a-later-row", "receipts/a-release-not-right-after-its-answer", "receipts/a-release-with-no-answer-before-it", "receipts/a-removed-middle-receipt", "receipts/a-resolution-that-belongs-to-no-question", "receipts/a-second-ask-with-an-earlier-questions-envelope", "receipts/a-second-release", "receipts/a-signature-of-63-bytes", "receipts/an-accept-and-its-release", "receipts/an-accepts-release-of-the-wrong-form", "receipts/an-edited-receipt", "receipts/an-empty-list-verifies", "receipts/payload-bytes-not-canonical", "receipts/payload-not-in-base64", "receipts/receipt-bytes-not-canonical", "receipts/signed-again-by-another-key", "receipts/the-first-failure-of-the-first-failing-receipt", "receipts/the-first-failure-of-the-first-failing-receipt", "receipts/two-signatures"],
+    "scenarios": {"an edited receipt": {"vectors": ["receipts/an-edited-receipt"]}, "a receipt that names another mediator": {"vectors": ["receipts/a-receipt-that-names-another-mediator"]}, "a removed middle receipt": {"vectors": ["receipts/a-removed-middle-receipt"]}, "a release with no answer before it": {"vectors": ["receipts/a-release-with-no-answer-before-it"]}, "a give's receipt that echoes another member's envelope": {"vectors": ["receipts/a-gives-receipt-echoes-another-members-envelope"]}, "a second ask with an earlier question's envelope": {"vectors": ["receipts/a-second-ask-with-an-earlier-questions-envelope"]}, "the first failure of the first failing receipt": {"vectors": ["receipts/the-first-failure-of-the-first-failing-receipt"]}, "a mediator that is not a reference": {"vectors": ["receipts/a-mediator-that-is-not-a-reference"]}}
   },
   "receipt-8": {
-    "open": "M1",
-    "scenarios": {"a forged receipt shown": {"open": "M1"}}
+    "tests": ["core/receipts:TestAForgedReceiptShowsAsARealOne"],
+    "scenarios": {"a forged receipt shown": {"tests": ["core/receipts:TestAForgedReceiptShowsAsARealOne"]}}
   },
   "receipt-7": {
-    "open": "M1",
-    "scenarios": {"a removed last receipt": {"open": "M1"}, "an unfetched delivery": {"open": "M1"}, "a submission with no receipt": {"open": "M1"}, "a kept receipt from another Accord": {"open": "M1"}, "an echo matches both seq and hash": {"open": "M1"}}
+    "vectors": ["receipts/a-removed-last-receipt", "receipts/an-unfetched-delivery", "receipts/a-submission-with-no-receipt", "receipts/a-kept-receipt-from-another-accord", "receipts/an-echo-matches-seq-and-hash", "receipts/a-kept-receipt-that-blocked", "receipts/a-kept-receipt-to-another-party", "receipts/a-presented-list-that-fails", "receipts/a-presented-receipt-from-another-accord", "receipts/a-reconciling-mediator-that-is-not-a-reference", "receipts/a-release-counts-as-an-echo-for-the-asker-only", "receipts/everything-matches"],
+    "scenarios": {"a removed last receipt": {"vectors": ["receipts/a-removed-last-receipt"]}, "an unfetched delivery": {"vectors": ["receipts/an-unfetched-delivery"]}, "a submission with no receipt": {"vectors": ["receipts/a-submission-with-no-receipt"]}, "a kept receipt from another Accord": {"vectors": ["receipts/a-kept-receipt-from-another-accord"]}, "an echo matches both seq and hash": {"vectors": ["receipts/an-echo-matches-seq-and-hash"]}}
   },
   "conformance-vectors-1": {
     "vectors": ["canonical/duplicate-key"],
