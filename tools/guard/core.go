@@ -2,7 +2,9 @@ package main
 
 import (
 	"go/ast"
+	"go/build/constraint"
 	"go/token"
+	"path"
 	"regexp"
 	"strconv"
 	"strings"
@@ -128,34 +130,36 @@ var clockCalls = map[string]bool{
 var nonGoSuffixes = []string{".s", ".S", ".sx", ".c", ".cc", ".cpp", ".cxx", ".h", ".hh", ".hpp", ".hxx",
 	".m", ".f", ".F", ".for", ".f90", ".swig", ".swigcxx", ".syso"}
 
-// packageNames returns the names each directory's files declare at package level, so that a call of
-// print, println or panic can be told from a call of the package's own function of that name.
+// packageNames returns, for each directory and package clause, the names declared at package level in
+// the files every build of the package includes, so that a call of print, println or panic can be told
+// from a call of the package's own function of that name. A file some build leaves out does not count:
+// the call reaches the built-in in that build.
 func packageNames(t *tree, files []string) map[string]map[string]bool {
 	names := map[string]map[string]bool{}
 	for _, rel := range files {
 		g := t.parse(rel)
-		if g.f == nil {
+		if g.f == nil || !alwaysBuilt(rel, g.f) {
 			continue
 		}
-		d := dir(rel)
-		if names[d] == nil {
-			names[d] = map[string]bool{}
+		k := pkgKey(rel, g.f)
+		if names[k] == nil {
+			names[k] = map[string]bool{}
 		}
 		for _, decl := range g.f.Decls {
 			switch decl := decl.(type) {
 			case *ast.FuncDecl:
 				if decl.Recv == nil {
-					names[d][decl.Name.Name] = true
+					names[k][decl.Name.Name] = true
 				}
 			case *ast.GenDecl:
 				for _, s := range decl.Specs {
 					switch s := s.(type) {
 					case *ast.ValueSpec:
 						for _, n := range s.Names {
-							names[d][n.Name] = true
+							names[k][n.Name] = true
 						}
 					case *ast.TypeSpec:
-						names[d][s.Name.Name] = true
+						names[k][s.Name.Name] = true
 					}
 				}
 			}
@@ -164,8 +168,70 @@ func packageNames(t *tree, files []string) map[string]map[string]bool {
 	return names
 }
 
-// builtinCalls returns each call in the file of one of the built-ins named, at its line, unless the
-// package declares a name of its own that the call reaches instead.
+// pkgKey names a file's package: its directory and its package clause.
+func pkgKey(rel string, f *ast.File) string { return dir(rel) + "\x00" + f.Name.Name }
+
+// alwaysBuilt reports whether every build of the file's package includes it: its name does not start
+// with "_" or ".", it has no system or architecture suffix, and no build line comes before its package
+// clause, in either the //go:build or the // +build form.
+func alwaysBuilt(rel string, f *ast.File) bool {
+	base := path.Base(rel)
+	if strings.HasPrefix(base, "_") || strings.HasPrefix(base, ".") || !goodOSArchName(base) {
+		return false
+	}
+	for _, cg := range f.Comments {
+		if cg.Pos() >= f.Package {
+			break
+		}
+		for _, c := range cg.List {
+			if constraint.IsGoBuild(c.Text) || constraint.IsPlusBuild(c.Text) {
+				return false
+			}
+		}
+	}
+	return true
+}
+
+// goodOSArchName reports whether a Go file's name carries no system or architecture suffix, the
+// _GOOS, _GOARCH and _GOOS_GOARCH endings, before _test, by which the Go tool builds a file only there.
+// "unix" counts as a system here, though the Go tool does not read it from a name: a stricter reading
+// only refuses more.
+func goodOSArchName(base string) bool {
+	name := strings.TrimSuffix(base, ".go")
+	i := strings.Index(name, "_")
+	if i < 0 {
+		return true
+	}
+	l := strings.Split(name[i:], "_")
+	if n := len(l); n > 0 && l[n-1] == "test" {
+		l = l[:n-1]
+	}
+	n := len(l)
+	if n >= 2 && knownOS[l[n-2]] && knownArch[l[n-1]] {
+		return false
+	}
+	return !(n >= 1 && (knownOS[l[n-1]] || knownArch[l[n-1]]))
+}
+
+// knownOS and knownArch are the systems and architectures the Go tool reads from a file's name.
+var knownOS = setOf("aix", "android", "darwin", "dragonfly", "freebsd", "hurd", "illumos", "ios", "js",
+	"linux", "nacl", "netbsd", "openbsd", "plan9", "solaris", "unix", "wasip1", "windows", "zos")
+
+var knownArch = setOf("386", "amd64", "amd64p32", "arm", "armbe", "arm64", "arm64be", "loong64", "mips",
+	"mipsle", "mips64", "mips64le", "mips64p32", "mips64p32le", "ppc", "ppc64", "ppc64le", "riscv",
+	"riscv64", "s390", "s390x", "sparc", "sparc64", "wasm")
+
+func setOf(names ...string) map[string]bool {
+	m := map[string]bool{}
+	for _, n := range names {
+		m[n] = true
+	}
+	return m
+}
+
+// builtinCalls returns each call in the file of one of the built-ins named, at its line, unless a file
+// of the same package clause that every build includes declares a name of its own that the call
+// reaches instead.
 func builtinCalls(rel string, g *goFile, declared map[string]bool, names ...string) []finding {
 	var out []finding
 	ast.Inspect(g.f, func(n ast.Node) bool {
@@ -249,7 +315,7 @@ func coreNoWorld(t *tree) []finding {
 			}
 			return true
 		})
-		return append(out, builtinCalls(rel, g, declared[dir(rel)], "print", "println")...)
+		return append(out, builtinCalls(rel, g, declared[pkgKey(rel, g.f)], "print", "println")...)
 	})...)
 }
 
@@ -262,7 +328,7 @@ func coreNoPanic(t *tree) []finding {
 	files := coreGo(t, false)
 	declared := packageNames(t, files)
 	return append(fs, eachFile(t, files, func(rel string, g *goFile) []finding {
-		return builtinCalls(rel, g, declared[dir(rel)], "panic")
+		return builtinCalls(rel, g, declared[pkgKey(rel, g.f)], "panic")
 	})...)
 }
 
