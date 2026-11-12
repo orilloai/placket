@@ -24,7 +24,10 @@ jobs:
       - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
         with:
           go-version: ${{ env.GO_VERSION }}
-          cache: false
+          # Go's module and build caches, keyed on every module's go.sum (there is none at the root).
+          # Test results never come from it: make ci runs go test with -count=1.
+          cache: true
+          cache-dependency-path: "**/go.sum"
       # Inline on purpose: the writer cannot change a workflow file, but could change a script beside it.
       - name: New tests are red at their lock commit and green at the head
         shell: bash
@@ -95,5 +98,8 @@ jobs:
       - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
         with:
           go-version: ${{ env.GO_VERSION }}
-          cache: false
+          # Go's module and build caches, keyed on every module's go.sum (there is none at the root).
+          # Test results never come from it: make ci runs go test with -count=1.
+          cache: true
+          cache-dependency-path: "**/go.sum"
       - run: make ci
