@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("{\"deAdline\":\"0\",\"question\":\"0\",\"roles\":[]}")
