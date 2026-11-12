@@ -10,7 +10,8 @@ func init() {
 
 // questionsCommand is `questions`, with the socket flags: the open questions this key may answer,
 // one JSON object per line, {"asker","deadline","form","id","kind"} and the part: a text part's
-// text or a data part's canonical JSON in message, a raw part's size in bytes in size.
+// text or a data part's canonical JSON in message, a raw part's size in bytes in size. On a terminal
+// the line is escaped, which leaves it the same JSON.
 func questionsCommand(r *run, args []string) int {
 	fs := flags("questions")
 	keyPath, socket, accord, stateDir := socketFlags(fs)
@@ -40,7 +41,7 @@ func questionsCommand(r *run, args []string) int {
 		if q.Size != nil {
 			o["size"] = *q.Size
 		}
-		line(r.stdout, canonicalJSON(o))
+		line(r.stdout, r.screenJSON(canonicalJSON(o)))
 	}
 	return ExitOK
 }

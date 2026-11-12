@@ -10,6 +10,8 @@
 //	3  a tool or door error, its code on standard error
 //	4  an ask still open, the question's id on standard output
 //
+// What another party wrote is escaped on its way to a terminal (screen.go).
+//
 // Every socket command takes --key, --socket and --accord, and --state for the actor's state
 // directory, by default <key file>.state/<the Accord id's hex>/. The words a person reads are in
 // words.go.
@@ -75,6 +77,9 @@ type Env struct {
 	Disk journal.Disk
 	// Ready, when set, is closed once a window listens.
 	Ready chan<- struct{}
+	// Terminal reports whether a writer is a terminal, so that another party's bytes are escaped on
+	// it; nil takes a character device for one.
+	Terminal func(w io.Writer) bool
 }
 
 // A run is one command's streams and Env.
@@ -96,6 +101,9 @@ func Run(env Env, args []string, stdin io.Reader, stdout, stderr io.Writer) int 
 	}
 	if env.Poll == 0 {
 		env.Poll = time.Second
+	}
+	if env.Terminal == nil {
+		env.Terminal = isTerminal
 	}
 	r := &run{env: env, stdin: stdin, stdout: stdout, stderr: stderr}
 	if len(args) == 0 {

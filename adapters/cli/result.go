@@ -94,7 +94,7 @@ func (s *session) fetchOwn(question string) int {
 	for _, l := range kept {
 		var d delivery
 		if json.Unmarshal(l, &d) == nil && own(&d, question) {
-			line(s.r.stdout, d.bytes())
+			line(s.r.stdout, s.r.screen(d.bytes()))
 			return 0
 		}
 	}
@@ -108,7 +108,7 @@ func (s *session) fetchOwn(question string) int {
 			return 0
 		}
 		if own(d, question) {
-			line(s.r.stdout, d.bytes())
+			line(s.r.stdout, s.r.screen(d.bytes()))
 			return 0
 		}
 		s.r.show(d, "")

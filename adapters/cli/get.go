@@ -84,17 +84,17 @@ func keptLine(delivery, answerCall []byte) []byte {
 	return canonicalJSON(o)
 }
 
-// show prints a fetched delivery as get does: one line on standard error, and its body on standard
-// output, or in a file of the directory out.
+// show prints a fetched delivery as get does: one line on standard error, each field escaped, and
+// its body on standard output, escaped on a terminal, or in a file of the directory out.
 func (r *run) show(d *delivery, out string) int {
-	head := "delivery " + d.ReceiptID + " kind " + d.Kind + " messageId " + d.MessageID + " salt " + d.Salt
+	head := "delivery " + field(d.ReceiptID) + " kind " + field(d.Kind) + " messageId " + field(d.MessageID) + " salt " + field(d.Salt)
 	if d.Re != "" {
-		head += " re " + d.Re
+		head += " re " + field(d.Re)
 	}
 	fmt.Fprintln(r.stderr, head)
 	b := d.bytes()
 	if out == "" {
-		line(r.stdout, b)
+		line(r.stdout, r.screen(b))
 		return ExitOK
 	}
 	path := filepath.Join(out, strings.TrimPrefix(d.ReceiptID, canonical.HashPrefix)+"."+d.Kind)

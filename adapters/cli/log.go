@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 
@@ -15,7 +16,8 @@ func init() {
 
 // logCommand is `log --mediator M --receipts DIR [--kept DIR...] [--format json|csv] [--words |
 // --no-words]`: the export, one row per question. JSON carries the claim and the scope line; with
-// CSV they are printed on standard error. A journal that does not verify prints no row and exits 3.
+// CSV they are printed on standard error. On a terminal the cells' control characters are escaped.
+// A journal that does not verify prints no row and exits 3.
 func logCommand(r *run, args []string) int {
 	fs := flags("log")
 	med, dir, format := fs.String("mediator", "", "mediator"), fs.String("receipts", "", "journal directory"), fs.String("format", "json", "json or csv")
@@ -53,12 +55,14 @@ func logCommand(r *run, args []string) int {
 		return r.tool(codeVerify)
 	}
 	if *format == "json" {
-		line(r.stdout, lg.JSON(ClaimVerified, Scope, *withWords, *noWords))
+		line(r.stdout, r.screenJSON(lg.JSON(ClaimVerified, Scope, *withWords, *noWords)))
 		return ExitOK
 	}
-	if err := lg.CSV(r.stdout, *withWords, *noWords); err != nil {
+	var b bytes.Buffer
+	if err := lg.CSV(&b, *withWords, *noWords); err != nil {
 		return r.tool(codeFile)
 	}
+	_, _ = r.stdout.Write(r.screen(b.Bytes()))
 	fmt.Fprintln(r.stderr, ClaimVerified)
 	fmt.Fprintln(r.stderr, Scope)
 	return ExitOK
