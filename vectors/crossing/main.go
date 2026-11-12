@@ -1,0 +1,324 @@
+// Command crossing writes the vectors of the crossing group: sections 4 and 5 of the protocol, giving
+// and getting a part at the door, and composition's verdict. Every rejection code, verdict and reason
+// is written here by hand from the door's and composition's check tables; the generator builds and
+// signs the messages, envelopes and receipts with the Go standard library alone (vectors/README.md).
+//
+// It imports no package of the core.
+package main
+
+import (
+	"strings"
+
+	"github.com/orilloai/placket/vectors/signatures/kit"
+)
+
+var (
+	askAndLog = kit.AskAndLog().Build()
+	compose   = kit.Compose().Build()
+)
+
+// at returns the time of the scenario's n-th step: one minute apart from 09:00.
+func at(n int) string {
+	return "2026-11-12T09:" + string(rune('0'+n/10)) + string(rune('0'+n%10)) + ":00Z"
+}
+
+func scene(set kit.Obj) *kit.Scene {
+	return kit.NewScene(set, kit.Mediator, kit.Proposer, kit.Applier, kit.Decider, kit.Stranger)
+}
+
+func note(id, text string) kit.Obj {
+	return kit.Message(id, kit.HashOf(askAndLog), kit.Applier, kit.TextPart("note", kit.Salt("crossing "+id, 16), text))
+}
+
+func of(set kit.Obj, id, kind string) kit.Obj {
+	return kit.Message(id, kit.HashOf(set), kit.Applier, kit.TextPart(kind, kit.Salt("crossing "+id, 16), "The "+kind+" "+id+"."))
+}
+
+// signedBy returns the message and its envelope at seq, signed by the key, as JSON values.
+func signedBy(m kit.Obj, seq int64, k kit.Key) (kit.Obj, kit.Obj) {
+	return kit.Obj{"message": m}, kit.Obj{"envelope": kit.Envelope(seq, kit.Canon(m), k)}
+}
+
+// text gives message bytes as text, with the envelope over the bytes given as the hashed message.
+func text(message string, hashed []byte, seq int64, k kit.Key) (kit.Obj, kit.Obj) {
+	return kit.Obj{"messageText": message}, kit.Obj{"envelope": kit.Envelope(seq, hashed, k)}
+}
+
+func main() {
+	var vs []kit.Vector
+	add := func(name, tests string, s *kit.Scene, set kit.Obj) {
+		vs = append(vs, s.Vector("crossing/"+name, tests, set))
+	}
+
+	{
+		s := scene(askAndLog)
+		s.Give(at(0), kit.Proposer, 1, note("note-1", "A note."), kit.Applier, "pass", "ok")
+		add("a-give-then-the-end-state", "conformance-vectors-3: one give that passes; final holds its receipt and its delivery, and nothing is pending", s, askAndLog)
+	}
+	{
+		s := scene(askAndLog)
+		s.Give(at(0), kit.Proposer, 1, note("note-1", "A note."), kit.Applier, "pass", "ok")
+		s.Get(kit.Applier)
+		s.Get(kit.Applier)
+		add("a-delivery-is-fetched-once", "crossing-3: the receiver's first fetch returns the delivery and its second returns nothing", s, askAndLog)
+	}
+	{
+		s := scene(askAndLog)
+		s.Give(at(0), kit.Proposer, 1, of(askAndLog, "tests-1", "tests"), kit.Applier, "block", "no-match")
+		s.Get(kit.Applier)
+		add("no-delivery-for-a-block", "crossing-3, composition-2: a kind no term names is block, no-match, and the receiver's fetch returns nothing", s, askAndLog)
+	}
+	{
+		s := scene(askAndLog)
+		m := kit.Message("stranger-1", kit.HashOf(askAndLog), kit.Applier, kit.TextPart("note", kit.Salt("stranger", 16), "From nobody."))
+		msg, env := signedBy(m, 1, kit.Stranger)
+		s.Reject(at(0), kit.Stranger, "not-a-member", msg, env)
+		s.GetRejected(kit.Stranger, "not-a-member")
+		add("a-stranger", "setup-contract-6: a caller with no declaration is not-a-member when it gives and when it fetches", s, askAndLog)
+	}
+	{
+		s := scene(askAndLog)
+		m := kit.Message("mediator-1", kit.HashOf(askAndLog), kit.Applier, kit.TextPart("note", kit.Salt("mediator", 16), "From the mediator."))
+		msg, env := signedBy(m, 1, kit.Mediator)
+		s.Reject(at(0), kit.Mediator, "not-a-member", msg, env)
+		s.GetRejected(kit.Mediator, "not-a-member")
+		add("the-mediators-own-key", "setup-contract-6: the mediator's key, which has no declaration, is not-a-member", s, askAndLog)
+	}
+	{
+		s := scene(askAndLog)
+		m := note("other-accord", "Elsewhere.")
+		kit.Ext(m)["accord"] = kit.HashOf(compose)
+		msg, env := signedBy(m, 1, kit.Proposer)
+		s.Reject(at(0), kit.Proposer, "accord-mismatch", msg, env)
+		add("a-message-from-another-accord", "crossing-1: a correctly signed message naming another Accord's id is accord-mismatch", s, askAndLog)
+	}
+	{
+		s := scene(askAndLog)
+		m := note("unknown", "To nobody.")
+		kit.Ext(m)["to"] = kit.Stranger.Ref
+		msg, env := signedBy(m, 1, kit.Proposer)
+		s.Reject(at(0), kit.Proposer, "receiver-unknown", msg, env)
+		add("an-unknown-receiver", "crossing-1: a to naming a key with no declaration is receiver-unknown", s, askAndLog)
+	}
+	{
+		s := scene(askAndLog)
+		m := note("context", "With a context.")
+		m["contextId"] = "c-1"
+		msg, env := signedBy(m, 1, kit.Proposer)
+		s.Reject(at(0), kit.Proposer, "extension-missing", msg, env)
+		for i, from := range []kit.Key{kit.Proposer, kit.Applier} {
+			m := note("from-"+from.Name, "Claiming a sender.")
+			kit.Ext(m)["from"] = from.Ref
+			msg, env := signedBy(m, 1, kit.Proposer)
+			s.Reject(at(1+i), kit.Proposer, "extension-missing", msg, env)
+		}
+		s.Give(at(3), kit.Proposer, 1, note("note-1", "A note."), kit.Applier, "pass", "ok")
+		add("a-member-the-frame-does-not-list", "crossing-1, crossing-6: a contextId, and a from naming the caller or another member, are extension-missing", s, askAndLog)
+	}
+	{
+		s := scene(askAndLog)
+		good := note("gate-1", "Gated.")
+		kit.Ext(good)["gate"] = "out_you"
+		s.Give(at(0), kit.Proposer, 1, good, kit.Applier, "pass", "ok")
+		bad := note("gate-2", "Gated badly.")
+		kit.Ext(bad)["gate"] = "Out_You"
+		msg, env := signedBy(bad, 2, kit.Proposer)
+		s.Reject(at(1), kit.Proposer, "extension-missing", msg, env)
+		add("a-reserved-gate", "crossing-1: a gate out_you is read for shape only and decided as without it; Out_You is extension-missing", s, askAndLog)
+	}
+	{
+		s := scene(askAndLog)
+		cases := []func(p kit.Obj){
+			func(p kit.Obj) { p["data"] = kit.Obj{"also": "data"} },
+			func(p kit.Obj) { delete(p, "text") },
+			func(p kit.Obj) { delete(p, "text"); p["raw"] = "not base64!" },
+			func(p kit.Obj) { delete(p, "text"); p["raw"] = "YR==" },
+			func(p kit.Obj) { delete(p, "text"); p["data"] = nil },
+			func(p kit.Obj) { p["text"] = 7 },
+			func(p kit.Obj) { p["kind"] = "note" },
+		}
+		for i, change := range cases {
+			m := note("body-"+string(rune('a'+i)), "A body.")
+			change(kit.PartOf(m))
+			msg, env := signedBy(m, 1, kit.Proposer)
+			s.Reject(at(i), kit.Proposer, "one-body", msg, env)
+		}
+		add("one-body", "crossing-2: two bodies, none, a raw not in standard base64 or not in its one encoding, a null data, a text not a string and an unlisted member are one-body", s, askAndLog)
+	}
+	{
+		s := scene(askAndLog)
+		m := note("url", "Unused.")
+		p := kit.PartOf(m)
+		delete(p, "text")
+		p["url"] = "https://example.com/a"
+		msg, env := signedBy(m, 1, kit.Proposer)
+		s.Reject(at(0), kit.Proposer, "url-unsupported", msg, env)
+		m2 := note("url-2", "Unused.")
+		kit.PartOf(m2)["url"] = 7
+		msg, env = signedBy(m2, 1, kit.Proposer)
+		s.Reject(at(1), kit.Proposer, "one-body", msg, env)
+		add("a-url-body", "crossing-2: a part whose one body is url is url-unsupported; a url beside a text is two bodies, one-body", s, askAndLog)
+	}
+	{
+		s := scene(askAndLog)
+		cases := []func(meta kit.Obj){
+			func(meta kit.Obj) { meta["salt"] = kit.Salt("short", 15) },
+			func(meta kit.Obj) { meta["salt"] = strings.ToUpper(kit.Salt("upper", 16)) },
+			func(meta kit.Obj) { delete(meta, "kind") },
+			func(meta kit.Obj) { meta["kind"] = "Note" },
+			func(meta kit.Obj) { meta["topic"] = "x" },
+		}
+		for i, change := range cases {
+			m := note("meta-"+string(rune('a'+i)), "A part.")
+			change(kit.PartOf(m)["metadata"].(kit.Obj)[kit.Extension].(kit.Obj))
+			msg, env := signedBy(m, 1, kit.Proposer)
+			s.Reject(at(i), kit.Proposer, "part-metadata", msg, env)
+		}
+		m := note("meta-none", "A part.")
+		delete(kit.PartOf(m), "metadata")
+		msg, env := signedBy(m, 1, kit.Proposer)
+		s.Reject(at(5), kit.Proposer, "part-metadata", msg, env)
+		add("part-metadata", "crossing-2: a 15-byte salt, an uppercase salt, a missing or malformed kind, an unlisted member and no metadata are part-metadata", s, askAndLog)
+	}
+	{
+		s := scene(askAndLog)
+		m := note("edited", "As signed.")
+		env := kit.Envelope(1, kit.Canon(m), kit.Proposer)
+		kit.PartOf(m)["text"] = "As signeD."
+		s.Reject(at(0), kit.Proposer, "envelope-hash", kit.Obj{"message": m}, kit.Obj{"envelope": env})
+		add("an-edited-message", "crossing-4: a message changed by one byte after its envelope was signed is envelope-hash", s, askAndLog)
+	}
+	{
+		s := scene(askAndLog)
+		s.Give(at(0), kit.Proposer, 1, note("note-1", "First."), kit.Applier, "pass", "ok")
+		msg, env := signedBy(note("note-2", "Again."), 1, kit.Proposer)
+		s.Reject(at(1), kit.Proposer, "envelope-sequence", msg, env)
+		msg, env = signedBy(note("note-3", "Zero."), 0, kit.Proposer)
+		s.Reject(at(2), kit.Proposer, "envelope-sequence", msg, env)
+		add("a-repeated-sequence-number", "crossing-4: a give at seq 1 after seq 1 was accepted, and one at seq 0, are envelope-sequence", s, askAndLog)
+	}
+	{
+		s := scene(askAndLog)
+		s.Give(at(0), kit.Proposer, 1, note("note-1", "First."), kit.Applier, "pass", "ok")
+		s.Give(at(1), kit.Proposer, 3, note("note-3", "Third."), kit.Applier, "pass", "ok")
+		add("a-skipped-sequence-number", "crossing-4: after seq 1, a give at seq 3 is decided and its receipt echoes seq 3", s, askAndLog)
+	}
+	{
+		s := scene(askAndLog)
+		good := kit.Canon(note("dup", "Twice."))
+		dup := strings.Replace(string(good), `"messageId":"dup"`, `"messageId":"dup","messageId":"dup"`, 1)
+		msg, env := text(dup, good, 1, kit.Applier)
+		s.Reject(at(0), kit.Proposer, "envelope-signature", msg, env)
+		add("a-repeated-member-behind-a-bad-signature", "crossing-6: a message repeating a member name under an envelope that does not verify is envelope-signature", s, askAndLog)
+	}
+	{
+		s := scene(askAndLog)
+		m := note("topic", "With a topic.")
+		kit.Ext(m)["topic"] = "the-topic"
+		good := kit.Canon(m)
+		dup := strings.Replace(string(good), `"topic":"the-topic"`, `"topic":"wrong","topic":"the-topic"`, 1)
+		msg, env := text(dup, good, 1, kit.Proposer)
+		s.Reject(at(0), kit.Proposer, "not-canonical", msg, env)
+		add("a-repeated-member-under-a-good-signature", "crossing-6: a message with topic twice, the second copy correct, under an envelope that verifies is not-canonical", s, askAndLog)
+	}
+	{
+		s := scene(askAndLog)
+		m := note("seq-twice", "Once.")
+		env := kit.Envelope(1, kit.Canon(m), kit.Proposer)
+		e := string(kit.Canon(env))
+		e = strings.Replace(e, `"seq":1`, `"seq":1,"seq":1`, 1)
+		s.Reject(at(0), kit.Proposer, "envelope-signature", kit.Obj{"message": m}, kit.Obj{"envelopeText": e})
+		add("a-repeated-seq-in-the-envelope", "crossing-6: envelope bytes with seq twice are envelope-signature, not not-canonical", s, askAndLog)
+	}
+	{
+		s := scene(askAndLog)
+		m := note("two-defects", "Elsewhere, twice.")
+		kit.Ext(m)["accord"] = kit.HashOf(compose)
+		m["parts"] = append(m["parts"].([]any), kit.TextPart("note", kit.Salt("second", 16), "Second."))
+		msg, env := signedBy(m, 1, kit.Proposer)
+		s.Reject(at(0), kit.Proposer, "accord-mismatch", msg, env)
+		add("two-content-defects", "crossing-6: a message naming another Accord with two parts is accord-mismatch, the earlier row", s, askAndLog)
+	}
+	{
+		s := scene(askAndLog)
+		signed := note("signed", "Signed for.")
+		other := note("other", "Not signed for.")
+		kit.Ext(other)["accord"] = kit.HashOf(compose)
+		env := kit.Envelope(1, kit.Canon(signed), kit.Proposer)
+		s.Reject(at(0), kit.Proposer, "envelope-hash", kit.Obj{"message": other}, kit.Obj{"envelope": env})
+		add("a-message-not-the-one-signed-for", "crossing-6: another message under an envelope signed over one is envelope-hash, and its content is not read", s, askAndLog)
+	}
+	{
+		s := scene(askAndLog)
+		defects := []struct {
+			code   string
+			change func(m kit.Obj)
+		}{
+			{"extension-missing", func(m kit.Obj) { m["role"] = "ROLE_MEDIATOR" }},
+			{"receiver-unknown", func(m kit.Obj) { kit.Ext(m)["to"] = kit.Stranger.Ref }},
+			{"accord-mismatch", func(m kit.Obj) { kit.Ext(m)["accord"] = kit.HashOf(compose) }},
+			{"one-part", func(m kit.Obj) { m["parts"] = []any{} }},
+			{"one-body", func(m kit.Obj) { delete(kit.PartOf(m), "text") }},
+			{"part-metadata", func(m kit.Obj) {
+				kit.PartOf(m)["metadata"].(kit.Obj)[kit.Extension].(kit.Obj)["salt"] = kit.Salt("six", 8)
+			}},
+		}
+		for i, d := range defects {
+			m := note("defect-"+string(rune('a'+i)), "Defective.")
+			d.change(m)
+			msg, env := signedBy(m, 1, kit.Proposer)
+			s.Reject(at(i), kit.Proposer, d.code, msg, env)
+		}
+		s.Give(at(6), kit.Proposer, 1, note("note-1", "Good."), kit.Applier, "pass", "ok")
+		add("six-rejections-then-a-pass", "crossing-7: six gives at seq 1 with defects of rows 6 to 12 change nothing; the seventh at seq 1 is the first of its pair", s, askAndLog)
+	}
+	{
+		s := scene(askAndLog)
+		s.Reject(at(0), kit.Stranger, "not-a-member", kit.Obj{"messageHex": kit.HexOf([]byte("not json {"))},
+			kit.Obj{"envelopeHex": kit.HexOf([]byte{0xff, 0x00})})
+		add("a-strangers-bytes-are-not-read", "crossing-7: a stranger's give whose bytes are not JSON is not-a-member, not not-canonical", s, askAndLog)
+	}
+	{
+		s := scene(askAndLog)
+		msg, env := signedBy(note("by-another", "Signed by another."), 1, kit.Applier)
+		s.Reject(at(0), kit.Proposer, "envelope-signature", msg, env)
+		add("an-envelope-by-another-key", "signing-2, crossing-6: an envelope signed by another member's key is envelope-signature under the caller's", s, askAndLog)
+	}
+	{
+		s := scene(askAndLog)
+		raw := kit.Message("raw-1", kit.HashOf(askAndLog), kit.Applier, kit.RawPart("note", kit.Salt("raw", 16), []byte{0x00, 0xff, 0x10, 'n'}))
+		data := kit.Message("data-1", kit.HashOf(askAndLog), kit.Applier,
+			kit.DataPart("note", kit.Salt("data", 24), kit.Obj{"z": []any{1, "two", true}, "a": kit.Obj{}}))
+		user := note("user-1", "As a user.")
+		user["role"] = "ROLE_USER"
+		re := note("re-1", "In reply.")
+		kit.Ext(re)["re"] = kit.HashOf("an earlier receipt")
+		kit.Ext(re)["topic"] = "replies"
+		s.Give(at(0), kit.Proposer, 1, raw, kit.Applier, "pass", "ok")
+		s.Give(at(1), kit.Proposer, 2, data, kit.Applier, "pass", "ok")
+		s.Give(at(2), kit.Proposer, 3, user, kit.Applier, "pass", "ok")
+		s.Give(at(3), kit.Proposer, 4, re, kit.Applier, "pass", "ok")
+		s.Get(kit.Applier)
+		s.Get(kit.Applier)
+		add("bodies-roles-and-replies", "crossing-1, crossing-2, crossing-3: raw and data bodies, ROLE_USER and a re with a topic cross; a delivery carries re and no topic", s, askAndLog)
+	}
+	{
+		s := scene(askAndLog)
+		s.Give(at(0), kit.Proposer, 1, of(askAndLog, "proposal-1", "proposal"), kit.Applier, "escalate", "maybe")
+		add("the-appliers-get-term", "composition-1: the applier's get term names role:proposer, which the proposer's binding gives, so it matches", s, askAndLog)
+	}
+	compo := []struct{ name, tests, kind, verdict, reason string }{
+		{"a-role-the-binding-does-not-give", "composition-1: a get term naming role:auditor does not match a sender the binding does not make an auditor", "audit", "block", "no-match"},
+		{"no-get-term", "composition-2: a sender's matching give term and no get term of the receiver is block, no-match", "sketch", "block", "no-match"},
+		{"no-beside-want", "composition-3: a matching no term beside a matching want term is block, no-match", "draft", "block", "no-match"},
+		{"maybe-rules-that-agree", "composition-5: maybe rules naming one set of roles in two orders, with one timeout, are escalate, maybe", "memo", "escalate", "maybe"},
+		{"maybe-rules-that-differ", "composition-5: maybe rules with timeouts 60 and 120 are block, maybe, and no question opens", "plan", "block", "maybe"},
+		{"need-meets-want", "composition-6: a need give term and a want get term compose as two wants, pass, ok", "brief", "pass", "ok"},
+	}
+	for _, c := range compo {
+		s := scene(compose)
+		s.Give(at(0), kit.Proposer, 1, of(compose, c.kind+"-1", c.kind), kit.Applier, c.verdict, c.reason)
+		add(c.name, c.tests, s, compose)
+	}
+	kit.Main("crossing", vs)
+}

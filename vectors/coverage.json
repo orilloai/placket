@@ -48,8 +48,8 @@
     "scenarios": {"reference forms": {"vectors": ["signatures/reference-forms", "signatures/reference-uppercase", "signatures/reference-short", "signatures/reference-other-prefix"]}, "a small-order key": {"vectors": ["signatures/small-order-key", "founding/small-order-actor"]}}
   },
   "signing-2": {
-    "vectors": ["signatures/binding-under-declaration-uri", "founding/binding-under-declaration-uri", "signatures/envelope-by-another-key", "signatures/malleated-signature", "signatures/receipt-malleated-signature", "signatures/binding-verifies", "signatures/canonical-form-is-signed", "signatures/edited-after-signing", "signatures/envelope-verifies", "signatures/sig-missing", "signatures/sig-uppercase", "signatures/sign-binding", "signatures/sign-declaration", "signatures/sign-envelope", "signatures/sign-ignores-sig", "signatures/type-uri-of-the-operation"],
-    "scenarios": {"the type URI comes from the operation": {"vectors": ["signatures/binding-under-declaration-uri", "founding/binding-under-declaration-uri"]}, "signed by another key": {"vectors": ["signatures/envelope-by-another-key"]}, "a malleated signature": {"vectors": ["signatures/malleated-signature", "signatures/receipt-malleated-signature"]}}
+    "vectors": ["signatures/binding-under-declaration-uri", "founding/binding-under-declaration-uri", "signatures/envelope-by-another-key", "crossing/an-envelope-by-another-key", "signatures/malleated-signature", "signatures/receipt-malleated-signature", "signatures/binding-verifies", "signatures/canonical-form-is-signed", "signatures/edited-after-signing", "signatures/envelope-verifies", "signatures/sig-missing", "signatures/sig-uppercase", "signatures/sign-binding", "signatures/sign-declaration", "signatures/sign-envelope", "signatures/sign-ignores-sig", "signatures/type-uri-of-the-operation"],
+    "scenarios": {"the type URI comes from the operation": {"vectors": ["signatures/binding-under-declaration-uri", "founding/binding-under-declaration-uri"]}, "signed by another key": {"vectors": ["signatures/envelope-by-another-key", "crossing/an-envelope-by-another-key"]}, "a malleated signature": {"vectors": ["signatures/malleated-signature", "signatures/receipt-malleated-signature"]}}
   },
   "signing-4": {
     "vectors": ["signatures/receipt-verifies", "signatures/receipt-placket-payload-type", "signatures/registration-reserved"],
@@ -77,8 +77,8 @@
     "scenarios": {"the same set twice": {"vectors": ["founding/ask-and-log", "founding/ask-and-log-later"]}, "a policy role nobody holds": {"vectors": ["founding/policy-role-nobody-holds"]}}
   },
   "setup-contract-6": {
-    "open": "M1",
-    "scenarios": {"a stranger": {"open": "M1"}, "the mediator's own key": {"open": "M1"}}
+    "vectors": ["crossing/a-stranger", "crossing/the-mediators-own-key"],
+    "scenarios": {"a stranger": {"vectors": ["crossing/a-stranger"]}, "the mediator's own key": {"vectors": ["crossing/the-mediators-own-key"]}}
   },
   "setup-contract-7": {
     "vectors": ["founding/runs-container", "founding/ask-and-log", "founding/operator-changes-the-id"],
@@ -97,52 +97,52 @@
     "scenarios": {"declarations out of order": {"vectors": ["founding/declarations-out-of-order"]}, "two bindings for one actor": {"vectors": ["founding/two-bindings-one-actor"]}}
   },
   "crossing-1": {
-    "open": "M1",
-    "scenarios": {"a message from another Accord": {"open": "M1"}, "an unknown receiver": {"open": "M1"}, "a member the frame does not list": {"open": "M1"}, "a reserved gate": {"open": "M1"}}
+    "vectors": ["crossing/a-message-from-another-accord", "crossing/an-unknown-receiver", "crossing/a-member-the-frame-does-not-list", "crossing/a-reserved-gate", "crossing/bodies-roles-and-replies"],
+    "scenarios": {"a message from another Accord": {"vectors": ["crossing/a-message-from-another-accord"]}, "an unknown receiver": {"vectors": ["crossing/an-unknown-receiver"]}, "a member the frame does not list": {"vectors": ["crossing/a-member-the-frame-does-not-list"]}, "a reserved gate": {"vectors": ["crossing/a-reserved-gate"]}}
   },
   "crossing-2": {
-    "open": "M1",
-    "scenarios": {"two bodies": {"open": "M1"}, "a url body": {"open": "M1"}, "a short salt": {"open": "M1"}}
+    "vectors": ["crossing/one-body", "crossing/a-url-body", "crossing/part-metadata", "crossing/bodies-roles-and-replies"],
+    "scenarios": {"two bodies": {"vectors": ["crossing/one-body"]}, "a url body": {"vectors": ["crossing/a-url-body"]}, "a short salt": {"vectors": ["crossing/part-metadata"]}}
   },
   "crossing-3": {
-    "open": "M1",
-    "scenarios": {"whoever holds the body and salt can show the part": {"open": "M1"}, "a delivery is fetched once": {"open": "M1"}, "no delivery for a block": {"open": "M1"}}
+    "vectors": ["crossing/a-give-then-the-end-state", "crossing/bodies-roles-and-replies", "crossing/a-delivery-is-fetched-once", "crossing/no-delivery-for-a-block"],
+    "scenarios": {"whoever holds the body and salt can show the part": {"vectors": ["crossing/a-give-then-the-end-state", "crossing/bodies-roles-and-replies"]}, "a delivery is fetched once": {"vectors": ["crossing/a-delivery-is-fetched-once"]}, "no delivery for a block": {"vectors": ["crossing/no-delivery-for-a-block"]}}
   },
   "crossing-4": {
-    "open": "M1",
-    "scenarios": {"an edited message": {"open": "M1"}, "a repeated sequence number": {"open": "M1"}, "a skipped sequence number": {"open": "M1"}}
+    "vectors": ["crossing/an-edited-message", "crossing/a-repeated-sequence-number", "crossing/a-skipped-sequence-number"],
+    "scenarios": {"an edited message": {"vectors": ["crossing/an-edited-message"]}, "a repeated sequence number": {"vectors": ["crossing/a-repeated-sequence-number"]}, "a skipped sequence number": {"vectors": ["crossing/a-skipped-sequence-number"]}}
   },
   "crossing-6": {
-    "open": "M1",
-    "scenarios": {"a repeated member behind a bad signature": {"open": "M1"}, "a repeated member under a good signature": {"open": "M1"}, "a repeated seq in the envelope": {"open": "M1"}, "two content defects": {"open": "M1"}, "a message that is not the one signed for": {"open": "M1"}}
+    "vectors": ["crossing/a-repeated-member-behind-a-bad-signature", "crossing/a-repeated-member-under-a-good-signature", "crossing/a-repeated-seq-in-the-envelope", "crossing/two-content-defects", "crossing/a-message-not-the-one-signed-for", "crossing/a-member-the-frame-does-not-list", "crossing/an-envelope-by-another-key"],
+    "scenarios": {"a repeated member behind a bad signature": {"vectors": ["crossing/a-repeated-member-behind-a-bad-signature"]}, "a repeated member under a good signature": {"vectors": ["crossing/a-repeated-member-under-a-good-signature"]}, "a repeated seq in the envelope": {"vectors": ["crossing/a-repeated-seq-in-the-envelope"]}, "two content defects": {"vectors": ["crossing/two-content-defects"]}, "a message that is not the one signed for": {"vectors": ["crossing/a-message-not-the-one-signed-for"]}}
   },
   "crossing-7": {
-    "open": "M1",
-    "scenarios": {"six rejections, then a pass": {"open": "M1"}, "a stranger's bytes are not read": {"open": "M1"}}
+    "vectors": ["crossing/six-rejections-then-a-pass", "crossing/a-strangers-bytes-are-not-read"],
+    "scenarios": {"six rejections, then a pass": {"vectors": ["crossing/six-rejections-then-a-pass"]}, "a stranger's bytes are not read": {"vectors": ["crossing/a-strangers-bytes-are-not-read"]}}
   },
   "composition-1": {
-    "open": "M1",
-    "scenarios": {"the applier's get term": {"open": "M1"}, "a role the binding does not give": {"open": "M1"}}
+    "vectors": ["crossing/the-appliers-get-term", "crossing/a-role-the-binding-does-not-give"],
+    "scenarios": {"the applier's get term": {"vectors": ["crossing/the-appliers-get-term"]}, "a role the binding does not give": {"vectors": ["crossing/a-role-the-binding-does-not-give"]}}
   },
   "composition-2": {
-    "open": "M1",
-    "scenarios": {"no get term": {"open": "M1"}, "a kind no term names": {"open": "M1"}}
+    "vectors": ["crossing/no-get-term", "crossing/no-delivery-for-a-block"],
+    "scenarios": {"no get term": {"vectors": ["crossing/no-get-term"]}, "a kind no term names": {"vectors": ["crossing/no-delivery-for-a-block"]}}
   },
   "composition-3": {
-    "open": "M1",
-    "scenarios": {"no beside want": {"open": "M1"}}
+    "vectors": ["crossing/no-beside-want"],
+    "scenarios": {"no beside want": {"vectors": ["crossing/no-beside-want"]}}
   },
   "composition-4": {
-    "vectors": ["founding/term-names-a-check"],
-    "scenarios": {"no check runs in this version": {"vectors": ["founding/term-names-a-check"]}}
+    "vectors": ["crossing/a-give-then-the-end-state", "crossing/need-meets-want", "crossing/maybe-rules-that-agree", "crossing/no-beside-want", "founding/term-names-a-check"],
+    "scenarios": {"no check runs in this version": {"vectors": ["crossing/a-give-then-the-end-state", "crossing/need-meets-want", "crossing/maybe-rules-that-agree", "crossing/no-beside-want", "founding/term-names-a-check"]}}
   },
   "composition-5": {
-    "open": "M1",
-    "scenarios": {"maybe rules that agree": {"open": "M1"}, "maybe rules that differ": {"open": "M1"}, "an answer that meets a maybe term": {"open": "M2"}}
+    "vectors": ["crossing/maybe-rules-that-agree", "crossing/maybe-rules-that-differ"],
+    "scenarios": {"maybe rules that agree": {"vectors": ["crossing/maybe-rules-that-agree"]}, "maybe rules that differ": {"vectors": ["crossing/maybe-rules-that-differ"]}, "an answer that meets a maybe term": {"open": "M2"}}
   },
   "composition-6": {
-    "open": "M1",
-    "scenarios": {"need meets want": {"open": "M1"}}
+    "vectors": ["crossing/need-meets-want"],
+    "scenarios": {"need meets want": {"vectors": ["crossing/need-meets-want"]}}
   },
   "maybe-1": {
     "open": "M2",
@@ -229,13 +229,13 @@
     "scenarios": {"a vector's path": {"vectors": ["canonical/duplicate-key"]}}
   },
   "conformance-vectors-2": {
-    "vectors": ["founding/ask-and-log"],
+    "vectors": ["crossing/a-give-then-the-end-state", "founding/ask-and-log"],
     "rest": {"open": "M2", "what": "an answer's salt, which a resolve step gives"},
     "scenarios": {"an answer's salt": {"open": "M2"}}
   },
   "conformance-vectors-3": {
-    "open": "M1",
-    "scenarios": {"a give, then the end state": {"open": "M1"}}
+    "vectors": ["crossing/a-give-then-the-end-state"],
+    "scenarios": {"a give, then the end state": {"vectors": ["crossing/a-give-then-the-end-state"]}}
   },
   "conformance-vectors-4": {
     "vectors": ["founding/binding-unlisted-principal"],
