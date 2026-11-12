@@ -83,7 +83,8 @@ type entry struct {
 }
 
 // list is every path of the tree, in lexical order, found once by walking it without following a
-// symbolic link; the repository's own .git/ is left out. walk reads its subtrees from it.
+// symbolic link; the repository's own .git is left out, the directory with all below it, or the one
+// file a worktree or a submodule has there in its place. walk reads its subtrees from it.
 func (t *tree) list() []entry {
 	if t.listed {
 		return t.entries
@@ -99,7 +100,11 @@ func (t *tree) list() []entry {
 		}
 		rel = filepath.ToSlash(rel)
 		if rel == ".git" {
-			return filepath.SkipDir
+			// SkipDir on a file would skip the rest of the root: only a directory is skipped whole.
+			if d.IsDir() {
+				return filepath.SkipDir
+			}
+			return nil
 		}
 		t.entries = append(t.entries, entry{path: rel, dir: d.IsDir(), link: d.Type()&fs.ModeSymlink != 0})
 		return nil
