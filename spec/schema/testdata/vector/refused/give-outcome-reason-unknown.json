@@ -207,7 +207,7 @@
         "sig": "d5999331c7306127747c91be1f322b06dc826d1f82b5bdb920fc421e8c305a0ed3597d2d5d78a2e8ed37b12f47363288b35a02543fec0d31f3c59d76e0cbdf09"
       },
       "expect": {
-        "verdict": "escalate",
+        "verdict": "block",
         "reason": "held",
         "receiptId": "sha256:b6499fa4068d3595115eee30fd1ab3622c6000804991f643ff2d7303e9a7a528",
         "receipt": {

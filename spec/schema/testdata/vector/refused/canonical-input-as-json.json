@@ -3,11 +3,15 @@
   "spec": "0.1",
   "tests": "Members are sorted and whitespace between tokens is dropped.",
   "operation": "canonical",
+  "inputText": "{ \"b\": 1, \"a\": [ true ] }",
   "expect": {
     "canonicalHex": "7b2261223a5b747275655d2c2262223a317d",
     "hash": "sha256:708747538ba81fd60b5aac8c646370de5e24abf70ab1872f67458a5a4f3af05d"
   },
   "input": {
-    "b": 1
+    "b": 1,
+    "a": [
+      true
+    ]
   }
 }

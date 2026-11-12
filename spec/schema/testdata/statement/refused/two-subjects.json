@@ -26,10 +26,10 @@
       "name": "proposal"
     },
     {
-      "name": "envelope",
       "digest": {
-        "sha256": "c897a06a63e729739c4e4bcc36e0d219cdd476e6a1c54131137ae24f2266b92f"
-      }
+        "salted-sha256": "a9f3000838016f7dd0d31fca4b857dd5645c3cd01ae36cbac3de404befe04b2b"
+      },
+      "name": "proposal"
     }
   ]
 }

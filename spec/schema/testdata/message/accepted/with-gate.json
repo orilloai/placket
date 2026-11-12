@@ -8,7 +8,7 @@
       "accord": "sha256:26f6de282cb5b5b3f9e4d93046306b95974e796572c6aee9e10aec0652567189",
       "to": "ed25519:810950cac0d0a30abe5ced6fdf42b93bb3da913b29d142a20ef043ca9691cd31",
       "topic": "invoices",
-      "gate": "out"
+      "gate": "out_you"
     }
   },
   "parts": [

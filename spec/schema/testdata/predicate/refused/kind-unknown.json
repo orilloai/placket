@@ -10,8 +10,8 @@
   "from": "ed25519:bd1f151e8df833afd6d6758375655dfdf2099acc4bc9100b0f292937773b3b0a",
   "kind": "release",
   "mediator": "ed25519:22cdf8245c3ce6fb391597095e59b2eb3e3cdfda6ab4b606cc3acd9d2d40ed77",
-  "reason": "maybe",
+  "reason": "no-match",
   "seq": 1,
   "to": "ed25519:810950cac0d0a30abe5ced6fdf42b93bb3da913b29d142a20ef043ca9691cd31",
-  "verdict": "escalate"
+  "verdict": "block"
 }

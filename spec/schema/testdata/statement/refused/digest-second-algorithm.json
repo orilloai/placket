@@ -21,6 +21,7 @@
   "subject": [
     {
       "digest": {
+        "salted-sha256": "a9f3000838016f7dd0d31fca4b857dd5645c3cd01ae36cbac3de404befe04b2b",
         "sha256": "a9f3000838016f7dd0d31fca4b857dd5645c3cd01ae36cbac3de404befe04b2b"
       },
       "name": "proposal"
