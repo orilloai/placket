@@ -31,6 +31,8 @@ trap 'rm -rf "$tmp"' EXIT
 trap 'exit 1' INT TERM
 failed=0
 : >"$tmp/counts"
+: >"$tmp/prevs"
+: >"$tmp/pendings"
 
 say() { echo "independent: $*"; }
 die() { say "$*"; exit 1; }
@@ -141,6 +143,23 @@ receiptcheck() {
 	jq -r '.signatures[0].sig' "$3" | base64 -d >"$tmp/rsig" 2>/dev/null
 	pae "$(jq -r '.payloadType' "$3")" "$tmp/statement" "$tmp/rpae"
 	if everify "$tmp/rpae" "$tmp/rsig" "$4"; then counted "$2"; else bad "$1: the receipt's signature does not verify under openssl"; return 1; fi
+}
+
+# chained <what> <group> <chain file>: the statement in $tmp/statement, whose id receiptcheck has just
+# re-computed, names as its prev the re-computed id of the receipt before it in the list from the
+# same from to the same to (receipt-5); the chain file holds "<from> <to> <id>" for each receipt
+# before it, and the statement is added. A statement with no prev is the first of its pair by the
+# text's hand derivation, and is not counted.
+chained() {
+	_from=$(jq -r .predicate.from "$tmp/statement")
+	_to=$(jq -r .predicate.to "$tmp/statement")
+	_prev=$(jq -r '.predicate.prev // ""' "$tmp/statement")
+	_id=sha256:$(sha "$tmp/statement")
+	if [ -n "$_prev" ]; then
+		_last=$(awk -v f="$_from" -v t="$_to" '$1 == f && $2 == t { id = $3 } END { print id }' "$3")
+		if [ "$_prev" = "$_last" ]; then counted "$2"; echo "$2" >>"$tmp/prevs"; else bad "$1: its prev is not the re-computed id of the receipt before it in its pair"; fi
+	fi
+	echo "$_from $_to $_id" >>"$3"
 }
 
 # sound <receipt JSON file> <reference>: the receipt's form leaves only its signed bytes or its signer
@@ -260,8 +279,11 @@ for f in "$V"/*/*.json; do
 		rebuilt "$n: the card" '.card' "$tmp/set" "$tmp/card" || continue
 		card=sha256:$(sha "$tmp/card")
 		med=$(refof "$(jq -r '.keys[.mediator]' "$f")")
-		# Every receipt written: its id, its signature, its Accord and card.
+		# Every receipt written: its id, its signature, its Accord and card, and its prev. The
+		# escalates' re-computed ids, in the order written, are the open questions.
 		nr=$(jq '.final.receipts | length' "$f")
+		: >"$tmp/chain"
+		: >"$tmp/escalates"
 		i=0
 		while [ "$i" -lt "$nr" ]; do
 			jq ".final.receipts[$i].receipt" "$f" >"$tmp/r"
@@ -269,9 +291,23 @@ for f in "$V"/*/*.json; do
 				if [ "$(jq -r .predicate.accord "$tmp/statement")" = "$accord" ] && [ "$(jq -r .predicate.card "$tmp/statement")" = "$card" ]; then
 					counted "$g"
 				else bad "$n: receipt $i names another Accord or card"; fi
+				chained "$n: receipt $i" "$g" "$tmp/chain"
+				[ "$(jq -r .predicate.verdict "$tmp/statement")" = escalate ] && echo "sha256:$(sha "$tmp/statement")" >>"$tmp/escalates"
 			fi
 			i=$((i + 1))
 		done
+		# Every pending id is the re-computed id of its escalate receipt, the k-th open question the
+		# k-th escalate written: no question is answered in this version (maybe-1).
+		jq -r '.final.pending[]' "$f" >"$tmp/pending"
+		if [ "$(wc -l <"$tmp/pending")" -ne "$(wc -l <"$tmp/escalates")" ]; then
+			bad "$n: final.pending holds $(wc -l <"$tmp/pending" | tr -d ' ') ids for $(wc -l <"$tmp/escalates" | tr -d ' ') escalate receipts"
+		else
+			k=1
+			while read -r id; do
+				if [ "$id" = "$(sed -n "${k}p" "$tmp/escalates")" ]; then counted "$g"; echo "$g" >>"$tmp/pendings"; else bad "$n: pending id $k is not its escalate receipt's re-computed id"; fi
+				k=$((k + 1))
+			done <"$tmp/pending"
+		fi
 		ns=$(jq '.steps | length' "$f")
 		i=0
 		while [ "$i" -lt "$ns" ]; do
@@ -332,6 +368,7 @@ for f in "$V"/*/*.json; do
 		upto=$nr
 		case "$code" in "" | presented | kept) ;; *) upto=$(jq -r .expect.index "$f") ;; esac
 		: >"$tmp/presented-ids"
+		: >"$tmp/chain"
 		i=0
 		while [ "$i" -le "$upto" ] && [ "$i" -lt "$nr" ]; do
 			bytesof "$f" ".receipts[$i]" receipt "$tmp/rb"
@@ -341,10 +378,15 @@ for f in "$V"/*/*.json; do
 				continue
 			fi
 			if [ "$i" -lt "$upto" ]; then
-				receiptcheck "$n: receipt $i" "$g" "$tmp/r" "$ref" && echo "sha256:$(sha "$tmp/statement")" >>"$tmp/presented-ids"
+				if receiptcheck "$n: receipt $i" "$g" "$tmp/r" "$ref"; then
+					echo "sha256:$(sha "$tmp/statement")" >>"$tmp/presented-ids"
+					chained "$n: receipt $i" "$g" "$tmp/chain"
+				fi
 			else
 				case "$code" in
-				statement-type | mediator | chain | release) receiptcheck "$n: receipt $i" "$g" "$tmp/r" "$ref" ;;
+				statement-type | mediator | chain) receiptcheck "$n: receipt $i" "$g" "$tmp/r" "$ref" ;;
+				# A receipt refused at row 7 passed row 6, its chain, so its prev is checked too.
+				release) receiptcheck "$n: receipt $i" "$g" "$tmp/r" "$ref" && chained "$n: receipt $i" "$g" "$tmp/chain" ;;
 				signature)
 					if sound "$tmp/r" "$ref"; then
 						jq -r '.payload' "$tmp/r" | base64 -d >"$tmp/statement"
@@ -385,5 +427,9 @@ for g in $groups; do
 	say "$g: $c hashes and signatures checked"
 	[ "$c" -gt 0 ] || { say "FAIL: $g: nothing checked"; failed=1; }
 done
+# The prevs and pending ids, of all groups, re-computed as receipt ids above.
+say "$(wc -l <"$tmp/prevs" | tr -d ' ') prevs and $(wc -l <"$tmp/pendings" | tr -d ' ') pending ids checked against re-computed receipt ids"
+[ -s "$tmp/prevs" ] || { say "FAIL: no prev checked"; failed=1; }
+[ -s "$tmp/pendings" ] || { say "FAIL: no pending id checked"; failed=1; }
 if [ "$failed" -ne 0 ]; then say "refused: a hash or signature of the vectors does not hold under openssl (vectors/README.md)"; exit 1; fi
 say ok
