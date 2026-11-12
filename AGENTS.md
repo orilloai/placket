@@ -9,8 +9,8 @@ Each rule has a short public name. A check in `make ci` starts its message with 
 Placket v1 is built in four milestones, each resting on the one before:
 
 - **M0.** The empty repository refuses bad work: this layout and these rules, the protocol's requirement text, schemas and register, the machine checks in `make ci`, and the conformance runner with its coverage list. No product code.
-- **M1.** The core's capability packages (canonical form and signing through to receipts), each with its vectors.
-- **M2.** Questions, the three answers, release and reload in the core, with the resolution vectors. Every vector passes, none pending.
+- **M1.** The core's capability packages (canonical form and signing through to receipts, the release rule among them), and asking: a give decided `escalate` holds its part as an open question. Each with its vectors.
+- **M2.** Answering a question (the three answers), its deadline, release and reload in the core, with the resolution vectors. Every vector passes, none pending.
 - **M3.** The root module, the adapters, the binary and the demo: placket runs end to end in terminals.
 
 "After v1" marks a rule for a part v1 does not build.
@@ -105,7 +105,7 @@ Fixtures for any check go under a `testdata/` directory. Go's tools skip it, and
 ### The decision module and release
 
 - **`one-decision-module`**: the decision about what crosses is reached through one entry point in the composition package. No other code compares a stance, matches a term or runs the forbidden check, and a recorded verdict is never computed again, not on reload and not in the export. Why: the decision module is the seam that can be swapped; logic outside it would survive the swap. *M2.*
-- **`release-in-resolve`**: content is released only by the operation that resolves a question, during the very call that carries the answer permitting it, with every receipt of that call built before any state changes. One function recognises a release from receipts, and everything else calls it. Why: a release outside the answer is content crossing that nobody agreed to. *M2.*
+- **`release-in-resolve`**: content is released only by the operation that resolves a question, during the very call that carries the answer permitting it, with every receipt of that call built before any state changes. One function recognises a release from receipts, and everything else calls it. Why: a release outside the answer is content crossing that nobody agreed to. *M1 for the one function that recognises a release, which the verifier and reconciliation call; M2 for releasing.*
 - **`reserved-evaluate`**: reserved for evaluating a proposal before it is sent. When it is built, it shares one matching function with the decision and restates none of its rules. Why: a second copy of the matching rules would let the preview and the real decision disagree. *After v1.*
 
 ### How changes are made
