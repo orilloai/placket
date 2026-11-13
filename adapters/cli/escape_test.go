@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"bytes"
 	"encoding/json"
 	"reflect"
 	"strings"
@@ -17,6 +18,7 @@ func FuzzEscape(f *testing.F) {
 	f.Add([]byte("a\x1b]52;c;aGk=\x07b\x1b[2J\r\n\tc\u009b1m\\d \u202ee\xff"))
 	f.Add([]byte(`{"a":"x\u001b","b":["` + "\u0085\u2028\U000e0001\x7f" + `"]}`))
 	f.Add([]byte("plain text, line one\nline two"))
+	f.Add([]byte("1E700"))
 	f.Fuzz(func(t *testing.T, b []byte) {
 		fd := field(string(b))
 		if !utf8.ValidString(fd) || strings.IndexFunc(fd, func(r rune) bool { return !unicode.IsGraphic(r) || r == ' ' }) >= 0 {
@@ -29,15 +31,26 @@ func FuzzEscape(f *testing.F) {
 		if !utf8.Valid(b) || !json.Valid(b) {
 			return
 		}
-		var before, after any
 		js := escape(b, " \\\t\n\r", true)
-		if json.Unmarshal(b, &before) != nil || json.Unmarshal(js, &after) != nil || !reflect.DeepEqual(before, after) {
+		before, berr := decodeJSON(b)
+		after, aerr := decodeJSON(js)
+		if berr != nil || aerr != nil || !reflect.DeepEqual(before, after) {
 			t.Fatalf("JSON %q of %q", js, b)
 		}
 		if strings.IndexFunc(string(js), func(r rune) bool { return !unicode.IsGraphic(r) && !strings.ContainsRune("\t\n\r", r) }) >= 0 {
 			t.Fatalf("JSON %q of %q", js, b)
 		}
 	})
+}
+
+// decodeJSON reads one JSON value, its numbers as their text, so that a number too large for a
+// float64 reads too.
+func decodeJSON(b []byte) (any, error) {
+	d := json.NewDecoder(bytes.NewReader(b))
+	d.UseNumber()
+	var v any
+	err := d.Decode(&v)
+	return v, err
 }
 
 // TestFieldsAndBodiesEscape spells out each escape, as a field, as a body and as JSON.
