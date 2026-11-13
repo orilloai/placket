@@ -8,11 +8,13 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"strings"
 	"time"
 
 	"github.com/orilloai/placket/adapters/internal/strict"
 	"github.com/orilloai/placket/core/canonical"
 	"github.com/orilloai/placket/core/mediator"
+	"github.com/orilloai/placket/core/receipts"
 	"github.com/orilloai/placket/core/signing"
 )
 
@@ -148,10 +150,52 @@ func outcome(w *wireOutcome) (*mediator.Outcome, bool) {
 	if err != nil {
 		return nil, false
 	}
+	st, err := receipts.Decode(r)
+	if err != nil || st.ID != *w.ReceiptID || st.Predicate.Verdict != *w.Verdict || st.Predicate.Reason != *w.Reason {
+		return nil, false
+	}
 	return &mediator.Outcome{Verdict: *w.Verdict, Reason: *w.Reason, ReceiptID: *w.ReceiptID, Receipt: r}, true
 }
 
-// ParseReply reads a reply's bytes, its line feed removed.
+// label reports whether s is a label: lowercase letters and digits in words joined by single
+// hyphens, at most 64 characters. Every code a refusal names is one.
+func label(s string) bool {
+	if s == "" || len(s) > 64 || s[0] == '-' || s[len(s)-1] == '-' || strings.Contains(s, "--") {
+		return false
+	}
+	for i := 0; i < len(s); i++ {
+		if c := s[i]; (c < 'a' || c > 'z') && (c < '0' || c > '9') && c != '-' {
+			return false
+		}
+	}
+	return true
+}
+
+// typedHash reports whether s has a typed hash's form: the prefix and 64 lowercase hex digits.
+func typedHash(s string) bool {
+	h, ok := strings.CutPrefix(s, canonical.HashPrefix)
+	return ok && len(h) == 64 && lowerHex(h)
+}
+
+// asked reports whether an open question as a reply names it has the form a window gives it.
+func asked(q wireAsked) bool {
+	if q.ID == nil || q.Asker == nil || q.Kind == nil || q.Deadline == nil || q.Form == nil {
+		return false
+	}
+	_, ref := signing.ParseReference(*q.Asker)
+	switch *q.Form {
+	case "text", "raw", "data":
+	default:
+		return false
+	}
+	return typedHash(*q.ID) && ref && label(*q.Kind)
+}
+
+// ParseReply reads a reply's bytes, its line feed removed. It reads what the reply names for its
+// form, since a client cannot tell what window it reached and what a reply names reaches a person's
+// terminal: a refusal's code is a label, and an outcome's receipt id, verdict and reason are those
+// of its receipt, which must decode (receipts.Decode, which verifies nothing); an open question's
+// id is a typed hash, its asker an actor reference, its kind a label and its form text, raw or data.
 func ParseReply(b []byte) (Reply, bool) {
 	if _, err := canonical.Form(b); err != nil {
 		return Reply{}, false
@@ -171,7 +215,7 @@ func ParseReply(b []byte) (Reply, bool) {
 	if w.Door != nil {
 		r.Door, set = DoorCode(*w.Door), set+1
 	}
-	if *w.OK != (set == 0) || set > 1 {
+	if *w.OK != (set == 0) || set > 1 || (set == 1 && !label(string(r.Rejection)+string(r.Error)+string(r.Door))) {
 		return Reply{}, false
 	}
 	var ok bool
@@ -209,7 +253,7 @@ func ParseReply(b []byte) (Reply, bool) {
 		r.IsQuestions = true
 		r.Questions = []Asked{}
 		for _, q := range *w.Questions {
-			if q.ID == nil || q.Asker == nil || q.Kind == nil || q.Deadline == nil || q.Form == nil {
+			if !asked(q) {
 				return Reply{}, false
 			}
 			r.Questions = append(r.Questions, Asked{ID: *q.ID, Asker: *q.Asker, Kind: *q.Kind, Deadline: *q.Deadline,
