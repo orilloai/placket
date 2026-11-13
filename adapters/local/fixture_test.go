@@ -14,6 +14,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/orilloai/placket/adapters/journal"
 	"github.com/orilloai/placket/adapters/local"
 	"github.com/orilloai/placket/core/canonical"
 	"github.com/orilloai/placket/core/mediator"
@@ -227,6 +228,8 @@ type world struct {
 	salts   *counter
 	nonces  *counter
 	seqs    map[string]int64
+	// disk is what the world's windows write their journal through; nil is the system's.
+	disk journal.Disk
 }
 
 func newWorld(t testing.TB) *world {
@@ -241,7 +244,7 @@ func newWorld(t testing.TB) *world {
 
 func (w *world) window(t testing.TB) local.Window {
 	return local.Window{Key: key(t, "mediator"), Founding: w.set, Socket: w.socket, Journal: w.journal,
-		Now: w.clock.Now, Rand: w.salts, Idle: 20 * time.Millisecond}
+		Now: w.clock.Now, Rand: w.salts, Idle: 20 * time.Millisecond, Disk: w.disk}
 }
 
 func (w *world) client(t testing.TB, name string) *local.Client {

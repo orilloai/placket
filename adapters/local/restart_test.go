@@ -6,6 +6,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -78,6 +80,8 @@ func script(q *[2]string) []step {
 // the replies and the journal's receipts.
 func play(t *testing.T, restart bool) ([]string, []byte, *world) {
 	w := newWorld(t)
+	rec := &recorder{}
+	w.disk = rec
 	win := start(t, w.window(t))
 	var q [2]string
 	var replies []string
@@ -93,7 +97,103 @@ func play(t *testing.T, restart bool) ([]string, []byte, *world) {
 		}
 	}
 	win.stop(t)
+	rec.inOrder(t)
 	return replies, w.receipts(t), w
+}
+
+// A recorder is a Disk that writes through the system's and notes, in order, what each write named:
+// the ids of the receipts a receipts.jsonl append holds, the question of a questions.jsonl line,
+// and the receipt a held file is named for.
+type recorder struct {
+	mu     sync.Mutex
+	writes []noted
+}
+
+type noted struct {
+	file string
+	ids  []string
+}
+
+func (r *recorder) note(path string, b []byte) {
+	n := noted{file: filepath.Base(path)}
+	switch {
+	case n.file == journal.FileReceipts:
+		for _, l := range splitLines(b) {
+			st, err := receipts.Decode(l)
+			if err != nil {
+				n.ids = append(n.ids, "not a receipt")
+				continue
+			}
+			n.ids = append(n.ids, st.ID)
+		}
+	case n.file == journal.FileQuestions:
+		for _, l := range splitLines(b) {
+			o, _ := journal.ParseQuestion(l)
+			n.ids = append(n.ids, o.Question)
+		}
+	case filepath.Base(filepath.Dir(path)) == journal.DirHeld:
+		n.file, n.ids = journal.DirHeld, []string{"sha256:" + filepath.Base(path)}
+	}
+	r.mu.Lock()
+	r.writes = append(r.writes, n)
+	r.mu.Unlock()
+}
+
+func (r *recorder) Append(path string, b []byte) error {
+	err := journal.OS.Append(path, b)
+	if err == nil {
+		r.note(path, b)
+	}
+	return err
+}
+
+func (r *recorder) Create(path string, b []byte) error {
+	err := journal.OS.Create(path, b)
+	if err == nil {
+		r.note(path, b)
+	}
+	return err
+}
+
+func (r *recorder) Remove(path string) error { return journal.OS.Remove(path) }
+
+// inOrder checks that every held file and every questions.jsonl line was written before the
+// receipt it names, in an earlier write, and that each names a receipt written later.
+func (r *recorder) inOrder(t *testing.T) {
+	t.Helper()
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	receipt := map[string]int{}
+	for i, n := range r.writes {
+		if n.file != journal.FileReceipts {
+			continue
+		}
+		for _, id := range n.ids {
+			if _, seen := receipt[id]; !seen {
+				receipt[id] = i
+			}
+		}
+	}
+	held, asked := 0, 0
+	for i, n := range r.writes {
+		if n.file != journal.DirHeld && n.file != journal.FileQuestions {
+			continue
+		}
+		for _, id := range n.ids {
+			at, ok := receipt[id]
+			if !ok || at <= i {
+				t.Fatalf("write %d, of %s for %s, is not before its receipt's (%d, %v)", i, n.file, id, at, ok)
+			}
+			if n.file == journal.DirHeld {
+				held++
+			} else {
+				asked++
+			}
+		}
+	}
+	if held == 0 || asked == 0 {
+		t.Fatalf("%d held files and %d questions lines written", held, asked)
+	}
 }
 
 // TestARestartChangesNoReceipt runs one script of calls against a window never stopped and against
@@ -196,4 +296,45 @@ func TestAJournalWriteThatFails(t *testing.T) {
 		}
 		win.stop(t)
 	}
+
+	// A journal write that fails on the idle tick, with no call to answer: the window ends with it
+	// too, and the next start closes the question the tick could not.
+	w := newWorld(t)
+	arm := &armed{}
+	w.disk = arm
+	win := start(t, w.window(t))
+	if r := w.give(t, "proposer", "applier", "p-1", "proposal", "Rename total."); r.Outcome == nil || r.Outcome.Verdict != string(composition.Escalate) {
+		t.Fatal("the ask was not asked")
+	}
+	arm.on.Store(true)
+	w.clock.Set(w.clock.Now().Add(3601 * time.Second))
+	select {
+	case err := <-win.done:
+		var je *journal.Error
+		if !errors.As(err, &je) || je.File != journal.FileReceipts {
+			t.Fatalf("on the idle tick: the window ended with %v", err)
+		}
+		win.cancel = nil
+	case <-time.After(10 * time.Second):
+		t.Fatal("on the idle tick: the window did not end")
+	}
+	w.disk = nil
+	win = start(t, w.window(t))
+	win.stop(t)
+	st, err := receipts.Verify(key(t, "mediator").Reference(), splitLines(w.receipts(t)))
+	if err != nil || len(st) != 2 || st[1].Predicate.Reason != receipts.ReasonTimeout {
+		t.Fatalf("after the idle tick failed: %d receipts, %v", len(st), err)
+	}
 }
+
+// armed is a Disk that fails every append to receipts.jsonl once it is on.
+type armed struct{ on atomic.Bool }
+
+func (a *armed) Append(path string, b []byte) error {
+	if a.on.Load() && filepath.Base(path) == journal.FileReceipts {
+		return errors.New("injected")
+	}
+	return journal.OS.Append(path, b)
+}
+func (a *armed) Create(path string, b []byte) error { return journal.OS.Create(path, b) }
+func (a *armed) Remove(path string) error           { return journal.OS.Remove(path) }

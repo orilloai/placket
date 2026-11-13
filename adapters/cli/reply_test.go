@@ -10,7 +10,9 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/orilloai/placket/adapters/keyfile"
 	"github.com/orilloai/placket/core/canonical"
+	"github.com/orilloai/placket/core/receipts"
 )
 
 // A fakeWindow listens on a socket and answers every call with the reply it was last given,
@@ -141,6 +143,44 @@ func TestTheCommandsReadTheReplyForItsForm(t *testing.T) {
 		t.Fatalf("a receipt with a member that holds a C1 control: %v", r)
 	}
 
+	// Receipts the mediator's key signs, of this part, as a window could send them.
+	st, err := receipts.Decode(receipt)
+	if err != nil {
+		t.Fatal(err)
+	}
+	mk, err := keyfile.Read(a.key("mediator"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	sign := func(s receipts.Subject, p receipts.Predicate) (json.RawMessage, string) {
+		t.Helper()
+		b, id, err := receipts.Build(s, p, mk)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return json.RawMessage(b), id
+	}
+
+	// An answer that passed and whose release blocked: answer exits 1, and result's line says the
+	// release blocked and exits 1.
+	answered := st.Predicate
+	answered.Kind = receipts.KindResolution
+	resReceipt, resID := sign(receipts.Subject{Name: receipts.NameAnswer, Digest: st.Subject.Digest}, answered)
+	blocked := st.Predicate
+	blocked.Verdict, blocked.Reason = "block", "no-match"
+	relReceipt, relID := sign(st.Subject, blocked)
+	w.set(t, map[string]any{"ok": true,
+		"outcome": map[string]any{"verdict": "pass", "reason": "ok", "receiptId": resID, "receipt": resReceipt},
+		"release": map[string]any{"verdict": "block", "reason": "no-match", "receiptId": relID, "receipt": relReceipt}})
+	r = run(t, env(), w.as(a, "p1", "answer", "--question", id)...)
+	if r.code != 1 || r.stderr != "pass ok "+resID+"\nblock no-match "+relID+"\n" {
+		t.Fatalf("an answer whose release blocked: %v", r)
+	}
+	r = run(t, env(), w.as(a, "p1", "result", "--question", id)...)
+	if r.code != 1 || r.stderr != "accepted "+resID+" release blocked no-match\nnot fetched\n" {
+		t.Fatalf("the result of an answer whose release blocked: %v", r)
+	}
+
 	// A delivery that is not what its receipt says.
 	out := filepath.Join(a.dir, "out")
 	if err := os.Mkdir(out, 0o700); err != nil {
@@ -172,6 +212,13 @@ func TestTheCommandsReadTheReplyForItsForm(t *testing.T) {
 	add("a body not its receipt's", "p2", "text", "another note")
 	add("a receipt that is no receipt", "p2", "receipt", map[string]any{"a": 1})
 	add("a receipt to another key", "p1", "", nil)
+	// A receipt of this very part, to this key, but under another Accord.
+	elsewhere := st.Predicate
+	elsewhere.Accord = "sha256:" + strings.Repeat("0", 64)
+	otherReceipt, otherID := sign(st.Subject, elsewhere)
+	l := with("receipt", otherReceipt)
+	l["delivery"].(map[string]any)["receiptId"] = otherID
+	lies = append(lies, lie{"a receipt under another Accord", "p2", l})
 	for _, l := range lies {
 		before := fileOf(t, filepath.Join(a.state(l.who), "delivered.jsonl"))
 		w.set(t, l.rep)
@@ -200,8 +247,9 @@ func TestTheCommandsReadTheReplyForItsForm(t *testing.T) {
 	if err := os.Symlink(victim, path); err != nil {
 		t.Fatal(err)
 	}
+	keptBefore := len(keptLines(t, a.state("p2")))
 	r = run(t, env(), w.as(a, "p2", "get", "--out", out)...)
-	if r.code != 3 || r.stdout != "" || last(r.stderr) != "error file" || fileOf(t, victim) != "mine" {
+	if r.code != 3 || r.stdout != "" || last(r.stderr) != "error file kept" || fileOf(t, victim) != "mine" {
 		t.Fatalf("get --out onto a link: %v", r)
 	}
 	_ = os.Remove(path)
@@ -209,8 +257,11 @@ func TestTheCommandsReadTheReplyForItsForm(t *testing.T) {
 		t.Fatal(err)
 	}
 	r = run(t, env(), w.as(a, "p2", "get", "--out", out)...)
-	if r.code != 3 || r.stdout != "" || last(r.stderr) != "error file" || fileOf(t, path) != "mine" {
+	if r.code != 3 || r.stdout != "" || last(r.stderr) != "error file kept" || fileOf(t, path) != "mine" {
 		t.Fatalf("get --out onto a file: %v", r)
+	}
+	if k := keptLines(t, a.state("p2")); len(k) != keptBefore+2 || str(k[len(k)-1]["text"]) != "a note" {
+		t.Fatalf("get --out that could not write kept %d parts, was %d", len(k), keptBefore)
 	}
 	_ = os.Remove(path)
 	r = run(t, env(), w.as(a, "p2", "get", "--out", out)...)

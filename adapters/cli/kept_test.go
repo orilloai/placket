@@ -20,6 +20,14 @@ var commentTerms = map[string]string{
 	"taker": `{"terms":[{"stance":"want","dir":"get","with":["role:poser"],"select":{"kind":["proposal"]}}]}`,
 	"judge": `{"terms":[{"stance":"want","dir":"give","with":["role:poser"],"select":{"kind":["answer","comment"]}}]}`,
 	"aide":  `{"terms":[{"stance":"want","dir":"give","with":["role:poser"],"select":{"kind":["comment"]}}]}`,
+	// An Accord whose answerer may also give the receiver a comment.
+	"asks": `{"terms":[
+		{"stance":"maybe","dir":"give","with":["role:hears"],"select":{"kind":["proposal"]},"resolve":{"to":["role:rules"],"timeout":3600}},
+		{"stance":"want","dir":"get","with":["role:rules"],"select":{"kind":["answer"]}}]}`,
+	"hears": `{"terms":[{"stance":"want","dir":"get","with":["role:asks"],"select":{"kind":["proposal"]}},
+		{"stance":"want","dir":"get","with":["role:rules"],"select":{"kind":["comment"]}}]}`,
+	"rules": `{"terms":[{"stance":"want","dir":"give","with":["role:asks"],"select":{"kind":["answer"]}},
+		{"stance":"want","dir":"give","with":["role:hears"],"select":{"kind":["comment"]}}]}`,
 }
 
 // logOf runs log as JSON over the journal and the state directories, and returns its rows and what
@@ -150,5 +158,23 @@ func TestOnlyTheAnswerersCrossedCommentIsTheRows(t *testing.T) {
 		if rows[0]["comment"] != "" || len(ids(rows[0])) != 3 {
 			t.Fatalf("with the %s's state, a comment: %q, receipts %v", who, rows[0]["comment"], ids(rows[0]))
 		}
+	}
+
+	// The answerer's comment that crosses, with re the question, to the receiver rather than the
+	// asker: it fills no row's comment either.
+	b := newAccord(t, "asks", "hears", "rules")
+	b.start(t)
+	r = run(t, env(), b.as("asks", "give", "--to", b.refs["hears"], "--kind", "proposal", "--text", "Rename total.", "--keep")...)
+	if r.code != 4 {
+		t.Fatalf("the second proposal: %v", r)
+	}
+	q = last(r.stdout)
+	must(t, b.as("rules", "answer", "--question", q)...)
+	if r := must(t, b.as("rules", "give", "--to", b.refs["hears"], "--kind", "comment", "--text", "To the receiver.", "--re", q, "--keep")...); !strings.HasPrefix(r.stderr, "pass ok ") {
+		t.Fatalf("the comment to the receiver: %v", r)
+	}
+	rows, stderr := logOf(t, b, b.state("asks"), b.state("rules"))
+	if len(rows) != 1 || stderr != "" || rows[0]["answer"] != "accepted" || rows[0]["comment"] != "" || len(ids(rows[0])) != 3 {
+		t.Fatalf("with a comment to the receiver: %v, %q", rows, stderr)
 	}
 }

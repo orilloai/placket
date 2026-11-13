@@ -120,6 +120,20 @@ func TestTheLogOfTheWorkedExample(t *testing.T) {
 		}
 	}
 
+	// The state directories in the other order: changed_text is still the version, the one kept part
+	// whose digest the closing receipt holds, whatever part is read after it.
+	r := must(t, "log", "--mediator", s.refs["mediator"], "--receipts", s.journal(), "--words",
+		"--kept", s.state("decider"), "--kept", s.state("applier"), "--kept", s.state("proposer"))
+	var reversed struct{ Rows []map[string]any }
+	if err := json.Unmarshal([]byte(r.stdout), &reversed); err != nil || len(reversed.Rows) != 4 {
+		t.Fatalf("log in the other order: %v", r)
+	}
+	for i, want := range []string{"", "Keep notes, hidden.", "", ""} {
+		if reversed.Rows[i]["changed_text"] != want {
+			t.Fatalf("log in the other order: row %d changed_text %q", i, reversed.Rows[i]["changed_text"])
+		}
+	}
+
 	// A kept part with one character changed: the applier's copy of the accepted proposal.
 	applier := copyDir(t, s.state("applier"))
 	p := filepath.Join(applier, "kept.jsonl")
@@ -127,7 +141,7 @@ func TestTheLogOfTheWorkedExample(t *testing.T) {
 	if err := os.WriteFile(p, []byte(strings.Replace(string(b), "Rename the column total to amount.", "Rename the column total to amounT.", 1)), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	r := must(t, "log", "--mediator", s.refs["mediator"], "--receipts", s.journal(), "--kept", applier, "--words")
+	r = must(t, "log", "--mediator", s.refs["mediator"], "--receipts", s.journal(), "--kept", applier, "--words")
 	var lg struct{ Rows []map[string]any }
 	_ = json.Unmarshal([]byte(r.stdout), &lg)
 	if lg.Rows[0]["text"] != "" || r.stderr != "a kept part of receipt "+lg.Rows[0]["receipts"].([]any)[2].(string)+" is covered by no receipt; left out\n" {

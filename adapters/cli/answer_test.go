@@ -2,6 +2,7 @@ package cli_test
 
 import (
 	"bytes"
+	"encoding/base64"
 	"encoding/json"
 	"os"
 	"path/filepath"
@@ -154,8 +155,38 @@ func TestTheAnswerCallTravelsWithTheAnswer(t *testing.T) {
 			t.Fatalf("calls %v", calls)
 		}
 	}
-	if bytes.Contains(a.receipts(t), []byte("answerCall")) || bytes.Contains(a.receipts(t), []byte(`"call"`)) {
-		t.Fatal("receipts.jsonl holds a call")
+	// Each receipt line is a DSSE envelope whose payload is base64: the statement is read decoded.
+	var sigs []string
+	for _, who := range []string{"proposer", "applier"} {
+		for _, k := range keptLines(t, a.state(who)) {
+			var c struct{ Sig string }
+			if ac, has := k["answerCall"]; has && json.Unmarshal(ac, &c) == nil && c.Sig != "" {
+				sigs = append(sigs, c.Sig)
+			}
+		}
+	}
+	if len(sigs) != 3 {
+		t.Fatalf("%d answer calls kept", len(sigs))
+	}
+	for i, l := range strings.Split(strings.TrimSuffix(string(a.receipts(t)), "\n"), "\n") {
+		var env struct{ Payload string }
+		if err := json.Unmarshal([]byte(l), &env); err != nil {
+			t.Fatal(err)
+		}
+		st, err := base64.StdEncoding.DecodeString(env.Payload)
+		if err != nil || len(st) == 0 {
+			t.Fatalf("receipts.jsonl line %d: payload %v", i+1, err)
+		}
+		for _, b := range [][]byte{st, []byte(l)} {
+			if bytes.Contains(b, []byte("answerCall")) || bytes.Contains(b, []byte(`"call"`)) {
+				t.Fatalf("receipts.jsonl line %d holds a call", i+1)
+			}
+			for _, sig := range sigs {
+				if bytes.Contains(b, []byte(sig)) {
+					t.Fatalf("receipts.jsonl line %d holds an answer call's signature", i+1)
+				}
+			}
+		}
 	}
 	_ = filepath.Walk(a.journal(), func(p string, fi os.FileInfo, err error) error {
 		if err == nil && fi.Mode().IsRegular() {

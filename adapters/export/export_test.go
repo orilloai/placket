@@ -104,3 +104,20 @@ func FuzzReadKept(f *testing.F) {
 		_, _, _ = readKept(b, nil, map[string]int{})
 	})
 }
+
+// TestCSVDisarmsATabAndACarriageReturn writes cells that begin with a tab or a carriage return,
+// which a spreadsheet drops before it reads a formula: each is written after a ', as a cell that
+// begins with =, +, - or @ is (LOG-27).
+func TestCSVDisarmsATabAndACarriageReturn(t *testing.T) {
+	t.Parallel()
+	l := Log{Rows: []Row{{Proposal: "p", Topic: "\t=1+1", Comment: "\r=2+2", Receipts: []string{"r"}}}}
+	var b bytes.Buffer
+	if err := l.CSV(&b, false, false); err != nil {
+		t.Fatal(err)
+	}
+	want := "proposal,topic,kind,asked_at,answered_at,answer,released_at,comment,answer_signed,answerer,receipts\n" +
+		"p,'\t=1+1,,,,,,\"'\r=2+2\",,,r\n"
+	if b.String() != want {
+		t.Fatalf("got %q", b.String())
+	}
+}

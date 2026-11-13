@@ -82,6 +82,17 @@ func TestTheDoorChecksInOrder(t *testing.T) {
 	if rep, err := c.Send(line); err != nil || rep.Rejection != mediator.NotAMember {
 		t.Fatalf("a stranger: got rejection %q, door %q, %v", rep.Rejection, rep.Door, err)
 	}
+	// The door keeps a nonce for 120 seconds: half a minute on, after another call that lets the
+	// door forget old nonces, the first nonce is still replayed.
+	later := now.Add(30 * time.Second)
+	w.clock.Set(later)
+	fresh, _ := local.SignCall(p, local.OpGet, w.accord, later, bytes.Repeat([]byte{9}, 16), nil)
+	if rep, err := c.Send(fresh); err != nil || rep.Door != "" || rep.Rejection != "" {
+		t.Fatalf("a fresh call half a minute on: door %q, %v", rep.Door, err)
+	}
+	if rep, _ := c.Send(sign(local.OpGet, w.accord, later, nil)); rep.Door != local.Replayed {
+		t.Fatalf("a nonce seen half a minute ago: got %q", rep.Door)
+	}
 }
 
 // TestTheDoorPassesTheBytes gives, as a member with a valid envelope signature, a message the
