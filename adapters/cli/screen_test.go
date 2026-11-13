@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"io"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -64,7 +65,9 @@ func itoa(n int64) string { b, _ := json.Marshal(n); return string(b) }
 // characters, spaces and backslashes escaped, so no field can end the line or pose as another. A
 // body written to a file or a pipe is the body's exact bytes; written to a terminal, its control
 // characters but the line feed and the tab are escaped, and so are those of the answer result
-// prints and of the cells log prints.
+// prints and of the cells log prints. The lines of JSON that questions and log --format json print
+// stay the same JSON on a terminal, with every rune a terminal could act on escaped: a question's
+// part is the proposer's text on the decider's terminal.
 func TestAnotherPartysTextIsPrintedSafely(t *testing.T) {
 	t.Parallel()
 	a := newAccord(t, "proposer", "applier", "decider", "p1", "p2")
@@ -91,6 +94,11 @@ func TestAnotherPartysTextIsPrintedSafely(t *testing.T) {
 	}
 
 	q := a.openOne(t, text)
+	plainQ, screenQ := must(t, a.as("decider", "questions")...), run(t, terminal(), a.as("decider", "questions")...)
+	if !strings.Contains(plainQ.stdout, "\u009b1m") || !strings.Contains(plainQ.stdout, "\u202ee") ||
+		screenQ.code != 0 || screenQ.stdout != onScreen.Replace(plainQ.stdout) || !sameJSON(t, plainQ.stdout, screenQ.stdout) {
+		t.Fatalf("questions to a pipe:\n%q\nto a terminal:\n%v", plainQ.stdout, screenQ)
+	}
 	must(t, a.as("decider", "answer", "--question", q, "--text", text)...)
 	r = run(t, terminal(), a.as("proposer", "result", "--question", q)...)
 	if r.code != 0 || last(r.stdout) != strings.Split(shown, "\n")[1] || !strings.HasSuffix(r.stdout, "\n"+shown+"\n") {
@@ -102,4 +110,24 @@ func TestAnotherPartysTextIsPrintedSafely(t *testing.T) {
 		strings.Replace(plain.stdout, text, shown, -1) != screen.stdout {
 		t.Fatalf("log to a pipe:\n%q\nto a terminal:\n%q", plain.stdout, screen.stdout)
 	}
+	logArgs[6] = "json"
+	plain, screen = must(t, logArgs...), run(t, terminal(), logArgs...)
+	if !strings.Contains(plain.stdout, "\u009b1m") || !strings.Contains(plain.stdout, "\u202ee") ||
+		screen.code != 0 || screen.stdout != onScreen.Replace(plain.stdout) || !sameJSON(t, plain.stdout, screen.stdout) {
+		t.Fatalf("log --format json to a pipe:\n%q\nto a terminal:\n%v", plain.stdout, screen)
+	}
+}
+
+// onScreen is what a terminal is shown of a line of JSON in place of a rune JSON leaves as it is
+// but a terminal may act on: the C1 control and the direction override of the text above.
+var onScreen = strings.NewReplacer("\u009b", `\u009b`, "\u202e", `\u202e`)
+
+// sameJSON reports whether two lines of JSON hold the same value.
+func sameJSON(t testing.TB, a, b string) bool {
+	t.Helper()
+	var x, y any
+	if json.Unmarshal([]byte(a), &x) != nil || json.Unmarshal([]byte(b), &y) != nil {
+		return false
+	}
+	return reflect.DeepEqual(x, y)
 }
