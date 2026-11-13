@@ -7,8 +7,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"io/fs"
 	"net"
+	"os"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/orilloai/placket/adapters/internal/strict"
@@ -265,7 +268,9 @@ func ParseReply(b []byte) (Reply, bool) {
 
 // A Client calls a window as one key, for one Accord.
 type Client struct {
-	// Socket is the window's socket path.
+	// Socket is the window's socket path. It must be a socket itself, not a link to one, owned by
+	// the user the client runs as: a window makes its socket mode 0600, so only its own user can
+	// call it, and a socket another user made is not a window's.
 	Socket string
 	// Key signs every call.
 	Key signing.Key
@@ -291,11 +296,20 @@ func (c *Client) Call(op string, args map[string]any) (Reply, error) {
 	return c.Send(line)
 }
 
-// Send sends the bytes of one call, as given, and reads the reply.
+// Send sends the bytes of one call, as given, and reads the reply. A socket path that is not a
+// socket of this user's is CodeSocket, and nothing is sent. A reply whose outcome or release has a
+// receipt under another Accord than the client's is CodeReply.
 func (c *Client) Send(line []byte) (Reply, error) {
 	timeout := c.Timeout
 	if timeout == 0 {
 		timeout = time.Minute
+	}
+	fi, err := os.Lstat(c.Socket)
+	if err != nil || fi.Mode()&fs.ModeSocket == 0 {
+		return Reply{}, &Error{Code: CodeSocket}
+	}
+	if st, ok := fi.Sys().(*syscall.Stat_t); !ok || int64(st.Uid) != int64(os.Geteuid()) {
+		return Reply{}, &Error{Code: CodeSocket}
 	}
 	conn, err := net.DialTimeout("unix", c.Socket, timeout)
 	if err != nil {
@@ -313,6 +327,14 @@ func (c *Client) Send(line []byte) (Reply, error) {
 	r, ok := ParseReply(bytes.TrimSuffix(b, []byte{'\n'}))
 	if !ok {
 		return Reply{}, &Error{Code: CodeReply}
+	}
+	for _, o := range []*mediator.Outcome{r.Outcome, r.Release} {
+		if o == nil {
+			continue
+		}
+		if st, err := receipts.Decode(o.Receipt); err != nil || st.Predicate.Accord != c.Accord {
+			return Reply{}, &Error{Code: CodeReply}
+		}
 	}
 	return r, nil
 }

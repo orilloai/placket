@@ -10,6 +10,7 @@ import (
 	"io/fs"
 	"net"
 	"os"
+	"syscall"
 	"time"
 
 	"github.com/orilloai/placket/adapters/journal"
@@ -213,11 +214,20 @@ func receiptsOf(outs []mediator.Outcome) [][]byte {
 	return list
 }
 
-// listen removes a stale socket file at path and listens there, mode 0600. The listener never
-// removes the file: a window stopped in any way leaves it, and the next start removes it.
+// listen removes a stale socket file at path and listens there, mode 0600. A socket file is stale
+// when connecting to it is refused: one that something answers on, or that cannot be tried, is left
+// to its owner, and so is a path that holds anything but a socket. The listener never removes the
+// file: a window stopped in any way leaves it, and the next start removes it.
 func listen(path string) (*net.UnixListener, error) {
 	if fi, err := os.Lstat(path); err == nil {
 		if fi.Mode()&fs.ModeSocket == 0 {
+			return nil, &Error{Code: CodeSocket}
+		}
+		c, err := net.DialTimeout("unix", path, time.Second)
+		if err == nil {
+			_ = c.Close()
+		}
+		if !errors.Is(err, syscall.ECONNREFUSED) {
 			return nil, &Error{Code: CodeSocket}
 		}
 		if err := os.Remove(path); err != nil {
@@ -461,16 +471,19 @@ func (w *window) get(c Call, ev *Event) ([]byte, error) {
 	return encodeReply(wireReply{Delivery: d, AnswerCall: answerCall}), nil
 }
 
+// questions answers a questions call with the open questions the caller may answer. The core says
+// first whether the caller is a member: no question has the empty id, so the read answers with its
+// membership row. The mediator's own reference reads every open question, for the journal; it is
+// never handed to the read for a call, and a call it signs is shown none (maybe-1).
 func (w *window) questions(c Call, ev *Event) []byte {
-	list := []wireAsked{}
-	pending := w.m.Pending()
-	if len(pending) == 0 {
-		// No question is open: the core still says whether the caller is a member.
-		if _, _, err := w.m.Question(c.Caller, ""); err != nil {
-			return refused(err, ev)
-		}
+	if _, _, err := w.m.Question(c.Caller, ""); err != nil {
+		return refused(err, ev)
 	}
-	for _, id := range pending {
+	list := []wireAsked{}
+	if c.Caller == w.cfg.Key.Reference() {
+		return encodeReply(wireReply{Questions: &list})
+	}
+	for _, id := range w.m.Pending() {
 		q, ok, err := w.m.Question(c.Caller, id)
 		var rj *mediator.Rejection
 		switch {
