@@ -48,17 +48,13 @@ func asker(rep *local.Reply) (string, bool) {
 }
 
 // comment gives the asker a comment on the question, of kind comment with re the question, kept by
-// the giver so that the log can show it. It returns the exit code: 1 when the comment did not
+// the giver so that the log can show it, under the state lock the command holds. It returns the exit code: 1 when the comment did not
 // cross, which it says.
 func (s *session) comment(rep *local.Reply, question, text string) int {
 	to, ok := asker(rep)
 	if !ok {
 		return s.r.tool("reply")
 	}
-	if err := s.dir.Lock(); err != nil {
-		return s.r.failed(err)
-	}
-	defer s.dir.Unlock()
 	out, code := s.send(to, "comment", body{form: "text", value: text}, question, "", true)
 	if out == nil {
 		fmt.Fprintln(s.r.stderr, LineCommentNotCross)
@@ -71,7 +67,9 @@ func (s *session) comment(rep *local.Reply, question, text string) int {
 	return ExitOK
 }
 
-// answerFlags are the flags of answer, change, decline and cancel.
+// answerFlags are the flags of answer, change, decline and cancel. It opens the session and takes
+// the state lock, which the command keeps until it returns (state-lock): a version it keeps and a
+// comment it gives are written under it, after any line a stop left unterminated is removed.
 func answerFlags(r *run, name string, args []string, more func(fs *flagSet)) (*session, string, int) {
 	fs := flags(name)
 	keyPath, socket, accord, stateDir := socketFlags(fs)
@@ -83,7 +81,13 @@ func answerFlags(r *run, name string, args []string, more func(fs *flagSet)) (*s
 		return nil, "", r.tool(codeUsage)
 	}
 	s, code := r.open(*keyPath, *socket, *accord, *stateDir)
-	return s, *question, code
+	if s == nil {
+		return nil, "", code
+	}
+	if err := s.dir.Lock(); err != nil {
+		return nil, "", r.failed(err)
+	}
+	return s, *question, 0
 }
 
 // answerCommand is `answer --question ID [--text S]`: an accept, the text accepted unless given. It
@@ -94,6 +98,7 @@ func answerCommand(r *run, args []string) int {
 	if s == nil {
 		return code
 	}
+	defer s.dir.Unlock()
 	rep, code := s.resolve(question, mediator.Accepted, *text)
 	if rep == nil {
 		return code

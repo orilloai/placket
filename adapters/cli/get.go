@@ -77,8 +77,8 @@ func (s *session) about(d delivery) bool {
 
 // fetch gets the next delivery, under the state lock the caller holds, and records it: its receipt
 // in delivered.jsonl, and the delivery, with its answer call beside it, in kept.jsonl when keep is
-// set. It returns nil when nothing is queued; a delivery that is not what its receipt says is tool
-// error reply, and nothing of it is recorded.
+// set. It returns the delivery and its kept.jsonl line, or nil when nothing is queued; a delivery
+// that is not what its receipt says is tool error reply, and nothing of it is recorded.
 func (s *session) fetch(keep bool) (*delivery, []byte, int) {
 	rep, err := s.client.Call(local.OpGet, nil)
 	if err != nil {
@@ -97,12 +97,13 @@ func (s *session) fetch(keep bool) (*delivery, []byte, int) {
 	if err := s.dir.AddDelivered(d.Receipt); err != nil {
 		return nil, nil, s.r.failed(err)
 	}
+	kl := keptLine(rep.Delivery, rep.AnswerCall)
 	if keep {
-		if err := s.dir.Keep(keptLine(rep.Delivery, rep.AnswerCall)); err != nil {
+		if err := s.dir.Keep(kl); err != nil {
 			return nil, nil, s.r.failed(err)
 		}
 	}
-	return &d, rep.Delivery, 0
+	return &d, kl, 0
 }
 
 // keptLine is a fetched delivery's line of kept.jsonl: the delivery, with its answer call beside it.
@@ -118,38 +119,58 @@ func keptLine(delivery, answerCall []byte) []byte {
 }
 
 // show prints a fetched delivery as get does: one line on standard error, each field escaped, and
-// its body on standard output, escaped on a terminal, or in a new file of the directory out, named
-// for the receipt id's hex and the kind, which fetch has read for their form. The file is created
-// only if nothing is at its path, so it is never written through a link or over another file.
-func (r *run) show(d *delivery, out string) int {
+// its body on standard output, escaped on a terminal.
+func (r *run) show(d *delivery) {
+	r.head(d)
+	line(r.stdout, r.screen(d.bytes()))
+}
+
+// head is a fetched delivery's line on standard error.
+func (r *run) head(d *delivery) {
 	head := "delivery " + field(d.ReceiptID) + " kind " + field(d.Kind) + " messageId " + field(d.MessageID) + " salt " + field(d.Salt)
 	if d.Re != "" {
 		head += " re " + field(d.Re)
 	}
 	fmt.Fprintln(r.stderr, head)
-	b := d.bytes()
-	if out == "" {
-		line(r.stdout, r.screen(b))
-		return ExitOK
+}
+
+// writable reports whether a file can be made in the directory dir, by making one and removing it.
+func writable(dir string) bool {
+	f, err := os.CreateTemp(dir, ".placket-")
+	if err != nil {
+		return false
 	}
+	name := f.Name()
+	cerr := f.Close()
+	return os.Remove(name) == nil && cerr == nil
+}
+
+// writeOut writes a fetched delivery's body to a new file of the directory out, named for the
+// receipt id's hex and the kind, which fetch has read for their form, and returns its path. The
+// file is made only if nothing is at its path, so it is never written through a link or over
+// another file.
+func writeOut(d *delivery, out string) (string, bool) {
 	path := filepath.Join(out, strings.TrimPrefix(d.ReceiptID, canonical.HashPrefix)+"."+d.Kind)
 	if filepath.Dir(path) != filepath.Clean(out) {
-		return r.tool(codeFile)
+		return "", false
 	}
 	f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600)
 	if err != nil {
-		return r.tool(codeFile)
+		return "", false
 	}
-	_, err = f.Write(b)
-	if cerr := f.Close(); err != nil || cerr != nil {
+	_, err = f.Write(d.bytes())
+	serr := f.Sync()
+	if cerr := f.Close(); err != nil || serr != nil || cerr != nil {
 		_ = os.Remove(path)
-		return r.tool(codeFile)
+		return "", false
 	}
-	fmt.Fprintln(r.stdout, path)
-	return ExitOK
+	return path, true
 }
 
 // getCommand is `get [--out DIR] [--keep]`, with the socket flags: it fetches the next delivery.
+// With --out, a directory where no file can be made is tool error file before anything is fetched.
+// A body that is fetched and cannot then be written is kept in kept.jsonl, so it is not lost, and
+// the error says so: error file kept.
 func getCommand(r *run, args []string) int {
 	fs := flags("get")
 	keyPath, socket, accord, stateDir := socketFlags(fs)
@@ -161,16 +182,34 @@ func getCommand(r *run, args []string) int {
 	if s == nil {
 		return code
 	}
+	if *out != "" && !writable(*out) {
+		return r.tool(codeFile)
+	}
 	if err := s.dir.Lock(); err != nil {
 		return r.failed(err)
 	}
 	defer s.dir.Unlock()
-	d, _, code := s.fetch(*keep)
+	d, kept, code := s.fetch(*keep)
 	if d == nil {
 		if code == 0 {
 			fmt.Fprintln(r.stderr, LineNoDelivery)
 		}
 		return code
 	}
-	return r.show(d, *out)
+	if *out == "" {
+		r.show(d)
+		return ExitOK
+	}
+	r.head(d)
+	path, ok := writeOut(d, *out)
+	if !ok {
+		if !*keep {
+			if err := s.dir.Keep(kept); err != nil {
+				return r.failed(err)
+			}
+		}
+		return r.tool(codeFile, detailKept)
+	}
+	fmt.Fprintln(r.stdout, path)
+	return ExitOK
 }

@@ -30,6 +30,7 @@ func changeCommand(r *run, args []string) int {
 	if s == nil {
 		return code
 	}
+	defer s.dir.Unlock()
 	version := *text
 	if *file != "" {
 		b, err := os.ReadFile(*file)
@@ -48,7 +49,7 @@ func changeCommand(r *run, args []string) int {
 	if *keep && rep.Outcome.Verdict == string(composition.Pass) && rep.Salt != nil {
 		k := canonicalJSON(map[string]any{
 			"receipt": json.RawMessage(rep.Outcome.Receipt), "receiptId": rep.Outcome.ReceiptID,
-			"messageId": "change:" + question, "kind": receipts.NameChanged, "salt": hex.EncodeToString(rep.Salt),
+			"messageId": changeMessage + question, "kind": receipts.NameChanged, "salt": hex.EncodeToString(rep.Salt),
 			"re": question, "text": version,
 		})
 		if err := s.dir.Keep(k); err != nil {

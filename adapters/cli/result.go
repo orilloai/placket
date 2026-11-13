@@ -72,17 +72,17 @@ func (s *session) closing(question string, wait bool) int {
 		code = ExitOK
 	}
 	if w == WordAccepted || w == WordChanged {
-		if c := s.fetchOwn(question); c != 0 {
+		if c := s.fetchOwn(question, rep.Outcome.ReceiptID); c != 0 {
 			return c
 		}
 	}
 	return code
 }
 
-// fetchOwn finds the answer or the version to the question: first among the parts kept, then by
-// fetching, every delivery fetched recorded and kept, and each that is not its own printed as get
-// prints it. It prints the text found, or not fetched.
-func (s *session) fetchOwn(question string) int {
+// fetchOwn finds the answer or the version to the question, the delivery the closing receipt
+// queued: first among the parts kept, then by fetching, every delivery fetched recorded and kept,
+// and each that is not its own printed as get prints it. It prints the text found, or not fetched.
+func (s *session) fetchOwn(question, closing string) int {
 	if err := s.dir.Lock(); err != nil {
 		return s.r.failed(err)
 	}
@@ -93,7 +93,7 @@ func (s *session) fetchOwn(question string) int {
 	}
 	for _, l := range kept {
 		var d delivery
-		if json.Unmarshal(l, &d) == nil && own(&d, question) {
+		if json.Unmarshal(l, &d) == nil && own(&d, question, closing) {
 			line(s.r.stdout, s.r.screen(d.bytes()))
 			return 0
 		}
@@ -107,17 +107,24 @@ func (s *session) fetchOwn(question string) int {
 			fmt.Fprintln(s.r.stderr, LineNotFetched)
 			return 0
 		}
-		if own(d, question) {
+		if own(d, question, closing) {
 			line(s.r.stdout, s.r.screen(d.bytes()))
 			return 0
 		}
-		s.r.show(d, "")
+		s.r.show(d)
 	}
 }
 
-// own reports whether the delivery is the answer or the version to the question.
-func own(d *delivery, question string) bool {
-	return d.Re == question && d.Text != nil && (d.Kind == receipts.NameAnswer || d.Kind == receipts.NameChanged)
+// changeMessage is the message id the mediator gives the version it forms, before the question's
+// id.
+const changeMessage = "change:"
+
+// own reports whether the delivery is the answer or the version to the question: the part queued by
+// the closing receipt, whose id it names. A part of that kind and re that a member gave has a
+// receipt of its own, and is not.
+func own(d *delivery, question, closing string) bool {
+	return d.ReceiptID == closing && d.Re == question && d.Text != nil &&
+		(d.Kind == receipts.NameAnswer || d.Kind == receipts.NameChanged)
 }
 
 // resultCommand is `result --question ID`, with the socket flags: how a question the key asked

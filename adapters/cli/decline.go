@@ -15,6 +15,7 @@ func declineCommand(r *run, args []string) int {
 	if s == nil {
 		return code
 	}
+	defer s.dir.Unlock()
 	if *comment == "" {
 		return r.tool(codeComment)
 	}

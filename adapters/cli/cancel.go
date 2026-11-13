@@ -12,6 +12,7 @@ func cancelCommand(r *run, args []string) int {
 	if s == nil {
 		return code
 	}
+	defer s.dir.Unlock()
 	if rep, code := s.resolve(question, mediator.Cancelled, ""); rep == nil {
 		return code
 	}
