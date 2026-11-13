@@ -63,9 +63,9 @@ func (s *session) closing(question string, wait bool) int {
 		}
 	}
 	fmt.Fprintln(s.r.stderr, text)
-	line(s.r.stdout, rep.Outcome.Receipt)
+	line(s.r.stdout, s.r.screenJSON(rep.Outcome.Receipt))
 	if rep.Release != nil {
-		line(s.r.stdout, rep.Release.Receipt)
+		line(s.r.stdout, s.r.screenJSON(rep.Release.Receipt))
 	}
 	code := ExitBlock
 	if w == WordAccepted && released {

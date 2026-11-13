@@ -263,12 +263,13 @@ func (r *run) open(keyPath, socket, accord, stateDir string) (*session, int) {
 }
 
 // outcome prints an outcome's line, <word> <reason> <receipt id>, with released for a release that
-// passed, and the receipt on standard output.
+// passed, and the receipt on standard output, escaped on a terminal. ParseReply has read the reason
+// and the id for their form.
 func (r *run) outcome(o *mediator.Outcome, release bool) {
 	w := word(o.Verdict)
 	if release && w == WordPass {
 		w = WordReleased
 	}
 	fmt.Fprintln(r.stderr, w+" "+o.Reason+" "+o.ReceiptID)
-	line(r.stdout, o.Receipt)
+	line(r.stdout, r.screenJSON(o.Receipt))
 }

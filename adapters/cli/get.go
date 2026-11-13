@@ -2,6 +2,7 @@ package cli
 
 import (
 	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -10,6 +11,8 @@ import (
 
 	"github.com/orilloai/placket/adapters/local"
 	"github.com/orilloai/placket/core/canonical"
+	"github.com/orilloai/placket/core/composition"
+	"github.com/orilloai/placket/core/receipts"
 )
 
 func init() {
@@ -43,9 +46,39 @@ func (d delivery) bytes() []byte {
 	return c
 }
 
+// about reports whether a delivery is what its receipt says it is, before anything of it is
+// recorded, printed or written: a receipt that decodes (receipts.Decode, which verifies nothing),
+// that passed, to this key under this Accord, of the id and kind the delivery names, whose digest
+// is that of the delivery's salt and its one body. So a delivery's kind is a label and its receipt
+// id a typed hash, whatever window sent it; reconcile and verify, under the mediator's key, are
+// what show the receipt is the mediator's.
+func (s *session) about(d delivery) bool {
+	st, err := receipts.Decode(d.Receipt)
+	if err != nil {
+		return false
+	}
+	bodies := 0
+	for _, has := range []bool{d.Text != nil, d.Raw != nil, len(d.Data) > 0} {
+		if has {
+			bodies++
+		}
+	}
+	if d.Raw != nil {
+		if _, err := base64.StdEncoding.Strict().DecodeString(*d.Raw); err != nil {
+			return false
+		}
+	}
+	salt, err := hex.DecodeString(d.Salt)
+	p := st.Predicate
+	return err == nil && bodies == 1 && st.ID == d.ReceiptID && st.Subject.Name == d.Kind &&
+		p.Verdict == string(composition.Pass) && p.To == s.key.Reference() && p.Accord == s.client.Accord &&
+		receipts.Digest(salt, d.bytes()) == st.Subject.Digest
+}
+
 // fetch gets the next delivery, under the state lock the caller holds, and records it: its receipt
 // in delivered.jsonl, and the delivery, with its answer call beside it, in kept.jsonl when keep is
-// set. It returns nil when nothing is queued.
+// set. It returns nil when nothing is queued; a delivery that is not what its receipt says is tool
+// error reply, and nothing of it is recorded.
 func (s *session) fetch(keep bool) (*delivery, []byte, int) {
 	rep, err := s.client.Call(local.OpGet, nil)
 	if err != nil {
@@ -58,7 +91,7 @@ func (s *session) fetch(keep bool) (*delivery, []byte, int) {
 		return nil, nil, 0
 	}
 	var d delivery
-	if err := json.Unmarshal(rep.Delivery, &d); err != nil || len(d.Receipt) == 0 {
+	if err := json.Unmarshal(rep.Delivery, &d); err != nil || !s.about(d) {
 		return nil, nil, s.r.tool("reply")
 	}
 	if err := s.dir.AddDelivered(d.Receipt); err != nil {
@@ -85,7 +118,9 @@ func keptLine(delivery, answerCall []byte) []byte {
 }
 
 // show prints a fetched delivery as get does: one line on standard error, each field escaped, and
-// its body on standard output, escaped on a terminal, or in a file of the directory out.
+// its body on standard output, escaped on a terminal, or in a new file of the directory out, named
+// for the receipt id's hex and the kind, which fetch has read for their form. The file is created
+// only if nothing is at its path, so it is never written through a link or over another file.
 func (r *run) show(d *delivery, out string) int {
 	head := "delivery " + field(d.ReceiptID) + " kind " + field(d.Kind) + " messageId " + field(d.MessageID) + " salt " + field(d.Salt)
 	if d.Re != "" {
@@ -98,7 +133,16 @@ func (r *run) show(d *delivery, out string) int {
 		return ExitOK
 	}
 	path := filepath.Join(out, strings.TrimPrefix(d.ReceiptID, canonical.HashPrefix)+"."+d.Kind)
-	if err := os.WriteFile(path, b, 0o600); err != nil {
+	if filepath.Dir(path) != filepath.Clean(out) {
+		return r.tool(codeFile)
+	}
+	f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600)
+	if err != nil {
+		return r.tool(codeFile)
+	}
+	_, err = f.Write(b)
+	if cerr := f.Close(); err != nil || cerr != nil {
+		_ = os.Remove(path)
 		return r.tool(codeFile)
 	}
 	fmt.Fprintln(r.stdout, path)
