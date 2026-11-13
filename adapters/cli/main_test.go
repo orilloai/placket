@@ -115,7 +115,8 @@ const peerTerms = `{"terms":[{"stance":"want","dir":"give","with":["role:peer"],
 	{"stance":"want","dir":"get","with":["role:peer"],"select":{"kind":["note"]}}]}`
 
 // newAccord makes an Accord of the parties, each holding the role of its own name, or peer for a
-// party with no terms of its own; mediator, operator and principal keys besides.
+// party with no terms of its own; mediator, operator and principal keys besides. A party's terms
+// are the worked example's or those of the comment tests (commentTerms).
 func newAccord(t testing.TB, parties ...string) *accord {
 	t.Helper()
 	d, err := os.MkdirTemp("/tmp", "plk")
@@ -138,6 +139,9 @@ func newAccord(t testing.TB, parties ...string) *accord {
 	args := []string{"founding"}
 	for _, p := range parties {
 		terms, role := sixTerms[p], p
+		if more, ok := commentTerms[p]; ok {
+			terms = more
+		}
 		if terms == "" {
 			terms, role = peerTerms, "peer"
 		}
