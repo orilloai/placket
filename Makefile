@@ -38,6 +38,12 @@ ifneq ($(PLACKET_IN_CI),)
 $(info ci-stays-fast: refused: make ci inside make ci)
 $(error PLACKET_IN_CI is set, so a make ci is already running above this one (AGENTS.md, ci-stays-fast))
 endif
+# ci-stays-fast, the jobs: make ci runs its steps side by side, CI_JOBS at a time (by default the
+# host's processor count, and at least 2), each step's output held back and printed whole when the
+# step ends, so that its lines and its time line stay together. Every step still runs once, and a
+# step that reads another's output names it as a prerequisite. `make ci CI_JOBS=1` runs them one by one.
+CI_JOBS ?= $(shell n=$$(getconf _NPROCESSORS_ONLN 2>/dev/null || echo 2); [ "$$n" -ge 2 ] 2>/dev/null || n=2; echo $$n)
+MAKEFLAGS += -j$(CI_JOBS) --output-sync=target
 endif
 
 # Every step's recipe is one shell line that starts with $(START) and ends with $(END), its body in
@@ -45,11 +51,11 @@ endif
 START = t0=$$(date +%s); (
 END = ); rc=$$?; echo "time: $@: $$(($$(date +%s) - t0))s"; exit $$rc
 
-# WORK is this checkout's scratch directory, outside the tree: the checker's binary and the shared test
-# run's output. Each run of guard and tests writes it afresh before anything reads it. Its path is
-# fixed, so each of them first makes it with mode 700 (OWN_WORK), and uses it only when it is a
-# directory, not a symbolic link, owned by the user running make and writable by no one else;
-# otherwise it stops.
+# WORK is this checkout's scratch directory, outside the tree: the checker's binary, the shared test
+# run's output and the shell tests' output. Each run of guard, tests and scripts writes its part afresh
+# before anything reads it. Its path is fixed, so each of them first makes it with mode 700
+# (OWN_WORK), and uses it only when it is a directory, not a symbolic link, owned by the user running
+# make and writable by no one else; otherwise it stops.
 WORK := $(or $(TMPDIR),/tmp)/placket-make-$(shell printf '%s' '$(CURDIR)' | cksum | cut -d' ' -f1)
 GUARD = $(WORK)/guard
 OWN_WORK = mkdir -m 700 "$(WORK)" 2>/dev/null || :; \
@@ -121,21 +127,27 @@ secrets:
 
 # tests: one test run per module with packages, with the race detector and coverage, which also runs
 # every fuzz test on its seed corpus (the f.Add seeds and testdata/fuzz/), as go test does without
-# -fuzz. -count=1 keeps a cached result from standing in for a run. Its output, coverage profile and
-# status go to $(WORK)/tests/, for race, fuzz-seeds and coverage-reported to read; each of them runs
+# -fuzz. The modules' runs go side by side, and their lines are printed in the modules' order once
+# every run has ended. -count=1 keeps a cached result from standing in for a run. Its output, coverage
+# profile and status go to $(WORK)/tests/, for race, fuzz-seeds and coverage-reported to read; each of them runs
 # it first, so run alone, each makes the run itself, and in ci it runs once. It prints one line per
 # module and fails only when a module's packages cannot be listed: the steps that read it judge it.
 TESTS = $(WORK)/tests
 tests:
-	@$(START) set -e; $(OWN_WORK); rm -rf "$(TESTS)"; mkdir "$(TESTS)"; : >"$(TESTS)/modules"; \
+	@$(START) set -e; $(OWN_WORK); rm -rf "$(TESTS)"; mkdir "$(TESTS)"; : >"$(TESTS)/modules"; : >"$(TESTS)/run"; \
 		for m in $$($(MODULES)); do \
 			pkgs=$$(cd "$$m" && go list ./...) || { echo "$@: $$m: go list failed"; exit 1; }; \
 			[ -n "$$pkgs" ] || continue; \
-			k=$$(printf '%s' "$$m" | tr -c 'A-Za-z0-9\n' _); \
-			rc=0; (cd "$$m" && go test -race -count=1 -v -coverprofile="$(TESTS)/$$k.cover" ./...) >"$(TESTS)/$$k.out" 2>&1 || rc=$$?; \
-			echo "$$m $$k $$rc" >>"$(TESTS)/modules"; \
+			echo "$$m $$(printf '%s' "$$m" | tr -c 'A-Za-z0-9\n' _)" >>"$(TESTS)/run"; \
+		done; \
+		while read -r m k; do \
+			{ rc=0; (cd "$$m" && go test -race -count=1 -v -coverprofile="$(TESTS)/$$k.cover" ./...) >"$(TESTS)/$$k.out" 2>&1 || rc=$$?; \
+				echo "$$rc" >"$(TESTS)/$$k.rc"; } & \
+		done <"$(TESTS)/run"; wait; \
+		while read -r m k; do \
+			rc=$$(cat "$(TESTS)/$$k.rc"); echo "$$m $$k $$rc" >>"$(TESTS)/modules"; \
 			if [ "$$rc" -eq 0 ]; then echo "$@: $$m: passed"; else echo "$@: $$m: failed"; fi; \
-		done; echo "$@: ok" $(END)
+		done <"$(TESTS)/run"; echo "$@: ok" $(END)
 
 # SHOWN is an awk program that prints a test run's output without the lines of tests that passed or
 # were skipped, and without the lines that only mark a test's start: what is left is the failures,
@@ -185,9 +197,18 @@ runner-no-silent-pass:
 			grep '^$@: ' "$$out"; echo "$@: ok"; exit 0; fi; \
 		cat "$$out"; echo "$@: refused: a green run means every vector ran and passed (AGENTS.md, $@)"; exit 1 $(END)
 
-# The repository's own shell tests.
+# The repository's own shell tests, side by side. Each one's output is printed whole, in the tests'
+# order, under "== <test>", once every test has ended; the step fails when any test failed, naming
+# each one that did.
+SCRIPTS = $(WORK)/scripts
 scripts:
-	@$(START) set -e; for t in tests/test_*.sh; do [ -e "$$t" ] || continue; echo "== $$t"; sh "$$t"; done $(END)
+	@$(START) set -e; $(OWN_WORK); rm -rf "$(SCRIPTS)"; mkdir "$(SCRIPTS)"; i=0; \
+		for t in tests/test_*.sh; do [ -e "$$t" ] || continue; i=$$((i + 1)); \
+			{ rc=0; sh "$$t" >"$(SCRIPTS)/$$i.out" 2>&1 || rc=$$?; echo "$$rc" >"$(SCRIPTS)/$$i.rc"; } & \
+		done; wait; i=0; failed=; \
+		for t in tests/test_*.sh; do [ -e "$$t" ] || continue; i=$$((i + 1)); \
+			echo "== $$t"; cat "$(SCRIPTS)/$$i.out"; [ "$$(cat "$(SCRIPTS)/$$i.rc")" -eq 0 ] || failed="$$failed $$t"; \
+		done; if [ -n "$$failed" ]; then echo "$@: failed:$$failed"; exit 1; fi $(END)
 
 # demo: the worked example, ask and log, run by hand: three parties' commands against one window,
 # a restart, and the journal verified and exported. Not a step of ci: tests/test_demo.sh runs the
