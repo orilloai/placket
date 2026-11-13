@@ -50,7 +50,13 @@ func logCommand(r *run, args []string) int {
 	if err != nil {
 		var ee *export.Error
 		if errors.As(err, &ee) && ee.Index >= 0 {
-			return r.tool(codeVerify, ee.Core, journal.FileReceipts, fmt.Sprintf("line %d", ee.Index+1))
+			// The verifier's code, or the export's own when the receipts verified but hold more
+			// than one Accord or card.
+			code := ee.Core
+			if ee.Code != export.CodeVerify {
+				code = string(ee.Code)
+			}
+			return r.tool(codeVerify, code, journal.FileReceipts, fmt.Sprintf("line %d", ee.Index+1))
 		}
 		return r.tool(codeVerify)
 	}

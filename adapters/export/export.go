@@ -64,6 +64,8 @@ const (
 	CodeVerify Code = "verify"
 	// CodeAccord: the receipts name more than one Accord; Index is the first of another.
 	CodeAccord Code = "accord"
+	// CodeCard: the receipts name more than one card; Index is the first of another.
+	CodeCard Code = "card"
 )
 
 // Error is a journal the log refuses. It holds nothing a receipt or a part holds.
@@ -123,8 +125,8 @@ type keptPart struct {
 }
 
 // Build makes the log of the receipts, verified under the mediator's reference, with the kept parts,
-// each one line of a kept.jsonl. It verifies first and makes no row when the receipts fail, and none
-// when receipts.Releases refuses them. Each kept part left out is noted.
+// each one line of a kept.jsonl. It verifies first and makes no row when the receipts fail, none when
+// they name more than one Accord or card, and none when receipts.Releases refuses them. Each kept part left out is noted.
 func Build(mediatorRef string, list [][]byte, kept [][]byte, note func(string)) (Log, error) {
 	st, err := receipts.Verify(mediatorRef, list)
 	if err != nil {
@@ -133,6 +135,15 @@ func Build(mediatorRef string, list [][]byte, kept [][]byte, note func(string)) 
 			return Log{}, &Error{Code: CodeVerify, Core: string(re.Code), Index: re.Index}
 		}
 		return Log{}, &Error{Code: CodeVerify, Index: -1}
+	}
+	// One journal is one Accord's: receipts of two are refused whole.
+	for i, s := range st {
+		switch {
+		case s.Predicate.Accord != st[0].Predicate.Accord:
+			return Log{}, &Error{Code: CodeAccord, Index: i}
+		case s.Predicate.Card != st[0].Predicate.Card:
+			return Log{}, &Error{Code: CodeCard, Index: i}
+		}
 	}
 	places, err := receipts.Releases(st)
 	if err != nil {
@@ -143,13 +154,11 @@ func Build(mediatorRef string, list [][]byte, kept [][]byte, note func(string)) 
 		return Log{}, &Error{Code: CodeVerify, Core: string(receipts.CodeRelease), Index: -1}
 	}
 	lg := Log{Mediator: mediatorRef, Rows: []Row{}}
+	if len(st) > 0 {
+		lg.Accord = st[0].Predicate.Accord
+	}
 	byID := map[string]int{}
 	for i, s := range st {
-		if i == 0 {
-			lg.Accord = s.Predicate.Accord
-		} else if s.Predicate.Accord != lg.Accord {
-			return Log{}, &Error{Code: CodeAccord, Index: i}
-		}
 		byID[s.ID] = i
 	}
 	var parts []keptPart
@@ -448,8 +457,14 @@ func (l Log) JSON(claim, notClaimed string, withWords, noWords bool) []byte {
 	return c
 }
 
+// formulaStarts are the characters a cell may not begin with, lest a spreadsheet read it as a
+// formula: the four that start one, and the tab and the carriage return, which a spreadsheet may
+// drop before it looks.
+const formulaStarts = "=+-@\t\r"
+
 // CSV writes the log as a header and one record per row, quoted per RFC 4180. A cell that begins
-// with =, +, - or @ is written after a ', so that no spreadsheet runs it as a formula.
+// with =, +, -, @, a tab or a carriage return is written after a ', so that no spreadsheet runs it
+// as a formula.
 func (l Log) CSV(w io.Writer, withWords, noWords bool) error {
 	cw := csv.NewWriter(w)
 	header := columns
@@ -462,7 +477,7 @@ func (l Log) CSV(w io.Writer, withWords, noWords bool) error {
 	for _, r := range l.Rows {
 		cells := r.cells(withWords, noWords)
 		for i, c := range cells {
-			if c != "" && strings.ContainsRune("=+-@", rune(c[0])) {
+			if c != "" && strings.ContainsRune(formulaStarts, rune(c[0])) {
 				cells[i] = "'" + c
 			}
 		}

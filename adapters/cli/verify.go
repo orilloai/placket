@@ -52,11 +52,27 @@ func (r *run) notVerified(err error) int {
 	return r.tool(codeVerify)
 }
 
+// oneAccord reports the first receipt whose Accord or card is not the first receipt's: accord or
+// card, and its index. One journal is one Accord's, so a list of two is refused whole.
+func oneAccord(st []receipts.Statement) (string, int) {
+	for i, s := range st {
+		switch {
+		case s.Predicate.Accord != st[0].Predicate.Accord:
+			return codeAccord, i
+		case s.Predicate.Card != st[0].Predicate.Card:
+			return codeCard, i
+		}
+	}
+	return "", -1
+}
+
 // verifyCommand is `verify --mediator M --receipts DIR [--founding S]`: receipts.Verify over the
 // journal's receipts under the mediator's reference alone. It prints each predicate on standard
 // output, and on standard error the count, the Accord, the operator and the module when the founding
-// set is given, the counts of verdicts, questions and releases, the claim and the scope line. A
-// founding set is tool error founding unless it founds the receipts' Accord and its mediator is M.
+// set is given, the counts of verdicts, questions and releases, the claim and the scope line. The
+// receipts must all be of one Accord and card, or it is tool error verify, accord or card, at the
+// first that differs. A founding set is tool error founding unless it founds the receipts' Accord
+// and its mediator is M.
 // On a failure it prints the code and the line, and none of these.
 func verifyCommand(r *run, args []string) int {
 	fs := flags("verify")
@@ -71,6 +87,9 @@ func verifyCommand(r *run, args []string) int {
 	st, err := receipts.Verify(*med, list)
 	if err != nil {
 		return r.notVerified(err)
+	}
+	if code, i := oneAccord(st); code != "" {
+		return r.tool(codeVerify, code, journal.FileReceipts, fmt.Sprintf("line %d", i+1))
 	}
 	places, err := receipts.Releases(st)
 	if err != nil {

@@ -29,6 +29,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/orilloai/placket/adapters/export"
 	"github.com/orilloai/placket/adapters/journal"
 	"github.com/orilloai/placket/adapters/keyfile"
 	"github.com/orilloai/placket/adapters/local"
@@ -61,7 +62,11 @@ const (
 	codeFormat  = "format"
 	codeFound   = "founding"
 	codeVerify  = "verify"
+	codeAccord  = string(export.CodeAccord)
+	codeCard    = string(export.CodeCard)
 	codeRand    = "rand"
+	// detailKept follows error file when a fetched body could not be written and was kept instead.
+	detailKept = "kept"
 )
 
 // Env is what a command takes from the world.

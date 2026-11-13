@@ -61,15 +61,17 @@ func reconcileCommand(r *run, args []string) int {
 	for _, m := range rep.Missing {
 		missing = append(missing, map[string]any{"actor": m.Actor, "seq": m.Seq})
 	}
-	line(r.stdout, canonicalJSON(map[string]any{"removed": items(rep.Removed), "unrecorded": items(rep.Unrecorded), "missing": missing}))
+	// An actor is read from a state directory's actor file, which whoever handed the directory over
+	// wrote: on its way to a terminal it is escaped, as any field and any JSON of another's is.
+	line(r.stdout, r.screenJSON(canonicalJSON(map[string]any{"removed": items(rep.Removed), "unrecorded": items(rep.Unrecorded), "missing": missing})))
 	for _, i := range rep.Removed {
-		fmt.Fprintln(r.stderr, "removed "+i.Actor+" "+i.ReceiptID)
+		fmt.Fprintln(r.stderr, "removed "+field(i.Actor)+" "+field(i.ReceiptID))
 	}
 	for _, i := range rep.Unrecorded {
-		fmt.Fprintln(r.stderr, "unrecorded "+i.Actor+" "+i.ReceiptID)
+		fmt.Fprintln(r.stderr, "unrecorded "+field(i.Actor)+" "+field(i.ReceiptID))
 	}
 	for _, m := range rep.Missing {
-		fmt.Fprintln(r.stderr, "missing "+m.Actor+" seq "+strconv.FormatInt(m.Seq, 10))
+		fmt.Fprintln(r.stderr, "missing "+field(m.Actor)+" seq "+strconv.FormatInt(m.Seq, 10))
 	}
 	if len(rep.Removed)+len(rep.Unrecorded)+len(rep.Missing) == 0 {
 		fmt.Fprintln(r.stderr, LineNothing)
