@@ -802,7 +802,7 @@ Every one of these is a resolution receipt that echoes the question's envelope (
 
 ### maybe-1 Asking
 
-A give decided `escalate` writes a crossing receipt with verdict `escalate` and reason `maybe`, from the giver to the receiver, and holds a question under that receipt's id: the asker, the receiver, the part as it was given, its message's `messageId` and `re`, the envelope, the agreed rule, and the deadline. The deadline is the give's time plus the rule's `timeout` in seconds; a deadline past `9999-12-31T23:59:59Z` is that time. Nothing is queued for the receiver. The held part leaves the mediator only by a release (maybe-10).
+A give decided `escalate` writes a crossing receipt with verdict `escalate` and reason `maybe`, from the giver to the receiver, and holds a question under that receipt's id: the asker, the receiver, the part as it was given, its message's `messageId` and `re`, the envelope, the agreed rule, and the deadline. The deadline is the give's time plus the rule's `timeout` in seconds; a deadline past `9999-12-31T23:59:59Z` is that time. Nothing is queued for the receiver. The held part leaves the mediator only by a release (maybe-10). While the question is open, the part is also shown to the question's answerers, and to no one else, so that an answer is about this exact content; showing it queues nothing and writes nothing.
 
 #### Scenario: a proposal is asked about
 
