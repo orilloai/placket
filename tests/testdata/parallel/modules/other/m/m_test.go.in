@@ -1,0 +1,26 @@
+package m
+
+import (
+	"os"
+	"path/filepath"
+	"testing"
+	"time"
+)
+
+// TestMeet passes only when the core module's tests run at the same time as this one's: it leaves its
+// mark in the directory PLACKET_MEET names and waits for the core module's.
+func TestMeet(t *testing.T) {
+	dir := os.Getenv("PLACKET_MEET")
+	if dir == "" {
+		t.Fatalf("PLACKET_MEET is not set")
+	}
+	if err := os.WriteFile(filepath.Join(dir, "other"), nil, 0o600); err != nil {
+		t.Fatalf("leave a mark: %v", err)
+	}
+	for end := time.Now().Add(30 * time.Second); time.Now().Before(end); time.Sleep(50 * time.Millisecond) {
+		if _, err := os.Stat(filepath.Join(dir, "core")); err == nil {
+			return
+		}
+	}
+	t.Fatalf("the core module's tests did not run at the same time")
+}

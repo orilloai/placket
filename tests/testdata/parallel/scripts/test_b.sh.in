@@ -1,0 +1,15 @@
+# meet <me> <other>: leave a mark in ./meet and wait, up to 30 seconds, for the other test's.
+meet() {
+	mkdir -p meet
+	: >"meet/$1"
+	i=0
+	while [ ! -e "meet/$2" ]; do
+		i=$((i + 1))
+		if [ "$i" -gt 300 ]; then echo "$1: $2 did not run at the same time"; exit 1; fi
+		sleep 0.1
+	done
+	echo "$1 met $2"
+}
+meet b a
+echo "b fails"
+exit 1
