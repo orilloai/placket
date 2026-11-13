@@ -14,7 +14,8 @@
 //	                 part it fetched, or a version it gave as an answer, as the delivery holds it, with
 //	                 "answerCall" beside it when one travelled with it
 //
-// Each .jsonl file is appended one whole line at a time and synced. A last line with no line feed
+// Each .jsonl file is appended one whole line at a time and synced, with the directory when the line
+// made the file. A last line with no line feed
 // was never written: the reads leave it out, and Lock, which runs before anything is appended,
 // removes it with one line on the error writer, so it never joins the next line.
 package state
@@ -77,6 +78,25 @@ type Dir struct {
 	actor  string
 	stderr io.Writer
 	lock   *os.File
+	// syncDir, when set, stands in for syncing the directory, so a test can see which writes sync it.
+	syncDir func(path string) error
+}
+
+// sync syncs the directory, after a name in it was made.
+func (d *Dir) sync() error {
+	if d.syncDir != nil {
+		return d.syncDir(d.path)
+	}
+	return syncDir(d.path)
+}
+
+func syncDir(path string) error {
+	f, err := os.Open(path)
+	if err != nil {
+		return err
+	}
+	serr := f.Sync()
+	return errors.Join(serr, f.Close())
 }
 
 // DefaultPath is the state directory of the key file keyFile under the Accord accord:
@@ -368,19 +388,25 @@ func (d *Dir) Keep(line []byte) error {
 // Kept returns the parts the actor kept, one line each, in the order kept.
 func (d *Dir) Kept() ([][]byte, error) { return d.lines(FileKept) }
 
-// appendLine appends one whole line to the file name and syncs it.
+// appendLine appends one whole line to the file name and syncs it; a line that makes the file
+// syncs the directory too, so the new name survives a crash as surely as a later line does.
 func (d *Dir) appendLine(name string, line []byte) error {
 	if bytes.ContainsAny(line, "\n") {
 		return &Error{Code: CodeState, File: name}
 	}
-	f, err := os.OpenFile(d.file(name), os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0o600)
+	made := true
+	f, err := os.OpenFile(d.file(name), os.O_WRONLY|os.O_APPEND|os.O_CREATE|os.O_EXCL, 0o600)
+	if errors.Is(err, fs.ErrExist) {
+		made = false
+		f, err = os.OpenFile(d.file(name), os.O_WRONLY|os.O_APPEND, 0)
+	}
 	if err != nil {
 		return &Error{Code: CodeState, File: name}
 	}
 	_, werr := f.Write(append(append([]byte(nil), line...), '\n'))
 	serr := f.Sync()
 	cerr := f.Close()
-	if werr != nil || serr != nil || cerr != nil {
+	if werr != nil || serr != nil || cerr != nil || (made && d.sync() != nil) {
 		return &Error{Code: CodeState, File: name}
 	}
 	return nil

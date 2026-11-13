@@ -94,7 +94,7 @@ const (
 )
 
 // Disk is how a journal writes. Each method returns only once what it wrote is synced, the
-// directory included where a name was made or removed. OS is the operating system's; a test injects
+// directory included where a name was made or removed, by Append as by Create. OS is the operating system's; a test injects
 // one that fails.
 type Disk interface {
 	// Append appends b to the file at path, making it, mode 0600, when absent.
@@ -108,20 +108,41 @@ type Disk interface {
 // OS is the operating system's Disk.
 var OS Disk = osDisk{}
 
-type osDisk struct{}
+// osDisk writes through the operating system. syncDir, when set, stands in for syncing a
+// directory, so a test can see which writes sync one.
+type osDisk struct {
+	syncDir func(path string) error
+}
 
-func (osDisk) Append(path string, b []byte) error {
-	f, err := os.OpenFile(path, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0o600)
+func (d osDisk) dir(path string) error {
+	if d.syncDir != nil {
+		return d.syncDir(path)
+	}
+	return syncDir(path)
+}
+
+// Append appends b, synced. When the file was not there, it makes it and syncs the directory too,
+// so that the new name survives a crash as surely as a later write does.
+func (d osDisk) Append(path string, b []byte) error {
+	made := true
+	f, err := os.OpenFile(path, os.O_WRONLY|os.O_APPEND|os.O_CREATE|os.O_EXCL, 0o600)
+	if errors.Is(err, fs.ErrExist) {
+		made = false
+		f, err = os.OpenFile(path, os.O_WRONLY|os.O_APPEND, 0)
+	}
 	if err != nil {
 		return err
 	}
 	_, werr := f.Write(b)
 	serr := f.Sync()
 	cerr := f.Close()
-	return errors.Join(werr, serr, cerr)
+	if err := errors.Join(werr, serr, cerr); err != nil || !made {
+		return err
+	}
+	return d.dir(filepath.Dir(path))
 }
 
-func (osDisk) Create(path string, b []byte) error {
+func (d osDisk) Create(path string, b []byte) error {
 	f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600)
 	if err != nil {
 		return err
@@ -132,14 +153,14 @@ func (osDisk) Create(path string, b []byte) error {
 	if err := errors.Join(werr, serr, cerr); err != nil {
 		return err
 	}
-	return syncDir(filepath.Dir(path))
+	return d.dir(filepath.Dir(path))
 }
 
-func (osDisk) Remove(path string) error {
+func (d osDisk) Remove(path string) error {
 	if err := os.Remove(path); err != nil {
 		return err
 	}
-	return syncDir(filepath.Dir(path))
+	return d.dir(filepath.Dir(path))
 }
 
 func syncDir(path string) error {
