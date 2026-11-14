@@ -26,6 +26,7 @@ import (
 	"io"
 	"os"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -67,6 +68,8 @@ const (
 	codeRand    = "rand"
 	// detailKept follows error file when a fetched body could not be written and was kept instead.
 	detailKept = "kept"
+	// detailLimit follows error socket-path, with the longest socket path the system takes.
+	detailLimit = "limit"
 )
 
 // Env is what a command takes from the world.
@@ -160,6 +163,8 @@ func (r *run) failed(err error) int {
 			d = append(d, je.Core)
 		}
 		return r.tool(string(je.Code), d...)
+	case errors.As(err, &le) && le.Code == local.CodeSocketPath:
+		return r.tool(string(le.Code), detailLimit, strconv.Itoa(local.MaxSocketPath))
 	case errors.As(err, &le):
 		return r.tool(string(le.Code))
 	}
@@ -251,8 +256,12 @@ func socketFlags(fs *flag.FlagSet) (key, socket, accord, stateDir *string) {
 		fs.String("accord", "", "the Accord id"), fs.String("state", "", "state directory")
 }
 
-// open reads the key and opens the state directory; it prints the failure and returns its code.
+// open reads the key and opens the state directory; it prints the failure and returns its code. A
+// socket path too long is refused first, error socket-path limit N, before anything is read.
 func (r *run) open(keyPath, socket, accord, stateDir string) (*session, int) {
+	if err := local.CheckSocket(socket); err != nil {
+		return nil, r.failed(err)
+	}
 	k, err := keyfile.Read(keyPath)
 	if err != nil {
 		return nil, r.failed(err)

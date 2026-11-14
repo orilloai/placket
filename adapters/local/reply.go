@@ -30,7 +30,22 @@ const (
 	CodeSocket Code = "socket"
 	// CodeReply: what the window sent is not a reply.
 	CodeReply Code = "reply"
+	// CodeSocketPath: the socket path is longer than MaxSocketPath, so it can be neither bound nor
+	// connected to.
+	CodeSocketPath Code = "socket-path"
 )
+
+// MaxSocketPath is the longest socket path, in bytes, the system takes: its sun_path less the
+// closing zero byte, 107 on Linux and 103 on macOS.
+const MaxSocketPath = len(syscall.RawSockaddrUnix{}.Path) - 1
+
+// CheckSocket is CodeSocketPath for a socket path longer than MaxSocketPath, and nil otherwise.
+func CheckSocket(path string) error {
+	if len(path) > MaxSocketPath {
+		return &Error{Code: CodeSocketPath}
+	}
+	return nil
+}
 
 // Error is a call that got no reply: its code. It holds nothing of the call or the reply.
 type Error struct{ Code Code }
@@ -296,13 +311,16 @@ func (c *Client) Call(op string, args map[string]any) (Reply, error) {
 	return c.Send(line)
 }
 
-// Send sends the bytes of one call, as given, and reads the reply. A socket path that is not a
-// socket of this user's is CodeSocket, and nothing is sent. A reply whose outcome or release has a
+// Send sends the bytes of one call, as given, and reads the reply. A socket path too long is
+// CodeSocketPath, and one that is not a socket of this user's is CodeSocket; nothing is sent. A reply whose outcome or release has a
 // receipt under another Accord than the client's is CodeReply.
 func (c *Client) Send(line []byte) (Reply, error) {
 	timeout := c.Timeout
 	if timeout == 0 {
 		timeout = time.Minute
+	}
+	if err := CheckSocket(c.Socket); err != nil {
+		return Reply{}, err
 	}
 	fi, err := os.Lstat(c.Socket)
 	if err != nil || fi.Mode()&fs.ModeSocket == 0 {
