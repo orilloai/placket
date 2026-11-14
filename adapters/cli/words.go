@@ -13,7 +13,7 @@ import (
 const (
 	WordPass          = string(composition.Pass)
 	WordBlock         = string(composition.Block)
-	WordAsk           = "ask"
+	WordAsk           = export.WordAsk
 	WordReleased      = "released"
 	WordOK            = composition.ReasonOK
 	WordAccepted      = string(mediator.Accepted)
