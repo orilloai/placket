@@ -1370,7 +1370,7 @@ A command that is refused, or fails, has the members of its refusal beside what 
 | `answer`, `cancel` | `question`; `outcome`; `release`, when the answer had one |
 | `change` | As `answer`, and `comment` when a comment was given |
 | `decline` | `question`; `outcome`; `comment`, once the window took the decline |
-| `get` | `delivery`, when one was fetched; with `--out`, the delivery without its body, and `path`, the file the body was written to |
+| `get` | `delivery`, when one was fetched; with `--out`, the delivery without its body, and `path`, the file the body was written to. With `--all` and without `--out`, in place of `delivery`, `deliveries`, the list of every delivery it fetched, in the order it fetched them, each as `get` without `--all` holds it |
 | `questions` | `questions`, the list of the open questions this key may answer, each the object the command prints for it without `--json` |
 | `show` | `verified`, `false`; `receiptId`; `word`; `reason`; `kind`, the part's kind; `at`; `from`; `to`; `module`, the module line; `claim`, the receipt's claim line; `notClaimed`, the scope line; and `shown`, the list of the lines the command prints on standard output without `--json` |
 | `verify` | `verified`, the number of receipts; `mediator`; `accord`; `card`; with `--founding`, `operator`, `runs`, `module`, an object of the kernel's `version` and `hash`, and `checks`, the list of the loaded checks as the card lists them; `counts`, the number of receipts by product word, `pass`, `block` and `ask`; `questionsClosed`; `questionsOpen`; `releases`; `blockedReleases`; `predicates`, the list of the receipts' predicates in journal order; `claim`, the claim line; `notClaimed`, the scope line |
@@ -1420,7 +1420,7 @@ A give, an answer, a change, a decline, a cancel and a result say in their objec
 
 ### commands-3 What a command makes or fetches
 
-The commands that make a key, a declaration, a binding or a founding set put what they made in the object, as they print it without `--json`, and the ids they print on standard error beside it. A fetch puts the delivery in the object; an empty queue leaves it out. A window prints its object when it stops.
+The commands that make a key, a declaration, a binding or a founding set put what they made in the object, as they print it without `--json`, and the ids they print on standard error beside it. A fetch puts the delivery in the object; an empty queue leaves it out. A fetch of every delivery waiting puts every delivery it fetched in one list, in the order it fetched them, each as a fetch of one puts it; on an empty queue the list is empty. A window prints its object when it stops.
 
 #### Scenario: a founding
 
@@ -1434,6 +1434,13 @@ The commands that make a key, a declaration, a binding or a founding set put wha
 - When it fetches with `--json`
 - Then the object is `{"exit":0}`
 - And after a part crosses to it, the object holds the delivery with its text, and with `--out` the delivery without its text and the path of the file
+
+#### Scenario: every delivery at once
+
+- Given a member with nothing queued
+- When it fetches every delivery with `--json`
+- Then the object is `{"deliveries":[],"exit":0}`
+- And after one part crosses to it, and then three, the object holds a list of one delivery, then of three in the order they crossed, each the delivery a fetch of one holds, with its text
 
 #### Scenario: a window stops
 

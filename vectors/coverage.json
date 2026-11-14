@@ -282,8 +282,8 @@
     "scenarios": {"an ask left open": {"tests": ["adapters/cli:TestJSONAnAskLeftOpen"]}, "waits that end with an accept and a change": {"tests": ["adapters/cli:TestJSONWaitsThatEndWithAnAcceptAndAChange"]}, "a decline and its comment": {"tests": ["adapters/cli:TestJSONADeclineAndItsComment"]}}
   },
   "commands-3": {
-    "tests": ["adapters/cli:TestJSONAFounding", "adapters/cli:TestJSONAWindowStops", "adapters/cli:TestJSONAnEmptyQueueAndADelivery"],
-    "scenarios": {"a founding": {"tests": ["adapters/cli:TestJSONAFounding"]}, "an empty queue and a delivery": {"tests": ["adapters/cli:TestJSONAnEmptyQueueAndADelivery"]}, "a window stops": {"tests": ["adapters/cli:TestJSONAWindowStops"]}}
+    "tests": ["adapters/cli:TestJSONAFounding", "adapters/cli:TestJSONAWindowStops", "adapters/cli:TestJSONAnEmptyQueueAndADelivery", "adapters/cli:TestJSONEveryDeliveryAtOnce"],
+    "scenarios": {"a founding": {"tests": ["adapters/cli:TestJSONAFounding"]}, "an empty queue and a delivery": {"tests": ["adapters/cli:TestJSONAnEmptyQueueAndADelivery"]}, "every delivery at once": {"tests": ["adapters/cli:TestJSONEveryDeliveryAtOnce"]}, "a window stops": {"tests": ["adapters/cli:TestJSONAWindowStops"]}}
   },
   "commands-4": {
     "tests": ["adapters/cli:TestJSONAShownReceiptAndAVerifiedJournal", "adapters/cli:TestJSONTheLogAndReconciliation"],
