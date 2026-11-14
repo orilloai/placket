@@ -288,5 +288,13 @@
   "commands-4": {
     "tests": ["adapters/cli:TestJSONAShownReceiptAndAVerifiedJournal", "adapters/cli:TestJSONTheLogAndReconciliation"],
     "scenarios": {"a shown receipt and a verified journal": {"tests": ["adapters/cli:TestJSONAShownReceiptAndAVerifiedJournal"]}, "the log and reconciliation": {"tests": ["adapters/cli:TestJSONTheLogAndReconciliation"]}}
+  },
+  "log-1": {
+    "tests": ["adapters/cli:TestTheLogOfTheWorkedExample", "adapters/cli:TestLogWithoutAllIsUnchanged"],
+    "scenarios": {"the log of the worked example": {"tests": ["adapters/cli:TestTheLogOfTheWorkedExample"]}, "the log without every crossing is unchanged": {"tests": ["adapters/cli:TestLogWithoutAllIsUnchanged"]}}
+  },
+  "log-2": {
+    "tests": ["adapters/cli:TestLogAllEveryCrossingInJournalOrder", "adapters/cli:TestLogAllJoinsByDigestAndByEnvelope", "adapters/export:TestAllColumns"],
+    "scenarios": {"every crossing in journal order": {"tests": ["adapters/cli:TestLogAllEveryCrossingInJournalOrder"]}, "content by digest and by envelope, never by time": {"tests": ["adapters/cli:TestLogAllJoinsByDigestAndByEnvelope"]}}
   }
 }

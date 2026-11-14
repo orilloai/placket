@@ -1456,3 +1456,78 @@ Every command that prints a claim line carries it in its object under `claim`, w
 - Given the same journal
 - When `log` and `reconcile` run with `--json`
 - Then `log`'s object holds the log it prints without `--json`, `reconcile`'s the three lists it prints, and `log` with `--format csv` is `{"error":"format","exit":3}`
+
+## 12. The log of a journal
+
+`placket log` reads a journal, verifies it under the mediator's key, and prints its log: rows of what crossed, as one JSON object or as CSV. The log is a door format, not a frozen one: a mediator never reads it and a verifier never needs it, so this section adds no receipt, no code and no format of the protocol. Every cell of every row comes from a receipt that verified, or from a kept part such a receipt covers; nothing comes from a file name, the clock, or a line no receipt covers. A journal that does not verify, or whose receipts name more than one Accord or card, prints no row. A verdict is never decided again: the answer and the release are read from the receipts by receipt-6's rule, the one every reader applies.
+
+A kept part is a line of a party's kept record, given with `--kept`. It is used only when a verified receipt covers it, and it is joined to that receipt by what the receipt signed, never by a time, a kind or a sender alone:
+
+- **A part the actor gave** is joined by its envelope: the typed hash of the kept message's canonical bytes is the receipt's `envelope.hash`, and the part's kind is the receipt's subject `name`. Its body, kind, topic and re are covered.
+- **A part the actor fetched, or a version it gave as an answer**, is joined by its salted digest: the digest of crossing-3 under the kept salt is the receipt's subject digest, and its kind is the subject `name`. Its body alone is covered; a topic or a re it carries is not used.
+
+A kept part that no receipt covers is left out, and the log says so on standard error, naming the receipt it claims.
+
+The JSON object is `{"accord","claim","mediator","notClaimed","rows"}`: the Accord, the claim line and the scope line that follows every claim line, the mediator, and the rows, each an object of its columns, `receipts` a list. CSV is a header and one record per row, quoted per RFC 4180, `receipts` the ids joined by spaces, and the claim and the scope line are printed on standard error; a cell that begins with `=`, `+`, `-`, `@`, a tab or a carriage return is written after a `'`. With `--words` the columns `text` and `changed_text` follow the others; with `--no-words` the `comment` column is empty.
+
+These are the columns of a question's row, in order.
+
+| Column | What it holds |
+|---|---|
+| `proposal` | The question's id, the id of its ask's receipt |
+| `topic` | The asker's topic, from the asker's kept message |
+| `kind` | The asked part's kind |
+| `asked_at` | The ask's time |
+| `answered_at` | The closing's time; empty while the question is open |
+| `answer` | The closing's word, `accepted`, `changed`, `declined`, `cancelled`, `timeout`, `undeliverable` or `blocked`, read from the closing receipt; `open` while the question is open |
+| `released_at` | The release receipt's time, when the release passed |
+| `comment` | The text of a comment that passed from the answerer to the asker with re the question, from the giver's kept message |
+| `answer_signed` | `yes` when a kept answer call for the row verifies |
+| `answerer` | The closing receipt's `from` |
+| `receipts` | The ids of every receipt the row rests on: the ask's, the closing's, the release's and the comment's |
+| `text` | With `--words`: the asked part's text |
+| `changed_text` | With `--words`: the changed version's text, from a kept part the closing receipt's digest covers |
+
+With `--all`, the log also has a row for every crossing that belongs to no question, and every row has these columns after `receipts` and before the columns of `--words`. A question's row fills them from its ask's receipt.
+
+| Column | What it holds |
+|---|---|
+| `at` | The receipt's time |
+| `from`, `to` | The receipt's `from` and `to` |
+| `word` | The product word of the receipt's verdict: `pass`, `block`, or `ask` for a question's row |
+| `reason` | The receipt's reason |
+| `re` | The re of the part, from a kept message the actor gave |
+
+### log-1 One row per question
+
+Without `--all`, the log has one row per question, in the order the questions were asked, with the columns of a question's row and no other. Passes and blocks that belong to no question have no row.
+
+#### Scenario: the log of the worked example
+
+- Given the worked example's journal and its three parties' kept records
+- When `log` runs with and without the kept records, in JSON and in CSV
+- Then it prints four rows, accepted, changed, declined and undeliverable, with the same answers either way, and the topic and the comment only from kept parts
+
+#### Scenario: the log without every crossing is unchanged
+
+- Given a journal that holds passes and blocks with no question, besides its questions
+- When `log` runs without `--all`
+- Then it prints, byte for byte, the rows of the questions of `log --all` with the columns of `--all` taken out, and no other row
+
+### log-2 A row for every crossing
+
+With `--all`, the log has one row for every receipt that opens a question and every crossing receipt that belongs to no question, a pass or a block, in journal order: a question's row stands where its ask's receipt stands. A closing and a release are not rows of their own; they stay in their question's row. A crossing's row holds `kind`, `at`, `from`, `to`, `word`, `reason` and `receipts`, the receipt's id, from its receipt; `topic`, `re` and `text` from a kept part that receipt covers, by the join above; and leaves the question's columns empty.
+
+#### Scenario: every crossing in journal order
+
+- Given a journal of questions, comments, a pass with no question and a block
+- When `log --all` runs with the parties' kept records, in JSON and in CSV
+- Then it prints a row for each ask, pass and block, in the order of the journal, and no row for a closing or a release
+- And a block's row holds `block` and its reason, and the giver's topic and text from its kept message
+
+#### Scenario: content by digest and by envelope, never by time
+
+- Given two parts of one kind from one sender, given in the same second, and fetched by their receiver
+- When `log --all --words` runs with the receiver's kept record alone
+- Then each row's text is the text of the part its receipt's digest covers, and its topic is empty, since a fetched part does not cover its topic
+- And with the giver's kept record alone, each row's topic and text are those of the message its receipt's envelope hash covers
