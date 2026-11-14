@@ -48,6 +48,9 @@ type Error struct{ Code Code }
 
 func (e *Error) Error() string { return "setup: " + string(e.Code) }
 
+// Spec is the card's spec: the version of this protocol (setup-contract-4).
+const Spec = "0.1"
+
 // The stances and directions of a term (setup-contract-1).
 const (
 	StanceNeed  = "need"
@@ -323,7 +326,7 @@ func mediatorOf(v any) (string, bool) {
 // an empty checks (setup-contract-4).
 func card(v any) bool {
 	o, ok := v.(shape.Object)
-	if !ok || !shape.Only(o, "spec", "kernel", "judges", "checks") || o["spec"] != "0.1" {
+	if !ok || !shape.Only(o, "spec", "kernel", "judges", "checks") || o["spec"] != Spec {
 		return false
 	}
 	k, ok := o["kernel"].(shape.Object)
