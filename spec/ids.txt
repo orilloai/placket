@@ -65,3 +65,7 @@ conformance-vectors-8
 conformance-vectors-9
 conformance-vectors-10
 conformance-vectors-11
+commands-1
+commands-2
+commands-3
+commands-4

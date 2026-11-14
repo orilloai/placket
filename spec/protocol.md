@@ -1341,3 +1341,118 @@ The runner reads a vector's header before anything else: a file whose bytes the 
 - Given a vector file with `spec` twice
 - When the runner reads it
 - Then the vector fails before its group runs
+
+## 11. What the command line prints for a script
+
+Placket's command line prints prose for a person on standard error and JSON or a body on standard output. A script reads neither safely: an id is one word of a line, a question's id shares standard output with the receipts, and a code is the last word of a line. So every command also takes `--json`. With it, the command prints on standard output exactly one JSON object, on one line, after it has done its work, and nothing else. Its exit code and every line it prints on standard error stay what they are without `--json`, and without `--json` nothing it prints changes. This section says what the object holds; it adds no receipt, no code and no format a mediator or a verifier reads.
+
+Every object has `exit`, the command's exit code. The words a person reads are the product words: `pass`, `block` and `ask` for the verdicts `pass`, `block` and `escalate`, `released` for a release that passed, and for a closing the words `accepted`, `changed`, `declined`, `cancelled`, `timeout`, `undeliverable`, `blocked` and `open`. A reason and a code are spelled as this text spells them, and a receipt, a predicate, a declaration, a binding and a founding set are carried as JSON values, unchanged. A member the tables give with a condition is left out when the condition does not hold; a list is there even when it is empty. These are the objects a command's members are built of.
+
+| Object | Members |
+|---|---|
+| Refusal | One of `rejection`, a code of this text the window returned; `door`, a code of the window's door; or `error`, a code of the command's own, with `detail`, the list of what the error line carries after its code, each as the line prints it, such as `["chain","receipts.jsonl","line 3"]`, when it carries any |
+| Outcome | `word`, the product word of the receipt's verdict, `released` for a release that passed; `reason`; `receiptId`; and `receipt`, the receipt as the window returned it |
+| Closing | `word`, the closing's word; and, for a question that closed, `receiptId` and `receipt`, those of the receipt that closed it |
+| Delivery | `receiptId`, `receipt`, `messageId`, `kind`, `salt`, and `re` when the part has one, as the delivery carries them; and its body as `text`, `raw` or `data`, as the delivery carries it |
+| Comment | `crossed`, `true` only when the comment's give passed; and the comment give's `outcome`, or the members of its refusal |
+
+A command that is refused, or fails, has the members of its refusal beside what it had done before. The commands' members, besides `exit`:
+
+| Command | Members |
+|---|---|
+| `key new`, `key ref` | `actor`, the key's actor reference |
+| `declare` | `declaration`, the signed declaration |
+| `bind` | `binding`, the signed binding |
+| `founding` | `founding`, the founding set; `accord`, its Accord id; `card`, its card hash |
+| `window` | Printed when the window stops. Once it started: `accord`, `card`, `operator`, and `started`, `founded` or `reloaded` |
+| `give` | `outcome`; `question`, the ask's receipt id, when the outcome is an ask; with `--wait`, the members of `result` besides |
+| `result`, and `give --wait` | `question`; `closing`; `release`, an outcome, when the answer had a release; after an accepted or changed answer that passed, `fetched`, `true` when the answer or the version was found, `answer`, its delivery, when it was, and `deliveries`, the list of the other deliveries it fetched, when it fetched any. A question still open, and a wait that was interrupted, have the closing `{"word":"open"}` |
+| `answer`, `cancel` | `question`; `outcome`; `release`, when the answer had one |
+| `change` | As `answer`, and `comment` when a comment was given |
+| `decline` | `question`; `outcome`; `comment`, once the window took the decline |
+| `get` | `delivery`, when one was fetched; with `--out`, the delivery without its body, and `path`, the file the body was written to |
+| `questions` | `questions`, the list of the open questions this key may answer, each the object the command prints for it without `--json` |
+| `show` | `verified`, `false`; `receiptId`; `word`; `reason`; `kind`, the part's kind; `at`; `from`; `to`; `module`, the module line; `claim`, the receipt's claim line; `notClaimed`, the scope line; and `shown`, the list of the lines the command prints on standard output without `--json` |
+| `verify` | `verified`, the number of receipts; `mediator`; `accord`; `card`; with `--founding`, `operator`, `runs`, `module`, an object of the kernel's `version` and `hash`, and `checks`, the list of the loaded checks as the card lists them; `counts`, the number of receipts by product word, `pass`, `block` and `ask`; `questionsClosed`; `questionsOpen`; `releases`; `blockedReleases`; `predicates`, the list of the receipts' predicates in journal order; `claim`, the claim line; `notClaimed`, the scope line |
+| `log` | `log`, the object the command prints without `--json`, which carries the claim and the scope line. `--json` with `--format csv` is the command's error `format` |
+| `reconcile` | `removed`, `unrecorded` and `missing`, as the command prints them without `--json` |
+
+### commands-1 One object on standard output
+
+With `--json`, a command prints exactly one JSON object and a line feed on standard output, and nothing else there, whatever its exit code; standard error and the exit code are as without `--json`. The object has `exit`, and the members the table gives its command, of the objects the table above defines. A refusal's members name its code under the member of its kind. A command's flags that cannot be read, or that name no command, are the error `usage`, in an object, whenever `--json` is among them. On a terminal the object is escaped as the command's other JSON is, and stays the same JSON.
+
+#### Scenario: a give that passes
+
+- Given a member that gives another a part its terms let cross
+- When it gives with `--json`
+- Then standard output is one object of `exit` 0 and the outcome, whose `word` is `pass`, `reason` `ok`, and whose `receiptId` and `receipt` are the receipt's the journal holds
+- And standard error is the line it prints without `--json`
+
+#### Scenario: a refused command
+
+- Given a stranger's give, a give with no flags, and a command that does not exist
+- When each runs with `--json`
+- Then the stranger's object is `{"exit":2,"rejection":"not-a-member"}`, and the others' `{"error":"usage","exit":3}`
+
+### commands-2 Outcomes, questions and answers
+
+A give, an answer, a change, a decline, a cancel and a result say in their objects what they produced: each outcome with its product word, its reason and its receipt, the question's id under `question`, and a closing under its word. An ask's object holds the question's id under its own member, so a script never reads it out of the receipts. A comment's object says whether it crossed.
+
+#### Scenario: an ask left open
+
+- Given a give that the terms make an ask
+- When it gives with `--json` and no wait
+- Then the object's `exit` is 4, its outcome's `word` is `ask` and `reason` `maybe`, and its `question` is the outcome's `receiptId`
+- And `result` for that question prints `{"closing":{"word":"open"},"exit":4,"question":<the id>}`
+
+#### Scenario: waits that end with an accept and a change
+
+- Given a give with `--wait` and `--json`, and the answerer's `answer` with `--json`
+- Then the answer's object holds the outcome `pass` and the release `released`, and the wait's object holds the closing `accepted` with the answer's receipt, the release, `fetched` `true`, and the answer's delivery, with `exit` 0
+- And for a `change`, the wait's closing is `changed`, its answer the version's delivery, and its `exit` 1
+
+#### Scenario: a decline and its comment
+
+- Given an open question
+- When its answerer declines it with a comment and `--json`
+- Then the object holds the outcome `block` with reason `declined`, and the comment `{"crossed":true,"outcome":...}` with the outcome `pass`
+
+### commands-3 What a command makes or fetches
+
+The commands that make a key, a declaration, a binding or a founding set put what they made in the object, as they print it without `--json`, and the ids they print on standard error beside it. A fetch puts the delivery in the object; an empty queue leaves it out. A window prints its object when it stops.
+
+#### Scenario: a founding
+
+- Given the parts of a founding set
+- When `founding` runs with `--json`
+- Then the object holds the set it prints without `--json`, and the Accord id and the card hash it prints on standard error
+
+#### Scenario: an empty queue and a delivery
+
+- Given a member with nothing queued
+- When it fetches with `--json`
+- Then the object is `{"exit":0}`
+- And after a part crosses to it, the object holds the delivery with its text, and with `--out` the delivery without its text and the path of the file
+
+#### Scenario: a window stops
+
+- Given a window run with `--json`
+- When it stops
+- Then the object holds the Accord id, the card hash, the operator and `founded`, and after a restart `reloaded`
+
+### commands-4 Claims and records
+
+Every command that prints a claim line carries it in its object under `claim`, with the scope line that follows every claim line under `notClaimed`, so a claim never travels without it: `show` the receipt's own claim, `verify` the claim of a verified journal, and `log` both inside the log object. `verify` and `reconcile` carry what they print on standard output in their objects, unchanged.
+
+#### Scenario: a shown receipt and a verified journal
+
+- Given a journal of one receipt that passed
+- When `show` and `verify --founding` run with `--json`
+- Then `show`'s object holds the pass's claim line and the scope line, and `shown` the lines it prints without `--json`
+- And `verify`'s object holds the count, the counts by product word, the operator and the module, every predicate it prints without `--json`, the claim line and the scope line
+
+#### Scenario: the log and reconciliation
+
+- Given the same journal
+- When `log` and `reconcile` run with `--json`
+- Then `log`'s object holds the log it prints without `--json`, `reconcile`'s the three lists it prints, and `log` with `--format csv` is `{"error":"format","exit":3}`
