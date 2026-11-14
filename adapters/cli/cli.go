@@ -5,7 +5,8 @@
 //
 //	0  a pass, or a command that did what it was asked
 //	1  a block on give, answer or change; a release that blocked; a give --wait whose question closed
-//	   any way but an accept that passed and was released; a comment that did not cross
+//	   any way but an accept that passed and was released; a comment that did not cross; a file no
+//	   release matches
 //	2  a rejection, its code on standard error
 //	3  a tool or door error, its code on standard error
 //	4  an ask still open, the question's id on standard output
