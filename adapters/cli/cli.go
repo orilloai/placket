@@ -67,6 +67,9 @@ const (
 	codeRand    = "rand"
 	// detailKept follows error file when a fetched body could not be written and was kept instead.
 	detailKept = "kept"
+	// detailKernel follows error founding when a window's card names another module than this
+	// build's.
+	detailKernel = "kernel"
 )
 
 // Env is what a command takes from the world.
