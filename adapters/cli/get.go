@@ -76,7 +76,7 @@ func (s *session) about(d delivery) bool {
 }
 
 // fetch gets the next delivery, under the state lock the caller holds, and records it: its receipt
-// in delivered.jsonl, and the delivery, with its answer call beside it, in kept.jsonl when keep is
+// in delivered.jsonl, its salt in salts.jsonl, and the delivery, with its answer call beside it, in kept.jsonl when keep is
 // set. It returns the delivery and its kept.jsonl line, or nil when nothing is queued; a delivery
 // that is not what its receipt says is tool error reply, and nothing of it is recorded.
 func (s *session) fetch(keep bool) (*delivery, []byte, int) {
@@ -95,6 +95,9 @@ func (s *session) fetch(keep bool) (*delivery, []byte, int) {
 		return nil, nil, s.r.tool("reply")
 	}
 	if err := s.dir.AddDelivered(d.Receipt); err != nil {
+		return nil, nil, s.r.failed(err)
+	}
+	if err := s.dir.AddSalt(d.ReceiptID, d.Salt); err != nil {
 		return nil, nil, s.r.failed(err)
 	}
 	kl := keptLine(rep.Delivery, rep.AnswerCall)

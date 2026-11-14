@@ -214,3 +214,61 @@ func FuzzLines(f *testing.F) {
 		}
 	})
 }
+
+// TestSalts records the salt of each delivery fetched, by its receipt id, in the order fetched; a
+// line not in its form is error state salts.jsonl, and Lock removes an unterminated last line.
+func TestSalts(t *testing.T) {
+	t.Parallel()
+	path := filepath.Join(t.TempDir(), "s")
+	var stderr bytes.Buffer
+	d := open(t, path, &stderr)
+	if got, err := d.Salts(); err != nil || len(got) != 0 || got == nil {
+		t.Fatalf("no salts: %#v, %v", got, err)
+	}
+	for _, s := range []state.Salt{{ReceiptID: hash("a"), Salt: strings.Repeat("01", 16)}, {ReceiptID: hash("b"), Salt: strings.Repeat("02", 16)}} {
+		if err := d.AddSalt(s.ReceiptID, s.Salt); err != nil {
+			t.Fatal(err)
+		}
+	}
+	want := []state.Salt{{ReceiptID: hash("a"), Salt: strings.Repeat("01", 16)}, {ReceiptID: hash("b"), Salt: strings.Repeat("02", 16)}}
+	if got, err := d.Salts(); err != nil || !reflect.DeepEqual(got, want) {
+		t.Fatalf("got %+v, %v", got, err)
+	}
+	b, _ := os.ReadFile(filepath.Join(path, state.FileSalts))
+	whole := `{"receiptId":"` + hash("a") + `","salt":"` + strings.Repeat("01", 16) + `"}` + "\n" +
+		`{"receiptId":"` + hash("b") + `","salt":"` + strings.Repeat("02", 16) + `"}` + "\n"
+	if string(b) != whole {
+		t.Fatalf("salts.jsonl holds %q", b)
+	}
+	if fi, err := os.Stat(filepath.Join(path, state.FileSalts)); err != nil || fi.Mode().Perm() != 0o600 {
+		t.Fatalf("salts.jsonl: %v, %v", fi.Mode().Perm(), err)
+	}
+	if err := os.WriteFile(filepath.Join(path, state.FileSalts), []byte(whole+`{"receiptId":"sha`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := d.Lock(); err != nil {
+		t.Fatal(err)
+	}
+	d.Unlock()
+	if b, _ := os.ReadFile(filepath.Join(path, state.FileSalts)); string(b) != whole {
+		t.Fatalf("salts.jsonl after Lock holds %q", b)
+	}
+	if stderr.String() != "state: salts.jsonl line 3 had no line feed and was never written; removed\n" {
+		t.Fatalf("stderr: %q", stderr.String())
+	}
+	for _, bad := range []string{
+		`{"receiptId":"` + hash("a") + `"}`,
+		`{"ReceiptId":"` + hash("a") + `","salt":"01"}`,
+		`{"receiptId":"` + hash("a") + `","salt":"01","more":1}`,
+		`{"receiptId":7,"salt":"01"}`,
+		`[]`,
+	} {
+		if err := os.WriteFile(filepath.Join(path, state.FileSalts), []byte(bad+"\n"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		var se *state.Error
+		if _, err := d.Salts(); !errors.As(err, &se) || se.Code != state.CodeState || se.File != state.FileSalts {
+			t.Fatalf("%s: %v", bad, err)
+		}
+	}
+}

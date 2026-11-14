@@ -13,6 +13,8 @@
 //	                 {"message","receipt"}, the message as standard base64 of its exact bytes; or a
 //	                 part it fetched, or a version it gave as an answer, as the delivery holds it, with
 //	                 "answerCall" beside it when one travelled with it
+//	salts.jsonl      one {"receiptId","salt"} per delivery fetched: the salt it came with, by the id
+//	                 of its receipt, so the actor can later show which receipt a file's bytes are of
 //
 // Each .jsonl file is appended one whole line at a time and synced, with the directory when the line
 // made the file. A last line with no line feed
@@ -70,6 +72,7 @@ const (
 	FileEnvelopes = "envelopes.jsonl"
 	FileDelivered = "delivered.jsonl"
 	FileKept      = "kept.jsonl"
+	FileSalts     = "salts.jsonl"
 )
 
 // A Dir is one actor's state directory.
@@ -170,7 +173,7 @@ func (d *Dir) Lock() error {
 		return &Error{Code: CodeState, File: FileLock}
 	}
 	d.lock = f
-	for _, name := range []string{FileEnvelopes, FileDelivered, FileKept} {
+	for _, name := range []string{FileEnvelopes, FileDelivered, FileKept, FileSalts} {
 		if err := d.repair(name); err != nil {
 			d.Unlock()
 			return err
@@ -387,6 +390,44 @@ func (d *Dir) Keep(line []byte) error {
 
 // Kept returns the parts the actor kept, one line each, in the order kept.
 func (d *Dir) Kept() ([][]byte, error) { return d.lines(FileKept) }
+
+// A Salt is one line of salts.jsonl: the salt, in hex, that the delivery fetched under the receipt
+// id came with.
+type Salt struct {
+	ReceiptID string `json:"receiptId"`
+	Salt      string `json:"salt"`
+}
+
+// AddSalt records the salt of a delivery the actor fetched, after its receipt.
+func (d *Dir) AddSalt(receiptID, salt string) error {
+	b, _ := json.Marshal(Salt{ReceiptID: receiptID, Salt: salt})
+	c, err := canonical.Form(b)
+	if err != nil {
+		return &Error{Code: CodeState, File: FileSalts}
+	}
+	return d.appendLine(FileSalts, c)
+}
+
+// Salts returns the salts of the deliveries the actor fetched, in the order fetched; a line that is
+// not an object of exactly the two strings is error state.
+func (d *Dir) Salts() ([]Salt, error) {
+	lines, err := d.lines(FileSalts)
+	if err != nil {
+		return nil, err
+	}
+	out := []Salt{}
+	for _, l := range lines {
+		var s struct {
+			ReceiptID *string `json:"receiptId"`
+			Salt      *string `json:"salt"`
+		}
+		if !strict.Decode(l, &s) || s.ReceiptID == nil || s.Salt == nil {
+			return nil, &Error{Code: CodeState, File: FileSalts}
+		}
+		out = append(out, Salt{ReceiptID: *s.ReceiptID, Salt: *s.Salt})
+	}
+	return out, nil
+}
 
 // appendLine appends one whole line to the file name and syncs it; a line that makes the file
 // syncs the directory too, so the new name survives a crash as surely as a later line does.
