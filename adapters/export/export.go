@@ -1,5 +1,6 @@
-// Package export makes the log of a journal: one row per question, in the order the questions were
-// asked, as JSON or CSV. Every cell comes from a receipt that verified under the mediator's key or
+// Package export makes the log of a journal (log-1, log-2): one row per question, in the order the
+// questions were asked, and with all a row for every crossing besides, in journal order, as JSON or
+// CSV. Every cell comes from a receipt that verified under the mediator's key or
 // from a kept part such a receipt covers (log-from-receipts): nothing from a file name, the clock or a
 // line no receipt covers. The answer and the release are read from receipts alone, by
 // receipts.Releases, so a state directory adds only words; a verdict is never decided again
@@ -22,6 +23,15 @@
 //	receipts       the ids of every receipt the row rests on
 //	text           with words: the asked part's text
 //	changed_text   with words: the changed version's text, from any kept part its digest covers
+//
+// With all, every row has these columns after receipts, from the receipt of a crossing's row or of a
+// question's ask, and a crossing's row leaves the question's columns empty:
+//
+//	at             the receipt's time
+//	from, to       the receipt's from and to
+//	word           pass or block, the receipt's verdict, or ask for a question's row
+//	reason         the receipt's reason
+//	re             the part's re, from the giver's kept message
 //
 // A kept part is used only when a verified receipt covers it: a part the actor gave by its
 // envelope's hash (its body, kind, topic and re), a part it fetched or a version it gave as an
@@ -53,6 +63,9 @@ const (
 	AnswerBlocked = "blocked"
 	AnswerOpen    = "open"
 	Signed        = "yes"
+	// WordAsk is the word column of a question's row, the product word of the verdict escalate
+	// (log-2).
+	WordAsk = "ask"
 )
 
 // Code says why no log was made.
@@ -83,17 +96,21 @@ func (e *Error) Error() string {
 	return s + ", index " + strconv.Itoa(e.Index)
 }
 
-// A Row is one question's row.
+// A Row is one question's row, or with all one crossing's (log-1, log-2).
 type Row struct {
 	Proposal, Topic, Kind, AskedAt, AnsweredAt, Answer, ReleasedAt, Comment, AnswerSigned, Answerer string
 	Receipts                                                                                        []string
 	Text, ChangedText                                                                               string
+	// With all: the receipt's time, parties, word and reason, and the part's re (log-2).
+	At, From, To, Word, Reason, Re string
 }
 
-// A Log is the rows of one journal, its Accord and its mediator.
+// A Log is the rows of one journal, its Accord and its mediator. All says it holds a row for every
+// crossing, and that its rows print the columns of all (log-2).
 type Log struct {
 	Accord, Mediator string
 	Rows             []Row
+	All              bool
 }
 
 // Closing is the word for how a question closed, read from its closing receipt alone: accepted or
@@ -125,9 +142,20 @@ type keptPart struct {
 }
 
 // Build makes the log of the receipts, verified under the mediator's reference, with the kept parts,
-// each one line of a kept.jsonl. It verifies first and makes no row when the receipts fail, none when
+// each one line of a kept.jsonl: one row per question (log-1). It verifies first and makes no row when the receipts fail, none when
 // they name more than one Accord or card, and none when receipts.Releases refuses them. Each kept part left out is noted.
 func Build(mediatorRef string, list [][]byte, kept [][]byte, note func(string)) (Log, error) {
+	return build(mediatorRef, list, kept, false, note)
+}
+
+// BuildAll makes the log as Build does, with a row for every crossing that belongs to no question
+// besides the questions' rows, each where its receipt stands in the journal, and the columns of all
+// (log-2).
+func BuildAll(mediatorRef string, list [][]byte, kept [][]byte, note func(string)) (Log, error) {
+	return build(mediatorRef, list, kept, true, note)
+}
+
+func build(mediatorRef string, list [][]byte, kept [][]byte, all bool, note func(string)) (Log, error) {
 	st, err := receipts.Verify(mediatorRef, list)
 	if err != nil {
 		var re *receipts.Error
@@ -153,7 +181,7 @@ func Build(mediatorRef string, list [][]byte, kept [][]byte, note func(string)) 
 		}
 		return Log{}, &Error{Code: CodeVerify, Core: string(receipts.CodeRelease), Index: -1}
 	}
-	lg := Log{Mediator: mediatorRef, Rows: []Row{}}
+	lg := Log{Mediator: mediatorRef, Rows: []Row{}, All: all}
 	if len(st) > 0 {
 		lg.Accord = st[0].Predicate.Accord
 	}
@@ -176,11 +204,18 @@ func Build(mediatorRef string, list [][]byte, kept [][]byte, note func(string)) 
 	}
 
 	for qi, pl := range places {
+		if pl.Role == receipts.RoleGive && all {
+			lg.Rows = append(lg.Rows, crossingRow(st[qi], parts))
+			continue
+		}
 		if pl.Role != receipts.RoleQuestion {
 			continue
 		}
 		q := st[qi]
 		row := Row{Proposal: q.ID, Kind: q.Subject.Name, AskedAt: q.Predicate.At, Answer: AnswerOpen, Receipts: []string{q.ID}}
+		if all {
+			row.At, row.From, row.To, row.Word, row.Reason = q.Predicate.At, q.Predicate.From, q.Predicate.To, WordAsk, q.Predicate.Reason
+		}
 		var closing, release *receipts.Statement
 		for j := qi + 1; j < len(places); j++ {
 			if places[j].Question != qi {
@@ -208,6 +243,9 @@ func Build(mediatorRef string, list [][]byte, kept [][]byte, note func(string)) 
 			switch {
 			case p.given && p.receipt == q.ID:
 				row.Topic, row.Text = p.topic, p.text
+				if all {
+					row.Re = p.re
+				}
 			case p.given && p.kind == kindComment && p.re == q.ID && closing != nil &&
 				st[byID[p.receipt]].Predicate.From == closing.Predicate.From &&
 				st[byID[p.receipt]].Predicate.To == q.Predicate.From &&
@@ -236,6 +274,27 @@ func Build(mediatorRef string, list [][]byte, kept [][]byte, note func(string)) 
 }
 
 const kindComment = "comment"
+
+// crossingRow is the row of a crossing that belongs to no question: its kind, time, parties, verdict
+// and reason from its receipt, and its topic, re and text from a kept part the receipt covers, a part
+// its giver kept before one its receiver fetched (log-2). readKept has joined each part to its
+// receipt, by the envelope's hash or the salted digest; nothing here matches by time.
+func crossingRow(s receipts.Statement, parts []keptPart) Row {
+	p := s.Predicate
+	row := Row{Kind: s.Subject.Name, Receipts: []string{s.ID}, At: p.At, From: p.From, To: p.To, Word: p.Verdict, Reason: p.Reason}
+	given := false
+	for _, k := range parts {
+		switch {
+		case k.receipt != s.ID:
+		case k.given && !given:
+			given = true
+			row.Topic, row.Re, row.Text = k.topic, k.re, k.text
+		case !k.given && !given && row.Text == "":
+			row.Text = k.text
+		}
+	}
+	return row
+}
 
 // signedBy checks a kept answer call against its row: its signature under the row's answerer, its
 // Accord, its question, its action against the answer's kind, and its answer, under the kept salt,
@@ -418,18 +477,34 @@ func readFetched(line []byte) (keptPart, []byte, bool) {
 	return p, body, true
 }
 
-// The columns, in order; the last two only with words.
+// The columns, in order: a question's, then all's only with all, and the last two only with words.
 var (
-	columns = []string{"proposal", "topic", "kind", "asked_at", "answered_at", "answer", "released_at", "comment", "answer_signed", "answerer", "receipts"}
-	words   = []string{"text", "changed_text"}
+	columns    = []string{"proposal", "topic", "kind", "asked_at", "answered_at", "answer", "released_at", "comment", "answer_signed", "answerer", "receipts"}
+	allColumns = []string{"at", "from", "to", "word", "reason", "re"}
+	words      = []string{"text", "changed_text"}
 )
 
-func (r Row) cells(withWords, noWords bool) []string {
+// header is the log's columns, in order.
+func (l Log) header(withWords bool) []string {
+	h := append([]string(nil), columns...)
+	if l.All {
+		h = append(h, allColumns...)
+	}
+	if withWords {
+		h = append(h, words...)
+	}
+	return h
+}
+
+func (r Row) cells(all, withWords, noWords bool) []string {
 	comment := r.Comment
 	if noWords {
 		comment = ""
 	}
 	c := []string{r.Proposal, r.Topic, r.Kind, r.AskedAt, r.AnsweredAt, r.Answer, r.ReleasedAt, comment, r.AnswerSigned, r.Answerer, strings.Join(r.Receipts, " ")}
+	if all {
+		c = append(c, r.At, r.From, r.To, r.Word, r.Reason, r.Re)
+	}
 	if withWords {
 		c = append(c, r.Text, r.ChangedText)
 	}
@@ -440,13 +515,10 @@ func (r Row) cells(withWords, noWords bool) []string {
 // an object of the columns, receipts a list; claim and notClaimed are the lines the caller gives.
 func (l Log) JSON(claim, notClaimed string, withWords, noWords bool) []byte {
 	rows := []map[string]any{}
-	names := columns
-	if withWords {
-		names = append(append([]string(nil), columns...), words...)
-	}
+	names := l.header(withWords)
 	for _, r := range l.Rows {
 		o := map[string]any{}
-		for i, c := range r.cells(withWords, noWords) {
+		for i, c := range r.cells(l.All, withWords, noWords) {
 			o[names[i]] = c
 		}
 		o["receipts"] = append([]string{}, r.Receipts...)
@@ -467,15 +539,11 @@ const formulaStarts = "=+-@\t\r"
 // as a formula.
 func (l Log) CSV(w io.Writer, withWords, noWords bool) error {
 	cw := csv.NewWriter(w)
-	header := columns
-	if withWords {
-		header = append(append([]string(nil), columns...), words...)
-	}
-	if err := cw.Write(header); err != nil {
+	if err := cw.Write(l.header(withWords)); err != nil {
 		return err
 	}
 	for _, r := range l.Rows {
-		cells := r.cells(withWords, noWords)
+		cells := r.cells(l.All, withWords, noWords)
 		for i, c := range cells {
 			if c != "" && strings.ContainsRune(formulaStarts, rune(c[0])) {
 				cells[i] = "'" + c

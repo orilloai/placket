@@ -16,13 +16,15 @@ func init() {
 }
 
 // logCommand is `log --mediator M --receipts DIR [--kept DIR...] [--format json|csv] [--words |
-// --no-words]`: the export, one row per question. JSON carries the claim and the scope line; with
+// --no-words] [--all]`: the export, one row per question, and with --all one for every crossing
+// besides, in journal order (log-1, log-2). JSON carries the claim and the scope line; with
 // CSV they are printed on standard error. On a terminal the cells' control characters are escaped.
 // A journal that does not verify prints no row and exits 3.
 func logCommand(r *run, args []string) int {
 	fs := flags("log")
 	med, dir, format := fs.String("mediator", "", "mediator"), fs.String("receipts", "", "journal directory"), fs.String("format", "json", "json or csv")
 	withWords, noWords := fs.Bool("words", false, "add the texts"), fs.Bool("no-words", false, "empty the comments")
+	all := fs.Bool("all", false, "a row for every crossing")
 	var kept many
 	fs.Var(&kept, "kept", "a state directory")
 	if !r.parse(fs, args, "mediator", "receipts") {
@@ -47,7 +49,11 @@ func logCommand(r *run, args []string) int {
 		}
 		lines = append(lines, k...)
 	}
-	lg, err := export.Build(*med, list, lines, func(s string) { fmt.Fprintln(r.stderr, s) })
+	build := export.Build
+	if *all {
+		build = export.BuildAll
+	}
+	lg, err := build(*med, list, lines, func(s string) { fmt.Fprintln(r.stderr, s) })
 	if err != nil {
 		var ee *export.Error
 		if errors.As(err, &ee) && ee.Index >= 0 {

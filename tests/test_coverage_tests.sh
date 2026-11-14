@@ -43,7 +43,10 @@ commands-3	a founding
 commands-3	an empty queue and a delivery
 commands-3	a window stops
 commands-4	a shown receipt and a verified journal
-commands-4	the log and reconciliation'
+commands-4	the log and reconciliation
+log-1	the log without every crossing is unchanged
+log-2	every crossing in journal order
+log-2	content by digest and by envelope, never by time'
 
 printf '%s\n' "$required" | while IFS='	' read -r id title; do
 	n=$(jq -r --arg i "$id" --arg s "$title" '.[$i].scenarios[$s].tests // [] | length' "$list" 2>/dev/null)

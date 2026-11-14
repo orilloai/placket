@@ -121,3 +121,52 @@ func TestCSVDisarmsATabAndACarriageReturn(t *testing.T) {
 		t.Fatalf("got %q", b.String())
 	}
 }
+
+// TestAllColumns writes a log of every crossing, as JSON and as CSV: every row has the columns of
+// --all after receipts and before the columns of --words, a question's row and a crossing's row
+// alike, and a crossing's row leaves the question's columns empty (log-2).
+func TestAllColumns(t *testing.T) {
+	t.Parallel()
+	l := Log{Accord: "a", Mediator: "m", All: true, Rows: []Row{
+		{Proposal: "q", Kind: "proposal", AskedAt: "t1", Answer: "open", Receipts: []string{"q"}, At: "t1", From: "f", To: "g", Word: "ask", Reason: "maybe"},
+		{Topic: "ops", Kind: "note", Receipts: []string{"r"}, At: "t2", From: "f", To: "g", Word: "block", Reason: "no-match", Re: "x", Text: "-1"},
+	}}
+	want := `{"accord":"a","claim":"c","mediator":"m","notClaimed":"n","rows":[` +
+		`{"answer":"open","answer_signed":"","answered_at":"","answerer":"","asked_at":"t1","at":"t1","comment":"","from":"f","kind":"proposal","proposal":"q","re":"","reason":"maybe","receipts":["q"],"released_at":"","to":"g","topic":"","word":"ask"},` +
+		`{"answer":"","answer_signed":"","answered_at":"","answerer":"","asked_at":"","at":"t2","comment":"","from":"f","kind":"note","proposal":"","re":"x","reason":"no-match","receipts":["r"],"released_at":"","to":"g","topic":"ops","word":"block"}]}`
+	if got := string(l.JSON("c", "n", false, false)); got != want {
+		t.Fatalf("got %s", got)
+	}
+	wantWords := `{"accord":"a","claim":"c","mediator":"m","notClaimed":"n","rows":[` +
+		`{"answer":"open","answer_signed":"","answered_at":"","answerer":"","asked_at":"t1","at":"t1","changed_text":"","comment":"","from":"f","kind":"proposal","proposal":"q","re":"","reason":"maybe","receipts":["q"],"released_at":"","text":"","to":"g","topic":"","word":"ask"},` +
+		`{"answer":"","answer_signed":"","answered_at":"","answerer":"","asked_at":"","at":"t2","changed_text":"","comment":"","from":"f","kind":"note","proposal":"","re":"x","reason":"no-match","receipts":["r"],"released_at":"","text":"-1","to":"g","topic":"ops","word":"block"}]}`
+	if got := string(l.JSON("c", "n", true, false)); got != wantWords {
+		t.Fatalf("with words: got %s", got)
+	}
+	var b bytes.Buffer
+	if err := l.CSV(&b, true, false); err != nil {
+		t.Fatal(err)
+	}
+	if want := "proposal,topic,kind,asked_at,answered_at,answer,released_at,comment,answer_signed,answerer,receipts,at,from,to,word,reason,re,text,changed_text\n" +
+		"q,,proposal,t1,,open,,,,,q,t1,f,g,ask,maybe,,,\n" +
+		",ops,note,,,,,,,,r,t2,f,g,block,no-match,x,'-1,\n"; b.String() != want {
+		t.Fatalf("csv: got %q", b.String())
+	}
+	b.Reset()
+	if err := l.CSV(&b, false, false); err != nil {
+		t.Fatal(err)
+	}
+	if want := "proposal,topic,kind,asked_at,answered_at,answer,released_at,comment,answer_signed,answerer,receipts,at,from,to,word,reason,re\n" +
+		"q,,proposal,t1,,open,,,,,q,t1,f,g,ask,maybe,\n" +
+		",ops,note,,,,,,,,r,t2,f,g,block,no-match,x\n"; b.String() != want {
+		t.Fatalf("csv without words: got %q", b.String())
+	}
+
+	// The same rows without All: the columns of a question's row alone, as before.
+	l.All = false
+	if want := "proposal,topic,kind,asked_at,answered_at,answer,released_at,comment,answer_signed,answerer,receipts\n" +
+		"q,,proposal,t1,,open,,,,,q\n" +
+		",ops,note,,,,,,,,r\n"; func() string { b.Reset(); _ = l.CSV(&b, false, false); return b.String() }() != want {
+		t.Fatalf("csv without all: got %q", b.String())
+	}
+}
