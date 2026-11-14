@@ -296,6 +296,73 @@ func TestJSONAFounding(t *testing.T) {
 	}
 }
 
+// TestJSONEveryDeliveryAtOnce fetches every delivery with get --all --json: from an empty queue,
+// then with one note queued, then with three. The object holds deliveries, the list of every
+// delivery fetched in the order the notes were given, each the delivery get --json holds alone
+// (commands-3). A lone get --keep --json shows that delivery is its line of kept.jsonl, and every
+// delivery of the list is compared with its own line there.
+func TestJSONEveryDeliveryAtOnce(t *testing.T) {
+	t.Parallel()
+	a := newAccord(t, "p1", "p2")
+	a.start(t)
+	r := run(t, env(), a.as("p2", "get", "--all", "--json")...)
+	if r.code != 0 || r.stdout != `{"deliveries":[],"exit":0}`+"\n" || r.stderr != "no delivery\n" {
+		t.Fatalf("an empty queue: %v", r)
+	}
+
+	alone := give(t, a, []string{"alone"})
+	o := object(t, run(t, env(), a.as("p2", "get", "--keep", "--json")...))
+	members(t, o, "exit", "delivery")
+	kept := keptLines(t, a.state("p2"))
+	if len(kept) != 1 || str(kept[0]["receiptId"]) != alone[0] || !sameJSON(t, string(o["delivery"]), mapJSON(t, kept[0])) {
+		t.Fatalf("get --json %s, kept %v", o["delivery"], kept)
+	}
+
+	for _, texts := range [][]string{{"one"}, {"two", "three", "four"}} {
+		ids := give(t, a, texts)
+		r := run(t, env(), a.as("p2", "get", "--all", "--json")...)
+		if r.code != 0 {
+			t.Fatalf("get --all --json %v: %v", texts, r)
+		}
+		o := object(t, r)
+		members(t, o, "exit", "deliveries")
+		var list []json.RawMessage
+		if err := json.Unmarshal(o["deliveries"], &list); err != nil || len(list) != len(texts) {
+			t.Fatalf("deliveries %s, want %d", o["deliveries"], len(texts))
+		}
+		kept := keptLines(t, a.state("p2"))
+		kept = kept[len(kept)-len(texts):]
+		var heads []string
+		for i, raw := range list {
+			d := sub(t, raw)
+			members(t, d, "receiptId", "receipt", "messageId", "kind", "salt", "text")
+			is(t, d, "receiptId", quote(ids[i]))
+			is(t, d, "kind", `"note"`)
+			is(t, d, "text", quote(texts[i]))
+			if !sameJSON(t, string(raw), mapJSON(t, kept[i])) {
+				t.Fatalf("delivery %d is %s, kept %v", i, raw, kept[i])
+			}
+			heads = append(heads, "delivery "+ids[i]+" kind note messageId "+str(d["messageId"])+" salt "+str(d["salt"]))
+		}
+		if r.stderr != strings.Join(heads, "\n")+"\n" {
+			t.Fatalf("stderr %q, want %q", r.stderr, heads)
+		}
+	}
+	if r := run(t, env(), a.as("p2", "get", "--json")...); r.code != 0 || r.stdout != `{"exit":0}`+"\n" {
+		t.Fatalf("the get after: %v", r)
+	}
+}
+
+// mapJSON is a JSON object's members as JSON text.
+func mapJSON(t testing.TB, o map[string]json.RawMessage) string {
+	t.Helper()
+	b, err := json.Marshal(o)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return string(b)
+}
+
 // TestJSONAnEmptyQueueAndADelivery fetches with --json from an empty queue, then a note, then a
 // note into a directory; and an answerer lists the open questions with --json (commands-3).
 func TestJSONAnEmptyQueueAndADelivery(t *testing.T) {

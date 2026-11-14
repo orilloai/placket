@@ -41,6 +41,7 @@ commands-2	waits that end with an accept and a change
 commands-2	a decline and its comment
 commands-3	a founding
 commands-3	an empty queue and a delivery
+commands-3	every delivery at once
 commands-3	a window stops
 commands-4	a shown receipt and a verified journal
 commands-4	the log and reconciliation
