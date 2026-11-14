@@ -156,7 +156,7 @@ func newAccord(t testing.TB, parties ...string) *accord {
 	args = append(args,
 		"--policy", write("policy.json", `{"roles":`+string(rb)+`,"principals":["`+a.refs["principal"]+`"]}`),
 		"--mediator", write("mediator.json", `{"actor":"`+a.refs["mediator"]+`","operator":"`+a.refs["operator"]+`","runs":"process"}`),
-		"--card", write("card.json", `{"spec":"0.1","kernel":{"version":"0.1.0","hash":"sha256:`+strings.Repeat("0", 64)+`"},"judges":[],"checks":[]}`))
+		"--card", write("card.json", must(t, "card", "--default").stdout))
 	r := must(t, args...)
 	write("founding.json", r.stdout)
 	for _, l := range r.lines() {
