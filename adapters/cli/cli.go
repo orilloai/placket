@@ -5,8 +5,8 @@
 //
 //	0  a pass, or a command that did what it was asked
 //	1  a block on give, answer or change; a release that blocked; a give --wait whose question closed
-//	   any way but an accept that passed and was released; a comment that did not cross; a file no
-//	   release matches
+//	   any way but an accept that passed and was released; a comment that did not cross; a file, or a
+//	   value inside it, no release matches
 //	2  a rejection, its code on standard error
 //	3  a tool or door error, its code on standard error
 //	4  an ask still open, the question's id on standard output
@@ -68,6 +68,7 @@ const (
 	codeAccord  = string(export.CodeAccord)
 	codeCard    = string(export.CodeCard)
 	codeRand    = "rand"
+	codePath    = "path"
 	// detailKept follows error file when a fetched body could not be written and was kept instead.
 	detailKept = "kept"
 	// detailKernel follows error founding when a window's card names another module than this

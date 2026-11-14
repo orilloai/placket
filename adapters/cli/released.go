@@ -1,11 +1,15 @@
 package cli
 
 import (
+	"bytes"
 	"encoding/hex"
 	"encoding/json"
+	"flag"
 	"fmt"
 	"os"
+	"slices"
 
+	"github.com/orilloai/placket/adapters/internal/pointer"
 	"github.com/orilloai/placket/adapters/state"
 	"github.com/orilloai/placket/core/composition"
 	"github.com/orilloai/placket/core/receipts"
@@ -24,15 +28,41 @@ func init() {
 // receipt id on standard output, and on standard error not verified, the claim line and the scope
 // line: the receipt was read, not verified, and verify does that. With no match it prints that no
 // release matches and exits 1.
+//
+// With --at P and --value-file V, F must match as above and the value at the JSON pointer P in F's
+// bytes must be exactly V's bytes, read by the pointer package (commands-6); the claim line is then
+// the value's. --kind, given once or more, limits a match to receipts of those kinds.
 func releasedCommand(r *run, args []string) int {
 	fs := flags(WordReleased)
 	file, dir := fs.String("file", "", "the file"), fs.String("state", "", "state directory")
+	at, valueFile := fs.String("at", "", "a JSON pointer into the file"), fs.String("value-file", "", "the value's bytes")
+	var kinds many
+	fs.Var(&kinds, "kind", "a kind the part may have")
 	if !r.parse(fs, args, "file", "state") {
+		return r.tool(codeUsage)
+	}
+	atSet := false
+	fs.Visit(func(f *flag.Flag) { atSet = atSet || f.Name == "at" })
+	if atSet != (*valueFile != "") {
+		fmt.Fprintln(r.stderr, "usage: placket released: --at and --value-file go together")
 		return r.tool(codeUsage)
 	}
 	body, err := os.ReadFile(*file)
 	if err != nil {
 		return r.tool(codeFile)
+	}
+	claim, none := ClaimReleased, LineNoRelease
+	var value []byte
+	var tokens []string
+	if atSet {
+		claim, none = ClaimReleasedValue, LineNoValue
+		if value, err = os.ReadFile(*valueFile); err != nil {
+			return r.tool(codeFile)
+		}
+		var ok bool
+		if tokens, ok = pointer.Parse(*at); !ok {
+			return r.tool(codePath)
+		}
 	}
 	d, err := state.Read(*dir)
 	if err != nil {
@@ -46,9 +76,16 @@ func releasedCommand(r *run, args []string) int {
 	if err != nil {
 		return r.failed(err)
 	}
+	if atSet {
+		if v, ok := pointer.Value(body, tokens); !ok || !bytes.Equal(v, value) {
+			fmt.Fprintln(r.stderr, none)
+			return ExitBlock
+		}
+	}
 	for _, rc := range delivered {
 		st, err := receipts.Decode(rc)
-		if err != nil || st.Predicate.Verdict != string(composition.Pass) || st.Predicate.To != d.Actor() {
+		if err != nil || st.Predicate.Verdict != string(composition.Pass) || st.Predicate.To != d.Actor() ||
+			(len(kinds) > 0 && !slices.Contains(kinds, st.Subject.Name)) {
 			continue
 		}
 		for _, s := range salts[st.ID] {
@@ -58,18 +95,18 @@ func releasedCommand(r *run, args []string) int {
 			}
 			fmt.Fprintln(r.stdout, st.ID)
 			fmt.Fprintln(r.stderr, LineNotVerified)
-			fmt.Fprintln(r.stderr, ClaimReleased)
+			fmt.Fprintln(r.stderr, claim)
 			fmt.Fprintln(r.stderr, Scope)
 			for name, v := range map[string]any{
 				memberReceiptID: st.ID, memberReceipt: json.RawMessage(rc), "kind": st.Subject.Name, "verified": false,
-				memberClaim: ClaimReleased, memberNotClaimed: Scope,
+				memberClaim: claim, memberNotClaimed: Scope,
 			} {
 				r.put(name, v)
 			}
 			return ExitOK
 		}
 	}
-	fmt.Fprintln(r.stderr, LineNoRelease)
+	fmt.Fprintln(r.stderr, none)
 	return ExitBlock
 }
 
