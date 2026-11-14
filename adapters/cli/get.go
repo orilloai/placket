@@ -167,14 +167,19 @@ func writeOut(d *delivery, out string) (string, bool) {
 	return path, true
 }
 
-// getCommand is `get [--out DIR] [--keep]`, with the socket flags: it fetches the next delivery.
-// With --out, a directory where no file can be made is tool error file before anything is fetched.
-// A body that is fetched and cannot then be written is kept in kept.jsonl, so it is not lost, and
-// the error says so: error file kept.
+// getCommand is `get [--all] [--out DIR] [--keep]`, with the socket flags: it fetches the next
+// delivery. With --out, a directory where no file can be made is tool error file before anything is
+// fetched. A body that is fetched and cannot then be written is kept in kept.jsonl, so it is not
+// lost, and the error says so: error file kept.
+//
+// With --all it fetches every delivery waiting, one after another under the one state lock, each
+// written as get writes it and each kept in kept.jsonl, as give --wait keeps what it fetches; it
+// stops at the first that fails. On an empty queue it prints no delivery and exits 0.
 func getCommand(r *run, args []string) int {
 	fs := flags("get")
 	keyPath, socket, accord, stateDir := socketFlags(fs)
 	out, keep := fs.String("out", "", "directory for the body"), fs.Bool("keep", false, "keep the part")
+	all := fs.Bool("all", false, "fetch every delivery")
 	if !r.parse(fs, args, "key", "socket", "accord") {
 		return r.tool(codeUsage)
 	}
@@ -189,23 +194,35 @@ func getCommand(r *run, args []string) int {
 		return r.failed(err)
 	}
 	defer s.dir.Unlock()
-	d, kept, code := s.fetch(*keep)
-	if d == nil {
-		if code == 0 {
-			fmt.Fprintln(r.stderr, LineNoDelivery)
+	for n := 0; ; n++ {
+		d, kept, code := s.fetch(*keep || *all)
+		if d == nil {
+			if code == 0 && n == 0 {
+				fmt.Fprintln(r.stderr, LineNoDelivery)
+			}
+			return code
 		}
-		return code
+		if code := s.write(d, kept, *out, *keep || *all); code != ExitOK || !*all {
+			return code
+		}
 	}
-	if *out == "" {
+}
+
+// write writes a fetched delivery as get does: its body on standard output, or to a file of the
+// directory out with its path on standard output. A body that cannot be written is kept, unless
+// keep has kept it already, and is tool error file kept.
+func (s *session) write(d *delivery, kept []byte, out string, keep bool) int {
+	r := s.r
+	if out == "" {
 		r.show(d)
 		r.put(memberDelivery, deliveryObject(d, true))
 		return ExitOK
 	}
 	r.put(memberDelivery, deliveryObject(d, false))
 	r.head(d)
-	path, ok := writeOut(d, *out)
+	path, ok := writeOut(d, out)
 	if !ok {
-		if !*keep {
+		if !keep {
 			if err := s.dir.Keep(kept); err != nil {
 				return r.failed(err)
 			}
