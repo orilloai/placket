@@ -38,6 +38,7 @@ const (
 	LineDoor            = "door"
 	LineNoModule        = "operator and module not shown: give --founding"
 	LineNothing         = "nothing to reconcile"
+	LineNoRelease       = "no release matches these bytes"
 )
 
 // The claim lines, word for word, one per kind of receipt; every one is followed by Scope
@@ -51,6 +52,7 @@ const (
 	ClaimNoYes         = "claim: the question closed without a yes. The receipt names the first holder of the answering role."
 	ClaimNobody        = "claim: nobody answered. The question closed for the reason shown."
 	ClaimVerified      = "claim: each receipt is this mediator's signed decision about one part under this Accord's terms."
+	ClaimReleased      = "claim: these bytes, under the salt they were fetched with, are the part this receipt let cross to this key."
 	// ModuleLine names the decision module by the card hash, its one verb.
 	ModuleLine = "module: named by card %s."
 	// Scope is the scope line.
