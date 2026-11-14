@@ -26,9 +26,10 @@ func (s *session) resolve(question string, action mediator.Action, answer string
 	if rep.Outcome == nil {
 		return nil, s.r.tool("reply")
 	}
-	s.r.outcome(rep.Outcome, false)
+	s.r.put(memberQuestion, question)
+	s.r.outcome(rep.Outcome, false, memberOutcome)
 	if rep.Release != nil {
-		s.r.outcome(rep.Release, true)
+		s.r.outcome(rep.Release, true, memberRelease)
 	}
 	return &rep, 0
 }
@@ -51,6 +52,8 @@ func asker(rep *local.Reply) (string, bool) {
 // the giver so that the log can show it, under the state lock the command holds. It returns the exit code: 1 when the comment did not
 // cross, which it says.
 func (s *session) comment(rep *local.Reply, question, text string) int {
+	defer s.r.nest(memberComment)()
+	s.r.put(memberCrossed, false)
 	to, ok := asker(rep)
 	if !ok {
 		return s.r.tool("reply")
@@ -64,6 +67,7 @@ func (s *session) comment(rep *local.Reply, question, text string) int {
 		fmt.Fprintln(s.r.stderr, LineCommentNotCross)
 		return ExitBlock
 	}
+	s.r.put(memberCrossed, true)
 	return ExitOK
 }
 

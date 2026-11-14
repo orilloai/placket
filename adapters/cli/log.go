@@ -2,6 +2,7 @@ package cli
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
 
@@ -27,7 +28,7 @@ func logCommand(r *run, args []string) int {
 	if !r.parse(fs, args, "mediator", "receipts") {
 		return r.tool(codeUsage)
 	}
-	if (*format != "json" && *format != "csv") || (*withWords && *noWords) {
+	if (*format != "json" && *format != "csv") || (*withWords && *noWords) || (r.asJSON && *format == "csv") {
 		return r.tool(codeFormat)
 	}
 	list, err := journal.ReadReceipts(*dir, r.stderr)
@@ -61,7 +62,9 @@ func logCommand(r *run, args []string) int {
 		return r.tool(codeVerify)
 	}
 	if *format == "json" {
-		line(r.stdout, r.screenJSON(lg.JSON(ClaimVerified, Scope, *withWords, *noWords)))
+		b := lg.JSON(ClaimVerified, Scope, *withWords, *noWords)
+		line(r.stdout, r.screenJSON(b))
+		r.put("log", json.RawMessage(b))
 		return ExitOK
 	}
 	var b bytes.Buffer

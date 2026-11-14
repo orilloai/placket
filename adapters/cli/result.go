@@ -23,6 +23,7 @@ func init() {
 // the version and prints its text. It exits 0 only for an accept whose release passed. Open, it
 // prints open and exits 4; a wait that is interrupted prints the question's id and exits 4.
 func (s *session) closing(question string, wait bool) int {
+	s.r.put(memberQuestion, question)
 	var rep local.Reply
 	for {
 		var err error
@@ -37,12 +38,14 @@ func (s *session) closing(question string, wait bool) int {
 			break
 		}
 		if !wait {
+			s.r.put(memberClosing, map[string]any{memberWord: WordOpen})
 			fmt.Fprintln(s.r.stderr, WordOpen)
 			fmt.Fprintln(s.r.stdout, question)
 			return ExitOpen
 		}
 		select {
 		case <-s.r.env.Context.Done():
+			s.r.put(memberClosing, map[string]any{memberWord: WordOpen})
 			fmt.Fprintln(s.r.stdout, question)
 			return ExitOpen
 		case <-time.After(s.r.env.Poll):
@@ -64,8 +67,14 @@ func (s *session) closing(question string, wait bool) int {
 	}
 	fmt.Fprintln(s.r.stderr, text)
 	line(s.r.stdout, s.r.screenJSON(rep.Outcome.Receipt))
+	s.r.put(memberClosing, map[string]any{memberWord: w, memberReceiptID: rep.Outcome.ReceiptID, memberReceipt: json.RawMessage(rep.Outcome.Receipt)})
 	if rep.Release != nil {
 		line(s.r.stdout, s.r.screenJSON(rep.Release.Receipt))
+		rw := WordBlock
+		if released {
+			rw = WordReleased
+		}
+		s.r.put(memberRelease, outcomeObject(rep.Release, rw))
 	}
 	code := ExitBlock
 	if w == WordAccepted && released {
@@ -95,6 +104,8 @@ func (s *session) fetchOwn(question, closing string) int {
 		var d delivery
 		if json.Unmarshal(l, &d) == nil && own(&d, question, closing) {
 			line(s.r.stdout, s.r.screen(d.bytes()))
+			s.r.put(memberFetched, true)
+			s.r.put(memberAnswer, deliveryObject(&d, true))
 			return 0
 		}
 	}
@@ -105,13 +116,17 @@ func (s *session) fetchOwn(question, closing string) int {
 		}
 		if d == nil {
 			fmt.Fprintln(s.r.stderr, LineNotFetched)
+			s.r.put(memberFetched, false)
 			return 0
 		}
 		if own(d, question, closing) {
 			line(s.r.stdout, s.r.screen(d.bytes()))
+			s.r.put(memberFetched, true)
+			s.r.put(memberAnswer, deliveryObject(d, true))
 			return 0
 		}
 		s.r.show(d)
+		s.r.add(memberDeliveries, deliveryObject(d, true))
 	}
 }
 
