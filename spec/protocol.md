@@ -1376,6 +1376,7 @@ A command that is refused, or fails, has the members of its refusal beside what 
 | `verify` | `verified`, the number of receipts; `mediator`; `accord`; `card`; with `--founding`, `operator`, `runs`, `module`, an object of the kernel's `version` and `hash`, and `checks`, the list of the loaded checks as the card lists them; `counts`, the number of receipts by product word, `pass`, `block` and `ask`; `questionsClosed`; `questionsOpen`; `releases`; `blockedReleases`; `predicates`, the list of the receipts' predicates in journal order; `claim`, the claim line; `notClaimed`, the scope line |
 | `log` | `log`, the object the command prints without `--json`, which carries the claim and the scope line. `--json` with `--format csv` is the command's error `format` |
 | `reconcile` | `removed`, `unrecorded` and `missing`, as the command prints them without `--json` |
+| `released` | On a match, `receiptId` and `receipt`, those of the receipt the file matched; `kind`, the part's kind; `verified`, `false`; `claim`, the claim line; `notClaimed`, the scope line. With no match, `exit` alone |
 
 ### commands-1 One object on standard output
 
@@ -1456,3 +1457,28 @@ Every command that prints a claim line carries it in its object under `claim`, w
 - Given the same journal
 - When `log` and `reconcile` run with `--json`
 - Then `log`'s object holds the log it prints without `--json`, `reconcile`'s the three lists it prints, and `log` with `--format csv` is `{"error":"format","exit":3}`
+
+### commands-5 A file checked against what crossed
+
+`released --file F --state DIR` says whether the bytes of the file F are a part that crossed to the key whose state directory is DIR. It reads the directory and writes nothing. The directory keeps, for each delivery the key fetched, the delivery's receipt and the salt the part came with. The file matches a delivery when the delivery's receipt passed, is addressed to the directory's key, and names as its digest the salted digest of the file's bytes under that salt (crossing-3). A file matches only as the fetch wrote the body: a text's UTF-8, a raw body's decoded bytes, a data body's canonical bytes. The command compares bytes; which fields count, and how values are normalised before the check, are the caller's.
+
+On a match the command prints the receipt's id on standard output and exits 0. On standard error it prints `not verified`, the claim line `claim: these bytes, under the salt they were fetched with, are the part this receipt let cross to this key.` and the scope line. The receipt is read as the directory holds it, not verified; verifying the journal shows it is the mediator's (receipt-6). With no match it prints `no release matches these bytes` on standard error, nothing on standard output, and exits 1. A receipt that blocked, and a receipt addressed to another key, never match, whatever the directory holds. A file that cannot be read is the command's error `file`. The command says only that these bytes are what crossed under the receipt, never what any party did with them after.
+
+#### Scenario: a file that crossed, and one byte changed
+
+- Given a text, a raw body and a data body given to a receiver, and each fetched into a file
+- When the receiver checks each file
+- Then each matches the receipt it was fetched under, exit 0, and with `--json` the object holds that receipt, its kind, `verified` `false`, the claim line and the scope line
+- And the same bytes with any one byte changed, a byte added, or the data body as it was spelled before its canonical form, match nothing: exit 1, and with `--json` `{"exit":1}`
+
+#### Scenario: a released proposal
+
+- Given a proposal asked about, accepted with release and fetched by its receiver
+- When the receiver checks the file
+- Then it matches the release receipt, from the asker to the receiver, and the asker's own directory matches nothing for it
+
+#### Scenario: a block, and a part to another key
+
+- Given a receiver's directory holding the receipt of a part blocked for it, with the part's salt, and another key's directory holding the receipt and the salt of a part that crossed to the receiver
+- When each checks the part's bytes
+- Then neither matches

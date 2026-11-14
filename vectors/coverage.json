@@ -288,5 +288,9 @@
   "commands-4": {
     "tests": ["adapters/cli:TestJSONAShownReceiptAndAVerifiedJournal", "adapters/cli:TestJSONTheLogAndReconciliation"],
     "scenarios": {"a shown receipt and a verified journal": {"tests": ["adapters/cli:TestJSONAShownReceiptAndAVerifiedJournal"]}, "the log and reconciliation": {"tests": ["adapters/cli:TestJSONTheLogAndReconciliation"]}}
+  },
+  "commands-5": {
+    "tests": ["adapters/cli:TestReleasedAFileAndOneByteChanged", "adapters/cli:TestReleasedAProposalReleasedAfterAnAccept", "adapters/cli:TestReleasedNeverABlockOrAnotherKeysPart"],
+    "scenarios": {"a file that crossed, and one byte changed": {"tests": ["adapters/cli:TestReleasedAFileAndOneByteChanged"]}, "a released proposal": {"tests": ["adapters/cli:TestReleasedAProposalReleasedAfterAnAccept"]}, "a block, and a part to another key": {"tests": ["adapters/cli:TestReleasedNeverABlockOrAnotherKeysPart"]}}
   }
 }
