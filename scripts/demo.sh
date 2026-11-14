@@ -74,7 +74,9 @@ for a in proposer applier decider; do
 done
 echo "{\"roles\":[\"proposer\",\"applier\",\"decider\"],\"principals\":[\"$(ref principal)\"]}" >policy.json
 echo "{\"actor\":\"$(ref mediator)\",\"operator\":\"$(ref operator)\",\"runs\":\"process\"}" >mediator.json
-echo '{"spec":"0.1","kernel":{"version":"0.1.0","hash":"sha256:a8755bef6ff188c2dc6b74377a73c6a49d612fc44915675db9d2795bb5b99475"},"judges":[],"checks":[]}' >card.json
+# The card names the decision module this binary runs; its window refuses any other.
+"$p" card --default >card.json 2>card.out
+cat card.out
 "$p" founding --policy policy.json --mediator mediator.json --card card.json \
 	--declaration proposer.declaration --declaration applier.declaration --declaration decider.declaration \
 	--binding proposer.binding --binding applier.binding --binding decider.binding >founding.json 2>founding.out

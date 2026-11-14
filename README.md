@@ -36,6 +36,38 @@ go build -o placket ./cmd/placket
 ./placket verify --mediator "$(cat scripts/demo/mediator.ref)" --receipts scripts/demo/journal --founding scripts/demo/founding.json
 ```
 
+That journal's card names a kernel hash typed by hand before the binary could print its own, so `verify` follows its module line with `module 0.1.0 sha256:a8755bef… is not this build's decision module, 0.1.0 sha256:…`. The receipts still verify: the line says only that another build judged them.
+
+## Found an Accord
+
+An Accord is founded from five kinds of file: the policy, the mediator, the card, and each party's declaration and binding. These are the demo's founding steps, from `scripts/demo.sh`:
+
+```
+# Keys: the mediator, its operator, the principal who binds the parties, and each party.
+for k in mediator operator principal proposer applier decider; do
+	placket key new --out "$k.key" >"$k.ref"
+done
+# Each party signs its terms; the principal binds it to its role under this mediator.
+for a in proposer applier decider; do
+	placket declare --key "$a.key" --terms "$a.terms" >"$a.declaration"
+	placket bind --key principal.key --actor "$(cat "$a.ref")" --role "$a" --mediator "$(cat mediator.ref)" --until 2099-01-01T00:00:00Z >"$a.binding"
+done
+echo "{\"roles\":[\"proposer\",\"applier\",\"decider\"],\"principals\":[\"$(cat principal.ref)\"]}" >policy.json
+echo "{\"actor\":\"$(cat mediator.ref)\",\"operator\":\"$(cat operator.ref)\",\"runs\":\"process\"}" >mediator.json
+# The card names the decision module this binary runs.
+placket card --default >card.json
+placket founding --policy policy.json --mediator mediator.json --card card.json \
+	--declaration proposer.declaration --declaration applier.declaration --declaration decider.declaration \
+	--binding proposer.binding --binding applier.binding --binding decider.binding >founding.json
+placket window --key mediator.key --founding founding.json --socket /tmp/plk.s --journal journal
+```
+
+`placket card --default` prints the binary's own card on standard output, and on standard error its card hash and `module <version> <hash>`. The hash is taken from the source of the decision module, `core/composition/composition.go`, that the binary was built from, so a binary with another module prints another card (`docs/adr/0012-the-kernel-hash.md`). Never copy a card from another build:
+
+- `placket founding` founds under any card that reads, since whoever founds an Accord need not run its window, but prints `module <version> <hash> is not this build's decision module, <version> <hash>` when the card is not its own.
+- `placket window` refuses to run an Accord whose card names another module: it prints that line and `error founding kernel`, and starts nothing. After an upgrade that changes the module, found the Accord again with the new binary's card; the old journal still verifies.
+- `placket verify --founding` prints that line after the module line, and still verifies.
+
 Its first receipt, `seq` 1 of the proposer's chain to the applier, is the first proposal's ask:
 
 ```
