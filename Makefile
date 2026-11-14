@@ -12,9 +12,10 @@
 # - A make ci started inside another prints "ci-stays-fast: refused: make ci inside make ci" and stops
 #   before any step.
 #
-# The checks of the tree are the rules of one Go program, tools/guard/ (docs/adr/0007-one-checker.md),
-# built once (guard) and run once per rule. Then every Go module's format (modules), the toolchain
-# steps, the shared test run they read (tests), the conformance runner over vectors/
+# First the standard library's packages the modules import, compiled once for every step that compiles
+# (build). The checks of the tree are the rules of one Go program, tools/guard/
+# (docs/adr/0007-one-checker.md), built once (guard) and run once per rule. Then every Go module's
+# format (modules), the toolchain steps, the shared test run they read (tests), the conformance runner over vectors/
 # (runner-no-silent-pass) and every tests/test_*.sh (scripts). ci's prerequisites are written out as
 # literal names: machine-rules-in-ci refuses a ci that leaves out a rule of the checker or a step.
 .DEFAULT_GOAL := ci
@@ -22,8 +23,8 @@ CHECKS = core-no-deps core-imports core-no-world core-no-panic specs-name-behavi
 	vectors-independent constants-once product-words-once claims-stop-at-crossing main-is-thin root-module \
 	machine-rules-in-ci ci-stays-fast
 TOOLCHAIN = vet lint vulnerabilities secrets race fuzz-seeds coverage-reported
-.PHONY: ci guard $(CHECKS) modules $(TOOLCHAIN) tests runner-no-silent-pass scripts
-ci: guard core-no-deps core-imports core-no-world core-no-panic specs-name-behaviour schemas-hold \
+.PHONY: ci build guard $(CHECKS) modules $(TOOLCHAIN) tests runner-no-silent-pass scripts
+ci: build guard core-no-deps core-imports core-no-world core-no-panic specs-name-behaviour schemas-hold \
 	vectors-independent constants-once product-words-once claims-stop-at-crossing main-is-thin root-module \
 	machine-rules-in-ci ci-stays-fast modules vet lint vulnerabilities secrets tests race fuzz-seeds \
 	coverage-reported runner-no-silent-pass scripts
@@ -64,8 +65,19 @@ OWN_WORK = mkdir -m 700 "$(WORK)" 2>/dev/null || :; \
 	case $$(ls -ld "$(WORK)") in d????-??-*) ;; *) \
 		echo "$@: $(WORK): writable by others; remove it"; exit 1;; esac
 
+# build: the standard library's packages that some module's packages or tests import, compiled once,
+# as they are and with the race detector, into the build cache, before any step that compiles. The
+# steps run side by side, and two go commands that need one package at once would each compile it.
+# It reads the modules with go list -e, so a module that cannot be listed is left to modules and the
+# toolchain steps to name; it fails only when the standard library does not build.
+build:
+	@$(START) set -e; \
+		std=$$(for m in $$($(MODULES)); do (cd "$$m" && go list -e -deps -test -f '{{if .Standard}}{{.ImportPath}}{{end}}' ./... 2>/dev/null) || :; done | sort -u); \
+		if [ -n "$$std" ]; then go build $$std && go build -race $$std || { echo "$@: std: does not build"; exit 1; }; fi; \
+		echo "$@: ok" $(END)
+
 # guard: the checker, built once from tools/guard/, its own module.
-guard:
+guard: build
 	@$(START) set -e; $(OWN_WORK); \
 		(cd tools/guard && go build -o "$(GUARD)" .) || { echo "$@: tools/guard: does not build"; exit 1; }; \
 		echo "$@: ok" $(END)
@@ -108,18 +120,22 @@ define each_module
 	done; echo "$@: ok"
 endef
 
-vet:
+vet: build
 	@$(START) $(call each_module,go vet ./...) $(END)
 
-lint:
-	@$(START) $(call each_module,go run $(STATICCHECK) ./...) $(END)
+# lint keeps the linter's own cache of results inside Go's build cache, unless STATICCHECK_CACHE is
+# already set, so that whatever keeps the build cache from one run to the next (the workflow's
+# setup-go cache) keeps the linter's too. Its entries are keyed on their inputs, as Go's are.
+lint: build
+	@$(START) c=$$(go env GOCACHE); case $$c in /*) export STATICCHECK_CACHE="$${STATICCHECK_CACHE:-$$c/staticcheck}";; esac; \
+		$(call each_module,go run $(STATICCHECK) ./...) $(END)
 
-vulnerabilities:
+vulnerabilities: build
 	@$(START) $(call each_module,go run $(GOVULNCHECK) ./...) $(END)
 
 # secrets: the secret scan reads every file of the tree but .git/, and names each finding by file, line
 # and the kind of secret, never the secret itself.
-secrets:
+secrets: build
 	@$(START) set -e; r=$$(mktemp); trap 'rm -f "$$r"' EXIT; \
 		if go run $(GITLEAKS) dir --no-banner --redact --log-level error --report-format json --report-path "$$r" . ; then echo "$@: ok"; exit 0; fi; \
 		if [ -s "$$r" ]; then jq -r '.[] | "$@: \(.File | sub("^[.]/"; "")):\(.StartLine): \(.RuleID)"' "$$r"; fi; \
@@ -133,7 +149,7 @@ secrets:
 # it first, so run alone, each makes the run itself, and in ci it runs once. It prints one line per
 # module and fails only when a module's packages cannot be listed: the steps that read it judge it.
 TESTS = $(WORK)/tests
-tests:
+tests: build
 	@$(START) set -e; $(OWN_WORK); rm -rf "$(TESTS)"; mkdir "$(TESTS)"; : >"$(TESTS)/modules"; : >"$(TESTS)/run"; \
 		for m in $$($(MODULES)); do \
 			pkgs=$$(cd "$$m" && go list ./...) || { echo "$@: $$m: go list failed"; exit 1; }; \
@@ -190,7 +206,7 @@ coverage-reported: tests
 # runner-no-silent-pass: the conformance runner over vectors/, as core/conformance's TestVectors. It
 # prints every vector's result, every open entry of the coverage list and a count, each line starting
 # with the rule's name, and fails unless every vector found passed and the coverage list holds.
-runner-no-silent-pass:
+runner-no-silent-pass: build
 	@$(START) set -e; if [ ! -d core/conformance ]; then echo "$@: core/conformance/: missing; the runner lives there"; exit 1; fi; \
 		out=$$(mktemp); trap 'rm -f "$$out"' EXIT; \
 		if (cd core/conformance && go test -count=1 -run '^TestVectors$$') >"$$out" 2>&1; then \
@@ -201,7 +217,7 @@ runner-no-silent-pass:
 # order, under "== <test>", once every test has ended; the step fails when any test failed, naming
 # each one that did.
 SCRIPTS = $(WORK)/scripts
-scripts:
+scripts: build
 	@$(START) set -e; $(OWN_WORK); rm -rf "$(SCRIPTS)"; mkdir "$(SCRIPTS)"; i=0; \
 		for t in tests/test_*.sh; do [ -e "$$t" ] || continue; i=$$((i + 1)); \
 			{ rc=0; sh "$$t" >"$(SCRIPTS)/$$i.out" 2>&1 || rc=$$?; echo "$$rc" >"$(SCRIPTS)/$$i.rc"; } & \
