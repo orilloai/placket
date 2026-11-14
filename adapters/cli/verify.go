@@ -116,9 +116,13 @@ func verifyCommand(r *run, args []string) int {
 			return r.tool(codeFound)
 		}
 		module = moduleLines(set)
+		r.putModule(set)
 	}
+	predicates := []any{}
 	for _, rc := range list {
-		line(r.stdout, predicateOf(rc))
+		p := predicateOf(rc)
+		line(r.stdout, p)
+		predicates = append(predicates, json.RawMessage(p))
 	}
 	n := map[string]int{}
 	closed, released, blocked := 0, 0, 0
@@ -148,7 +152,36 @@ func verifyCommand(r *run, args []string) int {
 	fmt.Fprintf(r.stderr, "releases %d blocked releases %d\n", released, blocked)
 	fmt.Fprintln(r.stderr, ClaimVerified)
 	fmt.Fprintln(r.stderr, Scope)
+	for name, v := range map[string]any{
+		"verified": len(st), "mediator": *med, memberAccord: accord, memberCard: card,
+		"counts":          map[string]int{WordPass: n[string(composition.Pass)], WordBlock: n[string(composition.Block)], WordAsk: n[string(composition.Escalate)]},
+		"questionsClosed": closed, "questionsOpen": n[string(composition.Escalate)] - closed, "releases": released, "blockedReleases": blocked,
+		"predicates": predicates, memberClaim: ClaimVerified, memberNotClaimed: Scope,
+	} {
+		r.put(name, v)
+	}
 	return ExitOK
+}
+
+// putModule puts the operator and the decision module of a founded set: operator, runs, module and
+// checks.
+func (r *run) putModule(set []byte) {
+	var s struct {
+		Mediator struct {
+			Operator string `json:"operator"`
+			Runs     string `json:"runs"`
+		} `json:"mediator"`
+		Card struct {
+			Kernel json.RawMessage   `json:"kernel"`
+			Checks []json.RawMessage `json:"checks"`
+		} `json:"card"`
+	}
+	_ = json.Unmarshal(set, &s)
+	checks := []json.RawMessage{}
+	r.put(memberOperator, s.Mediator.Operator)
+	r.put("runs", s.Mediator.Runs)
+	r.put("module", s.Card.Kernel)
+	r.put("checks", append(checks, s.Card.Checks...))
 }
 
 // moduleLines are the lines that name the operator and the decision module of a founded set.

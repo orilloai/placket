@@ -198,8 +198,10 @@ func getCommand(r *run, args []string) int {
 	}
 	if *out == "" {
 		r.show(d)
+		r.put(memberDelivery, deliveryObject(d, true))
 		return ExitOK
 	}
+	r.put(memberDelivery, deliveryObject(d, false))
 	r.head(d)
 	path, ok := writeOut(d, *out)
 	if !ok {
@@ -211,5 +213,6 @@ func getCommand(r *run, args []string) int {
 		return r.tool(codeFile, detailKept)
 	}
 	fmt.Fprintln(r.stdout, path)
+	r.put(memberPath, path)
 	return ExitOK
 }

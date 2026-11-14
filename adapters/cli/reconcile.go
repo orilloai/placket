@@ -63,7 +63,11 @@ func reconcileCommand(r *run, args []string) int {
 	}
 	// An actor is read from a state directory's actor file, which whoever handed the directory over
 	// wrote: on its way to a terminal it is escaped, as any field and any JSON of another's is.
-	line(r.stdout, r.screenJSON(canonicalJSON(map[string]any{"removed": items(rep.Removed), "unrecorded": items(rep.Unrecorded), "missing": missing})))
+	lists := map[string]any{"removed": items(rep.Removed), "unrecorded": items(rep.Unrecorded), "missing": missing}
+	line(r.stdout, r.screenJSON(canonicalJSON(lists)))
+	for name, v := range lists {
+		r.put(name, v)
+	}
 	for _, i := range rep.Removed {
 		fmt.Fprintln(r.stderr, "removed "+field(i.Actor)+" "+field(i.ReceiptID))
 	}

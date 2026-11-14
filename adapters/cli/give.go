@@ -142,7 +142,7 @@ func (s *session) send(to, kind string, b body, re, topic string, keep bool) (*m
 			return nil, s.r.failed(err)
 		}
 	}
-	s.r.outcome(rep.Outcome, false)
+	s.r.outcome(rep.Outcome, false, memberOutcome)
 	return rep.Outcome, 0
 }
 
@@ -184,6 +184,7 @@ func giveCommand(r *run, args []string) int {
 	case string(composition.Pass):
 		return ExitOK
 	case string(composition.Escalate):
+		r.put(memberQuestion, out.ReceiptID)
 		if *wait {
 			return s.closing(out.ReceiptID, true)
 		}

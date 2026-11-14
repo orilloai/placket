@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"encoding/json"
 	"time"
 
 	"github.com/orilloai/placket/adapters/keyfile"
@@ -37,6 +38,8 @@ func bindCommand(r *run, args []string) int {
 		return r.tool(codeUsage)
 	}
 	b["sig"] = sig
-	line(r.stdout, canonicalJSON(b))
+	signed := canonicalJSON(b)
+	line(r.stdout, signed)
+	r.put("binding", json.RawMessage(signed))
 	return ExitOK
 }

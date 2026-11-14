@@ -72,6 +72,10 @@ func (r *run) event(e local.Event, operator string) {
 		fmt.Fprintln(r.stderr, "accord "+e.Accord+" "+how)
 		fmt.Fprintln(r.stderr, "card "+e.Card)
 		fmt.Fprintln(r.stderr, "operator "+operator)
+		r.put(memberAccord, e.Accord)
+		r.put(memberCard, e.Card)
+		r.put(memberOperator, operator)
+		r.put("started", how)
 		return
 	case local.EventRefused:
 		fmt.Fprintln(r.stderr, LineDoor+" "+string(e.Door))

@@ -53,6 +53,8 @@ func declareCommand(r *run, args []string) int {
 	if err != nil {
 		return r.tool(codeTerms)
 	}
-	line(r.stdout, canonicalJSON(map[string]any{"actor": k.Reference(), "terms": terms, "sig": sig}))
+	d := canonicalJSON(map[string]any{"actor": k.Reference(), "terms": terms, "sig": sig})
+	line(r.stdout, d)
+	r.put("declaration", json.RawMessage(d))
 	return ExitOK
 }
