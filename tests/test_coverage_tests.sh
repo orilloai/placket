@@ -43,7 +43,10 @@ commands-3	a founding
 commands-3	an empty queue and a delivery
 commands-3	a window stops
 commands-4	a shown receipt and a verified journal
-commands-4	the log and reconciliation'
+commands-4	the log and reconciliation
+commands-5	a file that crossed, and one byte changed
+commands-5	a released proposal
+commands-5	a block, and a part to another key'
 
 printf '%s\n' "$required" | while IFS='	' read -r id title; do
 	n=$(jq -r --arg i "$id" --arg s "$title" '.[$i].scenarios[$s].tests // [] | length' "$list" 2>/dev/null)
