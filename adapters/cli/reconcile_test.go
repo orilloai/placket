@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/orilloai/placket/adapters/keyfile"
+	"github.com/orilloai/placket/core/composition"
 	"github.com/orilloai/placket/core/receipts"
 )
 
@@ -82,7 +83,7 @@ func TestReconcileVerifyAndCancel(t *testing.T) {
 
 	r = must(t, "verify", "--mediator", s.refs["mediator"], "--receipts", s.journal(), "--founding", filepath.Join(s.dir, "founding.json"))
 	l := r.lines()
-	if len(l) != 9 || l[2] != "operator "+s.refs["operator"]+" runs process" || l[3] != "module 0.1.0 sha256:"+strings.Repeat("0", 64) ||
+	if len(l) != 9 || l[2] != "operator "+s.refs["operator"]+" runs process" || l[3] != "module 0.1.0 "+composition.KernelHash() ||
 		l[4] != "pass 6 block 3 ask 5" || l[5] != "questions closed 5 open 0" || l[6] != "releases 2 blocked releases 0" {
 		t.Fatalf("verify --founding: %q", l)
 	}

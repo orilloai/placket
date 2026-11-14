@@ -21,6 +21,8 @@ fi
 # The lines each step prints, in order: an extended regular expression a line must match, each one
 # after the line the one before it matched.
 want='^== 1\.
+^card sha256:[0-9a-f]{64}$
+^module 0\.1\.0 sha256:[0-9a-f]{64}$
 ^accord sha256:[0-9a-f]{64}$
 ^== 2\.
 ^window: accord sha256:[0-9a-f]{64} founded$

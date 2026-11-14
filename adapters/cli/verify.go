@@ -72,7 +72,8 @@ func oneAccord(st []receipts.Statement) (string, int) {
 // set is given, the counts of verdicts, questions and releases, the claim and the scope line. The
 // receipts must all be of one Accord and card, or it is tool error verify, accord or card, at the
 // first that differs. A founding set is tool error founding unless it founds the receipts' Accord
-// and its mediator is M.
+// and its mediator is M. A card whose module is not this build's is named after the module line,
+// and still verifies (docs/adr/0012-the-kernel-hash.md).
 // On a failure it prints the code and the line, and none of these.
 func verifyCommand(r *run, args []string) int {
 	fs := flags("verify")
@@ -184,7 +185,8 @@ func (r *run) putModule(set []byte) {
 	r.put("checks", append(checks, s.Card.Checks...))
 }
 
-// moduleLines are the lines that name the operator and the decision module of a founded set.
+// moduleLines are the lines that name the operator and the decision module of a founded set, and
+// the line that names the module when it is not this build's (docs/adr/0012-the-kernel-hash.md).
 func moduleLines(set []byte) []string {
 	var s struct {
 		Mediator struct {
@@ -206,6 +208,9 @@ func moduleLines(set []byte) []string {
 	_ = json.Unmarshal(set, &s)
 	out := []string{"operator " + s.Mediator.Operator + " runs " + s.Mediator.Runs,
 		"module " + s.Card.Kernel.Version + " " + s.Card.Kernel.Hash}
+	if l := otherModule(kernel(s.Card.Kernel)); l != "" {
+		out = append(out, l)
+	}
 	for _, c := range s.Card.Checks {
 		out = append(out, "check "+c.Name+" "+c.Version+" "+c.Hash)
 	}

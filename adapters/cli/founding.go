@@ -18,7 +18,8 @@ func init() {
 // foundingCommand is `founding --policy P --mediator M --card C --declaration D... --binding B...`:
 // it puts the parts in one founding set, the declarations and the bindings in actor-reference order
 // (setup-contract-10), founds it at the current second to check it, and prints the set on standard
-// output and its Accord id and card hash on standard error.
+// output and its Accord id and card hash on standard error, and after them a line that names the
+// card's module when it is not this build's (docs/adr/0012-the-kernel-hash.md).
 func foundingCommand(r *run, args []string) int {
 	fs := flags("founding")
 	policy, med, card := fs.String("policy", "", "policy"), fs.String("mediator", "", "mediator"), fs.String("card", "", "card")
@@ -55,6 +56,13 @@ func foundingCommand(r *run, args []string) int {
 	line(r.stdout, b)
 	fmt.Fprintln(r.stderr, "accord "+a.ID())
 	fmt.Fprintln(r.stderr, "card "+a.Card())
+	if c, ok := set["card"].(json.RawMessage); ok {
+		if k, ok := kernelOf(c); ok {
+			if l := otherModule(k); l != "" {
+				fmt.Fprintln(r.stderr, l)
+			}
+		}
+	}
 	r.put("founding", json.RawMessage(b))
 	r.put(memberAccord, a.ID())
 	r.put(memberCard, a.Card())

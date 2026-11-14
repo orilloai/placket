@@ -182,7 +182,7 @@ func TestFoundingReproducesAVector(t *testing.T) {
 		e := env()
 		e.Now = func() time.Time { return at }
 		r := run(t, e, args...)
-		if r.code != 0 || r.stderr != "accord "+v.Expect.Accord+"\ncard "+v.Expect.Card+"\n" || strings.TrimSpace(r.stdout) != string(set) {
+		if r.code != 0 || r.stderr != "accord "+v.Expect.Accord+"\ncard "+v.Expect.Card+"\n"+vectorModule(t, parts["card"])+"\n" || strings.TrimSpace(r.stdout) != string(set) {
 			t.Fatalf("%s: %v", f, r)
 		}
 		n++
@@ -230,4 +230,17 @@ func TestAWindowWhoseJournalFails(t *testing.T) {
 	if w.code != 3 || !strings.HasSuffix(w.stderr, "error journal receipts.jsonl\n") {
 		t.Fatalf("the window: %v", w)
 	}
+}
+
+// vectorModule is the line founding prints after a vector's card, which names the hash the vectors
+// were written with, another module than this build's (docs/adr/0012-the-kernel-hash.md).
+func vectorModule(t *testing.T, card []byte) string {
+	t.Helper()
+	var c struct {
+		Kernel struct{ Version, Hash string }
+	}
+	if err := json.Unmarshal(card, &c); err != nil {
+		t.Fatal(err)
+	}
+	return otherLine(c.Kernel.Version, c.Kernel.Hash)
 }

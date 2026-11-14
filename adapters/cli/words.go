@@ -53,6 +53,9 @@ const (
 	ClaimVerified      = "claim: each receipt is this mediator's signed decision about one part under this Accord's terms."
 	// ModuleLine names the decision module by the card hash, its one verb.
 	ModuleLine = "module: named by card %s."
+	// ModuleOther names a card's module that is not this build's, and this build's
+	// (docs/adr/0012-the-kernel-hash.md).
+	ModuleOther = "module %s %s is not this build's decision module, %s %s"
 	// Scope is the scope line.
 	Scope = "not claimed: what any party did with a part after it crossed; anything that did not go through this mediator; reworded or derived content; who was at a key."
 )

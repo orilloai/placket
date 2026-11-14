@@ -20,7 +20,9 @@ func init() {
 // windowCommand is `window --key F --founding S --socket P --journal DIR`: it runs the mediator of
 // the Accord S founds, behind its door on the socket, with its journal in DIR, until it is
 // interrupted. It prints the Accord id, the card hash and the operator, then one line per event:
-// ids, words and codes, never a body, a salt, a seed, a key or a question's part.
+// ids, words and codes, never a body, a salt, a seed, a key or a question's part. A founding set
+// whose card names another module than this build's is tool error founding kernel, after a line
+// that names both (docs/adr/0012-the-kernel-hash.md).
 func windowCommand(r *run, args []string) int {
 	fs := flags("window")
 	keyPath, founding := fs.String("key", "", "the mediator's key file"), fs.String("founding", "", "the founding set")
@@ -37,6 +39,14 @@ func windowCommand(r *run, args []string) int {
 		return r.tool(codeFile, "founding")
 	}
 	set = bytes.TrimSuffix(set, []byte{'\n'})
+	// A card of another module is refused before the set is founded; one that does not read is left to
+	// founding (docs/adr/0012-the-kernel-hash.md).
+	if k, ok := kernelOf(cardOf(set)); ok {
+		if l := otherModule(k); l != "" {
+			fmt.Fprintln(r.stderr, l)
+			return r.tool(codeFound, detailKernel)
+		}
+	}
 	var parts struct {
 		Mediator struct {
 			Operator string `json:"operator"`
