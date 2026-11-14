@@ -92,13 +92,16 @@ type request struct {
 	reply    chan []byte
 }
 
-// Run runs a window until ctx is done, then returns nil having written nothing more. It opens the
-// journal and takes its lock; founds the Accord at the current second on an empty journal or
-// reloads the journal's, journaling the closings of what a stop left open; removes a stale socket
+// Run runs a window until ctx is done, then returns nil having written nothing more. A socket path
+// too long is CodeSocketPath before anything else is done. Otherwise it opens the journal and takes
+// its lock; founds the Accord at the current second on an empty journal or reloads the journal's, journaling the closings of what a stop left open; removes a stale socket
 // file; and only then listens. Every call is handled by one goroutine, which owns the mediator. A
 // journal write that fails ends Run with that error, and the call it was for gets no reply
 // (journal-synced).
 func Run(ctx context.Context, cfg Window) error {
+	if err := CheckSocket(cfg.Socket); err != nil {
+		return err
+	}
 	if cfg.Idle == 0 {
 		cfg.Idle = time.Second
 	}
