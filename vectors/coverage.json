@@ -293,6 +293,10 @@
     "tests": ["adapters/cli:TestReleasedAFileAndOneByteChanged", "adapters/cli:TestReleasedAProposalReleasedAfterAnAccept", "adapters/cli:TestReleasedNeverABlockOrAnotherKeysPart"],
     "scenarios": {"a file that crossed, and one byte changed": {"tests": ["adapters/cli:TestReleasedAFileAndOneByteChanged"]}, "a released proposal": {"tests": ["adapters/cli:TestReleasedAProposalReleasedAfterAnAccept"]}, "a block, and a part to another key": {"tests": ["adapters/cli:TestReleasedNeverABlockOrAnotherKeysPart"]}}
   },
+  "commands-6": {
+    "tests": ["adapters/cli:TestReleasedAValueInADataBodyAndOneByteChanged", "adapters/cli:TestReleasedAFractionInATextBody", "adapters/cli:TestReleasedAMatchLimitedToKinds", "adapters/cli:TestReleasedAValueNeverFromABlockAnotherKeyOrABodyNeverReleased", "adapters/internal/pointer:TestValueIsTheBytesAsTheBodySpellsThem"],
+    "scenarios": {"a value in a data body, and one byte changed": {"tests": ["adapters/cli:TestReleasedAValueInADataBodyAndOneByteChanged"]}, "a fraction in a text body": {"tests": ["adapters/cli:TestReleasedAFractionInATextBody", "adapters/internal/pointer:TestValueIsTheBytesAsTheBodySpellsThem"]}, "a match limited to kinds": {"tests": ["adapters/cli:TestReleasedAMatchLimitedToKinds"]}, "a block, a part to another key, and a body never released": {"tests": ["adapters/cli:TestReleasedAValueNeverFromABlockAnotherKeyOrABodyNeverReleased"]}}
+  },
   "log-1": {
     "tests": ["adapters/cli:TestTheLogOfTheWorkedExample", "adapters/cli:TestLogWithoutAllIsUnchanged"],
     "scenarios": {"the log of the worked example": {"tests": ["adapters/cli:TestTheLogOfTheWorkedExample"]}, "the log without every crossing is unchanged": {"tests": ["adapters/cli:TestLogWithoutAllIsUnchanged"]}}
