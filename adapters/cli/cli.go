@@ -10,7 +10,8 @@
 //	3  a tool or door error, its code on standard error
 //	4  an ask still open, the question's id on standard output
 //
-// What another party wrote is escaped on its way to a terminal (screen.go).
+// What another party wrote is escaped on its way to a terminal (screen.go). With --json, every
+// command prints its result as one JSON object on standard output instead (json.go).
 //
 // Every socket command takes --key, --socket and --accord, and --state for the actor's state
 // directory, by default <key file>.state/<the Accord id's hex>/. The words a person reads are in
@@ -26,6 +27,7 @@ import (
 	"io"
 	"os"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -70,6 +72,8 @@ const (
 	// detailKernel follows error founding when a window's card names another module than this
 	// build's.
 	detailKernel = "kernel"
+	// detailLimit follows error socket-path, with the longest socket path the system takes.
+	detailLimit = "limit"
 )
 
 // Env is what a command takes from the world.
@@ -95,6 +99,11 @@ type run struct {
 	env            Env
 	stdin          io.Reader
 	stdout, stderr io.Writer
+	// realOut is standard output, which stdout is unless --json was given; rep is the object
+	// printed with --json.
+	realOut io.Writer
+	asJSON  bool
+	rep     *report
 }
 
 type command func(r *run, args []string) int
@@ -113,7 +122,16 @@ func Run(env Env, args []string, stdin io.Reader, stdout, stderr io.Writer) int 
 	if env.Terminal == nil {
 		env.Terminal = isTerminal
 	}
-	r := &run{env: env, stdin: stdin, stdout: stdout, stderr: stderr}
+	r := &run{env: env, stdin: stdin, stdout: stdout, stderr: stderr, realOut: stdout, rep: newReport()}
+	r.setJSON(wantsJSON(args))
+	code := r.dispatch(args)
+	if r.asJSON {
+		r.printJSON(code)
+	}
+	return code
+}
+
+func (r *run) dispatch(args []string) int {
 	if len(args) == 0 {
 		return r.usage()
 	}
@@ -136,6 +154,10 @@ func (r *run) usage() int {
 
 // tool prints a tool error's code, and any detail, and returns its exit code.
 func (r *run) tool(code string, detail ...string) int {
+	r.put(memberError, code)
+	if len(detail) > 0 {
+		r.put(memberDetail, detail)
+	}
 	fmt.Fprintln(r.stderr, strings.Join(append([]string{LineError, code}, detail...), " "))
 	return ExitTool
 }
@@ -163,6 +185,8 @@ func (r *run) failed(err error) int {
 			d = append(d, je.Core)
 		}
 		return r.tool(string(je.Code), d...)
+	case errors.As(err, &le) && le.Code == local.CodeSocketPath:
+		return r.tool(string(le.Code), detailLimit, strconv.Itoa(local.MaxSocketPath))
 	case errors.As(err, &le):
 		return r.tool(string(le.Code))
 	}
@@ -173,11 +197,13 @@ func (r *run) failed(err error) int {
 func (r *run) refusal(rep local.Reply) (int, bool) {
 	switch {
 	case rep.Rejection != "":
+		r.put(memberRejection, string(rep.Rejection))
 		fmt.Fprintln(r.stderr, LineRejected+" "+string(rep.Rejection))
 		return ExitRejected, true
 	case rep.Error != "":
 		return r.tool(string(rep.Error)), true
 	case rep.Door != "":
+		r.put(memberDoor, string(rep.Door))
 		fmt.Fprintln(r.stderr, LineDoor+" "+string(rep.Door))
 		return ExitTool, true
 	}
@@ -192,16 +218,25 @@ type many []string
 func (m *many) String() string     { return strings.Join(*m, ",") }
 func (m *many) Set(v string) error { *m = append(*m, v); return nil }
 
-// flags makes a flag set that prints nothing of its own.
+// flagJSON is the flag every command takes to print its result as one JSON object.
+const flagJSON = "json"
+
+// flags makes a flag set that prints nothing of its own, with --json.
 func flags(name string) *flag.FlagSet {
 	fs := flag.NewFlagSet(name, flag.ContinueOnError)
 	fs.SetOutput(io.Discard)
+	fs.Bool(flagJSON, false, "print the result as one JSON object")
 	return fs
 }
 
 // parse parses the flags; a flag that is wrong, or a flag required and missing, is a usage error.
+// --json, once read, decides whether the result is printed as JSON.
 func (r *run) parse(fs *flag.FlagSet, args []string, required ...string) bool {
-	if err := fs.Parse(args); err != nil || fs.NArg() != 0 {
+	err := fs.Parse(args)
+	if err == nil {
+		r.setJSON(fs.Lookup(flagJSON).Value.String() == "true")
+	}
+	if err != nil || fs.NArg() != 0 {
 		fmt.Fprintln(r.stderr, "usage: placket "+fs.Name()+": bad flags")
 		return false
 	}
@@ -254,8 +289,12 @@ func socketFlags(fs *flag.FlagSet) (key, socket, accord, stateDir *string) {
 		fs.String("accord", "", "the Accord id"), fs.String("state", "", "state directory")
 }
 
-// open reads the key and opens the state directory; it prints the failure and returns its code.
+// open reads the key and opens the state directory; it prints the failure and returns its code. A
+// socket path too long is refused first, error socket-path limit N, before anything is read.
 func (r *run) open(keyPath, socket, accord, stateDir string) (*session, int) {
+	if err := local.CheckSocket(socket); err != nil {
+		return nil, r.failed(err)
+	}
 	k, err := keyfile.Read(keyPath)
 	if err != nil {
 		return nil, r.failed(err)
@@ -271,13 +310,14 @@ func (r *run) open(keyPath, socket, accord, stateDir string) (*session, int) {
 }
 
 // outcome prints an outcome's line, <word> <reason> <receipt id>, with released for a release that
-// passed, and the receipt on standard output, escaped on a terminal. ParseReply has read the reason
-// and the id for their form.
-func (r *run) outcome(o *mediator.Outcome, release bool) {
+// passed, and the receipt on standard output, escaped on a terminal; and puts it under name.
+// ParseReply has read the reason and the id for their form.
+func (r *run) outcome(o *mediator.Outcome, release bool, name string) {
 	w := word(o.Verdict)
 	if release && w == WordPass {
 		w = WordReleased
 	}
 	fmt.Fprintln(r.stderr, w+" "+o.Reason+" "+o.ReceiptID)
 	line(r.stdout, r.screenJSON(o.Receipt))
+	r.put(name, outcomeObject(o, w))
 }

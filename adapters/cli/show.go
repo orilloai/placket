@@ -33,14 +33,21 @@ func showCommand(r *run, args []string) int {
 	}
 	st, _ := receipts.Decode(b)
 	p := st.Predicate
+	module := fmt.Sprintf(ModuleLine, p.Card)
 	fmt.Fprintln(r.stderr, LineNotVerified)
 	fmt.Fprintln(r.stderr, word(p.Verdict)+" "+p.Reason+" "+st.Subject.Name+" "+p.At)
 	fmt.Fprintln(r.stderr, "from "+p.From+" to "+p.To)
-	fmt.Fprintf(r.stderr, ModuleLine+"\n", p.Card)
+	fmt.Fprintln(r.stderr, module)
 	fmt.Fprintln(r.stderr, claim(p))
 	fmt.Fprintln(r.stderr, Scope)
 	for _, l := range lines {
 		fmt.Fprintln(r.stdout, l)
+	}
+	for name, v := range map[string]any{
+		"verified": false, memberReceiptID: st.ID, memberWord: word(p.Verdict), memberReason: p.Reason, "kind": st.Subject.Name,
+		"at": p.At, "from": p.From, "to": p.To, "module": module, memberClaim: claim(p), memberNotClaimed: Scope, "shown": lines,
+	} {
+		r.put(name, v)
 	}
 	return ExitOK
 }

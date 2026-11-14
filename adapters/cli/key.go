@@ -28,6 +28,7 @@ func keyCommand(r *run, args []string) int {
 			return r.failed(err)
 		}
 		fmt.Fprintln(r.stdout, k.Reference())
+		r.put("actor", k.Reference())
 		return ExitOK
 	case "ref":
 		fs := flags("key ref")
@@ -40,6 +41,7 @@ func keyCommand(r *run, args []string) int {
 			return r.failed(err)
 		}
 		fmt.Fprintln(r.stdout, ref)
+		r.put("actor", ref)
 		return ExitOK
 	}
 	return r.usage()

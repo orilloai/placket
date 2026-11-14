@@ -63,6 +63,9 @@ func foundingCommand(r *run, args []string) int {
 			}
 		}
 	}
+	r.put("founding", json.RawMessage(b))
+	r.put(memberAccord, a.ID())
+	r.put(memberCard, a.Card())
 	return ExitOK
 }
 

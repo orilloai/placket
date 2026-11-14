@@ -33,6 +33,8 @@ func questionsCommand(r *run, args []string) int {
 	if code, refused := r.refusal(rep); refused {
 		return code
 	}
+	list := []any{}
+	defer func() { r.put("questions", list) }()
 	for _, q := range rep.Questions {
 		o := map[string]any{"id": q.ID, "asker": q.Asker, "kind": q.Kind, "deadline": q.Deadline, "form": q.Form}
 		if q.Message != nil {
@@ -42,6 +44,7 @@ func questionsCommand(r *run, args []string) int {
 			o["size"] = *q.Size
 		}
 		line(r.stdout, r.screenJSON(canonicalJSON(o)))
+		list = append(list, o)
 	}
 	return ExitOK
 }

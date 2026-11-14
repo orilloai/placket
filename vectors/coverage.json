@@ -272,5 +272,21 @@
   "conformance-vectors-11": {
     "tests": ["core/conformance:TestHeaderFirst"],
     "scenarios": {"a repeated top-level name": {"tests": ["core/conformance:TestHeaderFirst"]}}
+  },
+  "commands-1": {
+    "tests": ["adapters/cli:TestJSONAGiveThatPasses", "adapters/cli:TestJSONARefusedCommand"],
+    "scenarios": {"a give that passes": {"tests": ["adapters/cli:TestJSONAGiveThatPasses"]}, "a refused command": {"tests": ["adapters/cli:TestJSONARefusedCommand"]}}
+  },
+  "commands-2": {
+    "tests": ["adapters/cli:TestJSONADeclineAndItsComment", "adapters/cli:TestJSONAnAskLeftOpen", "adapters/cli:TestJSONWaitsThatEndWithAnAcceptAndAChange"],
+    "scenarios": {"an ask left open": {"tests": ["adapters/cli:TestJSONAnAskLeftOpen"]}, "waits that end with an accept and a change": {"tests": ["adapters/cli:TestJSONWaitsThatEndWithAnAcceptAndAChange"]}, "a decline and its comment": {"tests": ["adapters/cli:TestJSONADeclineAndItsComment"]}}
+  },
+  "commands-3": {
+    "tests": ["adapters/cli:TestJSONAFounding", "adapters/cli:TestJSONAWindowStops", "adapters/cli:TestJSONAnEmptyQueueAndADelivery"],
+    "scenarios": {"a founding": {"tests": ["adapters/cli:TestJSONAFounding"]}, "an empty queue and a delivery": {"tests": ["adapters/cli:TestJSONAnEmptyQueueAndADelivery"]}, "a window stops": {"tests": ["adapters/cli:TestJSONAWindowStops"]}}
+  },
+  "commands-4": {
+    "tests": ["adapters/cli:TestJSONAShownReceiptAndAVerifiedJournal", "adapters/cli:TestJSONTheLogAndReconciliation"],
+    "scenarios": {"a shown receipt and a verified journal": {"tests": ["adapters/cli:TestJSONAShownReceiptAndAVerifiedJournal"]}, "the log and reconciliation": {"tests": ["adapters/cli:TestJSONTheLogAndReconciliation"]}}
   }
 }
