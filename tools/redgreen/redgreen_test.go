@@ -403,3 +403,57 @@ func TestLayoutIsNoChange(t *testing.T) {
 	out, code := r.judge()
 	expect(t, out, code, lines("red-green-tests: ok, 0 red on base, 0 green at head, 0 reported"), 0)
 }
+
+// A helper changed in a test file the base has is reported, and no test is run on its account.
+func TestHelperChanged(t *testing.T) {
+	t.Parallel()
+	r := newRepo(t)
+	r.branch()
+	r.lay("helper-changed")
+	r.commit("Add a helper")
+	out, code := r.judge()
+	expect(t, out, code, lines(
+		"red-green-tests: helpers changed: core/calc/calc_test.go",
+		"red-green-tests: ok, 0 red on base, 0 green at head, 0 reported",
+	), 0)
+}
+
+// A test behind a build tag the default build leaves out is listed as not run, and reported.
+func TestBuildTagNotRun(t *testing.T) {
+	t.Parallel()
+	r := newRepo(t)
+	r.branch()
+	r.lay("tagged")
+	r.commit("Add a tagged test")
+	out, code := r.judge()
+	expect(t, out, code, lines(
+		"red-green-tests: core/calc/tagged_test.go:7: TestTagged: not run: build tag",
+		"red-green-tests: ok, 0 red on base, 0 green at head, 1 reported",
+	), 0)
+}
+
+// A shell test removed is refused, unless Test-Weakened names its file; a trailer with no reason is
+// refused.
+func TestShellTestRemoved(t *testing.T) {
+	t.Parallel()
+	r := newRepo(t)
+	r.lay("shell-green")
+	r.commit("Add a shell test on main")
+	r.branch()
+	r.remove("tests/test_x.sh")
+	c := r.commit("Remove it\n\nTest-Weakened: tests/test_x.sh")
+	out, code := r.judge()
+	expect(t, out, code, lines(
+		"red-green-tests: tests/test_x.sh: removed",
+		"red-green-tests: "+c[:7]+": Test-Weakened: tests/test_x.sh: trailer gives no test and reason",
+		refused,
+	), 1)
+
+	r.commit("Explain\n\nTest-Weakened: tests/test_x.sh: nothing left to test")
+	out, code = r.judge()
+	expect(t, out, code, lines(
+		"red-green-tests: tests/test_x.sh: removed, excused (Test-Weakened: nothing left to test)",
+		"red-green-tests: "+c[:7]+": Test-Weakened: tests/test_x.sh: trailer gives no test and reason",
+		refused,
+	), 1)
+}

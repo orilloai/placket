@@ -279,9 +279,13 @@ func judge(g git, baseRev, headRev string) ([]string, bool, error) {
 		}
 	}
 
-	// Helpers: test files that changed outside any test function, reported for the reviewer.
+	// Helpers: test files the base has that changed outside any test function, or went, reported for
+	// the reviewer. A new helper or fixture serves the new tests, which run anyway.
 	var helpers []string
 	for _, p := range changed {
+		if _, ok := baseTree[p]; !ok {
+			continue
+		}
 		switch {
 		case isGoTestFile(p):
 			if bt.helpers[p] != ht.helpers[p] {
@@ -375,7 +379,7 @@ func judge(g git, baseRev, headRev string) ([]string, bool, error) {
 		return items[i].line < items[j].line
 	})
 	if len(helpers) > 0 {
-		items = append(items, item{text: "helpers changed, their tests not run again: " + strings.Join(helpers, ", ")})
+		items = append(items, item{text: "helpers changed: " + strings.Join(helpers, ", ")})
 	}
 	items = append(items, tail...)
 
