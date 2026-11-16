@@ -18,7 +18,7 @@ These rules hold in every section.
 - **Codes are closed lists.** Each operation returns only the codes its table lists, spelled as the table spells them. A code is a result a caller or a verifier sees; how a program reports its own misuse is not part of the protocol.
 - **Nothing past the crossing.** The protocol judges what crosses a handoff. No requirement, receipt or code states anything about what a receiver does with a part after it was queued for it.
 
-The external standards this text uses are named once, by version: JSON (RFC 8259), UTF-8 (RFC 3629), UTF-16 code units as Unicode 16.0 defines them, SHA-256 (FIPS 180-4), Ed25519 (RFC 8032), base64 (RFC 4648), timestamps (a profile of RFC 3339), DSSE 1.0 (Dead Simple Signing Envelope), the in-toto Statement v1, the A2A protocol 1.0 message format, and JSON Schema draft 2020-12 for the schemas.
+The external standards this text uses are named once, by version: JSON (RFC 8259), JSON Pointer (RFC 6901), UTF-8 (RFC 3629), UTF-16 code units as Unicode 16.0 defines them, SHA-256 (FIPS 180-4), Ed25519 (RFC 8032), base64 (RFC 4648), timestamps (a profile of RFC 3339), DSSE 1.0 (Dead Simple Signing Envelope), the in-toto Statement v1, the A2A protocol 1.0 message format, and JSON Schema draft 2020-12 for the schemas.
 
 ## 1. Canonical form and hashes
 
@@ -1376,7 +1376,7 @@ A command that is refused, or fails, has the members of its refusal beside what 
 | `verify` | `verified`, the number of receipts; `mediator`; `accord`; `card`; with `--founding`, `operator`, `runs`, `module`, an object of the kernel's `version` and `hash`, and `checks`, the list of the loaded checks as the card lists them; `counts`, the number of receipts by product word, `pass`, `block` and `ask`; `questionsClosed`; `questionsOpen`; `releases`; `blockedReleases`; `predicates`, the list of the receipts' predicates in journal order; `claim`, the claim line; `notClaimed`, the scope line |
 | `log` | `log`, the object the command prints without `--json`, which carries the claim and the scope line. `--json` with `--format csv` is the command's error `format` |
 | `reconcile` | `removed`, `unrecorded` and `missing`, as the command prints them without `--json` |
-| `released` | On a match, `receiptId` and `receipt`, those of the receipt the file matched; `kind`, the part's kind; `verified`, `false`; `claim`, the claim line; `notClaimed`, the scope line. With no match, `exit` alone |
+| `released` | On a match, `receiptId` and `receipt`, those of the receipt the file matched; `kind`, the part's kind; `verified`, `false`; `claim`, the claim line, the value's with `--at`; `notClaimed`, the scope line. With no match, `exit` alone |
 
 ### commands-1 One object on standard output
 
@@ -1489,6 +1489,49 @@ On a match the command prints the receipt's id on standard output and exits 0. O
 - Given a receiver's directory holding the receipt of a part blocked for it, with the part's salt, and another key's directory holding the receipt and the salt of a part that crossed to the receiver
 - When each checks the part's bytes
 - Then neither matches
+
+### commands-6 A value checked inside what crossed
+
+`released --file F --at P --value-file V --state DIR` says whether the bytes of the file V are the value at the path P inside a part that crossed to the key whose state directory is DIR, where F holds that part's body as the fetch wrote it. `--at` and `--value-file` go together; either without the other is the error `usage`. The value matches a delivery when F matches it as commands-5 says, and the value at P in F's bytes, read as below, is exactly V's bytes. So a blocked part, a part addressed to another key, and a value inside a body that never crossed to this key never match. Placket normalises nothing: which value counts, and how it is spelled, rounded or chosen, is decided before the part crosses, so that the part the receipt names holds the value as it will be checked, and the caller writes V in those same bytes.
+
+With `--kind K`, given once or more, with or without `--at`, a delivery matches only when its receipt's kind is one of those given, compared as written. Deliveries are tried in the order the key fetched them, and the first that matches is the result, which names its kind.
+
+A path is a JSON Pointer: empty, for the whole body, or a `/` before each reference token, in which `~1` stands for `/` and `~0` for `~`. A path that is not one, such as `total`, or one with a `~` before anything but `0` or `1`, is the command's error `path`.
+
+A body's bytes hold values only when they are one JSON text: well-formed UTF-8 (canonical-6) with no byte order mark, in the grammar of RFC 8259, nested at most 1000 deep (canonical-8), with no escape of an unpaired surrogate (canonical-6), and with no object holding two members whose names are equal once their escapes are read (canonical-4). Numbers are not judged by their value there: `12.50`, `1e3` and `-0` are numbers as written. A body that is not such a text, a text that is not JSON among them, holds no value at any path.
+
+- **What a token selects.** In an object, a reference token selects the member whose name equals the token once the name's escapes are read, case included. In an array, it selects the element at the index the token writes: a decimal integer from 0, with no sign and no leading zero, below the array's length, so `-` and `01` select nothing. A token selects nothing in a string, a number or a literal, and a path with a token that selects nothing holds no value.
+- **The bytes of a value.** The value's bytes are the body's bytes from the value's first byte to its last, exactly as the body spells them: a string with its quotes and its escapes as written, a number as written, an object or an array with whatever whitespace it holds inside. Whitespace before and after the value is not part of it.
+- **A data body.** Its bytes are canonical (crossing-2), so the bytes of a value inside it are that value's canonical bytes (canonical-1), such as `"Ann"` or `1250`, and a caller can write them from the value alone. A data body holds no fraction (canonical-2).
+- **A text or raw body.** A body that crosses as a text, or as raw bytes, that is a JSON text is read by the same rule and keeps every number as written, a fraction included: in the text `{"total": 12.50}` the value at `/total` is the five bytes `12.50`, and `12.5` does not match.
+
+On a match the command prints the receipt's id on standard output and exits 0. On standard error it prints `not verified`, the claim line `claim: these bytes are the value at this path inside the part this receipt let cross to this key.` and the scope line. With no match it prints `no release holds this value at this path` on standard error, nothing on standard output, and exits 1. A file F or V that cannot be read is the command's error `file`. The command says only that these bytes are a value inside the part that crossed under the receipt, never what any party did with the value after.
+
+#### Scenario: a value in a data body, and one byte changed
+
+- Given a data body given to a receiver and fetched into a file
+- When the receiver checks a string, a number, an object and the whole body at their paths, each written as its canonical bytes
+- Then each matches the receipt it was fetched under, exit 0, and with `--json` the object holds that receipt, its kind, `verified` `false`, the value's claim line and the scope line
+- And the same bytes with any one byte changed or a line feed added, a string without its quotes, and an object spelled with a space match nothing: exit 1, and with `--json` `{"exit":1}`
+
+#### Scenario: a fraction in a text body
+
+- Given a JSON text holding the number `12.50` and the array `[ 1, 2 ]`, which a data body refuses, given as a text and as raw bytes and fetched
+- When the receiver checks `/total` and `/items`
+- Then `12.50` and `[ 1, 2 ]` match, and `12.5`, `"12.50"` and `[1,2]` match nothing
+- And a text that is not a JSON text matches as a file but holds no value at any path
+
+#### Scenario: a match limited to kinds
+
+- Given one data body given to a receiver twice, as a comment and as an answer, and fetched
+- When the receiver checks the file and a value inside it with `--kind`
+- Then each kind matches its own receipt and the result names that kind, and a kind neither part has matches nothing
+
+#### Scenario: a block, a part to another key, and a body never released
+
+- Given a receiver's directory holding the receipt and the salt of a body blocked for it, and another key's directory holding the receipt and the salt of the same body that crossed to the receiver
+- When each checks a value inside that body, and the receiver checks the same value at the same path inside other bytes
+- Then none matches
 
 ## 12. The log of a journal
 

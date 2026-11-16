@@ -50,7 +50,11 @@ log-2	every crossing in journal order
 log-2	content by digest and by envelope, never by time
 commands-5	a file that crossed, and one byte changed
 commands-5	a released proposal
-commands-5	a block, and a part to another key'
+commands-5	a block, and a part to another key
+commands-6	a value in a data body, and one byte changed
+commands-6	a fraction in a text body
+commands-6	a match limited to kinds
+commands-6	a block, a part to another key, and a body never released'
 
 printf '%s\n' "$required" | while IFS='	' read -r id title; do
 	n=$(jq -r --arg i "$id" --arg s "$title" '.[$i].scenarios[$s].tests // [] | length' "$list" 2>/dev/null)

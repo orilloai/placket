@@ -4,7 +4,7 @@ This directory is the one normative source of what placket does. Placket is a me
 
 Its scope, in its own words: placket judges what crosses a handoff and nothing after; it makes no claim about what a receiver does with what it received, not training on it, sharing it, retaining it, or the purpose it is put to.
 
-Version 0.1 covers the first job, ask and log, and its proof: founding an Accord, giving and fetching a part, the three answers to a question and release, receipts, their verification and reconciliation, and the conformance vectors that check an implementation; and, in its last two sections, the JSON object each command of placket's command line prints for a script, the check of a file against what crossed, and the log of a journal.
+Version 0.1 covers the first job, ask and log, and its proof: founding an Accord, giving and fetching a part, the three answers to a question and release, receipts, their verification and reconciliation, and the conformance vectors that check an implementation; and, in its last two sections, the JSON object each command of placket's command line prints for a script, the check of a file, or of a value inside it, against what crossed, and the log of a journal.
 
 ## What each part holds
 
