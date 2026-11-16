@@ -232,8 +232,8 @@ func TestReleasedAValueNeverFromABlockAnotherKeyOrABodyNeverReleased(t *testing.
 		args   []string
 		stderr string
 	}{
-		{[]string{"released", "--file", body, "--at", "/total", "--state", a.state("bob")}, "usage: placket released: --at and --value-file go together\nerror usage\n"},
-		{[]string{"released", "--file", body, "--value-file", value, "--state", a.state("bob")}, "usage: placket released: --at and --value-file go together\nerror usage\n"},
+		{[]string{"released", "--file", body, "--at", "/total", "--state", a.state("bob")}, "usage: placket released: --at goes with one of --value and --value-file\nerror usage\n"},
+		{[]string{"released", "--file", body, "--value-file", value, "--state", a.state("bob")}, "usage: placket released: --at goes with one of --value and --value-file\nerror usage\n"},
 		{[]string{"released", "--file", body, "--at", "total", "--value-file", value, "--state", a.state("bob")}, "error path\n"},
 		{[]string{"released", "--file", body, "--at", "/~2", "--value-file", value, "--state", a.state("bob")}, "error path\n"},
 		{[]string{"released", "--file", body, "--at", "/total", "--value-file", filepath.Join(a.dir, "nowhere"), "--state", a.state("bob")}, "error file\n"},

@@ -1376,7 +1376,7 @@ A command that is refused, or fails, has the members of its refusal beside what 
 | `verify` | `verified`, the number of receipts; `mediator`; `accord`; `card`; with `--founding`, `operator`, `runs`, `module`, an object of the kernel's `version` and `hash`, and `checks`, the list of the loaded checks as the card lists them; `counts`, the number of receipts by product word, `pass`, `block` and `ask`; `questionsClosed`; `questionsOpen`; `releases`; `blockedReleases`; `predicates`, the list of the receipts' predicates in journal order; `claim`, the claim line; `notClaimed`, the scope line |
 | `log` | `log`, the object the command prints without `--json`, which carries the claim and the scope line. `--json` with `--format csv` is the command's error `format` |
 | `reconcile` | `removed`, `unrecorded` and `missing`, as the command prints them without `--json` |
-| `released` | On a match, `receiptId` and `receipt`, those of the receipt the file matched; `kind`, the part's kind; `verified`, `false`; `claim`, the claim line, the value's with `--at`; `notClaimed`, the scope line. With no match, `exit` alone |
+| `released` | On a match, `receiptId` and `receipt`, those of the receipt the file, or the kept part, matched; `kind`, the part's kind; `verified`, `false`; `claim`, the claim line, the value's with `--at`; `notClaimed`, the scope line. With no match, `exit` alone. With `--every`, in place of `receiptId`, `receipt` and `kind`, `matches`, the list of every match in the order the key fetched them, each `receiptId`, `kind`, `at`, the receipt's time, `from`, the receipt's sender, and `re` when the part has one; on a match `verified`, `claim` and `notClaimed` beside it |
 
 ### commands-1 One object on standard output
 
@@ -1545,6 +1545,40 @@ On a match the command prints the receipt's id on standard output and exits 0. O
 - Given a receiver's directory holding the receipt and the salt of a body blocked for it, and another key's directory holding the receipt and the salt of the same body that crossed to the receiver
 - When each checks a value inside that body, and the receiver checks the same value at the same path inside other bytes
 - Then none matches
+
+### commands-7 Everything a key kept, checked against what crossed
+
+`released --state DIR`, without `--file`, says whether a part that crossed to the key whose state directory is DIR is among the parts the directory kept, and which. It reads the directory and writes nothing. It tries every part the key fetched and kept, in the order the key fetched them; a part the key gave, and a version it gave as an answer, are not tried. Each kept part is checked as commands-5 checks a file, its body as the fetch wrote it: it matches when the delivery's receipt the directory keeps, of the receipt id the part names, passed, is addressed to the directory's key, names the part's kind, and names as its digest the salted digest of the part's body under the salt the part was kept with (crossing-3). So a kept part whose body, salt or kind was changed after it was kept never matches, and a directory that kept nothing matches nothing. With `--file`, the command is as commands-5 and commands-6 say.
+
+Conditions narrow a match, and a part matches only when every condition given holds:
+
+- **`--kind K`**, given once or more: the receipt's kind is one of those given, as commands-6 says.
+- **`--at P`, with `--value-file V` or `--value S`**: the value at the path P in the part's body is exactly V's bytes, or the UTF-8 of S, read as commands-6 says. `--at` goes with exactly one of the two; `--at` alone, either of them without `--at`, or both of them, is the error `usage`. `--value` is taken with `--file` too.
+- **`--re ID`**: the part's `re`, as its delivery carried it, is ID. A receipt does not state a part's `re`, so this condition reads the kept delivery, not the receipt. `--re` reads kept parts only: with `--file` it is the error `usage`.
+- **`--from ACTOR`**: the receipt's `from` is ACTOR, compared as written. A released proposal is from its proposer. `--from` is taken with `--file` too.
+
+Any release that matches is a match, not only the latest one. Placket keeps no notion of a current or latest release: two answers on one question, or one body released twice, are two matches, and which of them counts is the caller's rule. Without `--every` the result is the first match in fetch order. With `--every` the result is every match, in fetch order, and a caller applies its own rule to the list; `--every` reads kept parts only, and with `--file` it is the error `usage`.
+
+On a match the command prints on standard output the receipt id of the first match, or with `--every` of each match, one a line, and exits 0. On standard error it prints `not verified`, the claim line `claim: for each receipt shown, a part this key kept, under the salt it was fetched with, is the part that receipt let cross to this key.`, or with `--at` `claim: for each receipt shown, these bytes are the value at this path inside a part this key kept, the part that receipt let cross to this key.`, and the scope line. With no match it prints `no part this key kept matches`, or with `--at` `no part this key kept holds this value at this path`, on standard error, nothing on standard output, and exits 1; with `--every` and `--json` the object then holds `matches`, empty. A value file that cannot be read is the command's error `file`, and a path that is not a JSON Pointer the error `path`. The command says only that a kept part is what crossed under each receipt shown, never what any party did with it after.
+
+#### Scenario: every condition alone and combined
+
+- Given a receiver that fetched and kept, in order, a proposal released after an accept, from its proposer with no `re`; a changed version of a second question, from the decider with `re` that question, holding the same value at `/total`; and a changed version of a third question, from the decider with `re` the third, holding another value there
+- When the receiver asks with no condition, and with each of `--kind`, `--at` and `--value`, `--re` and `--from`, alone and together
+- Then each answer is the first part in fetch order for which every condition given holds, and a set of conditions no single part meets matches nothing, though each holds for some part
+
+#### Scenario: every match in fetch order
+
+- Given the same directory
+- When the receiver asks with `--every`, and with `--every` and a condition
+- Then standard output holds the receipt id of each match, one a line, in fetch order, the two parts that hold the same value both among them, and with `--json` `matches` holds each match's receipt id, kind, time, sender and `re` when it has one
+- And a condition that no part meets prints `no part this key kept matches`, exit 1, and with `--json` `{"exit":1,"matches":[]}`
+
+#### Scenario: a kept line changed, and nothing kept
+
+- Given a receiver's kept part whose body has one byte changed or a byte added, or whose salt, kind or receipt id is changed, the receipt id to another part's or to one the directory does not hold
+- When the receiver asks
+- Then the changed part never matches, the parts beside it still do, and a directory that kept nothing, or that holds only parts its key gave and versions it gave as answers, matches nothing: exit 1
 
 ## 12. The log of a journal
 
