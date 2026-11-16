@@ -1,0 +1,58 @@
+
+== 1. keys, terms and the founding set
+founding: three parties, roles proposer, approver, receiver
+
+== 2. the window
+window: started
+
+== 3. records proposed, and each one answered
+proposer: gives {"currency":"EUR","price":"18.40","sku":"TB-100"}: ask, exit 4
+approver: reads {"currency":"EUR","price":"18.40","sku":"TB-100"}
+approver: accepts: answer pass, release released, exit 0
+proposer: gives {"currency":"EUR","price":"7.25","sku":"TB-200"}: ask, exit 4
+approver: reads {"currency":"EUR","price":"7.25","sku":"TB-200"}
+approver: changes it to {"currency":"EUR","price":"7.50","sku":"TB-200"}: answer pass, release released, exit 0
+proposer: gives {"currency":"EUR","price":"3.00","sku":"TB-300"}: ask, exit 4
+approver: reads {"currency":"EUR","price":"3.00","sku":"TB-300"}
+approver: declines: answer block, release none, exit 0
+
+== 4. the receiver fetches every delivery to files, and keeps each one
+receiver: fetched a proposal into inbox/
+receiver: fetched a changed-version into inbox/
+
+== 5. the guard, before each export
+guard: the accepted record, spelled another way
+guard: exports {"currency":"EUR","price":"18.40","sku":"TB-100"}: released as a proposal
+guard: the approver's changed version
+guard: exports {"currency":"EUR","price":"7.50","sku":"TB-200"}: released as a changed-version
+guard: the record as proposed, before the approver changed it
+guard: refuses {"currency":"EUR","price":"7.25","sku":"TB-200"}: released exit 1
+guard: the declined record, which was blocked
+guard: refuses {"currency":"EUR","price":"3.00","sku":"TB-300"}: released exit 1
+guard: the accepted record with one byte changed
+guard: refuses {"currency":"EUR","price":"18.41","sku":"TB-100"}: released exit 1
+guard: a record never proposed
+guard: refuses {"currency":"EUR","price":"1.00","sku":"TB-900"}: released exit 1
+export: 2 records exported
+
+== 6. a record replaced later still matches its own receipt
+proposer: gives {"currency":"EUR","price":"19.10","sku":"TB-100"}: ask, exit 4
+approver: reads {"currency":"EUR","price":"19.10","sku":"TB-100"}
+approver: accepts: answer pass, release released, exit 0
+receiver: fetched 1 more
+guard: the old record of TB-100, since replaced
+guard: exports {"currency":"EUR","price":"18.40","sku":"TB-100"}: released as a proposal
+guard: released --every for TB-100: 2 matches, in fetch order
+guard: not the latest release of TB-100: a caller that needs only the latest refuses it
+
+== 7. the log of every crossing, and the journal verified
+log: proposal ask maybe answer accepted, released
+log: proposal ask maybe answer changed, released
+log: proposal ask maybe answer declined
+log: comment pass ok
+log: proposal ask maybe answer accepted, released
+log: claim: each receipt is this mediator's signed decision about one part under this Accord's terms.
+log: not claimed: what any party did with a part after it crossed; anything that did not go through this mediator; reworded or derived content; who was at a key.
+verify: 12 receipts verified, exit 0
+verify: pass 7, block 1, ask 4, releases 3
+window: stopped
