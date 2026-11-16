@@ -353,6 +353,85 @@ func TestJSONEveryDeliveryAtOnce(t *testing.T) {
 	}
 }
 
+// TestJSONEveryDeliveryAtOnceIntoADirectory fetches every delivery into a directory with --json,
+// from an empty queue and then with three notes queued: the object holds deliveries, every delivery
+// fetched in the order the notes were given, each its line of kept.jsonl without its text and with
+// the path of the file that holds its body. When the first name is taken, the list holds the
+// delivery that was fetched and kept, with no path, beside error file kept (commands-3).
+func TestJSONEveryDeliveryAtOnceIntoADirectory(t *testing.T) {
+	t.Parallel()
+	a := newAccord(t, "p1", "p2")
+	a.start(t)
+	out := filepath.Join(a.dir, "out")
+	if err := os.Mkdir(out, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	r := run(t, env(), a.as("p2", "get", "--all", "--out", out, "--json")...)
+	if r.code != 0 || r.stdout != `{"deliveries":[],"exit":0}`+"\n" || r.stderr != "no delivery\n" {
+		t.Fatalf("an empty queue: %v", r)
+	}
+
+	texts := []string{"one", "two", "three"}
+	ids := give(t, a, texts)
+	r = run(t, env(), a.as("p2", "get", "--all", "--out", out, "--json")...)
+	if r.code != 0 {
+		t.Fatalf("get --all --out --json: %v", r)
+	}
+	o := object(t, r)
+	members(t, o, "exit", "deliveries")
+	var list []json.RawMessage
+	if err := json.Unmarshal(o["deliveries"], &list); err != nil || len(list) != len(texts) {
+		t.Fatalf("deliveries %s, want %d", o["deliveries"], len(texts))
+	}
+	kept := keptLines(t, a.state("p2"))
+	if len(kept) != len(texts) {
+		t.Fatalf("kept %v", kept)
+	}
+	var heads []string
+	for i, raw := range list {
+		d := sub(t, raw)
+		members(t, d, "receiptId", "receipt", "messageId", "kind", "salt", "path")
+		is(t, d, "receiptId", quote(ids[i]))
+		path := filepath.Join(out, strings.TrimPrefix(ids[i], "sha256:")+".note")
+		is(t, d, "path", quote(path))
+		if b, err := os.ReadFile(path); err != nil || string(b) != texts[i] {
+			t.Fatalf("the body of %d: %q %v", i, b, err)
+		}
+		want := map[string]json.RawMessage{"path": json.RawMessage(quote(path))}
+		for k, v := range kept[i] {
+			if k != "text" {
+				want[k] = v
+			}
+		}
+		if !sameJSON(t, string(raw), mapJSON(t, want)) {
+			t.Fatalf("delivery %d is %s, want %s", i, raw, mapJSON(t, want))
+		}
+		heads = append(heads, "delivery "+ids[i]+" kind note messageId "+str(d["messageId"])+" salt "+str(d["salt"]))
+	}
+	if r.stderr != strings.Join(heads, "\n")+"\n" {
+		t.Fatalf("stderr %q, want %q", r.stderr, heads)
+	}
+
+	ids = give(t, a, []string{"four", "five"})
+	if err := os.WriteFile(filepath.Join(out, strings.TrimPrefix(ids[0], "sha256:")+".note"), []byte("mine"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	r = run(t, env(), a.as("p2", "get", "--all", "--out", out, "--json")...)
+	if r.code != 3 {
+		t.Fatalf("get --all --out --json onto a name taken: %v", r)
+	}
+	o = object(t, r)
+	members(t, o, "exit", "deliveries", "error", "detail")
+	is(t, o, "error", `"file"`)
+	is(t, o, "detail", `["kept"]`)
+	if err := json.Unmarshal(o["deliveries"], &list); err != nil || len(list) != 1 {
+		t.Fatalf("deliveries %s, want 1", o["deliveries"])
+	}
+	d := sub(t, list[0])
+	members(t, d, "receiptId", "receipt", "messageId", "kind", "salt")
+	is(t, d, "receiptId", quote(ids[0]))
+}
+
 // mapJSON is a JSON object's members as JSON text.
 func mapJSON(t testing.TB, o map[string]json.RawMessage) string {
 	t.Helper()

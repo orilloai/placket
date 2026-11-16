@@ -36,12 +36,14 @@ maybe-4	a question nobody can answer
 maybe-6	the proposer answers its own proposal
 commands-1	a give that passes
 commands-1	a refused command
+commands-1	every result under every flag
 commands-2	an ask left open
 commands-2	waits that end with an accept and a change
 commands-2	a decline and its comment
 commands-3	a founding
 commands-3	an empty queue and a delivery
 commands-3	every delivery at once
+commands-3	every delivery at once into a directory
 commands-3	a window stops
 commands-4	a shown receipt and a verified journal
 commands-4	the log and reconciliation
