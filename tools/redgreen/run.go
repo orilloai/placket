@@ -64,7 +64,8 @@ func addWorktree(repo git, rev string) (*worktree, error) {
 	if err != nil {
 		return nil, err
 	}
-	if _, err := repo.run("", "worktree", "add", "--quiet", "--detach", dir, rev); err != nil {
+	// The judged repository's hooks are not run: a checkout here is the check's, not the builder's.
+	if _, err := repo.run("", "-c", "core.hooksPath=/dev/null", "worktree", "add", "--quiet", "--detach", dir, rev); err != nil {
 		os.RemoveAll(dir)
 		return nil, err
 	}
@@ -118,7 +119,16 @@ func (w *worktree) runGo(tests []goTest) (map[string]outcome, error) {
 		if err != nil {
 			return nil, err
 		}
+		// A test that did not run, since another of the run panicked or exited, runs again alone, so
+		// that a test green on base is never counted red for a neighbour's sake.
 		for _, n := range names {
+			if got[n] == notRun && len(names) > 1 {
+				alone, err := w.runPackage(dir, []string{n})
+				if err != nil {
+					return nil, err
+				}
+				got[n] = alone[n]
+			}
 			res[dir+"\x00"+n] = got[n]
 		}
 	}
@@ -175,6 +185,9 @@ func (w *worktree) runPackage(dir string, names []string) (map[string]outcome, e
 		case "skip":
 			res[ev.Test] = skipped
 		}
+	}
+	if err := sc.Err(); err != nil {
+		return nil, fmt.Errorf("go test: reading its output: %v", err)
 	}
 	for _, n := range names {
 		if _, ok := res[n]; !ok {

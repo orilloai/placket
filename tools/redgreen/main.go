@@ -184,7 +184,8 @@ func judge(g git, baseRev, headRev string) ([]string, bool, error) {
 		switch {
 		case !ok:
 			t.kind = "added"
-		case h.skips > b.skips:
+		case h.skips > b.skips, b.built && !h.built:
+			// A new skip, or a build tag that now leaves the test out of the default build.
 			t.kind = "skipped"
 		case h.body != b.body:
 			t.kind = "changed"
@@ -220,7 +221,7 @@ func judge(g git, baseRev, headRev string) ([]string, bool, error) {
 	tested := false
 	for _, t := range ts {
 		names[t.name] = true
-		if t.kind != "removed" {
+		if t.run {
 			tested = true
 		}
 	}

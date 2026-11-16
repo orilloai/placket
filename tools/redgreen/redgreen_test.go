@@ -457,3 +457,51 @@ func TestShellTestRemoved(t *testing.T) {
 		refused,
 	), 1)
 }
+
+// A build tag added to a test file the default build read before leaves its tests out: each is
+// skipped, as if it called Skip.
+func TestBuildTagAddedSkips(t *testing.T) {
+	t.Parallel()
+	r := newRepo(t)
+	r.branch()
+	r.lay("tagged-existing")
+	r.commit("Tag the tests")
+	out, code := r.judge()
+	expect(t, out, code, lines(
+		"red-green-tests: core/calc/calc_test.go:7: TestAdd: skipped",
+		"red-green-tests: core/calc/calc_test.go:13: TestOld: skipped",
+		"red-green-tests: core/calc/calc_test.go:19: TestKeep: skipped",
+		refused,
+	), 1)
+}
+
+// An added test green on base is found green even when another test of its run panics at the base
+// and ends the run before it: it runs again alone.
+func TestNeighbourPanics(t *testing.T) {
+	t.Parallel()
+	r := newRepo(t)
+	r.branch()
+	r.lay("panics", "sub-fix")
+	r.commit("Fix Sub")
+	out, code := r.judge()
+	expect(t, out, code, lines(
+		"red-green-tests: core/calc/ab_test.go:5: TestA: red (fails)",
+		"red-green-tests: core/calc/ab_test.go:11: TestB: green on base",
+		refused,
+	), 1)
+}
+
+// A test that is not run, behind a build tag, does not count as the test of a code change.
+func TestTaggedTestIsNoTest(t *testing.T) {
+	t.Parallel()
+	r := newRepo(t)
+	r.branch()
+	r.lay("tagged", "sub-fix")
+	r.commit("Fix Sub, with a test that never runs")
+	out, code := r.judge()
+	expect(t, out, code, lines(
+		"red-green-tests: core/calc/tagged_test.go:7: TestTagged: not run: build tag",
+		"red-green-tests: core/calc/calc.go: code changed, and no test added or changed",
+		refused,
+	), 1)
+}
