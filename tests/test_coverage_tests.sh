@@ -54,7 +54,10 @@ commands-5	a block, and a part to another key
 commands-6	a value in a data body, and one byte changed
 commands-6	a fraction in a text body
 commands-6	a match limited to kinds
-commands-6	a block, a part to another key, and a body never released'
+commands-6	a block, a part to another key, and a body never released
+commands-7	every condition alone and combined
+commands-7	every match in fetch order
+commands-7	a kept line changed, and nothing kept'
 
 printf '%s\n' "$required" | while IFS='	' read -r id title; do
 	n=$(jq -r --arg i "$id" --arg s "$title" '.[$i].scenarios[$s].tests // [] | length' "$list" 2>/dev/null)

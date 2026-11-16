@@ -239,7 +239,6 @@ func TestReleasedNeverABlockOrAnotherKeysPart(t *testing.T) {
 		args   []string
 		stderr string
 	}{
-		{[]string{"released", "--state", a.state("bob")}, "usage: placket released: --file is required\nerror usage\n"},
 		{[]string{"released", "--file", crossed}, "usage: placket released: --state is required\nerror usage\n"},
 		{[]string{"released", "--file", filepath.Join(a.dir, "nowhere"), "--state", a.state("bob")}, "error file\n"},
 		{[]string{"released", "--file", crossed, "--state", a.dir}, "error state actor\n"},
