@@ -1,4 +1,4 @@
-# `make ci` is placket's one entry point for checks; GitHub runs it on every push and pull request.
+# `make ci` is placket's one entry point for checks; GitHub runs it on every pull request and every push to main.
 #
 # Every step is a target of its own, named for the rule it enforces (AGENTS.md) or for what it does.
 # The output contract:

@@ -1,100 +1,61 @@
-# Loom's checks on a product repository: `lock` and `ci`. Landed and changed only by the maintainer's merge;
-# the writer's App has no workflows permission.
+# Loom's checks on a product repository: `red-green-tests` and `ci`. Landed and changed only by the
+# maintainer's merge; the writer's App has no workflows permission.
 #
-# lock (pushes to wip/**): every commit marked `Loom-Lock: tests` touches only tests, and each test it adds
-#       fails at that commit and passes at the head; no other commit touches a test file; no merge commits.
-# ci   (pushes to wip/** and pull requests): `make ci` passes at the head. Required on main.
+# red-green-tests (pull requests, drafts included, and pushes to main): every test the change adds or
+#       changes fails at the merge base with main and passes at the head, and no test is removed or
+#       skipped unexplained (AGENTS.md, red-green-tests; docs/adr/0013-red-green-tests.md). It runs
+#       tools/redgreen built from main's copy, never the branch's.
+# ci   (pull requests, drafts included, and pushes to main): `make ci` passes at the head. Required on main.
 name: loom
 on:
   push:
-    branches: ["wip/**", "!wip/hold-**"]
+    branches: [main]
+  # A branch is checked through its pull request, so one push runs each job once. No job is skipped
+  # by `if:`: a skipped job reports Success even as a required check.
   pull_request:
 permissions:
   contents: read
 env:
   GO_VERSION: "1.27.4"
 jobs:
-  lock:
-    if: github.event_name == 'push'
+  red-green-tests:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
+          # Every branch, so origin/main and the merge base are here without a fetch that needs the token.
           fetch-depth: 0
+          persist-credentials: false
       - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
         with:
           go-version: ${{ env.GO_VERSION }}
           # Go's module and build caches, keyed on every module's go.sum (there is none at the root).
-          # Test results never come from it: make ci runs go test with -count=1.
+          # Test results never come from it: redgreen runs go test with -count=1.
           cache: true
           cache-dependency-path: "**/go.sum"
-      # Inline on purpose: the writer cannot change a workflow file, but could change a script beside it.
-      - name: New tests are red at their lock commit and green at the head
+      - name: Tests are red at the merge base with main and green at the head
         shell: bash
         run: |
           set -uo pipefail
-          is_test() { case "$1" in *_test.go | testdata/* | */testdata/* | tests/*) return 0 ;; *) return 1 ;; esac; }
-          # Tests a commit adds: "go <dir> <name>" for each new Test or Fuzz func, "sh <file>" for each new tests/test_*.sh.
-          added() {
-            git diff --unified=0 "$1^" "$1" -- '*_test.go' | awk '
-              /^\+\+\+ b\// { f = substr($0, 7); next }
-              /^\+func (Test|Fuzz)([A-Z0-9_][A-Za-z0-9_]*)?\(/ { n = $2; sub(/\(.*/, "", n); if (n == "TestMain") next; d = f; sub(/\/[^\/]*$/, "", d); if (d == f) d = "."; print "go " d " " n }'
-            git diff --name-only --diff-filter=A "$1^" "$1" -- 'tests/test_*.sh' | sed 's/^/sh /'
-          }
-          # One test, at the checked-out commit. Go runs from the nearest module root; no module means it cannot build.
-          run() {
-            if [ "$1" = sh ]; then sh "$2" >/dev/null 2>&1; return; fi
-            local dir=$2 mod=$2
-            while [ "$mod" != . ] && [ ! -f "$mod/go.mod" ]; do mod=$(dirname "$mod"); done
-            [ -f "$mod/go.mod" ] || return 1
-            local rel=${dir#"$mod"}; rel=./${rel#/}
-            out=$(cd "$mod" && go test -count=1 -run "^$3\$" "$rel" -v 2>&1) || return 1
-            # The test itself must have run and passed: a skip, or a package that merely builds, is not a pass.
-            grep -qE -- "^\s*--- PASS: $3 " <<<"$out"
-          }
-          git fetch -q origin main
-          base=$(git merge-base origin/main HEAD)
-          head=$(git rev-parse HEAD)
-          rc=0; locks=0; : >"$RUNNER_TEMP/locked"
-          if [ -n "$(git rev-list --merges "$base..$head")" ]; then
-            echo "::error::the branch has merge commits; rebase onto main instead"; exit 1
+          if ! git cat-file -e origin/main:tools/redgreen/go.mod 2>/dev/null; then
+            echo "red-green-tests: not on main yet"; exit 0
           fi
-          for c in $(git rev-list --reverse "$base..$head"); do
-            if [ "$(git log -1 --format='%(trailers:key=Loom-Lock,valueonly,separator=)' "$c" | tr -d '[:space:]')" = tests ]; then
-              locks=$((locks + 1))
-              for f in $(git diff-tree --no-commit-id --name-only -r "$c"); do
-                is_test "$f" || { echo "::error::lock commit ${c:0:7} touches $f, which is not a test"; rc=1; }
-              done
-              tests=$(added "$c")
-              if [ -z "$tests" ]; then
-                # Changing existing tests is allowed only here, in plain sight; reviewers judge it.
-                echo "::warning::lock commit ${c:0:7} adds no test and changes: $(git diff-tree --no-commit-id --name-only -r "$c" | paste -sd, -)"
-                continue
-              fi
-              git checkout -q "$c"
-              while read -r kind a b; do
-                if run "$kind" "$a" "$b"; then echo "::error::${b:-$a} passes at its lock commit ${c:0:7}; a new test must fail before the change"; rc=1
-                else echo "red at ${c:0:7}: ${b:-$a}"; echo "$kind $a $b" >>"$RUNNER_TEMP/locked"; fi
-              done <<<"$tests"
-            else
-              for f in $(git diff-tree --no-commit-id --name-only -r "$c"); do
-                is_test "$f" && { echo "::error::commit ${c:0:7} changes $f; tests change only in a 'Loom-Lock: tests' commit"; rc=1; }
-              done
-            fi
-          done
-          [ $locks -gt 0 ] || { echo "::error::no commit since main is marked 'Loom-Lock: tests'"; exit 1; }
-          git checkout -q "$head"
-          while read -r kind a b; do
-            [ -n "$kind" ] || continue
-            if run "$kind" "$a" "$b"; then echo "green at head: ${b:-$a}"; else echo "::error::${b:-$a} does not pass at the head"; rc=1; fi
-          done <"$RUNNER_TEMP/locked"
-          exit $rc
+          # main's copy, so a change cannot alter the check that judges it.
+          git worktree add --quiet --detach "$RUNNER_TEMP/main" origin/main ||
+            { echo "::error::red-green-tests: no worktree of origin/main"; exit 3; }
+          (cd "$RUNNER_TEMP/main/tools/redgreen" && go build -o "$RUNNER_TEMP/redgreen" .) ||
+            { echo "::error::red-green-tests: tools/redgreen on main does not build"; exit 3; }
+          git worktree remove --force "$RUNNER_TEMP/main"
+          base=$(git merge-base origin/main HEAD) ||
+            { echo "::error::red-green-tests: no merge base of origin/main and HEAD"; exit 3; }
+          # 0 ok, 1 refused, 3 could not judge; anything but 0 fails the job.
+          "$RUNNER_TEMP/redgreen" "$base" HEAD
   ci:
-    # A unit's pull request head was already checked on its wip/ push; the run on the PR would repeat it.
-    if: github.event_name == 'push' || !startsWith(github.head_ref, 'unit/')
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
       - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
         with:
           go-version: ${{ env.GO_VERSION }}
