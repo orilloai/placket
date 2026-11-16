@@ -232,3 +232,17 @@ scripts: build
 .PHONY: demo
 demo:
 	@sh scripts/demo.sh
+
+# red-green-tests: every test the change adds or changes fails without its code and passes with it,
+# and no test is removed or skipped unexplained (AGENTS.md, red-green-tests). Not a step of ci: it
+# needs main and scratch worktrees. It judges the commits from the merge base of BASE and HEAD to
+# HEAD, so commit first; uncommitted changes are not read. The workflow runs the same program, built
+# from main's copy (docs/adr/0013-red-green-tests.md). It exits 0 when ok, 1 when refused and 3 when
+# it could not judge.
+BASE ?= origin/main
+.PHONY: red-green-tests
+red-green-tests:
+	@set -e; $(OWN_WORK); \
+		(cd tools/redgreen && go build -o "$(WORK)/redgreen" .) || { echo "$@: error: tools/redgreen does not build"; exit 3; }; \
+		b=$$(git merge-base "$(BASE)" HEAD) || { echo "$@: error: no merge base of $(BASE) and HEAD"; exit 3; }; \
+		"$(WORK)/redgreen" "$$b" HEAD
