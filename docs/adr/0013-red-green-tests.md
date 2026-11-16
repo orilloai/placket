@@ -1,6 +1,6 @@
 # 0013. Tests are shown red against main and green at the head, however the branch was built
 
-Status: accepted. Date: 2026-11-16.
+Status: accepted. Date: 2026-11-16. Amended 2026-11-16: the job runs on pull requests and on pushes to `main`, not on every push.
 
 ## Context
 
@@ -26,7 +26,7 @@ The property wanted is about the change as a whole: every test the change adds o
 
   A `<test>` is a Go test's name or a shell test's path. A trailer that names a test the change does not touch is refused, so a stale trailer cannot excuse a later test; one with no reason is refused too. The names carry no `Loom-` prefix: the swarm and outside contributors use the same three. Every excused item is listed with its reason, for the reviewer to judge.
 - **One tested Go program, `tools/redgreen/`,** a module of its own like `tools/guard/`, standard library only, so the check can be read and its cases tested. Its tests build small git repositories under a temporary directory from the fixture trees under `tools/redgreen/testdata/`. It prints one line per item, `red-green-tests: <file>:<line>: <test>: <outcome>`, then `red-green-tests: ok, <n> red on base, <n> green at head, <n> reported` or `red-green-tests: refused: <why> (AGENTS.md, red-green-tests)`. It exits 0 when ok, 1 when refused, and 3 when it could not judge: a bad argument, no `go` or `git`, a base that is not an ancestor of the head. A tool error is never a pass.
-- **Not a step of `make ci`.** It needs `main` and two scratch worktrees, and it runs the tests a second time. `make red-green-tests BASE=origin/main` runs it from a checkout, for a builder before a push; the workflow runs it as its own job, beside `ci`, on every push to a branch other than `main` and on every pull request.
+- **Not a step of `make ci`.** It needs `main` and two scratch worktrees, and it runs the tests a second time. `make red-green-tests BASE=origin/main` runs it from a checkout, for a builder before a push; the workflow runs it as its own job, beside `ci`, on every pull request, drafts included, and on every push to `main`.
 - **Run from `main`'s copy.** The workflow builds `tools/redgreen` from a worktree of `origin/main`, never from the branch, so a change cannot alter the check that judges it. That was the reason the old check was written inline in the workflow file, where the writer could not change it; building from `main` meets the same reason with a program that can be tested. When `main` has no `tools/redgreen` yet, the job says so and passes, which can happen only between this change and the workflow change that follows it.
 - **This supersedes one sentence of 0007**, that a check and its tests change "under the same lock commits as any other test". A check and its tests now change like any other code and test, judged by `red-green-tests`; a rules change still stands alone and only the maintainer merges it. 0007 is not edited.
 
@@ -42,6 +42,6 @@ The property wanted is about the change as a whole: every test the change adds o
 ## Consequences
 
 - A branch's commits can be cut any way: squashed, mixed, merged from `main`. The `Loom-Lock: tests` trailer and the rule against merge commits are retired. A branch that still carries a lock commit passes like any other.
-- Branches need no prefix: the job runs on every branch but `main`, and on every pull request, forks included, with a read-only token.
+- Branches need no prefix: the job runs on every pull request, forks and drafts included, with a read-only token, and on every push to `main`. A branch with no pull request is not checked by GitHub; a builder who wants GitHub's run early opens a draft. One push to a branch with a pull request runs each job once, not once for the push and again for the pull request.
 - Writing tests first stays the habit, and a branch's history may still show it, but the proof no longer depends on it.
 - A test that only passes because of the change's code is the proof; a test that merely compiles against new code is the reviewer's to judge, from the report.
