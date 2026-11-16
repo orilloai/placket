@@ -165,7 +165,11 @@ var commandFlags = []commandRow{
 		"state":      {input, "the one state directory it matches against", nil},
 		"at":         {input, "the one value inside the file it matches", nil},
 		"value-file": {input, "the one value's bytes", nil},
-		"kind":       {input, "each kind narrows the one match", nil}}},
+		"value":      {input, "the one value, as text", nil},
+		"kind":       {input, "each kind narrows the one match", nil},
+		"re":         {input, "narrows the one match to a kept part's re", nil},
+		"from":       {input, "narrows the one match to a sender", nil},
+		"every":      {input, "lists every match it reads in the one list it prints; it makes nothing and fetches nothing", nil}}},
 }
 
 // TestJSONEveryResultUnderEveryFlag checks that the table lists every command and exactly its
