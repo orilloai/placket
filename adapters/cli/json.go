@@ -40,6 +40,7 @@ const (
 	memberAccord     = "accord"
 	memberCard       = "card"
 	memberOperator   = "operator"
+	memberMatches    = "matches"
 )
 
 // A report is the object a command builds: the members put so far, and the object members go into

@@ -46,17 +46,8 @@ func (d delivery) bytes() []byte {
 	return c
 }
 
-// about reports whether a delivery is what its receipt says it is, before anything of it is
-// recorded, printed or written: a receipt that decodes (receipts.Decode, which verifies nothing),
-// that passed, to this key under this Accord, of the id and kind the delivery names, whose digest
-// is that of the delivery's salt and its one body. So a delivery's kind is a label and its receipt
-// id a typed hash, whatever window sent it; reconcile and verify, under the mediator's key, are
-// what show the receipt is the mediator's.
-func (s *session) about(d delivery) bool {
-	st, err := receipts.Decode(d.Receipt)
-	if err != nil {
-		return false
-	}
+// oneBody reports whether the delivery holds exactly one body, a raw one in strict standard base64.
+func (d delivery) oneBody() bool {
 	bodies := 0
 	for _, has := range []bool{d.Text != nil, d.Raw != nil, len(d.Data) > 0} {
 		if has {
@@ -68,9 +59,23 @@ func (s *session) about(d delivery) bool {
 			return false
 		}
 	}
+	return bodies == 1
+}
+
+// about reports whether a delivery is what its receipt says it is, before anything of it is
+// recorded, printed or written: a receipt that decodes (receipts.Decode, which verifies nothing),
+// that passed, to this key under this Accord, of the id and kind the delivery names, whose digest
+// is that of the delivery's salt and its one body. So a delivery's kind is a label and its receipt
+// id a typed hash, whatever window sent it; reconcile and verify, under the mediator's key, are
+// what show the receipt is the mediator's.
+func (s *session) about(d delivery) bool {
+	st, err := receipts.Decode(d.Receipt)
+	if err != nil {
+		return false
+	}
 	salt, err := hex.DecodeString(d.Salt)
 	p := st.Predicate
-	return err == nil && bodies == 1 && st.ID == d.ReceiptID && st.Subject.Name == d.Kind &&
+	return err == nil && d.oneBody() && st.ID == d.ReceiptID && st.Subject.Name == d.Kind &&
 		p.Verdict == string(composition.Pass) && p.To == s.key.Reference() && p.Accord == s.client.Accord &&
 		receipts.Digest(salt, d.bytes()) == st.Subject.Digest
 }
