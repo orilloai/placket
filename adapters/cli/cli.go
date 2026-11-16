@@ -106,6 +106,8 @@ type run struct {
 	realOut io.Writer
 	asJSON  bool
 	rep     *report
+	// fs is the flag set the command read, so that what a command takes can be listed.
+	fs *flag.FlagSet
 }
 
 type command func(r *run, args []string) int
@@ -234,6 +236,7 @@ func flags(name string) *flag.FlagSet {
 // parse parses the flags; a flag that is wrong, or a flag required and missing, is a usage error.
 // --json, once read, decides whether the result is printed as JSON.
 func (r *run) parse(fs *flag.FlagSet, args []string, required ...string) bool {
+	r.fs = fs
 	err := fs.Parse(args)
 	if err == nil {
 		r.setJSON(fs.Lookup(flagJSON).Value.String() == "true")
