@@ -19,6 +19,7 @@ Each rule has a short public name. A check in `make ci` starts its message with 
 | `cmd/placket/` | The binary: `main` only. |
 | `scripts/` | Scripts run by hand, such as the demo behind `make demo`. |
 | `recipes/<name>/` | One job's templates, agents and plugin, on the core's exported API only. |
+| `patterns/` | Runnable ways to use placket: one directory per caller's job, `patterns/<job>/`, each a template to copy that uses the `placket` binary and `jq` only, with what a run prints; `patterns/README.md` states their shape and lists them. `make ci` runs each one (`tests/test_patterns.sh`). Not part of the requirement text or the frozen formats' register. |
 | `out/` | Notes a builder leaves on a change's branch for the next round of that change. Removed before the change merges, so never on `main`. |
 | `.github/workflows/` | The workflows that run `make ci`. The maintainer's alone. |
 
