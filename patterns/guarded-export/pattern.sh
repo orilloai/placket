@@ -145,20 +145,34 @@ jq -r '.deliveries[] | "receiver: fetched a \(.kind) into " + (.path | sub("/[^/
 # The receiver's state directory, where get --keep kept every part it fetched.
 receiver_state=receiver.key.state/${accord#sha256:}
 
+# Where the exported value sits inside a part. Here the record is the whole part. A part that wraps the
+# value in a body, such as {"summary":...,"payload":...}, names the value's JSON Pointer, such as
+# /payload: then released reads the value at that path in every part the receiver kept.
+at= # CHANGE: the path of the value inside the part; empty for the whole part
+
 # guard FILE: the export step's guard. It holds only the record it is about to export, in FILE: no
 # delivery, no file of inbox, no receipt id. It normalizes the record as the proposer did and asks
-# released whether exactly those bytes are a whole part, a proposal or a changed version, that
-# crossed to the receiver and that the receiver kept. Only then does the export run.
+# released whether exactly those bytes are a whole part, or the value at $at inside one, of a
+# proposal or a changed version that crossed to the receiver and that the receiver kept. Only then
+# does the export run.
 guard() {
 	normalize <"$1" >"$1.check"
+	value=$1.check
+	if [ -n "$at" ]; then
+		# A value inside a body has no newline after it, and released compares its bytes exactly.
+		printf %s "$(cat "$value")" >"$value.at"
+		set -- --at "$at" --value-file "$value.at"
+	else
+		set -- --file "$value"
+	fi
 	rc=0
 	placket released --json --state "$receiver_state" --kind proposal --kind changed-version \
-		--file "$1.check" >released.out 2>/dev/null || rc=$?
+		"$@" >released.out 2>/dev/null || rc=$?
 	if [ "$rc" -eq 0 ]; then
-		cat "$1.check" >>export.jsonl # CHANGE: your export step, run only on a match
-		say guard "exports $(cat "$1.check"): released as a $(jq -r '.kind' released.out)"
+		cat "$value" >>export.jsonl # CHANGE: your export step, run only on a match
+		say guard "exports $(cat "$value"): released as a $(jq -r '.kind' released.out)"
 	else
-		say guard "refuses $(cat "$1.check"): released exit $rc"
+		say guard "refuses $(cat "$value"): released exit $rc"
 	fi
 }
 
