@@ -297,6 +297,10 @@
     "tests": ["adapters/cli:TestReleasedAValueInADataBodyAndOneByteChanged", "adapters/cli:TestReleasedAFractionInATextBody", "adapters/cli:TestReleasedAMatchLimitedToKinds", "adapters/cli:TestReleasedAValueNeverFromABlockAnotherKeyOrABodyNeverReleased", "adapters/internal/pointer:TestValueIsTheBytesAsTheBodySpellsThem"],
     "scenarios": {"a value in a data body, and one byte changed": {"tests": ["adapters/cli:TestReleasedAValueInADataBodyAndOneByteChanged"]}, "a fraction in a text body": {"tests": ["adapters/cli:TestReleasedAFractionInATextBody", "adapters/internal/pointer:TestValueIsTheBytesAsTheBodySpellsThem"]}, "a match limited to kinds": {"tests": ["adapters/cli:TestReleasedAMatchLimitedToKinds"]}, "a block, a part to another key, and a body never released": {"tests": ["adapters/cli:TestReleasedAValueNeverFromABlockAnotherKeyOrABodyNeverReleased"]}}
   },
+  "commands-7": {
+    "tests": ["adapters/cli:TestReleasedKeptEveryConditionAloneAndCombined", "adapters/cli:TestReleasedKeptEveryMatchInFetchOrder", "adapters/cli:TestReleasedKeptALineChangedAndNothingKept"],
+    "scenarios": {"every condition alone and combined": {"tests": ["adapters/cli:TestReleasedKeptEveryConditionAloneAndCombined"]}, "every match in fetch order": {"tests": ["adapters/cli:TestReleasedKeptEveryMatchInFetchOrder"]}, "a kept line changed, and nothing kept": {"tests": ["adapters/cli:TestReleasedKeptALineChangedAndNothingKept"]}}
+  },
   "log-1": {
     "tests": ["adapters/cli:TestTheLogOfTheWorkedExample", "adapters/cli:TestLogWithoutAllIsUnchanged"],
     "scenarios": {"the log of the worked example": {"tests": ["adapters/cli:TestTheLogOfTheWorkedExample"]}, "the log without every crossing is unchanged": {"tests": ["adapters/cli:TestLogWithoutAllIsUnchanged"]}}
