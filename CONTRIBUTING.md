@@ -27,6 +27,14 @@ How a change to placket is made and how it is reviewed. The rules a change keeps
 4. **Then the code**, in small commits.
 5. **Run `make ci`** before you push. It builds the checker in `tools/guard/` (`guard`) and runs each of its rules, the checks that read the tree (`core-no-deps`, `core-imports`, `core-no-world`, `core-no-panic`, `specs-name-behaviour`, `schemas-hold`, `vectors-independent`, `constants-once`, `product-words-once`, `claims-stop-at-crossing`, `main-is-thin`, `root-module`, `machine-rules-in-ci`, `ci-stays-fast`); then every Go module's format (`modules`), `vet`, `lint`, `vulnerabilities` and `secrets`; one test run per module with the race detector and coverage (`tests`), which `race`, `fuzz-seeds` and `coverage-reported` read; the conformance runner (`runner-no-silent-pass`); and `tests/test_*.sh` (`scripts`). `make <step>` runs one of them. A refusal starts with the rule's name and names the file and line; look the name up in `AGENTS.md`. Every step prints its time. Never run `make ci` from inside a test: a nested run is refused (`ci-stays-fast`). GitHub runs the same `make ci` on every push and pull request, and that run is the one that counts.
 
+## Patterns
+
+A pattern is a runnable template for one caller's job, under `patterns/<job>/`; `patterns/README.md` states what one is made of. `make ci` runs every pattern (`tests/test_patterns.sh`), and a new one needs no change to it.
+
+- A pull request that changes a command a pattern uses keeps that pattern green in the same pull request: its `pattern.sh` and `expected.txt` change with the command.
+- A pattern never scripts around a gap in placket. When a job needs something placket does not do, that gap is an issue to file, not a workaround in a pattern.
+- A pattern depends only on the `placket` binary and `jq` on `PATH`, never on another file of this repository, so `patterns/` can move to a repository of its own as it is.
+
 ## Commits
 
 - Every commit is signed off: `git commit -s`.
