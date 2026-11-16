@@ -177,9 +177,10 @@ func writeOut(d *delivery, out string) (string, bool) {
 //
 // With --all it fetches every delivery waiting, one after another under the one state lock, each
 // written as get writes it and each kept in kept.jsonl, as give --wait keeps what it fetches; it
-// stops at the first that fails. On an empty queue it prints no delivery and exits 0. Without --out,
-// its object holds every delivery it fetched, in the order fetched, under deliveries, a list that is
-// empty on an empty queue (commands-3).
+// stops at the first that fails. On an empty queue it prints no delivery and exits 0. Its object
+// holds every delivery it fetched, in the order fetched, under deliveries, a list that is empty on an
+// empty queue; with --out each is without its body and with the path of its file, once written
+// (commands-1, commands-3).
 func getCommand(r *run, args []string) int {
 	fs := flags("get")
 	keyPath, socket, accord, stateDir := socketFlags(fs)
@@ -199,7 +200,7 @@ func getCommand(r *run, args []string) int {
 		return r.failed(err)
 	}
 	defer s.dir.Unlock()
-	if *all && *out == "" {
+	if *all {
 		r.put(memberDeliveries, []any{})
 	}
 	for n := 0; ; n++ {
@@ -218,23 +219,28 @@ func getCommand(r *run, args []string) int {
 
 // write writes a fetched delivery as get does: its body on standard output, or to a file of the
 // directory out with its path on standard output. A body that cannot be written is kept, unless
-// keep has kept it already, and is tool error file kept. Without out, the object holds the delivery,
-// or with all adds it to the list of every delivery fetched.
+// keep has kept it already, and is tool error file kept. The object holds the delivery, with its
+// body without out, and with out without it and the path once written; with all it is added to the
+// list of every delivery fetched, the path inside it.
 func (s *session) write(d *delivery, kept []byte, out string, keep, all bool) int {
 	r := s.r
+	o := deliveryObject(d, out == "")
+	hold := func() {
+		if all {
+			r.add(memberDeliveries, o)
+		} else {
+			r.put(memberDelivery, o)
+		}
+	}
 	if out == "" {
 		r.show(d)
-		if all {
-			r.add(memberDeliveries, deliveryObject(d, true))
-		} else {
-			r.put(memberDelivery, deliveryObject(d, true))
-		}
+		hold()
 		return ExitOK
 	}
-	r.put(memberDelivery, deliveryObject(d, false))
 	r.head(d)
 	path, ok := writeOut(d, out)
 	if !ok {
+		hold()
 		if !keep {
 			if err := s.dir.Keep(kept); err != nil {
 				return r.failed(err)
@@ -243,6 +249,11 @@ func (s *session) write(d *delivery, kept []byte, out string, keep, all bool) in
 		return r.tool(codeFile, detailKept)
 	}
 	fmt.Fprintln(r.stdout, path)
-	r.put(memberPath, path)
+	if all {
+		o[memberPath] = path
+	} else {
+		r.put(memberPath, path)
+	}
+	hold()
 	return ExitOK
 }

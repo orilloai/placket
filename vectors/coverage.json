@@ -274,16 +274,16 @@
     "scenarios": {"a repeated top-level name": {"tests": ["core/conformance:TestHeaderFirst"]}}
   },
   "commands-1": {
-    "tests": ["adapters/cli:TestJSONAGiveThatPasses", "adapters/cli:TestJSONARefusedCommand"],
-    "scenarios": {"a give that passes": {"tests": ["adapters/cli:TestJSONAGiveThatPasses"]}, "a refused command": {"tests": ["adapters/cli:TestJSONARefusedCommand"]}}
+    "tests": ["adapters/cli:TestJSONAGiveThatPasses", "adapters/cli:TestJSONARefusedCommand", "adapters/cli:TestJSONEveryResultUnderEveryFlag"],
+    "scenarios": {"a give that passes": {"tests": ["adapters/cli:TestJSONAGiveThatPasses"]}, "a refused command": {"tests": ["adapters/cli:TestJSONARefusedCommand"]}, "every result under every flag": {"tests": ["adapters/cli:TestJSONEveryResultUnderEveryFlag"]}}
   },
   "commands-2": {
     "tests": ["adapters/cli:TestJSONADeclineAndItsComment", "adapters/cli:TestJSONAnAskLeftOpen", "adapters/cli:TestJSONWaitsThatEndWithAnAcceptAndAChange"],
     "scenarios": {"an ask left open": {"tests": ["adapters/cli:TestJSONAnAskLeftOpen"]}, "waits that end with an accept and a change": {"tests": ["adapters/cli:TestJSONWaitsThatEndWithAnAcceptAndAChange"]}, "a decline and its comment": {"tests": ["adapters/cli:TestJSONADeclineAndItsComment"]}}
   },
   "commands-3": {
-    "tests": ["adapters/cli:TestJSONAFounding", "adapters/cli:TestJSONAWindowStops", "adapters/cli:TestJSONAnEmptyQueueAndADelivery", "adapters/cli:TestJSONEveryDeliveryAtOnce"],
-    "scenarios": {"a founding": {"tests": ["adapters/cli:TestJSONAFounding"]}, "an empty queue and a delivery": {"tests": ["adapters/cli:TestJSONAnEmptyQueueAndADelivery"]}, "every delivery at once": {"tests": ["adapters/cli:TestJSONEveryDeliveryAtOnce"]}, "a window stops": {"tests": ["adapters/cli:TestJSONAWindowStops"]}}
+    "tests": ["adapters/cli:TestJSONAFounding", "adapters/cli:TestJSONAWindowStops", "adapters/cli:TestJSONAnEmptyQueueAndADelivery", "adapters/cli:TestJSONEveryDeliveryAtOnce", "adapters/cli:TestJSONEveryDeliveryAtOnceIntoADirectory"],
+    "scenarios": {"a founding": {"tests": ["adapters/cli:TestJSONAFounding"]}, "an empty queue and a delivery": {"tests": ["adapters/cli:TestJSONAnEmptyQueueAndADelivery"]}, "every delivery at once": {"tests": ["adapters/cli:TestJSONEveryDeliveryAtOnce"]}, "every delivery at once into a directory": {"tests": ["adapters/cli:TestJSONEveryDeliveryAtOnceIntoADirectory"]}, "a window stops": {"tests": ["adapters/cli:TestJSONAWindowStops"]}}
   },
   "commands-4": {
     "tests": ["adapters/cli:TestJSONAShownReceiptAndAVerifiedJournal", "adapters/cli:TestJSONTheLogAndReconciliation"],
