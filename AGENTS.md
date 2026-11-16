@@ -2,7 +2,7 @@
 
 This file is for anyone who builds or reviews placket: agents first, and people too. It says where things go, the rules the code keeps, how a change is made and how a reviewer judges one. `CONTRIBUTING.md` has the steps of a change in full.
 
-Each rule has a short public name. A check in `make ci` starts its message with that name, and a reviewer's finding cites it, so `core-no-world: core/x/x.go:12: ...` points straight at the rule below. Rules for parts not built yet are stated now, and each applies from the first change that builds its part. A rule's closing note says what checks it beyond the reviewer. A rule a machine can check is checked by `make ci`; the rest are the reviewer's.
+Each rule has a short public name. A check in `make ci` starts its message with that name, and a reviewer's finding cites it, so `core-no-world: core/x/x.go:12: ...` points straight at the rule below. Rules for parts not built yet are stated now, and each applies from the first change that builds its part. A rule's closing note says what checks it beyond the reviewer. A rule a machine can check is checked by `make ci`, or, for `red-green-tests`, by a job of its own beside it; the rest are the reviewer's.
 
 ## Where things go
 
@@ -12,6 +12,7 @@ Each rule has a short public name. A check in `make ci` starts its message with 
 | `docs/adr/` | Decision records, `NNNN-<slug>.md` from 0001: any decision that spans packages or would be expensive to reverse, written ahead of the change built on it. |
 | `tests/` | The repository's shell tests, `tests/test_*.sh`, which `make ci` runs; their fixtures under `tests/testdata/`. |
 | `tools/guard/` | The checker: one Go program, a module of its own, whose rules are the checks of `make ci` that read the tree. Its Go tests prove each rule's planted faults; their fixtures are under `tools/guard/testdata/`. A check, changed only in a rules change. |
+| `tools/redgreen/` | The check `red-green-tests`: one Go program, a module of its own, standard library only, that compares a change's head with its base on `main`. Its Go tests build small git repositories from the fixtures under `tools/redgreen/testdata/`. Changed only in a rules change; the workflow runs `main`'s copy. |
 | `spec/` | The protocol: `protocol.md`, the normative requirement text, one document organized by operation; `schema/` and `frozen-formats.md`, the frozen formats' schemas and the register of what binds each. |
 | `vectors/` | Conformance vectors, generated, and the coverage list. |
 | `review/` | The review passes. The maintainer's to change. |
@@ -101,7 +102,8 @@ Fixtures for any check go under a `testdata/` directory. Go's tools skip it, and
 
 ### How changes are made
 
-- **`machine-rules-in-ci`**: every rule a machine can check is checked by `make ci`, the one entry point, and GitHub runs it on every push and pull request. A rule no machine can check stays on the reviewer's list. Why: a rule that only a reviewer enforces is enforced only when the reviewer remembers. *`make ci` checks that every tool it runs is pinned to an exact version, and that its `ci` target names every rule of the checker and every step.*
+- **`machine-rules-in-ci`**: every rule a machine can check is checked by `make ci`, the one entry point, and GitHub runs it on every push and pull request. The one exception is `red-green-tests`, which compares a change with `main` and so runs in a job of its own beside `ci`. A rule no machine can check stays on the reviewer's list. Why: a rule that only a reviewer enforces is enforced only when the reviewer remembers. *`make ci` checks that every tool it runs is pinned to an exact version, and that its `ci` target names every rule of the checker and every step.*
+- **`red-green-tests`**: every test a change adds or changes fails without the change's code and passes with it, and no test is removed or skipped unexplained, however the branch's commits were cut. The check reads two commits only: the base, the merge base with `main`, and the head. It runs each added and changed test at the base, with the head's test files laid over it, and then at the head. It refuses an added test green on base, a removed or newly skipped test, a test that does not run and pass at the head, and a change to non-test Go code under `core/`, `adapters/`, `cmd/`, `recipes/` or `tools/` with no test added or changed. A test that does not build at the base counts as red, and is printed as red (build). Three trailers on any commit of the change excuse an honest exception, each with its reason: `Green-On-Base: <test>: <why>`, `Test-Weakened: <test>: <why>` and `No-Test: <why>`. A trailer that names a test the change does not touch is refused. A changed test green on base, a test behind a build tag, changed helpers and every excuse are reported for the reviewer. Why: a test proves the code only if it fails without it, and a removed or skipped test proves nothing; the shape of a branch's commits proves neither. *The workflow's `red-green-tests` job checks it on every push to a branch other than `main` and every pull request, with `main`'s copy of `tools/redgreen/`, so a change cannot alter its own judge; `make red-green-tests` runs it from a checkout. `docs/adr/0013-red-green-tests.md` records why and what it cannot see.*
 - **`decisions-recorded-first`**: any decision spanning packages, or expensive to reverse, gets its record in `docs/adr/` ahead of the change built on it. Why: the reason is lost once the code is written around it.
 - **`change-is-one-capability`**: a protocol change is one capability, and its design lists every exported name it adds, by package and signature, so a builder never invents an entry point. Why: a reviewer can hold one capability in mind; a builder should not have to design the API.
 - **`deltas-stop-for-intent`**: a change to the requirement text that alters observable behaviour, a capability's scope or what it must not do stops for the maintainer. Anything else is the builder's choice, listed in the design and the pull request where the maintainer can veto it. Why: the maintainer rules intent; builders keep building.
@@ -122,7 +124,7 @@ Fixtures for any check go under a `testdata/` directory. Go's tools skip it, and
 
 In short, `CONTRIBUTING.md` in full:
 
-- **Tests first.** A change's tests land in their own commit, marked `Loom-Lock: tests`, before the code. Each new test fails at that commit and passes at the head. Tests change only in such a commit, in plain sight.
+- **Tests first.** Write a change's tests before its code. `red-green-tests` shows each test the change adds or changes red against `main` and green at the head, whatever the commits look like. `Green-On-Base`, `Test-Weakened` and `No-Test` trailers state an honest exception, each with its reason, in plain sight.
 - **Behaviour is written down before it is coded.** A change in what placket does starts in the requirement text (`spec/protocol.md`) and the vectors (`vectors/`); code alone is never where behaviour lives.
 - **Changes to rules, workflows or review stand alone**, and only the maintainer merges them: this file, `CONTRIBUTING.md`, `.github/workflows/`, `review/`, and the checks in `make ci`. Never part of a feature change.
 - **`make ci` passes** before a push. GitHub's run is the one that counts.
@@ -132,7 +134,7 @@ In short, `CONTRIBUTING.md` in full:
 
 - A reviewer did not write the change, and reads the diff against this file. Each finding cites a rule by its public name, names the file and line, and says what is wrong.
 - `make ci` passing is the floor, not the verdict. The reviewer reads what no machine checks: the imports of every file in `core/`, the placement of logic, the exactness of tests, the trace of each new name.
-- The reviewer checks that no test was weakened, skipped or deleted to pass, that every test change sits in a `Loom-Lock: tests` commit, and that the change touches no check, workflow or rule unless it is that kind of change.
+- The reviewer reads `red-green-tests`'s report: judges every trailer's reason, each test red only by not building (red (build)), each changed test green on base and each changed helper. The reviewer checks that no test was weakened, skipped or deleted to pass, and that the change touches no check, workflow or rule unless it is that kind of change.
 - A reviewer of a code change runs mutation testing and reports which broken lines the tests did not notice.
 - Review stops when findings reach diminishing returns; what is left goes to a follow-up, named in the pull request.
 

@@ -1,0 +1,47 @@
+# 0013. Tests are shown red against main and green at the head, however the branch was built
+
+Status: accepted. Date: 2026-11-16.
+
+## Context
+
+Tests come first in placket: a test is written before the code it proves, so it fails without that code and passes with it. Until now the `lock` job of the workflow checked this by the shape of a branch's commits. A branch had to carry a commit marked `Loom-Lock: tests` that touched only tests, every test that commit added had to fail at it and pass at the head, no other commit could touch a test, and the branch could have no merge commit.
+
+That shape is a habit of one way of working, not the property itself, and it refused real work for reasons that had nothing to do with tests coming first. The last four refusals on placket were a branch with no lock commit, two branches updated from `main` with a merge, and a branch whose follow-up commit fixed three test files. All four merged over the refusal. It would refuse most outside contributors too, since squashed commits, merges from `main` and commits that mix tests and code are normal everywhere else. And it ran only on pushes to `wip/**`, so it never reported on a pull request.
+
+The property wanted is about the change as a whole: every test the change adds or changes fails without the change's code and passes with it, and no test is quietly removed or skipped.
+
+## Decision
+
+- **Base and head, not commits.** The check `red-green-tests` reads two commits: the base B, the merge base of the branch and `main`, and the head H. It ignores the branch's history between them: merge commits, the order of commits, and which commit touched which file. It reads only the trailers of the commits from B to H.
+- **The tests a change touches are found by parsing Go,** with the standard library's parser, at B and at H, never by reading diff lines. A test is a top-level `Test...` or `Fuzz...` function of a `_test.go` file, as the go tool reads them; `TestMain` is not one. Tests are matched by package directory and name. A test is *added* when H has it and B does not, *changed* when its function differs, *removed* when B has it and H does not, and *skipped* when H's function calls `Skip`, `Skipf` or `SkipNow` more often than B's. Two functions are compared as Go tokens, without comments and without what layout alone decides, so a change that gofmt or a comment alone makes is not a change. A shell test, `tests/test_*.sh`, is added, changed or removed by its file.
+- **Red on base.** In a scratch worktree of B, every test file of H is laid over B (each `_test.go` file, everything under a `testdata/` directory and everything under `tests/`), and the test files H removed are removed. Each added and changed test then runs there with `go test -count=1 -json -run '^(...)$'`, one run per package, and each touched shell test with `sh`. A test that ran and passed is *green on base*; anything else is red, printed by its kind: red (fails), red (skips), red (not run) when its package ran and it did not, and red (build) when the package does not build at B with H's tests.
+- **Red (build) counts as red.** A test of a new function does not compile without that function. Counting it as red is what lets a test of a new API be written first without a stub; it is printed as its own kind so the reviewer sees which tests were red only by not compiling.
+- **Green at head.** The same tests run the same way in a scratch worktree of H, and each must run and pass: a skip is not a pass, and neither is a test that does not show in the run's output.
+- **It refuses** an added test green on base, a removed or newly skipped test, a test not green at head, and a change to non-test Go code under `core/`, `adapters/`, `cmd/`, `recipes/` or `tools/` with no test added or changed. That last one keeps the teeth of the old "a lock commit is required" without its shape. `scripts/` and `patterns/` are not in it: a pattern is its own test, run by `tests/test_patterns.sh`.
+- **It reports, without refusing,** a changed test that is green on base, since a refactored test is legitimate; a test behind a build tag the default build leaves out (`not run: build tag`); and the test files the base has whose helpers or fixtures changed (`helpers changed: <files>`), whose tests it does not run again on that account.
+- **Three trailers** let an honest change through without the maintainer's override, each naming what it excuses and why, so every exception is in the history in plain words:
+  - `Green-On-Base: <test>: <why>` excuses an added test that already passes on `main`, such as coverage of behaviour that already works;
+  - `Test-Weakened: <test>: <why>` excuses a removed test or an added skip, such as a test retired with its feature;
+  - `No-Test: <why>` excuses a code change with no test change, such as a comment or a rename.
+
+  A `<test>` is a Go test's name or a shell test's path. A trailer that names a test the change does not touch is refused, so a stale trailer cannot excuse a later test; one with no reason is refused too. The names carry no `Loom-` prefix: the swarm and outside contributors use the same three. Every excused item is listed with its reason, for the reviewer to judge.
+- **One tested Go program, `tools/redgreen/`,** a module of its own like `tools/guard/`, standard library only, so the check can be read and its cases tested. Its tests build small git repositories under a temporary directory from the fixture trees under `tools/redgreen/testdata/`. It prints one line per item, `red-green-tests: <file>:<line>: <test>: <outcome>`, then `red-green-tests: ok, <n> red on base, <n> green at head, <n> reported` or `red-green-tests: refused: <why> (AGENTS.md, red-green-tests)`. It exits 0 when ok, 1 when refused, and 3 when it could not judge: a bad argument, no `go` or `git`, a base that is not an ancestor of the head. A tool error is never a pass.
+- **Not a step of `make ci`.** It needs `main` and two scratch worktrees, and it runs the tests a second time. `make red-green-tests BASE=origin/main` runs it from a checkout, for a builder before a push; the workflow runs it as its own job, beside `ci`, on every push to a branch other than `main` and on every pull request.
+- **Run from `main`'s copy.** The workflow builds `tools/redgreen` from a worktree of `origin/main`, never from the branch, so a change cannot alter the check that judges it. That was the reason the old check was written inline in the workflow file, where the writer could not change it; building from `main` meets the same reason with a program that can be tested. When `main` has no `tools/redgreen` yet, the job says so and passes, which can happen only between this change and the workflow change that follows it.
+- **This supersedes one sentence of 0007**, that a check and its tests change "under the same lock commits as any other test". A check and its tests now change like any other code and test, judged by `red-green-tests`; a rules change still stands alone and only the maintainer merges it. 0007 is not edited.
+
+## What it still cannot see
+
+- **A test red only by not building** passes as red, and a test that calls a new function but asserts nothing would pass too. The reviewer catches it, and so does mutation testing, which stays the reviewer's.
+- **Helpers.** A change to a helper (a function of a `_test.go` file that is not a test) or a fixture under `testdata/` is not a changed test by itself, and the tests that use it are not run again on its account. It is reported as `helpers changed: <files>`.
+- **Mixed edits.** A test weakened and changed in one edit, with no removed function and no added skip (a loosened assertion, say), shows only as changed. If it is green on base it is listed; otherwise it passes. The reviewer reads the diff.
+- **Build tags.** Tests run with the default build. A test whose file the default build leaves out is listed as `not run: build tag`.
+- **Uncommitted work.** It reads commits only; `make red-green-tests` judges `HEAD`, not the working tree.
+- **Trailers** are read as git reads them: in the trailer block at the end of a commit message.
+
+## Consequences
+
+- A branch's commits can be cut any way: squashed, mixed, merged from `main`. The `Loom-Lock: tests` trailer and the rule against merge commits are retired. A branch that still carries a lock commit passes like any other.
+- Branches need no prefix: the job runs on every branch but `main`, and on every pull request, forks included, with a read-only token.
+- Writing tests first stays the habit, and a branch's history may still show it, but the proof no longer depends on it.
+- A test that only passes because of the change's code is the proof; a test that merely compiles against new code is the reviewer's to judge, from the report.
