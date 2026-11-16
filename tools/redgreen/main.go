@@ -44,6 +44,9 @@ const (
 	noTest       = "No-Test"
 )
 
+// maxHelpers is how many changed helper files the report names before it counts the rest.
+const maxHelpers = 10
+
 // codeDirs are the directories whose non-test Go code a change may not alter with no test added or
 // changed, unless a No-Test trailer gives the reason.
 var codeDirs = []string{"core/", "adapters/", "cmd/", "recipes/", "tools/"}
@@ -380,7 +383,11 @@ func judge(g git, baseRev, headRev string) ([]string, bool, error) {
 		return items[i].line < items[j].line
 	})
 	if len(helpers) > 0 {
-		items = append(items, item{text: "helpers changed: " + strings.Join(helpers, ", ")})
+		shown := helpers
+		if len(shown) > maxHelpers {
+			shown = append(shown[:maxHelpers:maxHelpers], fmt.Sprintf("and %d more", len(helpers)-maxHelpers))
+		}
+		items = append(items, item{text: "helpers changed: " + strings.Join(shown, ", ")})
 	}
 	items = append(items, tail...)
 

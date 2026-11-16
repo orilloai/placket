@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -504,4 +505,26 @@ func TestTaggedTestIsNoTest(t *testing.T) {
 		"red-green-tests: core/calc/calc.go: code changed, and no test added or changed",
 		refused,
 	), 1)
+}
+
+// The report names ten changed helper files and counts the rest.
+func TestManyHelpersCounted(t *testing.T) {
+	t.Parallel()
+	r := newRepo(t)
+	r.lay("many-fixtures")
+	r.commit("Add fixtures on main")
+	r.branch()
+	for i := 1; i <= 12; i++ {
+		r.remove(fmt.Sprintf("core/calc/testdata/f%02d.txt", i))
+	}
+	r.commit("Remove the fixtures")
+	var names []string
+	for i := 1; i <= 10; i++ {
+		names = append(names, fmt.Sprintf("core/calc/testdata/f%02d.txt", i))
+	}
+	out, code := r.judge()
+	expect(t, out, code, lines(
+		"red-green-tests: helpers changed: "+strings.Join(names, ", ")+", and 2 more",
+		"red-green-tests: ok, 0 red on base, 0 green at head, 0 reported",
+	), 0)
 }
