@@ -88,7 +88,7 @@ An exported constant that is part of a format (a type URI, a minimum length, a p
 
 Why: a retyped constant is a second format waiting to drift.
 
-Checked by: `make ci`, step `constants-once`, for the string literals that hold `placket.dev/` or `vnd.placket`; the reviewer, for every other format constant, such as a minimum length or a word another package already exports.
+Checked by: `make ci`, step `constants-once`, for the string literals that hold `placket.tech/` or `vnd.placket`; the reviewer, for every other format constant, such as a minimum length or a word another package already exports.
 
 ## `parse-strict`
 
