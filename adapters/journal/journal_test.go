@@ -2,6 +2,7 @@ package journal_test
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"errors"
 	"os"
 	"path/filepath"
@@ -11,6 +12,8 @@ import (
 
 	"github.com/orilloai/placket/adapters/journal"
 	"github.com/orilloai/placket/core/mediator"
+	"github.com/orilloai/placket/core/receipts"
+	"github.com/orilloai/placket/core/signing"
 )
 
 func jerr(err error) *journal.Error {
@@ -230,4 +233,59 @@ func FuzzParseHeld(f *testing.F) {
 			t.Fatalf("%q wrote back as %q, %v", b, again, err)
 		}
 	})
+}
+
+// TestReadLeavesOpenEntriesWhenReceiptsDoNotVerify reads a journal whose receipt decodes but was
+// signed by a key other than the mediator's: which questions are open is read only from receipts
+// that verify, so the questions.jsonl entry is left as it is, for Reload to refuse the list, and no
+// line says it was left out.
+func TestReadLeavesOpenEntriesWhenReceiptsDoNotVerify(t *testing.T) {
+	t.Parallel()
+	keyOf := func(name string) signing.Key {
+		seed := sha256.Sum256([]byte("placket vectors: key " + name))
+		k, err := signing.NewKey(seed[:])
+		if err != nil {
+			t.Fatal(err)
+		}
+		return k
+	}
+	mediatorKey, other := keyOf("mediator"), keyOf("other-mediator")
+	from := keyOf("proposer").Reference()
+	forged, _, err := receipts.Build(receipts.Subject{Name: "note", Digest: strings.Repeat("ab", 32)}, receipts.Predicate{
+		Accord: accord, Card: card, Kind: receipts.KindCrossing, From: from, To: from, Seq: 1, At: "2026-11-12T09:00:00Z",
+		Envelope: receipts.Envelope{Sender: from, Seq: 1, Hash: id}, Verdict: "pass", Reason: "ok",
+	}, other)
+	if err != nil {
+		t.Fatal(err)
+	}
+	dir := filepath.Join(t.TempDir(), "j")
+	j, err := journal.Open(dir, &bytes.Buffer{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := j.Found(accord, card, mediatorKey.Reference(), "2026-11-12T09:00:00Z"); err != nil {
+		t.Fatal(err)
+	}
+	_ = j.Close()
+	if err := os.WriteFile(filepath.Join(dir, journal.FileReceipts), append(forged, '\n'), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	line := `{"deadline":"2026-11-12T10:00:00Z","question":"` + id + `","roles":["decider"]}`
+	if err := os.WriteFile(filepath.Join(dir, journal.FileQuestions), []byte(line+"\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	var stderr bytes.Buffer
+	j, err = journal.Open(dir, &stderr)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer j.Close()
+	r, err := j.Read()
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []mediator.Open{{Question: id, Deadline: "2026-11-12T10:00:00Z", Roles: []string{"decider"}}}
+	if !reflect.DeepEqual(r.Open, want) || !reflect.DeepEqual(r.QuestionLines, []int{1}) || stderr.String() != "" {
+		t.Fatalf("open %+v, lines %v, stderr %q", r.Open, r.QuestionLines, stderr.String())
+	}
 }

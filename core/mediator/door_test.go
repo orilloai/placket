@@ -7,7 +7,6 @@ import (
 
 	"github.com/orilloai/placket/core/canonical"
 	"github.com/orilloai/placket/core/mediator"
-	"github.com/orilloai/placket/core/receipts"
 	"github.com/orilloai/placket/core/signing"
 )
 
@@ -107,7 +106,7 @@ func TestAChainPerOrderedPair(t *testing.T) {
 			t.Fatalf("give %d: %v", i, err)
 		}
 	}
-	st, err := receipts.Verify(key(t, "mediator").Reference(), m.Receipts())
+	st, err := verifyAll(key(t, "mediator").Reference(), m.Receipts())
 	if err != nil || len(st) != 3 {
 		t.Fatalf("got %d statements, %v", len(st), err)
 	}

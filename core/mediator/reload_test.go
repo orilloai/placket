@@ -184,7 +184,7 @@ func TestReloadCarriesOn(t *testing.T) {
 
 	// Every sender's sequence and every chain carry on.
 	last := map[[2]string]receipts.Statement{}
-	st, err := receipts.Verify(key(t, "mediator").Reference(), r.Receipts())
+	st, err := verifyAll(key(t, "mediator").Reference(), r.Receipts())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -223,7 +223,7 @@ func msgFor(t testing.TB, m *mediator.Mediator, id, to string) []byte {
 // mediator's key, so that only what the test changes is wrong with it.
 func built(t *testing.T, list [][]byte, subject receipts.Subject, p receipts.Predicate) []byte {
 	t.Helper()
-	st, err := receipts.Verify(key(t, "mediator").Reference(), list)
+	st, err := verifyAll(key(t, "mediator").Reference(), list)
 	if err != nil {
 		t.Fatal(err)
 	}

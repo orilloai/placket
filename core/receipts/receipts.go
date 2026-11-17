@@ -17,6 +17,7 @@ import (
 	"strconv"
 
 	"github.com/orilloai/placket/core/canonical"
+	"github.com/orilloai/placket/core/composition"
 	"github.com/orilloai/placket/core/internal/shape"
 	"github.com/orilloai/placket/core/signing"
 )
@@ -121,8 +122,20 @@ type Statement struct {
 	Predicate Predicate
 }
 
+// Verified is a receipt's statement that passed Verify, or one this package built and signed. Only
+// this package makes one, so a caller holding a Verified holds a statement that was checked
+// (verified-by-type; docs/adr/0016-verified-receipts.md).
+type Verified struct {
+	s Statement
+}
+
+// Statement returns a copy of the verified statement (docs/adr/0016-verified-receipts.md).
+func (v Verified) Statement() Statement { return v.s }
+
 // Digest returns the salted digest of a part: the lowercase hex SHA-256 of its salt's bytes followed
-// by its body's bytes (crossing-3).
+// by its body's bytes (crossing-3). The salt comes first, in the order of crossing-3's formula: an
+// exception to the data-first order of inputs-as-parameters, recorded in
+// docs/adr/0016-verified-receipts.md.
 func Digest(salt, body []byte) string {
 	h := sha256.New()
 	h.Write(salt)
@@ -144,9 +157,10 @@ func (p Predicate) value() shape.Object {
 }
 
 // Build writes the receipt of subject and predicate, signed by the mediator's key, and returns it and
-// its id (receipt-1). The predicate's mediator is the key's reference, whatever it held. A statement
-// the verifier's row 4 would refuse is not written.
-func Build(subject Subject, predicate Predicate, key signing.Key) ([]byte, string, error) {
+// its statement, whose ID is the receipt's id (receipt-1; docs/adr/0016-verified-receipts.md). The
+// predicate's mediator is the key's reference, whatever it held. A statement the verifier's row 4
+// would refuse is not written.
+func Build(subject Subject, predicate Predicate, key signing.Key) ([]byte, Verified, error) {
 	predicate.Mediator = key.Reference()
 	statement := shape.Encode(shape.Object{
 		"_type":         StatementType,
@@ -156,18 +170,18 @@ func Build(subject Subject, predicate Predicate, key signing.Key) ([]byte, strin
 	})
 	r, ok := readStatement(statement)
 	if _, placed := r.placed(); !ok || !placed {
-		return nil, "", &Error{Code: CodeStatement, Index: -1}
+		return nil, Verified{}, &Error{Code: CodeStatement, Index: -1}
 	}
 	sig, err := signing.SignPayload(PayloadType, statement, key)
 	if err != nil {
-		return nil, "", &Error{Code: CodeStatement, Index: -1}
+		return nil, Verified{}, &Error{Code: CodeStatement, Index: -1}
 	}
 	receipt := shape.Encode(shape.Object{
 		"payloadType": PayloadType,
 		"payload":     base64.StdEncoding.EncodeToString(statement),
 		"signatures":  []any{shape.Object{"keyid": predicate.Mediator, "sig": base64.StdEncoding.EncodeToString(sig)}},
 	})
-	return receipt, typedHash(statement), nil
+	return receipt, Verified{s: r.Statement}, nil
 }
 
 func typedHash(canonicalBytes []byte) string {
@@ -357,19 +371,20 @@ func pairs(kind, verdict, reason string) bool {
 		return false
 	}
 	resolutionOnly := reason == ReasonDeclined || reason == ReasonCancelled || reason == ReasonTimeout || reason == ReasonUndeliverable
-	if !resolutionOnly && reason != "ok" && reason != "no-match" && reason != "maybe" && !checkReason(reason) {
+	if !resolutionOnly && reason != composition.ReasonOK && reason != composition.ReasonNoMatch &&
+		reason != composition.ReasonMaybe && !checkReason(reason) {
 		return false
 	}
 	if kind == KindCrossing && resolutionOnly {
 		return false
 	}
-	switch verdict {
-	case "pass":
-		return reason == "ok"
-	case "escalate":
-		return kind == KindCrossing && reason == "maybe"
-	case "block":
-		return reason != "ok"
+	switch composition.Verdict(verdict) {
+	case composition.Pass:
+		return reason == composition.ReasonOK
+	case composition.Escalate:
+		return kind == KindCrossing && reason == composition.ReasonMaybe
+	case composition.Block:
+		return reason != composition.ReasonOK
 	}
 	return false
 }

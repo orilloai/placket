@@ -101,9 +101,9 @@ func TestVerifyHoldsOneAccord(t *testing.T) {
 }
 
 // TestReconcilePrintsAnActorSafely reconciles a state directory handed over with an actor file that
-// holds terminal control sequences: the line on standard error shows the actor as a field, escaped,
-// and standard output, a terminal, stays the same JSON with every rune a terminal could act on
-// escaped.
+// holds terminal control sequences: it is not an actor reference, so reconciliation refuses it as
+// kept, naming the --kept it came from and its actor file, and nothing of what the file holds
+// reaches either stream.
 func TestReconcilePrintsAnActorSafely(t *testing.T) {
 	t.Parallel()
 	a := newAccord(t, "p1", "p2")
@@ -113,9 +113,9 @@ func TestReconcilePrintsAnActorSafely(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dir, "actor"), []byte("ed25519:\x1b]52;c;aGk=\x07\u009b2J\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	r := run(t, terminal(), "reconcile", "--mediator", a.refs["mediator"], "--accord", a.id, "--card", a.card, "--receipts", a.journal(), "--kept", dir)
-	if r.code != 0 || r.stderr != `missing ed25519:\x1b]52;c;aGk=\x07\u009b2J seq 1`+"\n" ||
-		r.stdout != `{"missing":[{"actor":"ed25519:\u001b]52;c;aGk=\u0007\u009b2J","seq":1}],"removed":[],"unrecorded":[]}`+"\n" {
+	r := run(t, terminal(), "reconcile", "--mediator", a.refs["mediator"], "--accord", a.id, "--card", a.card, "--receipts", a.journal(),
+		"--kept", copyDir(t, a.state("p1")), "--kept", dir)
+	if r.code != 3 || r.stderr != "error verify kept --kept 2 actor\n" || r.stdout != "" {
 		t.Fatalf("reconcile: %v", r)
 	}
 }

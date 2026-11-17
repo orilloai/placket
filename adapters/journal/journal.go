@@ -438,37 +438,31 @@ func (j *Journal) Read() (*Record, error) {
 		return nil, err
 	}
 
-	// Which questions the receipts name, and which they leave open, by the one reader of questions.
-	// A receipt that does not decode leaves both unknown: Reload refuses the list before it reads an
-	// open entry.
+	// Which questions the receipts name, and which they leave open, by the one reader of questions,
+	// read only from receipts that verify under the mediator's reference (verified-by-type). A list
+	// that does not verify leaves both unknown, and every entry as it is: Reload refuses the list
+	// before it reads an open entry.
 	ids := map[string]bool{}
 	open := map[string]bool{}
-	known := true
-	var st []receipts.Statement
-	for _, line := range r.Receipts {
-		s, err := receipts.Decode(line)
-		if err != nil {
-			known = false
-			break
-		}
-		ids[s.ID] = true
-		st = append(st, s)
+	verified, err := receipts.Verify(r.Mediator, r.Receipts)
+	var places []receipts.Place
+	if err == nil {
+		places, err = receipts.Releases(verified)
 	}
+	known := err == nil
 	if known {
-		if places, err := receipts.Releases(st); err == nil {
-			closed := map[int]bool{}
-			for _, p := range places {
-				if p.Role == receipts.RoleClosing {
-					closed[p.Question] = true
-				}
+		closed := map[int]bool{}
+		for _, p := range places {
+			if p.Role == receipts.RoleClosing {
+				closed[p.Question] = true
 			}
-			for i, p := range places {
-				if p.Role == receipts.RoleQuestion && !closed[i] {
-					open[st[i].ID] = true
-				}
+		}
+		for i, v := range verified {
+			id := v.Statement().ID
+			ids[id] = true
+			if places[i].Role == receipts.RoleQuestion && !closed[i] {
+				open[id] = true
 			}
-		} else {
-			known = false
 		}
 	}
 

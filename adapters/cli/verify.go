@@ -88,14 +88,18 @@ func verifyCommand(r *run, args []string) int {
 	if err != nil {
 		return r.failed(err)
 	}
-	st, err := receipts.Verify(*med, list)
+	verified, err := receipts.Verify(*med, list)
 	if err != nil {
 		return r.notVerified(err)
+	}
+	st := make([]receipts.Statement, len(verified))
+	for i, v := range verified {
+		st[i] = v.Statement()
 	}
 	if code, i := oneAccord(st); code != "" {
 		return r.tool(codeVerify, code, journal.FileReceipts, fmt.Sprintf("line %d", i+1))
 	}
-	places, err := receipts.Releases(st)
+	places, err := receipts.Releases(verified)
 	if err != nil {
 		return r.notVerified(err)
 	}

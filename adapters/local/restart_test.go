@@ -211,7 +211,7 @@ func TestARestartChangesNoReceipt(t *testing.T) {
 	if !bytes.Equal(a, b) || len(a) == 0 {
 		t.Fatalf("the receipts differ:\n%s\n--\n%s", a, b)
 	}
-	st, err := receipts.Verify(key(t, "mediator").Reference(), splitLines(b))
+	st, err := verifyAll(key(t, "mediator").Reference(), splitLines(b))
 	if err != nil || len(st) != 9 {
 		t.Fatalf("%d receipts, %v", len(st), err)
 	}
@@ -321,7 +321,7 @@ func TestAJournalWriteThatFails(t *testing.T) {
 	w.disk = nil
 	win = start(t, w.window(t))
 	win.stop(t)
-	st, err := receipts.Verify(key(t, "mediator").Reference(), splitLines(w.receipts(t)))
+	st, err := verifyAll(key(t, "mediator").Reference(), splitLines(w.receipts(t)))
 	if err != nil || len(st) != 2 || st[1].Predicate.Reason != receipts.ReasonTimeout {
 		t.Fatalf("after the idle tick failed: %d receipts, %v", len(st), err)
 	}
@@ -338,3 +338,16 @@ func (a *armed) Append(path string, b []byte) error {
 }
 func (a *armed) Create(path string, b []byte) error { return journal.OS.Create(path, b) }
 func (a *armed) Remove(path string) error           { return journal.OS.Remove(path) }
+
+// verifyAll verifies list under mediator and returns the statements, for tests that read them.
+func verifyAll(mediator string, list [][]byte) ([]receipts.Statement, error) {
+	verified, err := receipts.Verify(mediator, list)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]receipts.Statement, len(verified))
+	for i, v := range verified {
+		out[i] = v.Statement()
+	}
+	return out, nil
+}

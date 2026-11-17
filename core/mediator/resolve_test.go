@@ -50,7 +50,7 @@ func unchanged(t *testing.T, m *mediator.Mediator, receiptsBefore [][]byte, pend
 // statement verifies the mediator's receipts and returns the statement of the receipt whose id is id.
 func statement(t *testing.T, m *mediator.Mediator, id string) receipts.Statement {
 	t.Helper()
-	st, err := receipts.Verify(key(t, "mediator").Reference(), m.Receipts())
+	st, err := verifyAll(key(t, "mediator").Reference(), m.Receipts())
 	if err != nil {
 		t.Fatalf("the receipts do not verify: %v", err)
 	}

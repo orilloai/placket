@@ -270,7 +270,7 @@ func TestReleaseForm(t *testing.T) {
 	} {
 		t.Run(c.name, func(t *testing.T) {
 			t.Parallel()
-			if _, err := receipts.Releases(statementsOf(c.entries)); !isCode(err, receipts.CodeRelease, 2) {
+			if _, err := receipts.ReleasesOf(statementsOf(c.entries)); !isCode(err, receipts.CodeRelease, 2) {
 				t.Fatalf("Releases: got %v, want release at index 2", err)
 			}
 			if !c.signable {

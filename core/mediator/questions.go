@@ -49,7 +49,7 @@ type batch struct {
 	m          *Mediator
 	chains     map[[2]string]link
 	receipts   [][]byte
-	statements []receipts.Statement
+	statements []receipts.Verified
 	queued     []queuedFor
 	closed     map[string]bool
 	outs       []Outcome
@@ -74,13 +74,14 @@ func (b *batch) write(subject receipts.Subject, p receipts.Predicate) ([]byte, s
 	}
 	p.Accord, p.Card, p.Mediator = b.m.accord.ID(), b.m.accord.Card(), b.m.key.Reference()
 	p.Seq, p.Prev = last.seq+1, last.id
-	r, id, err := receipts.Build(subject, p, b.m.key)
+	r, verified, err := receipts.Build(subject, p, b.m.key)
 	if err != nil {
 		return nil, "", failure(CodeInternal)
 	}
+	id := verified.Statement().ID
 	b.chains[pair] = link{seq: p.Seq, id: id}
 	b.receipts = append(b.receipts, r)
-	b.statements = append(b.statements, receipts.Statement{ID: id, Subject: subject, Predicate: p})
+	b.statements = append(b.statements, verified)
 	b.outs = append(b.outs, Outcome{Verdict: p.Verdict, Reason: p.Reason, ReceiptID: id, Receipt: append([]byte(nil), r...)})
 	return r, id, nil
 }

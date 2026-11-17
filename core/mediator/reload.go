@@ -47,7 +47,7 @@ func Reload(founding []byte, foundedAt string, key signing.Key, list [][]byte, o
 	if err != nil {
 		return nil, nil, err
 	}
-	st, err := receipts.Verify(key.Reference(), list)
+	verified, err := receipts.Verify(key.Reference(), list)
 	if err != nil {
 		var re *receipts.Error
 		if errors.As(err, &re) {
@@ -55,12 +55,16 @@ func Reload(founding []byte, foundedAt string, key signing.Key, list [][]byte, o
 		}
 		return nil, nil, failure(CodeJournal)
 	}
+	st := make([]receipts.Statement, len(verified))
+	for i, v := range verified {
+		st[i] = v.Statement()
+	}
 	for i, s := range st {
 		if s.Predicate.Accord != m.accord.ID() || s.Predicate.Card != m.accord.Card() {
 			return nil, nil, &Error{Code: CodeJournal, Index: i}
 		}
 	}
-	places, err := receipts.Releases(st)
+	places, err := receipts.Releases(verified)
 	if err != nil {
 		return nil, nil, failure(CodeJournal)
 	}
@@ -123,7 +127,7 @@ func Reload(founding []byte, foundedAt string, key signing.Key, list [][]byte, o
 	for i, r := range list {
 		m.receipts = append(m.receipts, append([]byte(nil), r...))
 		s := st[i]
-		m.statements = append(m.statements, s)
+		m.statements = append(m.statements, verified[i])
 		m.chains[[2]string{s.Predicate.From, s.Predicate.To}] = link{seq: s.Predicate.Seq, id: s.ID}
 		if e := s.Predicate.Envelope; e.Seq > m.highest[e.Sender] {
 			m.highest[e.Sender] = e.Seq

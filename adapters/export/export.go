@@ -156,13 +156,17 @@ func BuildAll(mediatorRef string, list [][]byte, kept [][]byte, note func(string
 }
 
 func build(mediatorRef string, list [][]byte, kept [][]byte, all bool, note func(string)) (Log, error) {
-	st, err := receipts.Verify(mediatorRef, list)
+	verified, err := receipts.Verify(mediatorRef, list)
 	if err != nil {
 		var re *receipts.Error
 		if errors.As(err, &re) {
 			return Log{}, &Error{Code: CodeVerify, Core: string(re.Code), Index: re.Index}
 		}
 		return Log{}, &Error{Code: CodeVerify, Index: -1}
+	}
+	st := make([]receipts.Statement, len(verified))
+	for i, v := range verified {
+		st[i] = v.Statement()
 	}
 	// One journal is one Accord's: receipts of two are refused whole.
 	for i, s := range st {
@@ -173,7 +177,7 @@ func build(mediatorRef string, list [][]byte, kept [][]byte, all bool, note func
 			return Log{}, &Error{Code: CodeCard, Index: i}
 		}
 	}
-	places, err := receipts.Releases(st)
+	places, err := receipts.Releases(verified)
 	if err != nil {
 		var re *receipts.Error
 		if errors.As(err, &re) {

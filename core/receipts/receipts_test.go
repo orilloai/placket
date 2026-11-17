@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/sha256"
 	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"reflect"
@@ -38,7 +39,7 @@ func chain(t testing.TB, med signing.Key, n int) ([][]byte, []string) {
 	var ids []string
 	prev := ""
 	for i := 1; i <= n; i++ {
-		r, id, err := receipts.Build(receipts.Subject{Name: "note", Digest: receipts.Digest([]byte("salt-of-sixteen!"), []byte{byte(i)})},
+		r, v, err := receipts.Build(receipts.Subject{Name: "note", Digest: receipts.Digest([]byte("salt-of-sixteen!"), []byte{byte(i)})},
 			receipts.Predicate{
 				Accord: accord, Card: card, Kind: receipts.KindCrossing, From: from, To: to,
 				Seq: int64(i), Prev: prev, At: "2026-11-12T09:00:00Z",
@@ -48,6 +49,7 @@ func chain(t testing.TB, med signing.Key, n int) ([][]byte, []string) {
 		if err != nil {
 			t.Fatal(err)
 		}
+		id := v.Statement().ID
 		out, ids, prev = append(out, r), append(ids, id), id
 	}
 	return out, ids
@@ -129,25 +131,26 @@ func TestBuildDependsOnEachInput(t *testing.T) {
 		Accord: accord, Card: card, Kind: receipts.KindCrossing, From: from, To: from, Seq: 1,
 		At: "2026-11-12T09:00:00Z", Envelope: receipts.Envelope{Sender: from, Seq: 1, Hash: mhash}, Verdict: "pass", Reason: "ok",
 	}
-	base, id, err := receipts.Build(sub, pred, med)
+	base, v, err := receipts.Build(sub, pred, med)
 	if err != nil {
 		t.Fatal(err)
 	}
-	again, id2, _ := receipts.Build(sub, pred, med)
-	if !bytes.Equal(base, again) || id != id2 {
+	again, v2, _ := receipts.Build(sub, pred, med)
+	id := v.Statement().ID
+	if !bytes.Equal(base, again) || id != v2.Statement().ID {
 		t.Fatal("the same inputs wrote two receipts")
 	}
 	at := pred
 	at.At = "2026-11-12T09:00:01Z"
 	salted := sub
 	salted.Digest = strings.Repeat("ac", 32)
-	for name, c := range map[string]func() ([]byte, string, error){
-		"time":    func() ([]byte, string, error) { return receipts.Build(sub, at, med) },
-		"subject": func() ([]byte, string, error) { return receipts.Build(salted, pred, med) },
-		"key":     func() ([]byte, string, error) { return receipts.Build(sub, pred, key(t, "other-mediator")) },
+	for name, c := range map[string]func() ([]byte, receipts.Verified, error){
+		"time":    func() ([]byte, receipts.Verified, error) { return receipts.Build(sub, at, med) },
+		"subject": func() ([]byte, receipts.Verified, error) { return receipts.Build(salted, pred, med) },
+		"key":     func() ([]byte, receipts.Verified, error) { return receipts.Build(sub, pred, key(t, "other-mediator")) },
 	} {
 		r, i, err := c()
-		if err != nil || bytes.Equal(r, base) || (name != "key" && i == id) {
+		if err != nil || bytes.Equal(r, base) || (name != "key" && i.Statement().ID == id) {
 			t.Fatalf("a changed %s left the receipt as it was: %v", name, err)
 		}
 	}
@@ -175,9 +178,9 @@ func TestBuildRefusesWhatAVerifierRefuses(t *testing.T) {
 	} {
 		p := good
 		change(&p)
-		r, id, err := receipts.Build(sub, p, med)
+		r, v, err := receipts.Build(sub, p, med)
 		var re *receipts.Error
-		if r != nil || id != "" || !errors.As(err, &re) || re.Code != receipts.CodeStatement || err.Error() != "receipts: statement" {
+		if r != nil || v != (receipts.Verified{}) || !errors.As(err, &re) || re.Code != receipts.CodeStatement || err.Error() != "receipts: statement" {
 			t.Fatalf("%s: got %d bytes, %v", name, len(r), err)
 		}
 	}
@@ -208,6 +211,10 @@ func TestErrorTextQuotesNoInput(t *testing.T) {
 		{reconcileErr(receipts.Reconcile(med.Reference(), mhash, card, list, nil)), "receipts: presented at index 0"},
 		{reconcileErr(receipts.Reconcile(med.Reference(), accord, card, list[:1],
 			[]receipts.Kept{{Actor: applier, Delivered: [][]byte{withSecret(list[1])}}})), "receipts: kept at index 0 of " + applier},
+		{reconcileErr(receipts.Reconcile(med.Reference(), accord, card, list,
+			[]receipts.Kept{{Actor: applier}, {Actor: secret + "\nINJECT"}})), "receipts: kept at index 1"},
+		{reconcileErr(receipts.Reconcile(secret, accord, card, list,
+			[]receipts.Kept{{Actor: secret}})), "receipts: kept at index 0"},
 	} {
 		if c.err == nil || c.err.Error() != c.text || strings.Contains(c.err.Error(), secret) {
 			t.Fatalf("got %v, want %q", c.err, c.text)
@@ -215,7 +222,7 @@ func TestErrorTextQuotesNoInput(t *testing.T) {
 	}
 }
 
-func verifyErr(_ []receipts.Statement, err error) error { return err }
+func verifyErr(_ []receipts.Verified, err error) error { return err }
 
 func reconcileErr(_ receipts.Report, err error) error { return err }
 
@@ -224,11 +231,12 @@ func TestVerifyYieldsTheStatements(t *testing.T) {
 	t.Parallel()
 	med := key(t, "mediator")
 	list, ids := chain(t, med, 3)
-	st, err := receipts.Verify(med.Reference(), list)
-	if err != nil || len(st) != 3 {
-		t.Fatalf("got %d statements, %v", len(st), err)
+	verified, err := receipts.Verify(med.Reference(), list)
+	if err != nil || len(verified) != 3 {
+		t.Fatalf("got %d statements, %v", len(verified), err)
 	}
-	for i, s := range st {
+	for i, v := range verified {
+		s := v.Statement()
 		if s.ID != ids[i] || s.Predicate.Seq != int64(i+1) || s.Predicate.Mediator != med.Reference() || s.Subject.Name != "note" {
 			t.Fatalf("statement %d: %+v", i, s)
 		}
@@ -236,7 +244,7 @@ func TestVerifyYieldsTheStatements(t *testing.T) {
 			t.Fatalf("statement %d's prev is %q", i, s.Predicate.Prev)
 		}
 	}
-	places, err := receipts.Releases(st)
+	places, err := receipts.Releases(verified)
 	if err != nil || len(places) != 3 || places[0].Role != receipts.RoleGive {
 		t.Fatalf("places %+v, %v", places, err)
 	}
@@ -280,4 +288,48 @@ func FuzzBuild(f *testing.F) {
 			t.Fatalf("a built receipt does not verify: %v", err)
 		}
 	})
+}
+
+// TestVerifiedIsWhatWasChecked holds verified-by-type: Build and Verify hand back the same statement
+// for one receipt, as Verified, and the statement a caller reads is a copy it cannot write back.
+func TestVerifiedIsWhatWasChecked(t *testing.T) {
+	t.Parallel()
+	med := key(t, "mediator")
+	from := key(t, "proposer").Reference()
+	r, built, err := receipts.Build(receipts.Subject{Name: "note", Digest: strings.Repeat("ab", 32)}, receipts.Predicate{
+		Accord: accord, Card: card, Kind: receipts.KindCrossing, From: from, To: from, Seq: 1,
+		At: "2026-11-12T09:00:00Z", Envelope: receipts.Envelope{Sender: from, Seq: 1, Hash: mhash}, Verdict: "pass", Reason: "ok",
+	}, med)
+	if err != nil {
+		t.Fatal(err)
+	}
+	verified, err := receipts.Verify(med.Reference(), [][]byte{r})
+	if err != nil || len(verified) != 1 {
+		t.Fatalf("got %d statements, %v", len(verified), err)
+	}
+	if verified[0] != built {
+		t.Fatalf("Verify read %+v, Build made %+v", verified[0].Statement(), built.Statement())
+	}
+	sum := sha256.Sum256(mustPayload(t, r))
+	if id := built.Statement().ID; id != "sha256:"+hex.EncodeToString(sum[:]) || built.Statement().Predicate.Mediator != med.Reference() {
+		t.Fatalf("Build's statement: %+v", built.Statement())
+	}
+	s := built.Statement()
+	s.Predicate.Verdict, s.ID = "block", "changed"
+	if got := built.Statement(); got.Predicate.Verdict != "pass" || got.ID == "changed" {
+		t.Fatalf("a changed copy changed the statement: %+v", got)
+	}
+}
+
+func mustPayload(t *testing.T, receipt []byte) []byte {
+	t.Helper()
+	var env struct{ Payload string }
+	if err := json.Unmarshal(receipt, &env); err != nil {
+		t.Fatal(err)
+	}
+	b, err := base64.StdEncoding.DecodeString(env.Payload)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return b
 }

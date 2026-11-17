@@ -163,7 +163,7 @@ type Mediator struct {
 	accord     *setup.Accord
 	key        signing.Key
 	receipts   [][]byte
-	statements []receipts.Statement
+	statements []receipts.Verified
 	chains     map[[2]string]link
 	highest    map[string]int64
 	queues     map[string][]queued
@@ -299,10 +299,11 @@ func (m *Mediator) Give(caller string, message, envelope []byte, at string) (Out
 		Verdict:  string(d.Verdict), Reason: d.Reason,
 	}
 	subject := receipts.Subject{Name: g.kind, Digest: g.digest}
-	receipt, id, err := receipts.Build(subject, pred, m.key)
+	receipt, verified, err := receipts.Build(subject, pred, m.key)
 	if err != nil {
 		return Outcome{}, failure(CodeInternal)
 	}
+	id := verified.Statement().ID
 	next.id = id
 	pred.Mediator = m.key.Reference()
 	var delivery []byte
@@ -322,7 +323,7 @@ func (m *Mediator) Give(caller string, message, envelope []byte, at string) (Out
 
 	// Every receipt and delivery is built; only now does the state change.
 	m.receipts = append(m.receipts, receipt)
-	m.statements = append(m.statements, receipts.Statement{ID: id, Subject: subject, Predicate: pred})
+	m.statements = append(m.statements, verified)
 	m.chains[pair] = next
 	m.highest[caller] = g.seq
 	if delivery != nil {

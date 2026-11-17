@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"errors"
 	"fmt"
 	"strconv"
 
@@ -48,6 +49,12 @@ func reconcileCommand(r *run, args []string) int {
 	}
 	rep, err := receipts.Reconcile(*med, *accord, *card, list, ks)
 	if err != nil {
+		// A state directory whose actor file holds no actor reference: the error names the --kept
+		// it came from, in order, and its actor file, never what the file holds.
+		var re *receipts.Error
+		if errors.As(err, &re) && re.Code == receipts.CodeKept && re.Actor == "" {
+			return r.tool(codeVerify, string(re.Code), "--kept", strconv.Itoa(re.Index+1), state.FileActor)
+		}
 		return r.notVerified(err)
 	}
 	items := func(l []receipts.Item) []map[string]string {

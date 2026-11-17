@@ -50,7 +50,7 @@ func TestReconcileVerifyAndCancel(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	pass, id, err := receipts.Build(receipts.Subject{Name: "proposal", Digest: strings.Repeat("ab", 32)}, receipts.Predicate{
+	pass, v, err := receipts.Build(receipts.Subject{Name: "proposal", Digest: strings.Repeat("ab", 32)}, receipts.Predicate{
 		Accord: s.id, Card: s.card, Kind: receipts.KindCrossing, From: s.refs["proposer"], To: s.refs["applier"],
 		Seq: 1, At: "2026-11-12T09:00:00Z", Envelope: receipts.Envelope{Sender: s.refs["proposer"], Seq: 50, Hash: "sha256:" + strings.Repeat("cd", 32)},
 		Verdict: "pass", Reason: "ok",
@@ -58,6 +58,7 @@ func TestReconcileVerifyAndCancel(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	id := v.Statement().ID
 	f, _ := os.OpenFile(filepath.Join(applier, "delivered.jsonl"), os.O_APPEND|os.O_WRONLY, 0o600)
 	_, _ = f.Write(append(pass, '\n'))
 	_ = f.Close()

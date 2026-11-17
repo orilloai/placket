@@ -101,7 +101,7 @@ func TestDecodeRefusesAnUnplacedPredicate(t *testing.T) {
 	r, _ := signed(t, med, statement(1, ""))
 	got, err1 := receipts.Decode(r)
 	want, err2 := receipts.Verify(med.Reference(), [][]byte{r})
-	if err1 != nil || err2 != nil || !reflect.DeepEqual([]receipts.Statement{got}, want) {
+	if err1 != nil || err2 != nil || len(want) != 1 || !reflect.DeepEqual(got, want[0].Statement()) {
 		t.Fatalf("Decode read %+v, Verify %+v (%v, %v)", got, want, err1, err2)
 	}
 }

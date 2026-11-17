@@ -57,19 +57,19 @@ func (m *Mediator) Result(caller, questionID string) ([]Outcome, bool, error) {
 		return nil, false, failure(CodeInternal)
 	}
 	qi := -1
-	for i, s := range m.statements {
-		if s.ID == questionID && places[i].Role == receipts.RoleQuestion {
+	for i, v := range m.statements {
+		if v.Statement().ID == questionID && places[i].Role == receipts.RoleQuestion {
 			qi = i
 			break
 		}
 	}
-	if qi < 0 || m.statements[qi].Predicate.From != caller {
+	if qi < 0 || m.statements[qi].Statement().Predicate.From != caller {
 		return nil, false, nil
 	}
 	var out []Outcome
 	for i := qi + 1; i < len(places); i++ {
 		if places[i].Question == qi && (places[i].Role == receipts.RoleClosing || places[i].Role == receipts.RoleRelease) {
-			s := m.statements[i]
+			s := m.statements[i].Statement()
 			out = append(out, Outcome{Verdict: s.Predicate.Verdict, Reason: s.Predicate.Reason, ReceiptID: s.ID,
 				Receipt: append([]byte(nil), m.receipts[i]...)})
 		}

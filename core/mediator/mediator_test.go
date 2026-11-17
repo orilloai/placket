@@ -211,7 +211,7 @@ func TestARejectedGiveChangesNothing(t *testing.T) {
 	if err != nil || out.Verdict != "pass" {
 		t.Fatalf("got %+v, %v", out, err)
 	}
-	st, err := receipts.Verify(key(t, "mediator").Reference(), m.Receipts())
+	st, err := verifyAll(key(t, "mediator").Reference(), m.Receipts())
 	if err != nil || len(st) != 1 || st[0].Predicate.Envelope.Seq != 1 || st[0].Predicate.Seq != 1 || st[0].Predicate.Prev != "" {
 		t.Fatalf("got %+v, %v", st, err)
 	}
@@ -390,4 +390,17 @@ func FuzzFound(f *testing.F) {
 			t.Fatal("a mediator founded with state")
 		}
 	})
+}
+
+// verifyAll verifies list under mediator and returns the statements, for tests that read them.
+func verifyAll(mediator string, list [][]byte) ([]receipts.Statement, error) {
+	verified, err := receipts.Verify(mediator, list)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]receipts.Statement, len(verified))
+	for i, v := range verified {
+		out[i] = v.Statement()
+	}
+	return out, nil
 }
