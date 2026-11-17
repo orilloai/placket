@@ -10,6 +10,7 @@ import (
 	"io/fs"
 	"net"
 	"os"
+	"path/filepath"
 	"sync"
 	"syscall"
 	"time"
@@ -128,7 +129,7 @@ func Run(ctx context.Context, cfg Window) error {
 	if err != nil {
 		return err
 	}
-	l, err := listen(cfg.Socket)
+	l, err := listen(cfg.Socket, nil)
 	if err != nil {
 		return err
 	}
@@ -223,8 +224,9 @@ func receiptsOf(outs []mediator.Outcome) [][]byte {
 // listen removes a stale socket file at path and listens there, mode 0600. A socket file is stale
 // when connecting to it is refused: one that something answers on, or that cannot be tried, is left
 // to its owner, and so is a path that holds anything but a socket. The listener never removes the
-// file: a window stopped in any way leaves it, and the next start removes it.
-func listen(path string) (*net.UnixListener, error) {
+// file: a window stopped in any way leaves it, and the next start removes it. beforeLink, when not
+// nil, is called with the bound socket's path before the socket is linked to path.
+func listen(path string, beforeLink func(bound string)) (*net.UnixListener, error) {
 	if fi, err := os.Lstat(path); err == nil {
 		if fi.Mode()&fs.ModeSocket == 0 {
 			return nil, &Error{Code: CodeSocket}
@@ -240,20 +242,29 @@ func listen(path string) (*net.UnixListener, error) {
 			return nil, &Error{Code: CodeSocket}
 		}
 	}
-	// The socket's mode is set to 0600 before it is bound, so on Linux the file is made mode 0600 and
-	// no other user can connect between the bind and the chmod below. A umask would do the same, but
-	// it is the whole process's and would reach every file another goroutine makes meanwhile. Where
-	// the system ignores the mode of an unbound socket, the chmod below sets it.
-	lc := net.ListenConfig{Control: func(_, _ string, c syscall.RawConn) error {
-		return c.Control(func(fd uintptr) { _ = syscall.Fchmod(int(fd), 0o600) })
-	}}
-	nl, err := lc.Listen(context.Background(), "unix", path)
+	// The socket is bound in a directory of mode 0700 that this window has just made beside the path,
+	// set to mode 0600, and only then linked to the path. So no other user can connect to it before
+	// its mode is set, on any system, and no process-wide umask is changed. A link, unlike a rename,
+	// never replaces a socket another window bound at the path meanwhile.
+	dir, err := os.MkdirTemp(filepath.Dir(path), ".w-")
 	if err != nil {
 		return nil, &Error{Code: CodeSocket}
 	}
-	l := nl.(*net.UnixListener)
+	defer os.RemoveAll(dir)
+	bound := filepath.Join(dir, "s")
+	l, err := net.ListenUnix("unix", &net.UnixAddr{Name: bound, Net: "unix"})
+	if err != nil {
+		return nil, &Error{Code: CodeSocket}
+	}
 	l.SetUnlinkOnClose(false)
-	if err := os.Chmod(path, 0o600); err != nil {
+	if err := os.Chmod(bound, 0o600); err != nil {
+		_ = l.Close()
+		return nil, &Error{Code: CodeSocket}
+	}
+	if beforeLink != nil {
+		beforeLink(bound)
+	}
+	if err := os.Link(bound, path); err != nil {
 		_ = l.Close()
 		return nil, &Error{Code: CodeSocket}
 	}
