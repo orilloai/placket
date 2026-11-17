@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"maps"
 	"os"
 	"path/filepath"
 	"testing"
@@ -19,7 +20,12 @@ import (
 // returns the events it emitted and what Run returned.
 func closeRun(t *testing.T, w *world) ([]local.Event, error) {
 	t.Helper()
-	cfg := w.window(t)
+	return closeRunWith(t, w.window(t))
+}
+
+// closeRunWith is closeRun of the window cfg.
+func closeRunWith(t *testing.T, cfg local.Window) ([]local.Event, error) {
+	t.Helper()
 	cfg.Close, cfg.Socket = true, ""
 	var events []local.Event
 	cfg.Event = func(e local.Event) { events = append(events, e) }
@@ -187,4 +193,47 @@ func FuzzParseReplyClose(f *testing.F) {
 			t.Fatalf("a reply with a close: %+v, %v", r, err)
 		}
 	})
+}
+
+// TestCloseAtTheReplyBound is the close's bound (close-1, close-2): a close whose receipt, beside an
+// empty list of questions, would make a reply one byte longer than the window's limit is CodeJournal,
+// receipts.jsonl, close-size, and writes nothing; at the limit it is written. The limit is MaxReply,
+// the longest line the journal and a state directory read.
+func TestCloseAtTheReplyBound(t *testing.T) {
+	t.Parallel()
+	w := newWorld(t)
+	r := start(t, w.window(t))
+	if rep := w.give(t, "proposer", "applier", "n-1", "note", "A note."); rep.Outcome == nil || rep.Outcome.Verdict != "pass" {
+		t.Fatalf("the note: %+v", rep)
+	}
+	r.stop(t)
+	// The same close, on a copy of the journal, gives the length of its reply.
+	probe := *w
+	probe.journal = filepath.Join(shortDir(t), "j")
+	if err := os.CopyFS(probe.journal, os.DirFS(w.journal)); err != nil {
+		t.Fatal(err)
+	}
+	events, err := closeRun(t, &probe)
+	if err != nil || len(events) != 1 {
+		t.Fatalf("the probe's close: %v, %+v", err, events)
+	}
+	receipt := events[0].CloseReceipt
+	n := len(local.CloseReply(receipt))
+	before := snapshot(t, w.journal)
+	_, err = closeRunWith(t, local.WithReplyLimit(w.window(t), n-1))
+	var je *journal.Error
+	if !errors.As(err, &je) || je.Code != journal.CodeJournal || je.File != journal.FileReceipts || je.Core != local.CoreCloseSize {
+		t.Fatalf("a close one byte over the bound: %v, want journal receipts.jsonl close-size", err)
+	}
+	if after := snapshot(t, w.journal); !maps.Equal(after, before) {
+		t.Fatal("a close over the bound wrote")
+	}
+	events, err = closeRunWith(t, local.WithReplyLimit(w.window(t), n))
+	lines := bytes.Split(bytes.TrimSuffix(w.receipts(t), []byte("\n")), []byte("\n"))
+	if err != nil || len(events) != 1 || !bytes.Equal(events[0].CloseReceipt, receipt) || !bytes.Equal(lines[len(lines)-1], receipt) {
+		t.Fatalf("a close at the bound: %v, %+v", err, events)
+	}
+	if rep, ok := local.ParseReply(local.CloseReply(receipt)); !ok || !bytes.Equal(rep.Close, receipt) {
+		t.Fatalf("the reply that carries the close: %+v", rep)
+	}
 }

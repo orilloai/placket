@@ -64,6 +64,8 @@ Keep the old journal and its `founding.json`: they are the old Accord's record. 
 rm mediator.key
 ```
 
+Removing the file may not destroy the key. A backup, a copy made when the key was moved, or the file system itself (a journal, a snapshot, a block not yet written over) can keep its bytes, and whoever finds them holds the old key. The key is retired only once every copy is gone: remove each copy and backup too, and treat any you cannot remove as a key that may be stolen (below).
+
 ## What this does not protect
 
 Whoever stole the old key before it was destroyed can still sign single receipts for the old Accord, which verify on their own, and a whole other journal with another close. Against a close a successor pins, only the journal that close pins is complete, so check a journal of the old Accord with `--superseded-by`, never a receipt alone (`docs/security/threat-model.md`, L19). Rotation within one Accord, and a close the members countersign, are later work.

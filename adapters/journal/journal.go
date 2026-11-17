@@ -693,6 +693,7 @@ func ReadReceipts(dir string, stderr io.Writer) ([][]byte, error) {
 	return f.Lines, nil
 }
 
-// maxLine is the longest line ReadReceipts reads: local.MaxReply, the most a window replies with,
-// which holds any receipt a window writes.
+// maxLine is the longest line ReadReceipts reads: local.MaxReply, the most a window replies with.
+// It holds any receipt a window writes: a close receipt too, since a window writes none that would
+// not fit in a reply.
 const maxLine = 4 << 20

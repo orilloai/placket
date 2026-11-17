@@ -52,6 +52,9 @@ type Window struct {
 	Idle time.Duration
 	// Ready, when set, is closed once the door listens.
 	Ready chan<- struct{}
+	// replyLimit is the most bytes a reply that carries the close may have; zero is MaxReply. Only
+	// a test sets it, to reach the bound without a queue that long.
+	replyLimit int
 }
 
 // What an Event is.
@@ -220,7 +223,9 @@ func (w *window) start() (bool, error) {
 
 // close closes the journal's Accord at the time at (close-1): the closings and the close receipt in
 // one journal write, then EventClosed. A closed journal is mediator's *Error closed, returned as it
-// is; any other refusal is named as reloadError names it.
+// is; any other refusal is named as reloadError names it. A close receipt whose closeReply is longer
+// than MaxReply is CodeJournal, receipts.jsonl, CoreCloseSize, and nothing is written: every reply
+// that carries the close, and every line of the journal and of a state directory, holds it whole.
 func (w *window) close(rec *journal.Record, at string) error {
 	m, outs, closed, err := mediator.Close(w.cfg.Founding, rec.Receipts, rec.Open, rec.Queued, rec.FoundedAt, w.cfg.Key, at)
 	if err != nil {
@@ -233,6 +238,13 @@ func (w *window) close(rec *journal.Record, at string) error {
 	if m.Card() != rec.Card {
 		return &journal.Error{Code: journal.CodeJournal, File: journal.FileAccord, Line: 1, Core: "card"}
 	}
+	limit := w.cfg.replyLimit
+	if limit == 0 {
+		limit = MaxReply
+	}
+	if b := closeReply(closed.Receipt); len(b) > limit || string(b) == internalReply {
+		return &journal.Error{Code: journal.CodeJournal, File: journal.FileReceipts, Core: CoreCloseSize}
+	}
 	w.m = m
 	if err := w.j.RemoveStrays(rec); err != nil {
 		return err
@@ -243,6 +255,18 @@ func (w *window) close(rec *journal.Record, at string) error {
 	w.cfg.Event(Event{Kind: EventClosed, Accord: m.Accord(), Card: m.Card(), Outcomes: outs, Release: -1,
 		Close: closed.ID, CloseReceipt: closed.Receipt})
 	return nil
+}
+
+// CoreCloseSize follows error journal receipts.jsonl when a close receipt would not fit in the
+// largest reply that carries it: the members fetch what is queued for them, and the close runs again
+// (docs/adr/0022-the-close.md).
+const CoreCloseSize = "close-size"
+
+// closeReply is the largest reply that carries the close receipt c: the questions reply of a closed
+// Accord, the close beside an empty list. A get's reply, the close alone, is shorter.
+func closeReply(c []byte) []byte {
+	empty := []wireAsked{}
+	return encodeReply(wireReply{Questions: &empty, Close: c})
 }
 
 // reloadError names the file and line of what Reload refused.

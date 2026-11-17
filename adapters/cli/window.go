@@ -83,6 +83,8 @@ func (r *run) windowError(err error) int {
 		return r.tool(codeClosed)
 	case errors.As(err, &je) && je.Core == string(mediator.CodeClose):
 		fmt.Fprintln(r.stderr, LineTornClose)
+	case errors.As(err, &je) && je.Core == local.CoreCloseSize:
+		fmt.Fprintln(r.stderr, LineCloseSize)
 	}
 	return r.failed(err)
 }
@@ -93,7 +95,8 @@ func (r *run) windowError(err error) int {
 // closed otherwise, writes the close receipt last, and prints `close <id>` and one line per closing.
 // --accord must be the founding set's Accord id: the close cannot be undone. A running window holds
 // the journal's lock, so the command is journal-locked; an empty journal is tool error journal,
-// unfounded; a closed one is tool error closed. With --socket it then serves the closed Accord until
+// unfounded; a closed one is tool error closed; a close that would not fit in one reply is tool
+// error journal, receipts.jsonl, close-size, after LineCloseSize, and writes nothing. With --socket it then serves the closed Accord until
 // interrupted, as `window` does; without it, it exits 0. Its --json object, written at exit, holds
 // accord, close (closeObject) and closings, in both modes.
 func closeCommand(r *run, args []string) int {
