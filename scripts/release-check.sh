@@ -5,21 +5,21 @@
 #   release-check.sh --release vX.Y.Z DIR the release vX.Y.Z, as downloaded
 #
 # It prints one line per check and ends with "release-check: ok", or with
-# "release-check: refused: <file>: <reason>" and exit 1:
+# "release-check: refused: <file>: <reason>" and exit 1. With --release, it needs cosign and a
+# signed-in gh, and checks the signature and the provenance first: it opens no archive and runs no
+# binary from DIR until both hold.
 #
+#   signature   (--release) cosign verifies checksums.txt.sigstore.json, the bundle that signs
+#               checksums.txt, as signed by placket's release workflow on main
 #   checksums   every line of checksums.txt names a file of DIR whose SHA-256 it is, and every archive
 #               and SBOM in DIR has its line
+#   provenance  (--release) gh attestation verify finds each archive's build provenance from that
+#               workflow on main, built on GitHub's own runners
 #   archives    four archives, linux and darwin on amd64 and arm64, each holding exactly placket,
 #               LICENSE and README.md
 #   version     the binary for this machine's platform runs `placket version`, and its version is not
 #               a +dirty build: with --release it is the tag, with --snapshot it ends with the first 12
 #               characters of HEAD's commit
-#
-# With --release only, and needing cosign and a signed-in gh:
-#
-#   signature   cosign verifies checksums.txt.sigstore.json, the bundle that signs checksums.txt, as
-#               signed by placket's release workflow on main
-#   provenance  gh attestation verify finds each archive's build provenance from that workflow
 set -u
 
 workflow=orilloai/placket/.github/workflows/release.yml
@@ -54,9 +54,21 @@ tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
 trap 'exit 1' INT TERM
 
-# checksums
 sums=$dir/checksums.txt
 [ -f "$sums" ] || refuse checksums.txt missing
+
+# signature
+if [ "$mode" = release ]; then
+	command -v cosign >/dev/null || refuse cosign "not installed"
+	command -v gh >/dev/null || refuse gh "not installed"
+	cosign verify-blob --bundle "$dir/checksums.txt.sigstore.json" \
+		--certificate-identity "$identity" --certificate-oidc-issuer "$issuer" \
+		"$sums" >"$tmp/log" 2>&1 || refuse checksums.txt.sigstore.json signature
+	: >"$tmp/log"
+	say "signature: ok"
+fi
+
+# checksums
 lines=0
 while read -r want name; do
 	name=${name#\*}
@@ -71,6 +83,18 @@ for f in "$dir"/*.tar.gz "$dir"/*.sbom.json; do
 	awk -v f="$name" '$2 == f || $2 == "*" f { found = 1 } END { exit !found }' "$sums" || refuse "$name" "no checksum"
 done
 say "checksums: ok, $lines files"
+
+# provenance
+if [ "$mode" = release ]; then
+	for f in "$dir"/*.tar.gz; do
+		[ -e "$f" ] || continue
+		gh attestation verify "$f" --repo orilloai/placket --signer-workflow "$workflow" \
+			--source-ref refs/heads/main --deny-self-hosted-runners >"$tmp/log" 2>&1 ||
+			refuse "$(basename "$f")" provenance
+		: >"$tmp/log"
+		say "provenance: ok, $(basename "$f")"
+	done
+fi
 
 # archives
 archives=0
@@ -109,19 +133,4 @@ else
 	esac
 fi
 say "version: ok, $version"
-
-if [ "$mode" = release ]; then
-	command -v cosign >/dev/null || refuse cosign "not installed"
-	command -v gh >/dev/null || refuse gh "not installed"
-	cosign verify-blob --bundle "$dir/checksums.txt.sigstore.json" \
-		--certificate-identity "$identity" --certificate-oidc-issuer "$issuer" \
-		"$sums" >"$tmp/log" 2>&1 || refuse checksums.txt.sigstore.json signature
-	: >"$tmp/log"
-	say "signature: ok"
-	for f in "$dir"/*.tar.gz; do
-		gh attestation verify "$f" --repo orilloai/placket --signer-workflow "$workflow" >"$tmp/log" 2>&1 ||
-			refuse "$(basename "$f")" provenance
-		say "provenance: ok, $(basename "$f")"
-	done
-fi
 say ok

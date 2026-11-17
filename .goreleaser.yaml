@@ -77,6 +77,8 @@ signs:
     signature: "${artifact}.sigstore.json"
     args:
       - sign-blob
+      # The Sigstore bundle format, which cosign 3 writes by default and cosign 2 only with this flag.
+      - "--new-bundle-format"
       - "--bundle=${signature}"
       - "${artifact}"
       - "--yes"

@@ -56,6 +56,8 @@ func TestVersionLines(t *testing.T) {
 			"version v0.0.1-test", "go go1.27.4", moduleLine()}},
 		{"an empty version", buildInfo("", false), []string{
 			"version (devel)", "go go1.27.4", moduleLine()}},
+		{"no Go version stamped", &debug.BuildInfo{Main: debug.Module{Version: "v0.0.1-test"}}, []string{
+			"version v0.0.1-test", "go " + runtime.Version(), moduleLine()}},
 		{"no build info", nil, []string{
 			"version (devel)", "go " + runtime.Version(), moduleLine()}},
 	} {

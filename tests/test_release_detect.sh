@@ -173,4 +173,22 @@ expect "a release state that is not one of the three is refused" 2 "release-dete
 expect "a day that is not a date is refused" 2 "release-detect: usage: --today YYYY-MM-DD" \
 	--before "$before" --after "$after" --today 12/01/2026 --release-state none
 
+# A changelog that ends with link references: the notes stop at the first of them.
+fresh
+before=$(g rev-parse HEAD)
+release_section 0.1.0 2026-12-01
+printf '[Unreleased]: https://github.com/orilloai/placket/compare/v0.1.0...HEAD\n[0.1.0]: https://github.com/orilloai/placket/releases/tag/v0.1.0\n' >>"$repo/CHANGELOG.md"
+after=$(commit 'Release 0.1.0, with links')
+rm -f "$notes"
+if expect "a changelog ending with link references is a release" 0 "release 0.1.0" \
+	--before "$before" --after "$after" --today 2026-12-01 --release-state none --notes "$notes"; then
+	if ! cmp -s "$notes" "$tmp/want-notes"; then
+		echo "FAIL the notes take in the link references"
+		diff "$tmp/want-notes" "$notes" | sed 's/^/    | /'
+		failed=1
+	else
+		echo "ok   the notes stop at the link references"
+	fi
+fi
+
 exit $failed

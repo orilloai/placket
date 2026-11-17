@@ -42,10 +42,9 @@ Or take every asset of the release's page into one directory.
 scripts/release-check.sh --release v0.1.0 placket-v0.1.0
 ```
 
-It ends `release-check: ok`, or `release-check: refused: <file>: <reason>`. By hand, in the directory:
+It ends `release-check: ok`, or `release-check: refused: <file>: <reason>`. It checks the signature and the provenance before it opens an archive or runs the binary in it. By hand, in the directory, in this order:
 
-1. The checksums: `shasum -a 256 -c checksums.txt`.
-2. The signature on `checksums.txt`:
+1. The signature on `checksums.txt`:
 
    ```sh
    cosign verify-blob --bundle checksums.txt.sigstore.json \
@@ -54,11 +53,13 @@ It ends `release-check: ok`, or `release-check: refused: <file>: <reason>`. By h
      checksums.txt
    ```
 
+2. The checksums: `shasum -a 256 -c checksums.txt`.
 3. The provenance of each archive:
 
    ```sh
    gh attestation verify placket_0.1.0_linux_amd64.tar.gz --repo orilloai/placket \
-     --signer-workflow orilloai/placket/.github/workflows/release.yml
+     --signer-workflow orilloai/placket/.github/workflows/release.yml \
+     --source-ref refs/heads/main --deny-self-hosted-runners
    ```
 
 4. The version: unpack the archive for your platform and run `./placket version`. Its first line is `version v0.1.0`.
@@ -75,7 +76,14 @@ CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -ldflags="-s -w" -o "$O
 tar -xzOf ../placket-v0.1.0/placket_0.1.0_linux_amd64.tar.gz placket | cmp - "$OUT/placket"
 ```
 
-`cmp` prints nothing when the two are the same bytes. Set `GOOS` and `GOARCH` for the archive to compare against: `linux` or `darwin`, `amd64` or `arm64`. The archive itself is rebuilt by the release tooling at the tag, `goreleaser release --snapshot --clean --skip=sign` with the version of GoReleaser the release workflow pins, whose `.tar.gz` lines of `dist/checksums.txt` then match the release's: every time inside an archive is the commit's.
+`cmp` prints nothing when the two are the same bytes. Set `GOOS` and `GOARCH` for the archive to compare against: `linux` or `darwin`, `amd64` or `arm64`. The archive itself is rebuilt by the release tooling at the tag, `goreleaser release --snapshot --clean --skip=sign` with the version of GoReleaser the release workflow pins: every time inside an archive is the commit's. A snapshot's archives are named `placket_<version>-SNAPSHOT-<commit>_<os>_<arch>.tar.gz`, not `placket_<version>_<os>_<arch>.tar.gz`, so compare the hashes platform by platform, not the lines of the two `checksums.txt`:
+
+```sh
+for p in linux_amd64 linux_arm64 darwin_amd64 darwin_arm64; do
+  [ "$(grep "_$p.tar.gz\$" dist/checksums.txt | cut -d' ' -f1)" = \
+    "$(grep "_$p.tar.gz\$" ../placket-v0.1.0/checksums.txt | cut -d' ' -f1)" ] && echo "$p: same" || echo "$p: differs"
+done
+```
 
 ## For the maintainer
 
