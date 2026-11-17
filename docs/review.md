@@ -51,4 +51,4 @@ Every contribution needs a person who answers for it and can explain it (`CONTRI
 
 > Thank you for this. Before we review it further, we need someone who answers for the change: please check it yourself, make sure you can explain each part of it, and reply to the review questions. If nothing changes, we will close this pull request. You are welcome to open it again, or a new one, at any time.
 
-If nothing changes, the pull request is closed. The same reply, with "issue" for "pull request", goes on an issue or a security report written by a tool and checked by nobody.
+If nothing changes, the pull request is closed. The same reply, with "issue" for "pull request", goes on an issue written by a tool and checked by nobody. A security report of that kind is closed without action, as `SECURITY.md` says.

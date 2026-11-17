@@ -7,6 +7,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"unicode"
 	"unicode/utf8"
 )
 
@@ -71,8 +72,7 @@ type ruleDoc struct {
 // the index links; every rule heading is in the index and has a Why: and a Checked by: line; every
 // rule the checker prints, and red-green-tests, has its heading where its refusal links it; every
 // link to a heading of docs/rules/, anywhere in the tree outside testdata/ and Go tests, resolves; and
-// no G-number
-// names a rule.
+// no G-number names a rule, in the index or a topic file.
 func agentsMDShort(t *tree) []finding {
 	var fs []finding
 	if b, ok := t.read(agentsFile); !ok || t.isLink(agentsFile) {
@@ -97,7 +97,10 @@ func agentsMDShort(t *tree) []finding {
 		d := &ruleDoc{rules: map[string]int{}, anchors: map[string]bool{}}
 		docs[path.Base(rel)] = d
 		if rel == rulesIndexFile {
-			for _, l := range splitLines(string(b)) {
+			for i, l := range splitLines(string(b)) {
+				if m := gNumberRE.FindStringSubmatch(l); m != nil {
+					fs = append(fs, finding{file: rel, line: i + 1, text: "names " + m[1] + "; a rule is named by its public name"})
+				}
 				if m := headingRE.FindStringSubmatch(l); m != nil {
 					d.anchors[slug(m[1])] = true
 				}
@@ -221,12 +224,18 @@ func agentsMDShort(t *tree) []finding {
 }
 
 // hidden names the class of a character no reader sees as it is, or "" for any other: a bidi control,
-// which reorders the text around it, or an invisible character, which shows as nothing.
+// which reorders the text around it; a variation selector, which changes how the character before it
+// shows and can carry data unseen; or an invisible character, which shows as nothing: every format
+// character (Unicode's category Cf), tag characters included, and the fillers and marks that show as
+// nothing though they are not of that category.
 func hidden(r rune) string {
 	switch {
 	case r == 0x061C, r == 0x200E, r == 0x200F, r >= 0x202A && r <= 0x202E, r >= 0x2066 && r <= 0x2069:
 		return "bidi control"
-	case r == 0x00AD, r == 0x034F, r == 0x115F, r == 0x1160, r == 0x17B4, r == 0x17B5,
+	case r >= 0xFE00 && r <= 0xFE0F, r >= 0xE0100 && r <= 0xE01EF:
+		return "variation selector"
+	case unicode.Is(unicode.Cf, r),
+		r == 0x034F, r == 0x115F, r == 0x1160, r == 0x17B4, r == 0x17B5,
 		r >= 0x180B && r <= 0x180F, r >= 0x200B && r <= 0x200D, r >= 0x2060 && r <= 0x2064,
 		r >= 0x206A && r <= 0x206F, r == 0x3164, r == 0xFEFF, r == 0xFFA0, r >= 0xE0000 && r <= 0xE007F:
 		return "invisible"
@@ -234,22 +243,27 @@ func hidden(r rune) string {
 	return ""
 }
 
-// no-hidden-text: no text file of the tree outside .git/ and testdata/ holds a bidi control character
-// or an invisible one. A text file is one that is valid UTF-8 and holds no NUL byte; anything else is
-// binary and not read. Each line holding one is named once, with each such character in turn.
+// no-hidden-text: no file of the tree outside .git/ and testdata/, tracked or not, holds a bidi
+// control character, a variation selector or an invisible character, and none is a symbolic link,
+// which could lead a reader to a file this check does not read. A file holding a NUL byte is binary
+// and not read; any other is read character by character, a byte that is not valid UTF-8 skipped, so
+// one stray byte does not hide the rest of the file. Each line holding one is named once, with each
+// such character in turn.
 func noHiddenText(t *tree) []finding {
 	var fs []finding
+	for _, e := range t.walk(".", func(_, name string) bool { return name == ".git" || name == "testdata" }) {
+		if e.link {
+			fs = append(fs, finding{file: e.path, text: "a symbolic link"})
+		}
+	}
 	for _, rel := range t.files(".", []string{".git", "testdata"}, nil) {
 		b, ok := t.read(rel)
-		if !ok || bytes.IndexByte(b, 0) >= 0 || !utf8.Valid(b) {
-			continue
-		}
-		if !hasHidden(b) {
+		if !ok || bytes.IndexByte(b, 0) >= 0 || !hasHidden(b) {
 			continue
 		}
 		for i, l := range splitLines(string(b)) {
 			var found []string
-			for _, r := range l {
+			for _, r := range runes([]byte(l)) {
 				if c := hidden(r); c != "" {
 					found = append(found, fmt.Sprintf("U+%04X (%s)", r, c))
 				}
@@ -262,8 +276,21 @@ func noHiddenText(t *tree) []finding {
 	return fs
 }
 
+// runes is the characters of b in order, each byte that is not valid UTF-8 left out.
+func runes(b []byte) []rune {
+	var out []rune
+	for len(b) > 0 {
+		r, n := utf8.DecodeRune(b)
+		if r != utf8.RuneError || n > 1 {
+			out = append(out, r)
+		}
+		b = b[n:]
+	}
+	return out
+}
+
 func hasHidden(b []byte) bool {
-	for _, r := range string(b) {
+	for _, r := range runes(b) {
 		if hidden(r) != "" {
 			return true
 		}

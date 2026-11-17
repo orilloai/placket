@@ -30,10 +30,11 @@ var checksCases = []tcase{
 		"vectors/elsewhere/gen.go: the group elsewhere has no row in vectors/README.md's table of the packages each group tests",
 		"vectors/gen.go: a generator outside every group's directory; generators go under vectors/<group>/",
 	}},
-	// A symbolic link under vectors/ is refused: the check does not follow it.
+	// A symbolic link under vectors/ is refused: the check does not follow it. no-hidden-text refuses
+	// every link outside testdata/.
 	{name: "independent-symlink", setup: func(t *testing.T, dir string) {
 		symlink(t, dir, "../core", "vectors/core")
-	}, refuse: []string{"vectors-independent"}, lines: []string{"vectors/core: a symbolic link"}},
+	}, refuse: []string{"vectors-independent", "no-hidden-text"}, lines: []string{"vectors/core: a symbolic link"}},
 	// A lower package, an import named only in a comment, and code under testdata/ pass.
 	{name: "independent-allowed", fixture: "independent-allowed"},
 

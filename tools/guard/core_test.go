@@ -61,17 +61,18 @@ var coreCases = []tcase{
 
 	// A symbolic link under core/, to a file, a directory or core/go.mod itself, is refused by every
 	// check of the core, and by product-words-once, which reads the core too: the Go tool follows a
-	// link, and a check that skipped it would let anything in.
+	// link, and a check that skipped it would let anything in. no-hidden-text refuses every link
+	// outside testdata/.
 	{name: "symlink-file", fixture: "symlink-file", setup: func(t *testing.T, dir string) {
 		symlink(t, dir, "../../elsewhere/s.go", "core/s/s.go")
-	}, refuse: append(coreRules, "product-words-once"), at: []string{"core/s/s.go"}},
+	}, refuse: append(coreRules, "product-words-once", "no-hidden-text"), at: []string{"core/s/s.go"}},
 	{name: "symlink-dir", fixture: "symlink-dir", setup: func(t *testing.T, dir string) {
 		symlink(t, dir, "../elsewhere", "core/d")
-	}, refuse: append(coreRules, "product-words-once"), at: []string{"core/d"}},
+	}, refuse: append(coreRules, "product-words-once", "no-hidden-text"), at: []string{"core/d"}},
 	{name: "symlink-gomod", fixture: "symlink-gomod", setup: func(t *testing.T, dir string) {
 		remove(t, dir, "core/go.mod")
 		symlink(t, dir, "../elsewhere/go.mod", "core/go.mod")
-	}, refuse: append(coreRules, "product-words-once"), at: []string{"core/go.mod"}},
+	}, refuse: append(coreRules, "product-words-once", "no-hidden-text"), at: []string{"core/go.mod"}},
 
 	// A /* */ comment is not code, even when a line inside it starts with //; a raw string is not a
 	// comment, even when a line inside it starts with //. Code after either is checked.

@@ -4,7 +4,7 @@ Status: accepted. Date: 2026-11-12.
 
 ## Context
 
-The core gets its capability packages: the canonical form, signing, founding, composition, receipts and the mediator. Each is named for the protocol capability it implements (`package-per-capability`), and every name one exports is a promise a verifier, a door or a later milestone builds on (`trace-new-names`). A builder should not have to invent an entry point, and a reviewer should be able to check each one against a requirement (`change-is-one-capability`). This record lists them all, by package and signature, before the code.
+The core gets its capability packages: the canonical form, signing, founding, composition, receipts and the mediator. Each is named for the protocol capability it implements (`package-per-capability`), and every name one exports is a promise a verifier, a door or a later change builds on (`trace-new-names`). A builder should not have to invent an entry point, and a reviewer should be able to check each one against a requirement (`change-is-one-capability`). This record lists them all, by package and signature, before the code.
 
 Building the core implements the protocol text as it stands; it is not itself a protocol change. A correction to the text, if building shows one is needed, is its own change.
 
@@ -79,5 +79,5 @@ No interface stands for the module, and there is no second one.
 ## Consequences
 
 - Each exported name traces to a requirement id or to this record, and a doc comment names it.
-- The core grows by adding names here first. M2's answers, deadlines and reload add to `mediator` (record 0006) and call `receipts.Releases`; they need no new capability package.
+- The core grows by adding names here first. The answers, deadlines and reload that come with questions and release add to `mediator` (record 0006) and call `receipts.Releases`; they need no new capability package.
 - `shape` is a second place to look for a format rule. Its package comment says it decides nothing, and a reviewer holds it to that.

@@ -101,6 +101,7 @@ func agentsCases(t *testing.T) []tcase {
 	evaluate := lineOf(t, rulesIndex, "- [`reserved-evaluate`](core.md#reserved-evaluate)")
 	stays := lineOf(t, rulesIndex, "- [`ci-stays-fast`](changes.md#ci-stays-fast)")
 	redGreen := lineOf(t, rulesIndex, "- [`red-green-tests`](tests.md#red-green-tests)")
+	indexLines := len(liveLines(t, rulesIndex))
 	return []tcase{
 		// The entry file over 150 lines is refused at its 151st; over 10 KiB, as a whole.
 		{name: "agents-long", setup: func(t *testing.T, dir string) {
@@ -112,6 +113,18 @@ func agentsCases(t *testing.T) []tcase {
 		// 150 lines of 10240 bytes in all pass.
 		{name: "agents-at-limits", setup: func(t *testing.T, dir string) {
 			write(t, dir, agentsMD, strings.Repeat(strings.Repeat("z", 67)+"\n", 149)+strings.Repeat("z", 10240-68*149-1)+"\n")
+		}},
+		// One byte over 10 KiB, within 150 lines, is refused.
+		{name: "agents-byte-over", setup: func(t *testing.T, dir string) {
+			write(t, dir, agentsMD, strings.Repeat(strings.Repeat("z", 67)+"\n", 149)+strings.Repeat("z", 10241-68*149-1)+"\n")
+		}, refuse: []string{"agents-md-short"}, lines: []string{"AGENTS.md: 10241 bytes; the limit is 10240"}},
+		// An entry file that is a symbolic link is no entry file; no-hidden-text refuses the link too.
+		{name: "agents-link", setup: func(t *testing.T, dir string) {
+			remove(t, dir, agentsMD)
+			symlink(t, dir, "README.md", agentsMD)
+		}, refuse: []string{"agents-md-short", "no-hidden-text"}, set: []string{
+			"agents-md-short: AGENTS.md: missing; it is the entry file",
+			"no-hidden-text: AGENTS.md: a symbolic link",
 		}},
 		{name: "agents-missing", setup: func(t *testing.T, dir string) { remove(t, dir, agentsMD) },
 			refuse: []string{"agents-md-short"}, lines: []string{"AGENTS.md: missing; it is the entry file"}},
@@ -147,6 +160,43 @@ func agentsCases(t *testing.T) []tcase {
 		}, refuse: []string{"agents-md-short"}, lines: []string{
 			"docs/rules/tests.md:" + n(testsLines+2) + ": `bare-rule` has no Checked by: line",
 			"docs/rules/tests.md:" + n(testsLines+2) + ": `bare-rule` has no Why: line",
+		}},
+		// A rule with no Why: and no Checked by: line in the middle of a file: the next heading closes it.
+		{name: "rule-no-why-mid-file", setup: func(t *testing.T, dir string) {
+			edit(t, dir, "docs/rules/core.md", func(s string) string {
+				return strings.Replace(s, "## `core-no-world`\n", "## `bare-rule`\n\nThe rule.\n\n## `core-no-world`\n", 1)
+			})
+			edit(t, dir, rulesIndex, func(s string) string {
+				return strings.Replace(s, "- [`core-no-world`]", "- [`bare-rule`](core.md#bare-rule)\n- [`core-no-world`]", 1)
+			})
+		}, refuse: []string{"agents-md-short"}, lines: []string{
+			"docs/rules/core.md:" + n(world) + ": `bare-rule` has no Checked by: line",
+			"docs/rules/core.md:" + n(world) + ": `bare-rule` has no Why: line",
+		}},
+		// A name listed twice in the index; an index line whose anchor is not its name.
+		{name: "index-twice", setup: func(t *testing.T, dir string) {
+			edit(t, dir, rulesIndex, func(s string) string {
+				l := "- [`core-no-world`](core.md#core-no-world)\n"
+				return strings.Replace(s, l, l+l, 1)
+			})
+		}, refuse: []string{"agents-md-short"}, lines: []string{
+			"docs/rules/README.md:" + n(worldIndex+1) + ": `core-no-world` is listed twice",
+		}},
+		{name: "index-wrong-anchor", setup: func(t *testing.T, dir string) {
+			edit(t, dir, rulesIndex, func(s string) string {
+				return strings.Replace(s, "(core.md#core-no-world)", "(core.md#core-imports)", 1)
+			})
+		}, refuse: []string{"agents-md-short"}, lines: []string{
+			"docs/rules/README.md:" + n(worldIndex) + ": `core-no-world` links the anchor core-imports, not core-no-world",
+		}},
+		// A link from one topic file to a heading of another that is not there; a G-number in the
+		// index.
+		{name: "topic-link-and-index-g", setup: func(t *testing.T, dir string) {
+			appendTo(t, dir, "docs/rules/errors.md", "\nSee [gone](core.md#gone-rule).\n")
+			appendTo(t, dir, rulesIndex, "\nOnce G-7.\n")
+		}, refuse: []string{"agents-md-short"}, set: []string{
+			"agents-md-short: docs/rules/README.md:" + n(indexLines+2) + ": names G-7; a rule is named by its public name",
+			"agents-md-short: docs/rules/errors.md:" + n(errorsLines+2) + ": docs/rules/core.md#gone-rule is no heading",
 		}},
 		// A rule the checker prints, and red-green-tests, each with no heading: the index names
 		// them, the checker's refusal links a heading that is not there, and so does every other
@@ -196,6 +246,22 @@ var hiddenCases = []tcase{
 	{name: "hidden-bom", setup: func(t *testing.T, dir string) {
 		write(t, dir, "scripts/bom.sh", "\ufeffecho hi\n")
 	}, refuse: []string{"no-hidden-text"}, lines: []string{"scripts/bom.sh:1: holds U+FEFF (invisible)"}},
+	// A byte that is not valid UTF-8 does not hide the rest of the file.
+	{name: "hidden-invalid-utf8", setup: func(t *testing.T, dir string) {
+		write(t, dir, "docs/stray.md", "ok \xff\n\u202e here\n")
+	}, refuse: []string{"no-hidden-text"}, lines: []string{"docs/stray.md:2: holds U+202E (bidi control)"}},
+	// Variation selectors, and format characters beyond the named ones, are refused.
+	{name: "hidden-selectors-and-format", setup: func(t *testing.T, dir string) {
+		write(t, dir, "docs/vs.md", "a\ufe0f b\U000e0100\n\ufff9c\U0001d173\n")
+	}, refuse: []string{"no-hidden-text"}, lines: []string{
+		"docs/vs.md:1: holds U+FE0F (variation selector), U+E0100 (variation selector)",
+		"docs/vs.md:2: holds U+FFF9 (invisible), U+1D173 (invisible)",
+	}},
+	// A symbolic link outside testdata/ is refused, whatever it leads to: here, a file under testdata/.
+	{name: "hidden-link", setup: func(t *testing.T, dir string) {
+		write(t, dir, "docs/testdata/note.md", "\u202e\n")
+		symlink(t, dir, "testdata/note.md", "docs/note.md")
+	}, refuse: []string{"no-hidden-text"}, lines: []string{"docs/note.md: a symbolic link"}},
 }
 
 func TestNoHiddenText(t *testing.T) { runCases(t, hiddenCases) }

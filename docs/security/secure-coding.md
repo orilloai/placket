@@ -12,7 +12,7 @@ How placket's code handles keys, cryptography, untrusted bytes, files and the so
 ## Comparing secrets
 
 - A secret, or a value whose bytes an attacker could learn from the time a comparison takes, is compared with `crypto/subtle.ConstantTimeCompare`, never with `==` or `bytes.Equal` ([`crypto-from-stdlib`](../rules/core.md#crypto-from-stdlib)).
-- A signature is checked with `ed25519.Verify`, which is already safe to call on untrusted input; its result is the only thing compared.
+- A signature is checked only through the core's signing functions, `signing.Verify` and `signing.VerifyPayload` in `core/signing/`. They refuse a key that is not the canonical encoding of its point, or whose point is of small order, before they call `ed25519.Verify`, which accepts both (signing-1). No other code calls `ed25519.Verify` itself, and the boolean those functions return is the only thing compared ([`call-signing`](../rules/adapters.md#call-signing)).
 
 ## Keys in memory
 
@@ -24,8 +24,8 @@ Go cannot reliably wipe a secret from memory: the garbage collector may copy a v
 
 ## Keys and state on disk
 
-- A key file is created mode 0600 with `O_EXCL`, so an existing file is never overwritten, and written atomically, so a crash never leaves half a key. A key file that another user can read is refused when it is loaded ([`keys-on-disk`](../rules/adapters.md#keys-on-disk)).
-- The journal, the state directory and every file the window writes are created mode 0600. The window's socket is mode 0600, and the client checks the socket's owner before it sends.
+- A key file is created mode 0600 with `O_EXCL`, so an existing file is never overwritten ([`keys-on-disk`](../rules/adapters.md#keys-on-disk)). The rule also asks for two things today's code does not do yet: an atomic write, so a crash never leaves half a key (the code writes once, syncs, and removes the file when a write fails), and the refusal of a key file another user can read when it is loaded (`docs/security/threat-model.md`, L14).
+- The journal and state directories placket makes are created mode 0700, and every file the window writes in them mode 0600; a directory that already exists keeps its mode (`docs/security/threat-model.md`, L14). The window sets its socket to mode 0600, and the client checks the socket's owner before it sends.
 - A write the window promises is synced to disk before it replies ([`journal-synced`](../rules/adapters.md#journal-synced)), and the receipts file is never rewritten ([`journal-is-evidence`](../rules/adapters.md#journal-is-evidence)).
 - A path built from input is joined under a directory placket owns and never follows a name that leaves it.
 

@@ -39,10 +39,10 @@ Fixtures for any check go under a `testdata/` directory, which Go's tools and `m
 - The core is pure: it takes the time, salts and keys as parameters, and never reads the world (`core-no-world`).
 - Behaviour lands in `spec/protocol.md` and the vectors before code (`specs-name-behaviour`, `vectors-independent`).
 - Every test a change adds or changes is red against `main` and green at the head, and none is removed or skipped unexplained (`red-green-tests`).
-- Rules, checks, workflows and review change only in a change of their own, which the maintainer approves (`machine-rules-in-ci`).
+- Rules, checks, workflows and review change only in a change of their own, which the maintainer approves (`CONTRIBUTING.md`, Kinds of change; no public name of its own).
 - A change that alters what placket does for someone, a capability's scope or what it must not do stops for the maintainer (`deltas-stop-for-intent`).
 - Secrets never print, in errors, logs or any format verb (`secrets-never-print`, `error-text-no-content`).
-- An agent never adds a `Signed-off-by` line, its own or anyone's. Only a person signs off, for themselves.
+- An agent never adds a `Signed-off-by` line, its own or anyone's. Only a person signs off, for themselves. (`CONTRIBUTING.md`, Commits; no public name of its own)
 
 ## Read before you change
 
