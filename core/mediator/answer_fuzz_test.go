@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	ptesting "github.com/orilloai/placket/core/internal/testing"
+	"github.com/orilloai/placket/core/internal/testing/seeds"
 	"github.com/orilloai/placket/core/mediator"
 	"github.com/orilloai/placket/core/receipts"
 )
@@ -39,6 +40,9 @@ func FuzzResolve(f *testing.F) {
 	f.Add(d, q, "cancelled", "x", []byte("short"), false, "2026-11-12T10:00:00Z")
 	f.Add(p, q, "accepted", "accepted", []byte("an answer's salt"), false, "2026-11-12T09:01:00Z")
 	f.Add("", "", "", "", []byte(nil), false, "")
+	for _, s := range seeds.Values(f, "questions", "content") {
+		f.Add(d, q, "changed", s, []byte("an answer's salt"), true, "2026-11-12T09:01:00Z")
+	}
 	f.Fuzz(func(t *testing.T, caller, questionID, action, answer string, salt []byte, release bool, at string) {
 		m, _ := opened(t)
 		before := len(m.Receipts())
@@ -61,6 +65,9 @@ func FuzzUndeliverable(f *testing.F) {
 	f.Add(q, "2026-11-12T10:00:00Z")
 	f.Add(q, "9999-12-31T23:59:59Z")
 	f.Add("", "")
+	for _, s := range seeds.Values(f, "questions", "at") {
+		f.Add(q, s)
+	}
 	f.Fuzz(func(t *testing.T, questionID, at string) {
 		m, _ := opened(t)
 		before := len(m.Receipts())
@@ -77,6 +84,9 @@ func FuzzTick(f *testing.F) {
 	f.Add("9999-12-31T23:59:59Z")
 	f.Add("0000-01-01T00:00:00Z")
 	f.Add("")
+	for _, s := range seeds.Values(f, "questions", "at") {
+		f.Add(s)
+	}
 	f.Fuzz(func(t *testing.T, at string) {
 		m, _ := opened(t)
 		before := len(m.Receipts())
@@ -94,6 +104,9 @@ func FuzzTheReads(f *testing.F) {
 	f.Add(ptesting.Key(f, "proposer").Reference(), q)
 	f.Add(ptesting.Key(f, "decider").Reference(), string(m.Receipts()[0][:8]))
 	f.Add("", "")
+	for _, s := range seeds.Values(f, "questions", "question") {
+		f.Add(ptesting.Key(f, "proposer").Reference(), s)
+	}
 	f.Fuzz(func(t *testing.T, caller, id string) {
 		m, _ := opened(t)
 		_, _ = m.Answerers(id)
@@ -126,6 +139,12 @@ func FuzzReload(f *testing.F) {
 	f.Add(set, foundedAt, uint8(3), list[1], q, "x", "decider", "", []byte(`{}`), "2026-11-12T11:00:00Z")
 	f.Add([]byte(`{}`), "", uint8(0), []byte(`{}`), "", "", "", "", []byte(nil), "")
 	med := ptesting.Key(f, "mediator")
+	for _, in := range seeds.Inputs(f, "founding") {
+		f.Add(in, foundedAt, uint8(0), list[0], q2, "2026-11-12T10:02:00Z", "decider", queued[0].To, queued[0].Delivery, "2026-11-12T11:00:00Z")
+	}
+	for _, in := range seeds.Inputs(f, "receipts", "receipt") {
+		f.Add(set, foundedAt, uint8(0), in, q2, "2026-11-12T10:02:00Z", "decider", queued[0].To, in, "2026-11-12T11:00:00Z")
+	}
 	f.Fuzz(func(t *testing.T, founding []byte, foundedAt string, at uint8, receipt []byte, question, deadline, role, to string, delivery []byte, reloadAt string) {
 		l := append([][]byte(nil), list...)
 		if int(at) < len(l) {

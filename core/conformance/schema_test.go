@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/orilloai/placket/core/internal/testing/seeds"
 )
 
 // loadAll files every schema of the repository's spec/schema/ in one set.
@@ -269,6 +271,11 @@ func FuzzValidate(f *testing.F) {
 	root, err := set.compile("https://placket.dev/schema/0.1/vector.json#")
 	if err != nil {
 		f.Fatal(err)
+	}
+	for _, group := range []string{"canonical", "crossing", "founding", "questions", "receipts", "signatures"} {
+		for _, in := range seeds.Inputs(f, group) {
+			f.Add(in)
+		}
 	}
 	f.Fuzz(func(t *testing.T, b []byte) {
 		v, err := read(b)

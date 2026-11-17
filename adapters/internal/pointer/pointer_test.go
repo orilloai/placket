@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/orilloai/placket/adapters/internal/pointer"
+	"github.com/orilloai/placket/adapters/internal/seeds"
 )
 
 // TestParseReadsAJSONPointer reads paths as RFC 6901 writes them: the empty path is the whole
@@ -149,6 +150,9 @@ func FuzzValue(f *testing.F) {
 	f.Add([]byte(`{"a":1,"a":2}`), "/a")
 	f.Add([]byte(`"\ud800"`), "")
 	f.Add([]byte("[[[[[[[[[[1]]]]]]]]]]"), "/0/0/0")
+	for _, in := range seeds.Inputs(f, "canonical") {
+		f.Add(in, "/a")
+	}
 	f.Fuzz(func(t *testing.T, b []byte, path string) {
 		tokens, ok := pointer.Parse(path)
 		if !ok {

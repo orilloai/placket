@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	ptesting "github.com/orilloai/placket/core/internal/testing"
+	"github.com/orilloai/placket/core/internal/testing/seeds"
 	"github.com/orilloai/placket/core/mediator"
 )
 
@@ -168,6 +169,9 @@ func FuzzQuestion(f *testing.F) {
 	f.Add(ptesting.Key(f, "proposer").Reference(), q)
 	f.Add(ptesting.Key(f, "stranger").Reference(), string(m.Receipts()[0][:8]))
 	f.Add("", "")
+	for _, s := range seeds.Values(f, "questions", "question") {
+		f.Add(ptesting.Key(f, "decider").Reference(), s)
+	}
 	f.Fuzz(func(t *testing.T, caller, id string) {
 		m, _ := opened(t)
 		before := len(m.Receipts())

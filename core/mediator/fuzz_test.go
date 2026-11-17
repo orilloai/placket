@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	ptesting "github.com/orilloai/placket/core/internal/testing"
+	"github.com/orilloai/placket/core/internal/testing/seeds"
 	"github.com/orilloai/placket/core/mediator"
 )
 
@@ -18,6 +19,9 @@ func FuzzGet(f *testing.F) {
 	f.Add(ptesting.Key(f, "mediator").Reference())
 	f.Add("ed25519:")
 	f.Add("")
+	for _, s := range seeds.Values(f, "founding", "actor", "principal", "mediator") {
+		f.Add(s)
+	}
 	f.Fuzz(func(t *testing.T, caller string) {
 		m := found(t)
 		note := message(t, m.Accord(), "n", ap.Reference(), "note", "A note.", nil)

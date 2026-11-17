@@ -10,6 +10,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/orilloai/placket/adapters/internal/seeds"
 	"github.com/orilloai/placket/adapters/keyfile"
 	"github.com/orilloai/placket/core/signing"
 )
@@ -88,6 +89,9 @@ func FuzzParse(f *testing.F) {
 	f.Add([]byte(strings.Repeat("0f", 32) + "\n"))
 	f.Add([]byte(strings.Repeat("AB", 32) + "\n"))
 	f.Add([]byte(""))
+	for _, s := range seeds.Values(f, "crossing", "proposer", "applier", "decider", "mediator") {
+		f.Add([]byte(s + "\n"))
+	}
 	f.Fuzz(func(t *testing.T, b []byte) {
 		k, err := keyfile.Parse(b)
 		if err != nil {

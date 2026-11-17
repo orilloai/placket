@@ -10,6 +10,7 @@ import (
 
 	"github.com/orilloai/placket/core/canonical"
 	ptesting "github.com/orilloai/placket/core/internal/testing"
+	"github.com/orilloai/placket/core/internal/testing/seeds"
 	"github.com/orilloai/placket/core/mediator"
 	"github.com/orilloai/placket/core/receipts"
 	"github.com/orilloai/placket/core/setup"
@@ -335,6 +336,9 @@ func FuzzGive(f *testing.F) {
 	f.Add(note, envelope(f, 1, note, p), ap.Reference(), "2026-11-12T09:01:00Z")
 	f.Add([]byte(`{}`), []byte(`{"seq":1}`), "", "")
 	med := ptesting.Key(f, "mediator").Reference()
+	for _, in := range seeds.Inputs(f, "crossing", "message") {
+		f.Add(in, envelope(f, 2, note, p), p.Reference(), "2026-11-12T09:01:00Z")
+	}
 	f.Fuzz(func(t *testing.T, message, envelope []byte, caller, at string) {
 		m := found(t)
 		first := note
@@ -360,6 +364,9 @@ func FuzzFound(f *testing.F) {
 	set, at := askAndLog(f)
 	f.Add(set, at)
 	f.Add([]byte(`{}`), at)
+	for _, in := range seeds.Inputs(f, "founding") {
+		f.Add(in, at)
+	}
 	k := ptesting.Key(f, "mediator")
 	f.Fuzz(func(t *testing.T, set []byte, at string) {
 		m, err := mediator.Found(set, k, at)

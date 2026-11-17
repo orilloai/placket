@@ -3,6 +3,8 @@ package conformance
 import (
 	"strings"
 	"testing"
+
+	"github.com/orilloai/placket/core/internal/testing/seeds"
 )
 
 func TestRead(t *testing.T) {
@@ -48,6 +50,11 @@ func TestRead(t *testing.T) {
 func FuzzRead(f *testing.F) {
 	for _, s := range []string{`{}`, `{"a":[1,2,{"b":null}]}`, `{"a":1,"a":2}`, "\"\xff\"", `[[[[`, `-0.0e-0`} {
 		f.Add([]byte(s))
+	}
+	for _, group := range []string{"canonical", "crossing", "founding", "questions", "receipts", "signatures"} {
+		for _, in := range seeds.Inputs(f, group) {
+			f.Add(in)
+		}
 	}
 	f.Fuzz(func(t *testing.T, b []byte) {
 		v, err := read(b)

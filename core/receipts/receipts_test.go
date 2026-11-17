@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	ptesting "github.com/orilloai/placket/core/internal/testing"
+	"github.com/orilloai/placket/core/internal/testing/seeds"
 	"github.com/orilloai/placket/core/receipts"
 	"github.com/orilloai/placket/core/signing"
 )
@@ -251,6 +252,9 @@ func FuzzVerify(f *testing.F) {
 	f.Add(list[1], med.Reference())
 	f.Add([]byte(`{"payloadType":"application/vnd.in-toto+json","payload":"e30=","signatures":[]}`), med.Reference())
 	f.Add([]byte("\xff"), "mediator")
+	for _, in := range seeds.Inputs(f, "receipts") {
+		f.Add(in, med.Reference())
+	}
 	f.Fuzz(func(t *testing.T, receipt []byte, mediator string) {
 		st, err := receipts.Verify(mediator, [][]byte{list[0], receipt})
 		if err == nil && len(st) != 2 {
@@ -269,6 +273,9 @@ func FuzzBuild(f *testing.F) {
 	from := ptesting.Key(f, "proposer").Reference()
 	f.Add("note", strings.Repeat("ab", 32), from, "crossing", "pass", "ok", "2026-11-12T09:00:00Z")
 	f.Add("answer", "", "", "resolution", "escalate", "maybe", "")
+	for _, s := range seeds.Strings(f, "receipts") {
+		f.Add("note", strings.Repeat("ab", 32), from, "crossing", "block", s, "2026-11-12T09:00:00Z")
+	}
 	f.Fuzz(func(t *testing.T, name, digest, party, kind, verdict, reason, at string) {
 		r, _, err := receipts.Build(receipts.Subject{Name: name, Digest: digest}, receipts.Predicate{
 			Accord: accord, Card: card, Kind: kind, From: party, To: party, Seq: 1, At: at,

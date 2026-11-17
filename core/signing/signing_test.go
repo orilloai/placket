@@ -10,6 +10,8 @@ import (
 	"math/big"
 	"strings"
 	"testing"
+
+	"github.com/orilloai/placket/core/internal/testing/seeds"
 )
 
 func testKey(t testing.TB, name string) Key {
@@ -252,6 +254,11 @@ func FuzzVerify(f *testing.F) {
 	f.Add([]byte(`{"sig":7}`), TypeBinding, "ed25519:"+strings.Repeat("0", 64))
 	f.Add([]byte(`[]`), TypeRegistration, "ecdsa:")
 	f.Add([]byte("\xff"), "", "")
+	for _, in := range seeds.Inputs(f, "signatures") {
+		for _, ty := range seeds.Values(f, "signatures", "typeUri") {
+			f.Add(in, ty, k.Reference())
+		}
+	}
 	f.Fuzz(func(t *testing.T, object []byte, typeURI, ref string) {
 		if Verify(object, typeURI, ref) {
 			if _, err := SigningBytes(object, typeURI); err != nil {
@@ -270,6 +277,9 @@ func FuzzVerifyPayload(f *testing.F) {
 	sig, _ := SignPayload("application/vnd.in-toto+json", []byte("{}"), k)
 	f.Add("application/vnd.in-toto+json", []byte("{}"), sig, k.Reference(), []byte("seed"))
 	f.Add(TypeEnvelope, []byte("{}"), sig[:63], "ed25519:", make([]byte, 32))
+	for _, in := range seeds.Inputs(f, "signatures") {
+		f.Add("application/vnd.in-toto+json", in, sig, k.Reference(), []byte("seed"))
+	}
 	f.Fuzz(func(t *testing.T, payloadType string, payload, sig []byte, ref string, seed []byte) {
 		_ = VerifyPayload(payloadType, payload, sig, ref)
 		_ = PAE(payloadType, payload)

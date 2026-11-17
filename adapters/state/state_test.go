@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/orilloai/placket/adapters/internal/seeds"
 	"github.com/orilloai/placket/adapters/state"
 	"github.com/orilloai/placket/core/receipts"
 )
@@ -169,6 +170,9 @@ func FuzzParseEnvelope(f *testing.F) {
 	f.Add([]byte(`{"hash":"` + hash("a") + `","seq":1}`))
 	f.Add([]byte(`{"seq":1,"hash":"x"}`))
 	f.Add([]byte(`{"hash":"` + hash("a") + `","seq":0}`))
+	for _, in := range seeds.Inputs(f, "crossing", "envelope") {
+		f.Add(in)
+	}
 	f.Fuzz(func(t *testing.T, b []byte) {
 		seq, h, ok := state.ParseEnvelope(b)
 		if !ok {

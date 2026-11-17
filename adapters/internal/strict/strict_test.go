@@ -3,6 +3,7 @@ package strict_test
 import (
 	"testing"
 
+	"github.com/orilloai/placket/adapters/internal/seeds"
 	"github.com/orilloai/placket/adapters/internal/strict"
 )
 
@@ -42,6 +43,9 @@ func TestDecodeTakesExactNames(t *testing.T) {
 func FuzzDecode(f *testing.F) {
 	f.Add([]byte(`{"hash":"h","seq":1}`))
 	f.Add([]byte(`{"HASH":"h"}`))
+	for _, in := range seeds.Inputs(f, "canonical") {
+		f.Add(in)
+	}
 	f.Fuzz(func(t *testing.T, b []byte) {
 		var p pair
 		_ = strict.Decode(b, &p)

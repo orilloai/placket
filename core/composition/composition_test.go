@@ -5,6 +5,7 @@ import (
 
 	"github.com/orilloai/placket/core/composition"
 	ptesting "github.com/orilloai/placket/core/internal/testing"
+	"github.com/orilloai/placket/core/internal/testing/seeds"
 	"github.com/orilloai/placket/core/setup"
 )
 
@@ -66,6 +67,9 @@ func FuzzDecide(f *testing.F) {
 	f.Add(ptesting.Key(f, "proposer").Reference(), ptesting.Key(f, "applier").Reference(), "memo", false)
 	f.Add(ptesting.Key(f, "proposer").Reference(), ptesting.Key(f, "proposer").Reference(), "brief", true)
 	f.Add("", "", "", false)
+	for _, s := range seeds.Strings(f, "founding") {
+		f.Add(ptesting.Key(f, "proposer").Reference(), ptesting.Key(f, "applier").Reference(), s, false)
+	}
 	f.Fuzz(func(t *testing.T, from, to, kind string, formed bool) {
 		d := composition.Decide(compose, composition.Crossing{From: from, To: to, Kind: kind, Formed: formed})
 		switch {
