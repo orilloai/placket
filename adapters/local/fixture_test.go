@@ -84,6 +84,14 @@ func askAndLog(t testing.TB, mediatorName string) []byte {
 			term("want", "give", []string{"applier"}, []string{"changed-version"}),
 		}},
 	}
+	// One principal stands behind every party; each binding names the typed hash of the policy.
+	roles := []string{"proposer", "applier", "decider"}
+	policy := map[string]any{"roles": roles, "principals": []any{map[string]any{"principal": pr.Reference(), "roles": roles}}}
+	pb, _ := json.Marshal(policy)
+	policyHash, err := canonical.TypedHash(pb)
+	if err != nil {
+		t.Fatal(err)
+	}
 	type entry struct {
 		actor      string
 		decl, bind map[string]any
@@ -98,7 +106,7 @@ func askAndLog(t testing.TB, mediatorName string) []byte {
 		es = append(es, entry{k.Reference(),
 			signed(t, map[string]any{"actor": k.Reference(), "terms": terms}, signing.TypeDeclaration, k),
 			signed(t, map[string]any{"actor": k.Reference(), "principal": pr.Reference(), "roles": []string{p.name},
-				"mediator": med.Reference(), "until": "2099-01-01T00:00:00Z"}, signing.TypeBinding, pr)})
+				"policy": policyHash, "mediator": med.Reference(), "until": "2099-01-01T00:00:00Z"}, signing.TypeBinding, pr)})
 	}
 	sort.Slice(es, func(i, j int) bool { return canonical.Less(es[i].actor, es[j].actor) })
 	var decls, binds []any
@@ -106,7 +114,7 @@ func askAndLog(t testing.TB, mediatorName string) []byte {
 		decls, binds = append(decls, e.decl), append(binds, e.bind)
 	}
 	b, _ := json.Marshal(map[string]any{
-		"policy":   map[string]any{"roles": []string{"proposer", "applier", "decider"}, "principals": []string{pr.Reference()}},
+		"policy":   policy,
 		"mediator": map[string]any{"actor": med.Reference(), "operator": op.Reference(), "runs": "process"},
 		"card": map[string]any{"spec": "0.1", "kernel": map[string]any{"version": "0.1.0", "hash": "sha256:" + hex.EncodeToString(make([]byte, 32))},
 			"judges": []any{}, "checks": []any{}},

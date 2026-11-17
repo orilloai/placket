@@ -64,8 +64,54 @@ func withProposerTerms(terms ...kit.Obj) kit.Obj {
 	return replace(base(), "declarations", kit.Proposer, kit.Declaration(kit.Proposer, terms...))
 }
 
+// binding is a binding signed for the ask-and-log set's policy.
 func binding(actor, principal, mediator kit.Key, until string, roles ...string) kit.Obj {
-	return kit.Binding(actor, principal, mediator, until, roles...)
+	return kit.Binding(actor, principal, mediator, kit.HashOf(base()["policy"]), until, roles...)
+}
+
+// keys are every key a set of this group names, by reference.
+func keys() map[string]kit.Key {
+	out := map[string]kit.Key{}
+	for _, k := range []kit.Key{kit.Mediator, kit.Operator, kit.Principal, kit.OtherPrincipal, kit.OtherMediator,
+		kit.Proposer, kit.Applier, kit.Decider, kit.Lead, kit.Stranger} {
+		out[k.Ref] = k
+	}
+	return out
+}
+
+// rebind signs every binding of set again, by its principal, for the set's policy as it now is, so a
+// change to the policy leaves every binding good.
+func rebind(set kit.Obj) kit.Obj {
+	k := keys()
+	var l []kit.Obj
+	for _, b := range list(set, "bindings") {
+		var roles []string
+		for _, r := range b["roles"].([]any) {
+			roles = append(roles, r.(string))
+		}
+		l = append(l, kit.Binding(k[b["actor"].(string)], k[b["principal"].(string)], k[b["mediator"].(string)],
+			kit.HashOf(set["policy"]), b["until"].(string), roles...))
+	}
+	return put(set, "bindings", l, true)
+}
+
+// withEntries sets the policy's entries of set and signs every binding again for that policy.
+func withEntries(set kit.Obj, es ...any) kit.Obj {
+	set["policy"].(kit.Obj)["principals"] = es
+	return rebind(set)
+}
+
+// twoPrincipals is the ask-and-log Accord with a principal per side: the principal may grant
+// proposer and applier and binds the proposer and the applier; the other principal may grant decider
+// and binds the decider.
+func twoPrincipals() kit.Set {
+	s := kit.AskAndLog()
+	s.Grants = []kit.Grant{
+		{Principal: kit.Principal, Roles: []string{"proposer", "applier"}},
+		{Principal: kit.OtherPrincipal, Roles: []string{"decider"}},
+	}
+	s.Parties[2].By = kit.OtherPrincipal
+	return s
 }
 
 func accepted(name, tests string, set kit.Obj, at string) kit.Vector {
@@ -100,6 +146,75 @@ func main() {
 
 	noRoles := base()
 	noRoles["policy"].(kit.Obj)["roles"] = []any{}
+	noRoles = rebind(noRoles)
+
+	// Two entries that both list decider, the decider bound by the second.
+	oneRoleTwice := twoPrincipals()
+	oneRoleTwice.Grants[0].Roles = []string{"proposer", "applier", "decider"}
+
+	// The proposer holds auditor beside proposer, which its principal may grant and the policy does
+	// not require; the policy requires proposer alone.
+	notRequired := twoPrincipals()
+	notRequired.Roles = []string{"proposer"}
+	notRequired.Grants = []kit.Grant{
+		{Principal: kit.Principal, Roles: []string{"proposer", "auditor"}},
+		{Principal: kit.OtherPrincipal, Roles: []string{"applier", "decider"}},
+	}
+	notRequired.Parties[0].Roles = []string{"proposer", "auditor"}
+	notRequired.Parties[1].By = kit.OtherPrincipal
+
+	// The proposer's binding by the principal, whose entry lists proposer and applier, gives decider.
+	ungranted := twoPrincipals()
+	ungranted.Parties[0].Roles = []string{"proposer", "decider"}
+	// The proposer's binding, by the policy's principal, is signed for the policy with no roles.
+	otherPolicy := replace(base(), "bindings", kit.Proposer,
+		kit.Binding(kit.Proposer, kit.Principal, kit.Mediator, kit.HashOf(noRoles["policy"]), kit.Until, "proposer"))
+	// The first declaration's binding gives decider, which its principal may not grant, and names
+	// another mediator; then the same with another policy's hash in place of the mediator.
+	twoSet := twoPrincipals().Build()
+	firstTwo := keyOf(list(twoSet, "declarations")[0]["actor"].(string))
+	firstBy := kit.Principal
+	if firstTwo.Ref == kit.Decider.Ref {
+		firstBy = kit.OtherPrincipal
+	}
+	ungrantedRole := "decider"
+	if firstBy.Ref == kit.OtherPrincipal.Ref {
+		ungrantedRole = "proposer"
+	}
+	roleAndMediator := replace(twoPrincipals().Build(), "bindings", firstTwo,
+		kit.Binding(firstTwo, firstBy, kit.OtherMediator, kit.HashOf(twoSet["policy"]), kit.Until, ungrantedRole))
+	roleAndPolicy := replace(twoPrincipals().Build(), "bindings", firstTwo,
+		kit.Binding(firstTwo, firstBy, kit.Mediator, kit.HashOf(base()["policy"]), kit.Until, ungrantedRole))
+	// The proposer's binding gives decider, which its principal may not grant, and its signature is
+	// the proposer's good binding's, so the signature fails first.
+	badSigRole := kit.Binding(kit.Proposer, kit.Principal, kit.Mediator, kit.HashOf(twoSet["policy"]), kit.Until, "proposer", "decider")
+	badSigRole["sig"] = kit.Binding(kit.Proposer, kit.Principal, kit.Mediator, kit.HashOf(twoSet["policy"]), kit.Until, "proposer", "applier")["sig"]
+	badSigRole = replace(twoPrincipals().Build(), "bindings", kit.Proposer, badSigRole)
+	// The proposer's binding, by the policy's principal, is signed for the policy with no roles and
+	// names another mediator; then the same binding expired at founding in place of the mediator.
+	policyAndMediator := replace(base(), "bindings", kit.Proposer,
+		kit.Binding(kit.Proposer, kit.Principal, kit.OtherMediator, kit.HashOf(noRoles["policy"]), kit.Until, "proposer"))
+	policyAndExpired := replace(base(), "bindings", kit.Proposer,
+		kit.Binding(kit.Proposer, kit.Principal, kit.Mediator, kit.HashOf(noRoles["policy"]), at, "proposer"))
+
+	// Defects of shape in the policy's entries and in a binding, the bindings signed again after each
+	// change to the policy, so only the shape is wrong.
+	entry := func(p kit.Key, roles ...any) kit.Obj { return kit.Obj{"principal": p.Ref, "roles": roles} }
+	all := []any{"proposer", "applier", "decider"}
+	noPrincipals := withEntries(base())
+	emptyRoles := withEntries(base(), entry(kit.Principal))
+	repeatedRole := withEntries(base(), entry(kit.Principal, "proposer", "applier", "decider", "decider"))
+	notALabel := withEntries(base(), entry(kit.Principal, "proposer", "applier", "Decider"))
+	notAReference := withEntries(base(), kit.Obj{"principal": "principal", "roles": all})
+	twoEntriesOnePrincipal := withEntries(base(), entry(kit.Principal, "proposer", "applier"), entry(kit.Principal, "decider"))
+	extraMember := entry(kit.Principal, all...)
+	extraMember["actors"] = []any{kit.Proposer.Ref}
+	entryExtra := withEntries(base(), extraMember)
+	noPolicy := kit.Unsigned(binding(kit.Proposer, kit.Principal, kit.Mediator, kit.Until, "proposer"))
+	delete(noPolicy, "policy")
+	bindingNoPolicy := replace(base(), "bindings", kit.Proposer, kit.Signed(noPolicy, kit.TypeBinding, kit.Principal))
+	policyNotHash := replace(base(), "bindings", kit.Proposer,
+		kit.Binding(kit.Proposer, kit.Principal, kit.Mediator, kit.Hash(kit.Canon(base()["policy"]))[len("sha256:"):], kit.Until, "proposer"))
 
 	// Defects in terms, each declaration signed after the defect so only the defect is wrong.
 	selector := kit.Term("want", "give", []string{"applier"}, []string{"note"})
@@ -131,6 +246,7 @@ func main() {
 	// the policy, so only the binding with no declaration is wrong.
 	noDeclaration := remove(base(), "declarations", kit.Decider)
 	noDeclaration["policy"].(kit.Obj)["roles"] = []any{"proposer", "applier"}
+	noDeclaration = rebind(noDeclaration)
 	noBinding := remove(base(), "bindings", kit.Decider)
 
 	cardCheck := base()
@@ -140,6 +256,7 @@ func main() {
 
 	auditor := base()
 	auditor["policy"].(kit.Obj)["roles"] = []any{"proposer", "applier", "decider", "auditor"}
+	auditor = rebind(auditor)
 
 	container := base()
 	container["mediator"].(kit.Obj)["runs"] = "container"
@@ -241,6 +358,25 @@ func main() {
 		accepted("one-binding-two-roles", "setup-contract-2: one binding gives an actor two of the policy's three roles, the third held by another", twoRoles, at),
 		accepted("operator-changes-the-id", "setup-contract-7: a set differing from ask-and-log only in its operator founds to another id", otherOperator, at),
 		accepted("policy-without-roles", "setup-contract-5: a policy whose roles are empty founds", noRoles, at),
+		accepted("two-principals", "setup-contract-2: a principal per side, one that may grant proposer and applier and binds those two, the other that may grant decider and binds the decider, founds", twoPrincipals().Build(), at),
+		accepted("two-entries-one-role", "setup-contract-9: two policy entries that both list decider found, the decider bound by the second", oneRoleTwice.Build(), at),
+		accepted("a-role-held-not-required", "setup-contract-5: a binding gives proposer and auditor, both its principal's entry lists, under a policy that requires proposer alone, and the set founds", notRequired.Build(), at),
+		refused("binding-role-not-granted", "setup-contract-3: a binding by the principal whose entry lists proposer and applier gives decider, and is binding-role", ungranted.Build(), "binding-role"),
+		refused("binding-other-policy", "setup-contract-3: a binding signed for the hash of another policy is binding-policy", otherPolicy, "binding-policy"),
+		refused("ungranted-role-and-other-mediator", "setup-contract-8: the first declaration's binding gives a role its principal may not grant and names another mediator, and the role comes first", roleAndMediator, "binding-role"),
+		refused("ungranted-role-and-other-policy", "setup-contract-8: a binding that gives a role its principal may not grant and names another policy's hash is binding-role, which comes first", roleAndPolicy, "binding-role"),
+		refused("bad-binding-signature-and-ungranted-role", "setup-contract-8: a binding's bad signature comes before a role its principal may not grant", badSigRole, "binding-signature"),
+		refused("other-policy-and-other-mediator", "setup-contract-8: a binding signed for another policy's hash is binding-policy, which comes before the other mediator it names", policyAndMediator, "binding-policy"),
+		refused("other-policy-and-expired", "setup-contract-8: a binding signed for another policy's hash is binding-policy, which comes before its expiry", policyAndExpired, "binding-policy"),
+		refused("principals-empty", "setup-contract-9: a policy whose principals is empty is invalid-shape", noPrincipals, "invalid-shape"),
+		refused("entry-roles-empty", "setup-contract-9: a policy entry whose roles is empty is invalid-shape", emptyRoles, "invalid-shape"),
+		refused("entry-roles-repeated", "setup-contract-9: a policy entry whose roles repeats a label is invalid-shape", repeatedRole, "invalid-shape"),
+		refused("entry-role-not-a-label", "setup-contract-9: a policy entry with a role that is not a label is invalid-shape", notALabel, "invalid-shape"),
+		refused("entry-principal-not-a-reference", "setup-contract-9: a policy entry whose principal is not an actor reference is invalid-shape", notAReference, "invalid-shape"),
+		refused("two-entries-one-principal", "setup-contract-9: two policy entries for one principal are invalid-shape", twoEntriesOnePrincipal, "invalid-shape"),
+		refused("entry-unlisted-member", "setup-contract-9: a policy entry with a member other than principal and roles is invalid-shape", entryExtra, "invalid-shape"),
+		refused("binding-without-policy", "setup-contract-9: a binding with no policy, signed so, is invalid-shape", bindingNoPolicy, "invalid-shape"),
+		refused("binding-policy-not-a-hash", "setup-contract-9: a binding whose policy is not a typed hash is invalid-shape", policyNotHash, "invalid-shape"),
 
 		refused("selector-not-a-role", "setup-contract-1: a with selector that is not role:<label> is term-invalid", withProposerTerms(selector), "term-invalid"),
 		refused("maybe-without-resolve", "setup-contract-1: a maybe term with no resolve is maybe-without-resolve", withProposerTerms(maybeBare), "maybe-without-resolve"),

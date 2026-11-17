@@ -1,33 +1,45 @@
 # Contributing to placket
 
-How a change to placket is made and how it is reviewed. The rules a change keeps are in `AGENTS.md`, each under a public name; this file is the process around them.
+Thank you for helping. This file says how a change to placket is made and reviewed, for everyone: people, and people working with tools and agents. The rules a change keeps are in `docs/rules/`, each under a public name; this file is the process around them and links to them rather than repeating them.
 
-## Before you start
+Everyone here follows the [code of conduct](CODE_OF_CONDUCT.md). Report a security problem as [`SECURITY.md`](SECURITY.md) says, never in a public issue or pull request.
 
-- Read `AGENTS.md`: where things go, and the rules by name.
-- Read the decision records in `docs/adr/` that touch your change.
-- Know which kind of change you are making. There are three, and they never mix:
-  1. **A protocol or code change**: requirement text, formats, vectors, Go code.
-  2. **A rules change**: `AGENTS.md`, this file, `review/`, or a check: the `Makefile`'s checks and steps, the checker in `tools/guard/` and the check `red-green-tests` in `tools/redgreen/`, with their tests.
-  3. **A workflow change**: anything under `.github/workflows/`.
+## Kinds of change
 
-  A rules or workflow change is its own pull request, flagged as such, and only the maintainer merges it. A change cannot alter the checks that judge it.
+There are three, and they never mix in one pull request:
+
+1. **A protocol or code change**: the requirement text, formats, vectors, Go code, docs.
+2. **A rules change**: `AGENTS.md`, this file, `docs/rules/`, `docs/review.md`, `docs/security/secure-coding.md`, `docs/style/`, `review/`, or a check: the `Makefile`'s checks and steps, the checker in `tools/guard/` and the check `red-green-tests` in `tools/redgreen/`, with their tests.
+3. **A workflow change**: anything under `.github/workflows/`. These are the maintainer's alone.
+
+A rules or workflow change is its own pull request, flagged as such. A change cannot alter the checks that judge it.
+
+## Talk first about a large change
+
+Open an issue before you start on any of these, using the **proposal** form, and wait for an answer:
+
+- a change to the requirement text (`spec/protocol.md`) or a frozen format (`spec/`);
+- a change to an exported API, a command-line flag or a door format;
+- a new dependency, anywhere;
+- anything that would change what placket does for someone, or what it must not do.
+
+The maintainer rules on intent. Anything else is your choice: take the sensible default and say so in the pull request, where it can be questioned. For a bug, use the **bug** form; for something wrong or unclear in the requirement text, the **erratum** form. A small fix needs no issue first.
 
 ## Making a change
 
-1. **Decide first.** If the change makes a decision that spans packages or would be expensive to reverse, write its record in `docs/adr/` (`NNNN-<slug>.md`, the next free number; context, decision, consequences) before or in the change that relies on it. If the change would alter what placket does for someone, what a capability covers, or what it must not do, stop and ask the maintainer. Any other choice is yours: take the sensible default and list it in the pull request, where it can be vetoed.
-2. **Behaviour in the text first.** A change in behaviour starts in the requirement text (`spec/protocol.md`) and the vectors (`vectors/`); the code follows. Behaviour that exists only in code is a finding. A frozen-format change carries its version note in the same change (`format-change-noted`).
-3. **Tests first.** Write the tests before the implementation; committing them before the code is a good habit, and lets the history show it. Every test the change adds or changes must fail against `main` and pass, not skip, at the head of the branch. The check `red-green-tests` proves it on every pull request: it runs each such test at the merge base with `main`, with the branch's test files laid over it, and then at the head (`docs/adr/0013-red-green-tests.md`). It reads only those two commits, so squash, merge `main` in, or mix tests and code in a commit as you like. A test that does not build without the new code counts as red. Run it yourself before a push, after committing, with `make red-green-tests BASE=origin/main`.
+1. **Read first.** `AGENTS.md` maps the repository and says which file of `docs/rules/` to read before you touch each part. Read the decision records in `docs/adr/` that touch your change. If your change makes a decision that spans packages or would be expensive to reverse, write its record in `docs/adr/` first (`NNNN-<slug>.md`, the next free number; context, decision, consequences).
+2. **Behaviour in the text first.** A change in behaviour starts in the requirement text (`spec/protocol.md`) and the vectors (`vectors/`); the code follows. A frozen-format change carries its version note in the same change ([`format-change-noted`](docs/rules/changes.md#format-change-noted)).
+3. **Tests first.** Write the tests before the code. Every test your change adds or changes must fail against `main` and pass, not skip, at the head of your branch. The check `red-green-tests` proves it ([`red-green-tests`](docs/rules/tests.md#red-green-tests), `docs/adr/0013-red-green-tests.md`). It reads only the merge base with `main` and your head, so squash, merge `main` in, or mix tests and code in a commit as you like. A test that does not build without your code counts as red. Run it yourself, after committing, with `make red-green-tests BASE=origin/main`.
 
    Never weaken, skip or delete a test to get a change through. When a change honestly breaks the rule, a trailer on any of its commits says so and why, and the reviewer judges the reason:
 
-   - `Green-On-Base: <test>: <why>`: an added test that already passes on `main`, such as coverage of behaviour that already works and was untested.
-   - `Test-Weakened: <test>: <why>`: a test removed, or a skip added, such as a test retired with its feature, or the old half of a rename.
+   - `Green-On-Base: <test>: <why>`: an added test that already passes on `main`, such as coverage of behaviour that already works.
+   - `Test-Weakened: <test>: <why>`: a test removed, or a skip added, such as a test retired with its feature.
    - `No-Test: <why>`: a change to Go code under `core/`, `adapters/`, `cmd/`, `recipes/` or `tools/` with no test added or changed, such as a comment or a rename.
 
-   A `<test>` is a Go test's name, or a shell test's path such as `tests/test_x.sh`. Add one with `git commit -s --trailer 'Green-On-Base: TestX: <why>'`. A trailer naming a test the change does not touch is refused.
+   A `<test>` is a Go test's name, or a shell test's path such as `tests/test_x.sh`. Add one with `git commit --trailer 'Green-On-Base: TestX: <why>'`, plus `-s` if you are a person signing off (an agent never adds one). A trailer naming a test the change does not touch is refused.
 4. **Then the code**, in small commits.
-5. **Run `make ci`** before you push. It builds the checker in `tools/guard/` (`guard`) and runs each of its rules, the checks that read the tree (`core-no-deps`, `core-imports`, `core-no-world`, `core-no-panic`, `specs-name-behaviour`, `schemas-hold`, `vectors-independent`, `constants-once`, `product-words-once`, `claims-stop-at-crossing`, `main-is-thin`, `root-module`, `machine-rules-in-ci`, `ci-stays-fast`); then every Go module's format (`modules`), `vet`, `lint`, `vulnerabilities` and `secrets`; one test run per module with the race detector and coverage (`tests`), which `race`, `fuzz-seeds` and `coverage-reported` read; the conformance runner (`runner-no-silent-pass`); and `tests/test_*.sh` (`scripts`). `make <step>` runs one of them. A refusal starts with the rule's name and names the file and line; look the name up in `AGENTS.md`. Every step prints its time. Never run `make ci` from inside a test: a nested run is refused (`ci-stays-fast`). GitHub runs the same `make ci` on every pull request and every push to `main`, and that run is the one that counts. To get GitHub's run before the change is ready, open the pull request as a draft.
+5. **Run `make ci`** before you push, with Go 1.27, `jq` and a POSIX shell. It runs every check: the rules of the checker in `tools/guard/`, every module's format, vet, lint, the vulnerability and secret scans, the tests with the race detector, the fuzz seeds, the conformance runner and the shell tests. `make <step>` runs one of them. A refusal starts with the rule's name, names the file and line, and its last line links the rule's heading in `docs/rules/`; `docs/rules/checks.md` says what each step prints. Never run `make ci` from inside a test ([`ci-stays-fast`](docs/rules/changes.md#ci-stays-fast)).
 
 ## Patterns
 
@@ -39,26 +51,26 @@ A pattern is a runnable template for one caller's job, under `patterns/<job>/`; 
 
 ## Commits
 
-- Every commit is signed off: `git commit -s`.
-- No co-author trailer for a model or tool, and no "generated with" line anywhere.
-- A commit message says what changed and why, in placket's own words.
+- **Sign off your commits yourself**, with `git commit -s`. The `Signed-off-by` line is your statement, as a person, that you may contribute the change under the project's licence, as the [Developer Certificate of Origin](https://developercertificate.org/) says.
+- A commit message says what changed and why, in placket's own words (`docs/style/writing.md`).
+- Placket's code and its requirement text are under the Apache License 2.0 ([`LICENSE`](LICENSE)); your contribution is too.
 
 ## Pull requests
 
-- A draft is fine while the change is in progress; mark it ready for review when it is. The maintainer merges every pull request.
-- The body starts with a short summary, two to four sentences long, followed by:
-  - **Why**: one to three sentences.
-  - **Important points**: three to six bullets: what the maintainer might veto, surprises, behaviour changes.
-  - **Risk**: a level, and why.
-  - **How it was checked**: the tests in one line, then the reviews summarised, not finding by finding.
-  - **Reading map**: what to read closely, what to skim.
-  - Any review record goes last, collapsed.
+- Open it as a draft while the change is in progress, and mark it ready for review when it is.
+- Fill in the pull request template: a short summary, then **Why**, **Important points**, **Risk**, **How it was checked** and **Reading map**, and the two checkboxes.
+- A user-visible change gets a line in `CHANGELOG.md`. If you leave it out, the reviewer adds it.
 
-## How a change is reviewed
+## How review works
 
-- **By someone fresh.** A reviewer did not write the change. A review pass runs to its stop rule without pausing to check in.
-- **Against the rules, by name.** The reviewer reads the diff against `AGENTS.md`. A finding names the rule (`core-no-world`), the file and line, and what is wrong.
-- **Beyond the machine.** `make ci` passing is the floor. The reviewer reads what no check sees: the imports of every file changed in `core/`, where logic sits, whether each test compares exactly, whether each new exported name traces to a requirement or a decision.
-- **The tests themselves.** The reviewer reads `red-green-tests`'s report: judges every trailer's reason, each test that was red only because it did not build (red (build)), each changed test that was green on base, and each changed helper. The reviewer confirms that no test, check or workflow was weakened. A change to `make ci`'s checks outside a rules change is a finding.
-- **Mutation testing.** The reviewer of a code change breaks lines on purpose and reports which ones the tests did not notice.
-- **When to stop.** When findings reach diminishing returns, the review stops and what is left goes to a follow-up, named in the pull request.
+- A reviewer who did not write the change reads it against the rules, by name. `docs/review.md` says how a change is judged, what a finding holds and what blocks.
+- The maintainer, as code owner of every path (`.github/CODEOWNERS`), approves every change. A change merges once that approval is in, given after the last push, and the checks are green.
+
+## How we work with tools and agents
+
+- **Welcome, however it is made.** Use any tools you like, agents included, and an agent may open the pull request. Every contribution needs a person in the loop who answers for it.
+- **You answer for every line**, and can explain it. We do not ask which tools you used.
+- **Signing off.** Sign off your commits yourself, with `git commit -s`, under the Developer Certificate of Origin. The sign-off is your own statement as a person, so an agent never adds one, whether its own or yours.
+- **When nobody answers.** A change that nobody answers for, or whose author cannot explain it, gets one reply asking for that. If nothing changes, it is closed.
+- **This project holds itself to the same rules.** Agents build most of placket. Its own commits carry no sign-off, because Orillo owns that work and the maintainer answers for it by approving each change.
+- **Your agent** should read `AGENTS.md`, the same file this project's own agents read.

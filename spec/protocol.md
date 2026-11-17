@@ -308,12 +308,14 @@ Founding reads a founding set and the time it is founded at, and either founds a
 | 7 | Maybe rule | Each term of stance `maybe`, for the presence of its `resolve` member | `maybe-without-resolve` |
 | 8 | Checks | Each check a term names, against the card's `checks` | `check-unknown` |
 | 9 | Binding present | A binding whose `actor` is the declaration's | `binding-missing` |
-| 10 | Principal | That binding's `principal`, against the policy's `principals` | `binding-principal` |
+| 10 | Principal | That binding's `principal`, against the `principal` of each entry of the policy's `principals` | `binding-principal` |
 | 11 | Binding signature | That binding's `sig`, under `https://placket.dev/binding/0.1` by its `principal` (signing-2) | `binding-signature` |
-| 12 | Binding mediator | That binding's `mediator`, against the set's `mediator.actor` | `binding-mediator` |
-| 13 | Binding time | That binding's `until`, against the founding time | `binding-expired` |
-| 14 | Declaration present | Each binding's `actor`, for a declaration by that actor | `declaration-missing` |
-| 15 | Roles held | Each role of the policy's `roles`, for a declaring actor whose binding holds it | `role-missing` |
+| 12 | Binding roles | Each role of that binding's `roles`, against the `roles` of its principal's entry | `binding-role` |
+| 13 | Binding policy | That binding's `policy`, against the typed hash of the set's `policy` (canonical-3) | `binding-policy` |
+| 14 | Binding mediator | That binding's `mediator`, against the set's `mediator.actor` | `binding-mediator` |
+| 15 | Binding time | That binding's `until`, against the founding time | `binding-expired` |
+| 16 | Declaration present | Each binding's `actor`, for a declaration by that actor | `declaration-missing` |
+| 17 | Roles held | Each role of the policy's `roles`, for a declaring actor whose binding holds it | `role-missing` |
 
 When every row passes, the Accord is founded: its id is the typed hash of the set (setup-contract-5).
 
@@ -347,7 +349,19 @@ A declaration is an actor's own terms, signed by that actor (`declaration.json`,
 
 ### setup-contract-2 Bindings and roles
 
-An actor holds a role only by a binding: a principal's signed statement that the actor holds a list of roles under one mediator until a time (`binding.json`). A binding has the `actor`, the `principal` that signs it, `roles`, a non-empty list of distinct labels, the `mediator`'s reference, `until`, a timestamp, and `sig`, the principal's signature under `https://placket.dev/binding/0.1`. Roles come from nowhere else: not from a declaration, a policy or a message. A binding's `until` must be later than the founding time; a binding is checked against the clock at founding only. One binding may name several roles, and one actor may then hold them all.
+An actor holds a role only by a binding: a principal's signed statement that the actor holds a list of roles under one mediator and one policy until a time (`binding.json`). A binding has the `actor`, the `principal` that signs it, `roles`, a non-empty list of distinct labels, `policy`, the typed hash of the canonical bytes of the founding set's `policy` object it was signed for (canonical-3), the `mediator`'s reference, `until`, a timestamp, and `sig`, the principal's signature under `https://placket.dev/binding/0.1`. Roles come from nowhere else: not from a declaration, a policy or a message. The policy says which roles each principal may grant; a binding gives an actor only roles its principal's entry lists. The principal that signs an actor's binding is that party's principal, and one principal may stand behind several parties of an Accord, or all of them. The policy does not list actors: founding checks that a binding's principal has an entry, may grant the roles the binding gives and signed for this policy, and never which actor a principal may bind. Who stands behind each actor is read from the founding set (commands-4, `verify --founding`). A binding's `until` must be later than the founding time; a binding is checked against the clock at founding only. One binding may name several roles, and one actor may then hold them all.
+
+#### Scenario: two principals
+
+- Given a set whose policy has two entries, one principal that may grant `proposer` and `applier` and another that may grant `decider`, and whose every binding is signed by its own party's principal
+- When it is founded
+- Then the Accord founds, each actor holds the roles its binding gives, and each actor's principal is the one that signed its binding
+
+#### Scenario: one principal behind every party
+
+- Given a set whose policy has one entry that may grant every role, and whose every binding that principal signs
+- When it is founded
+- Then the Accord founds
 
 #### Scenario: one binding, two roles
 
@@ -369,13 +383,25 @@ An actor holds a role only by a binding: a principal's signed statement that the
 
 ### setup-contract-3 Binding checks
 
-For each declaration, founding finds the binding whose `actor` is the declaration's, and checks it in this order: one exists (`binding-missing`); its `principal` is one of the policy's `principals` (`binding-principal`); its signature verifies under that principal (`binding-signature`); its `mediator` is the set's `mediator.actor` (`binding-mediator`); its `until` is later than the founding time (`binding-expired`). Before any declaration, two bindings for one actor are `binding-duplicate`. After every declaration, a binding for an actor with no declaration is `declaration-missing`.
+For each declaration, founding finds the binding whose `actor` is the declaration's, and checks it in this order: one exists (`binding-missing`); its `principal` is the `principal` of one of the policy's entries (`binding-principal`); its signature verifies under that principal (`binding-signature`); every role it gives is in the `roles` of its principal's entry (`binding-role`); its `policy` is the typed hash of the set's `policy` (`binding-policy`); its `mediator` is the set's `mediator.actor` (`binding-mediator`); its `until` is later than the founding time (`binding-expired`). So a binding counts only under the policy its principal signed for, and only for the roles that policy lets its principal grant. Before any declaration, two bindings for one actor are `binding-duplicate`. After every declaration, a binding for an actor with no declaration is `declaration-missing`.
 
 #### Scenario: a binding by an unlisted principal
 
 - Given a set whose binding is signed by a key the policy does not list, and names that key as its principal
 - When it is founded
 - Then it is refused with `binding-principal`
+
+#### Scenario: a binding that gives a role its principal may not grant
+
+- Given a set whose policy entry for a principal lists `proposer` alone, and whose binding by that principal gives an actor `decider`, correctly signed
+- When it is founded
+- Then it is refused with `binding-role`
+
+#### Scenario: a binding signed for another policy
+
+- Given a set whose binding names the typed hash of a policy other than the set's, correctly signed, and nothing else wrong
+- When it is founded
+- Then it is refused with `binding-policy`
 
 #### Scenario: a binding for another mediator
 
@@ -407,13 +433,19 @@ The card says what can change a verdict under the Accord (`card.json`). Its `spe
 
 ### setup-contract-5 The Accord id
 
-The Accord id is the typed hash of the founding set's canonical bytes; the card hash is the typed hash of the card's. The same set founds to the same id at any time, and any change to the set, a term or a role included, founds to another. Every role the policy's `roles` names must be held, through a binding, by an actor that has a declaration in the set, or the set is refused with `role-missing`. A role held but not in the policy is allowed, and the policy's `roles` may be empty.
+The Accord id is the typed hash of the founding set's canonical bytes; the card hash is the typed hash of the card's. The same set founds to the same id at any time, and any change to the set, a term or a role included, founds to another. Every role the policy's `roles` names must be held, through a binding, by an actor that has a declaration in the set, or the set is refused with `role-missing`. A role held but not in the policy's `roles` is allowed, when the binding's principal may grant it, and the policy's `roles` may be empty. A role in the policy's `roles` that no entry lists can never be held, so its set is refused with `role-missing`.
 
 #### Scenario: the same set twice
 
 - Given one founding set, founded at two different times
 - When the two Accord ids are compared
 - Then they are equal
+
+#### Scenario: a role held that the policy does not require
+
+- Given a set whose policy entry lets a principal grant `proposer` and `auditor`, whose binding by it gives an actor both, and whose policy's `roles` is `["proposer"]`
+- When it is founded
+- Then the Accord founds
 
 #### Scenario: a policy role nobody holds
 
@@ -455,7 +487,7 @@ The set's `mediator` names who runs the Accord: `actor`, the mediator's referenc
 
 ### setup-contract-8 The refusal order
 
-Founding runs the rows of the table in order and returns the first that fails: the canonical form, the shape, one binding per actor; then for each declaration in actor-reference order its actor, its signature, its terms, its maybe rules, its checks, and its binding's presence, principal, signature, mediator and time; then a binding with no declaration; then a policy role nobody holds. A refused set founds nothing and yields no id.
+Founding runs the rows of the table in order and returns the first that fails: the canonical form, the shape, one binding per actor; then for each declaration in actor-reference order its actor, its signature, its terms, its maybe rules, its checks, and its binding's presence, principal, signature, roles, policy, mediator and time; then a binding with no declaration; then a policy role nobody holds. A refused set founds nothing and yields no id.
 
 #### Scenario: two defects in one declaration
 
@@ -469,9 +501,21 @@ Founding runs the rows of the table in order and returns the first that fails: t
 - When it is founded
 - Then it is refused with `binding-expired`, since the first declaration's rows all run first
 
+#### Scenario: a role its principal may not grant and another mediator
+
+- Given a set whose first declaration's binding gives a role its principal's entry does not list and names another mediator, correctly signed
+- When it is founded
+- Then it is refused with `binding-role`
+
+#### Scenario: a role its principal may not grant and another policy
+
+- Given a set whose binding gives a role its principal's entry does not list and names the typed hash of another policy, correctly signed
+- When it is founded
+- Then it is refused with `binding-role`
+
 ### setup-contract-9 The shape of a set
 
-A founding set is an object with exactly `policy`, `mediator`, `card`, `declarations` and `bindings` (`founding.json`). `policy` has exactly `roles`, a list of distinct labels, and `principals`, a non-empty list of distinct actor references. `mediator` is as setup-contract-7 says and `card` as setup-contract-4 says. `declarations` and `bindings` are non-empty lists. Bytes the canonical form refuses are `not-canonical`, before the shape is read, and no id is computed for them. Every defect of shape is `invalid-shape`, except in the members a later row reads: a declaration's `actor` form, its `sig` and its `terms` belong to rows 4 to 8.
+A founding set is an object with exactly `policy`, `mediator`, `card`, `declarations` and `bindings` (`founding.json`). `policy` has exactly `roles`, a list of distinct labels, and `principals`, a non-empty list of entries. Each entry is an object with exactly `principal`, an actor reference, and `roles`, a non-empty list of distinct labels: the roles that principal may grant. No two entries name the same principal; two entries may list the same role. A binding's `policy` is a typed hash. `mediator` is as setup-contract-7 says and `card` as setup-contract-4 says. `declarations` and `bindings` are non-empty lists. Bytes the canonical form refuses are `not-canonical`, before the shape is read, and no id is computed for them. Every defect of shape is `invalid-shape`, except in the members a later row reads: a declaration's `actor` form, its `sig` and its `terms` belong to rows 4 to 8.
 
 #### Scenario: a repeated member name
 
@@ -484,6 +528,12 @@ A founding set is an object with exactly `policy`, `mediator`, `card`, `declarat
 - Given a set whose declaration's `actor` is the number 7, and separately one whose `actor` is the string `alice`
 - When each is founded
 - Then the first is refused with `invalid-shape`, since the order of the list reads `actor` as a string, and the second with `actor-reference`
+
+#### Scenario: a policy entry or a binding of the wrong shape
+
+- Given sets, each with nothing else wrong, with: an empty `principals`; an entry whose `roles` is empty; an entry whose `roles` repeats a label; an entry with a role that is not a label; an entry whose `principal` is not an actor reference; two entries for one principal; an entry with a member other than `principal` and `roles`; a binding with no `policy`; and a binding whose `policy` is not a typed hash
+- When each is founded
+- Then each is refused with `invalid-shape`
 
 #### Scenario: a term with a missing member
 
@@ -1373,7 +1423,7 @@ A command that is refused, or fails, has the members of its refusal beside what 
 | `get` | `delivery`, when one was fetched; with `--out`, the delivery without its body, and `path`, the file the body was written to. With `--all`, in place of `delivery` and `path`, `deliveries`, the list of every delivery it fetched, in the order it fetched them, each as `get` without `--all` holds it; with `--out`, each without its body and with `path`, the file its body was written to, when it was written |
 | `questions` | `questions`, the list of the open questions this key may answer, each the object the command prints for it without `--json` |
 | `show` | `verified`, `false`; `receiptId`; `word`; `reason`; `kind`, the part's kind; `at`; `from`; `to`; `module`, the module line; `claim`, the receipt's claim line; `notClaimed`, the scope line; and `shown`, the list of the lines the command prints on standard output without `--json` |
-| `verify` | `verified`, the number of receipts; `mediator`; `accord`; `card`; with `--founding`, `operator`, `runs`, `module`, an object of the kernel's `version` and `hash`, and `checks`, the list of the loaded checks as the card lists them; `counts`, the number of receipts by product word, `pass`, `block` and `ask`; `questionsClosed`; `questionsOpen`; `releases`; `blockedReleases`; `predicates`, the list of the receipts' predicates in journal order; `claim`, the claim line; `notClaimed`, the scope line |
+| `verify` | `verified`, the number of receipts; `mediator`; `accord`; `card`; with `--founding`, `operator`, `runs`, `module`, an object of the kernel's `version` and `hash`, and `checks`, the list of the loaded checks as the card lists them, and `members`, a list with one object per member in actor-reference order, each its `actor`, its `roles` as its binding gives them, and the `principal` that signed its binding; `counts`, the number of receipts by product word, `pass`, `block` and `ask`; `questionsClosed`; `questionsOpen`; `releases`; `blockedReleases`; `predicates`, the list of the receipts' predicates in journal order; `claim`, the claim line; `notClaimed`, the scope line |
 | `log` | `log`, the object the command prints without `--json`, which carries the claim and the scope line. `--json` with `--format csv` is the command's error `format` |
 | `reconcile` | `removed`, `unrecorded` and `missing`, as the command prints them without `--json` |
 | `released` | On a match, `receiptId` and `receipt`, those of the receipt the file, or the kept part, matched; `kind`, the part's kind; `verified`, `false`; `claim`, the claim line, the value's with `--at`; `notClaimed`, the scope line. With no match, `exit` alone. With `--every`, in place of `receiptId`, `receipt` and `kind`, `matches`, the list of every match in the order the key fetched them, each `receiptId`, `kind`, `at`, the receipt's time, `from`, the receipt's sender, and `re` when the part has one; on a match `verified`, `claim` and `notClaimed` beside it |
@@ -1427,13 +1477,20 @@ A give, an answer, a change, a decline, a cancel and a result say in their objec
 
 ### commands-3 What a command makes or fetches
 
-The commands that make a key, a declaration, a binding or a founding set put what they made in the object, as they print it without `--json`, and the ids they print on standard error beside it. A fetch puts the delivery in the object; an empty queue leaves it out. A fetch of every delivery waiting puts every delivery it fetched in one list, in the order it fetched them, each as a fetch of one puts it, and with the path of its file when it writes each body to a file; on an empty queue the list is empty. A window prints its object when it stops.
+The commands that make a key, a declaration, a binding or a founding set put what they made in the object, as they print it without `--json`, and the ids they print on standard error beside it. A binding is made for one policy: the command reads the policy's file and writes the typed hash of its canonical bytes into the binding's `policy`; whether the policy lets the principal grant the binding's roles is founding's to judge. A fetch puts the delivery in the object; an empty queue leaves it out. A fetch of every delivery waiting puts every delivery it fetched in one list, in the order it fetched them, each as a fetch of one puts it, and with the path of its file when it writes each body to a file; on an empty queue the list is empty. A window prints its object when it stops.
 
 #### Scenario: a founding
 
 - Given the parts of a founding set
 - When `founding` runs with `--json`
 - Then the object holds the set it prints without `--json`, and the Accord id and the card hash it prints on standard error
+
+#### Scenario: a binding for a policy
+
+- Given a policy file whose members are in any order
+- When `bind` runs with it and `--json`
+- Then the object's binding names the typed hash of the policy's canonical bytes as its `policy`, and the binding founds in a set with that policy
+- And a policy file the canonical form refuses is the command's error `file` with the detail `policy`, and no binding is printed
 
 #### Scenario: an empty queue and a delivery
 
@@ -1464,7 +1521,7 @@ The commands that make a key, a declaration, a binding or a founding set put wha
 
 ### commands-4 Claims and records
 
-Every command that prints a claim line carries it in its object under `claim`, with the scope line that follows every claim line under `notClaimed`, so a claim never travels without it: `show` the receipt's own claim, `verify` the claim of a verified journal, and `log` both inside the log object. `verify` and `reconcile` carry what they print on standard output in their objects, unchanged.
+Every command that prints a claim line carries it in its object under `claim`, with the scope line that follows every claim line under `notClaimed`, so a claim never travels without it: `show` the receipt's own claim, `verify` the claim of a verified journal, and `log` both inside the log object. `verify` and `reconcile` carry what they print on standard output in their objects, unchanged. `verify` with a founding set names who stands behind each member: its roles and the principal that signed its binding, on standard error and in its object.
 
 #### Scenario: a shown receipt and a verified journal
 
@@ -1472,6 +1529,13 @@ Every command that prints a claim line carries it in its object under `claim`, w
 - When `show` and `verify --founding` run with `--json`
 - Then `show`'s object holds the pass's claim line and the scope line, and `shown` the lines it prints without `--json`
 - And `verify`'s object holds the count, the counts by product word, the operator and the module, every predicate it prints without `--json`, the claim line and the scope line
+
+#### Scenario: who stands behind each member
+
+- Given a journal and its founding set, whose members are bound by two principals
+- When `verify --founding` runs with `--json`
+- Then its object's `members` lists each member's actor, roles and principal, in actor-reference order
+- And without `--json`, standard error carries one line per member in that order, naming its actor, its roles and its principal
 
 #### Scenario: the log and reconciliation
 

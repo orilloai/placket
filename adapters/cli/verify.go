@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/orilloai/placket/adapters/journal"
 	"github.com/orilloai/placket/adapters/local"
@@ -72,7 +73,9 @@ func oneAccord(st []receipts.Statement) (string, int) {
 // set is given, the counts of verdicts, questions and releases, the claim and the scope line. The
 // receipts must all be of one Accord and card, or it is tool error verify, accord or card, at the
 // first that differs. A founding set is tool error founding unless it founds the receipts' Accord
-// and its mediator is M. A card whose module is not this build's is named after the module line,
+// and its mediator is M. With a founding set it also names each member, in actor-reference order: a
+// line `member <actor> roles <r1,r2> principal <principal>` after the module's lines, and members in
+// the object (commands-4). A card whose module is not this build's is named after the module line,
 // and still verifies (docs/adr/0012-the-kernel-hash.md).
 // On a failure it prints the code and the line, and none of these.
 func verifyCommand(r *run, args []string) int {
@@ -101,6 +104,7 @@ func verifyCommand(r *run, args []string) int {
 		accord, card = st[0].Predicate.Accord, st[0].Predicate.Card
 	}
 	var module []string
+	var members []any
 	if *founding != "" {
 		set, err := os.ReadFile(*founding)
 		if err != nil {
@@ -117,7 +121,12 @@ func verifyCommand(r *run, args []string) int {
 			return r.tool(codeFound)
 		}
 		module = moduleLines(set)
+		for _, m := range a.Members() {
+			module = append(module, "member "+m+" roles "+strings.Join(a.Roles(m), ",")+" principal "+a.Principal(m))
+			members = append(members, map[string]any{"actor": m, "roles": a.Roles(m), "principal": a.Principal(m)})
+		}
 		r.putModule(set)
+		r.put("members", members)
 	}
 	predicates := []any{}
 	for _, rc := range list {

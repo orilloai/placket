@@ -57,38 +57,89 @@ func Declaration(actor Key, terms ...Obj) Obj {
 	return Signed(Obj{"actor": actor.Ref, "terms": l}, TypeDeclaration, actor)
 }
 
-// Binding builds a principal's binding of an actor to roles under a mediator until a time.
-func Binding(actor, principal, mediator Key, until string, roles ...string) Obj {
+// Binding builds a principal's binding of an actor to roles under a mediator and the policy whose
+// typed hash it names, until a time (setup-contract-2).
+func Binding(actor, principal, mediator Key, policy, until string, roles ...string) Obj {
 	return Signed(Obj{
-		"actor": actor.Ref, "principal": principal.Ref, "roles": strs(roles),
+		"actor": actor.Ref, "principal": principal.Ref, "roles": strs(roles), "policy": policy,
 		"mediator": mediator.Ref, "until": until,
 	}, TypeBinding, principal)
 }
 
-// A Party is a member of a set: its key, the roles its binding gives it and its terms.
+// A Grant is an entry of a policy: a principal and the roles it may grant (setup-contract-9).
+type Grant struct {
+	Principal Key
+	Roles     []string
+}
+
+// Policy builds a policy: the roles that must be held, and one entry per grant, in the order given.
+func Policy(roles []string, grants ...Grant) Obj {
+	ps := make([]any, len(grants))
+	for i, g := range grants {
+		ps[i] = Obj{"principal": g.Principal.Ref, "roles": strs(g.Roles)}
+	}
+	return Obj{"roles": strs(roles), "principals": ps}
+}
+
+// A Party is a member of a set: its key, the roles its binding gives it, its terms, and the principal
+// that signs its binding, the set's Principal when By is the zero Key.
 type Party struct {
 	Key   Key
 	Roles []string
 	Terms []Obj
+	By    Key
 }
 
-// A Set is a founding set as a generator describes it.
+// A Set is a founding set as a generator describes it. Grants is the policy's entries; when it is
+// empty, the policy has one entry, the set's Principal, which may grant every role of Roles and of
+// every party's binding.
 type Set struct {
 	Mediator, Operator, Principal Key
 	Roles                         []string
+	Grants                        []Grant
 	Parties                       []Party
 }
 
+// Policy writes the set's policy (setup-contract-9).
+func (s Set) Policy() Obj {
+	if len(s.Grants) > 0 {
+		return Policy(s.Roles, s.Grants...)
+	}
+	all := append([]string(nil), s.Roles...)
+	for _, p := range s.Parties {
+		for _, r := range p.Roles {
+			if !contains(all, r) {
+				all = append(all, r)
+			}
+		}
+	}
+	return Policy(s.Roles, Grant{Principal: s.Principal, Roles: all})
+}
+
+func contains(l []string, s string) bool {
+	for _, x := range l {
+		if x == s {
+			return true
+		}
+	}
+	return false
+}
+
 // Build writes the set: the policy, the mediator, the card, and each party's declaration and binding,
-// both lists in actor-reference order (setup-contract-9, setup-contract-10).
+// signed by its principal for the set's policy, both lists in actor-reference order
+// (setup-contract-9, setup-contract-10).
 func (s Set) Build() Obj {
+	policy := s.Policy()
 	var decls, binds []Obj
 	for _, p := range s.Parties {
+		by := p.By
+		if by.Ref == "" {
+			by = s.Principal
+		}
 		decls = append(decls, Declaration(p.Key, p.Terms...))
-		binds = append(binds, Binding(p.Key, s.Principal, s.Mediator, Until, p.Roles...))
+		binds = append(binds, Binding(p.Key, by, s.Mediator, HashOf(policy), Until, p.Roles...))
 	}
-	return FoundingSet(Obj{"roles": strs(s.Roles), "principals": []any{s.Principal.Ref}},
-		Obj{"actor": s.Mediator.Ref, "operator": s.Operator.Ref, "runs": "process"}, Card(), decls, binds)
+	return FoundingSet(policy, Obj{"actor": s.Mediator.Ref, "operator": s.Operator.Ref, "runs": "process"}, Card(), decls, binds)
 }
 
 // FoundingSet assembles a set from its parts, sorting the declarations and the bindings by actor.

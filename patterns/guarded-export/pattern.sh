@@ -2,7 +2,9 @@
 # The guarded export: a receiver exports a value only when exactly that value was released to it.
 #
 # Three invented parties share one Accord: a proposer, who proposes price records; an approver, who
-# accepts, changes or declines each one; and a receiver, whose export step publishes prices. The
+# accepts, changes or declines each one; and a receiver, whose export step publishes prices. Two
+# owners stand behind them: one principal binds the proposer and the approver, another binds the
+# receiver, and the policy lets each grant only its own side's roles. The
 # proposer normalizes each record before it crosses, the approver answers, the receiver fetches every
 # delivery to files, and a guard that holds only the record it is about to export asks placket
 # whether exactly that record was released to the receiver. Then the log shows every crossing and
@@ -44,7 +46,7 @@ normalize() {
 }
 
 step "1. keys, terms and the founding set"
-for k in mediator operator principal proposer approver receiver; do
+for k in mediator operator principal receiver-principal proposer approver receiver; do
 	placket key new --out "$k.key" >"$k.ref"
 done
 ref() { cat "$1.ref"; }
@@ -64,12 +66,20 @@ cat >receiver.terms <<'T'
  {"stance":"want","dir":"get","with":["role:proposer"],"select":{"kind":["proposal"]}},
  {"stance":"want","dir":"get","with":["role:approver"],"select":{"kind":["changed-version"]}}]}
 T
+# The policy: the roles that must be held, and each principal with the roles it may grant. The
+# principal stands behind the proposer and the approver, the receiver's principal behind the receiver.
+cat >policy.json <<P
+{"roles":["proposer","approver","receiver"],"principals":[
+ {"principal":"$(ref principal)","roles":["proposer","approver"]},
+ {"principal":"$(ref receiver-principal)","roles":["receiver"]}]}
+P
+# principal_of NAME: the key of the principal that binds NAME.
+principal_of() { if [ "$1" = receiver ]; then echo receiver-principal.key; else echo principal.key; fi; } # CHANGE: who binds whom
 for a in proposer approver receiver; do
 	placket declare --key "$a.key" --terms "$a.terms" >"$a.declaration"
-	placket bind --key principal.key --actor "$(ref "$a")" --role "$a" --mediator "$(ref mediator)" \
-		--until 2099-01-01T00:00:00Z >"$a.binding" # CHANGE: how long each binding holds
+	placket bind --key "$(principal_of "$a")" --actor "$(ref "$a")" --role "$a" --mediator "$(ref mediator)" \
+		--until 2099-01-01T00:00:00Z --policy policy.json >"$a.binding" # CHANGE: how long each binding holds
 done
-echo "{\"roles\":[\"proposer\",\"approver\",\"receiver\"],\"principals\":[\"$(ref principal)\"]}" >policy.json
 echo "{\"actor\":\"$(ref mediator)\",\"operator\":\"$(ref operator)\",\"runs\":\"process\"}" >mediator.json
 placket card --default >card.json 2>/dev/null
 placket founding --json --policy policy.json --mediator mediator.json --card card.json \
@@ -77,7 +87,7 @@ placket founding --json --policy policy.json --mediator mediator.json --card car
 	--binding proposer.binding --binding approver.binding --binding receiver.binding >founding.out 2>/dev/null
 jq '.founding' founding.out >founding.json
 accord=$(jq -r '.accord' founding.out)
-say founding "three parties, roles $(jq -r '.roles | join(", ")' policy.json)"
+say founding "three parties, roles $(jq -r '.roles | join(", ")' policy.json), under $(jq '.principals | length' policy.json) principals"
 
 step "2. the window"
 placket window --key mediator.key --founding founding.json --socket "$sock" --journal journal 2>window.log &

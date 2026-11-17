@@ -1,0 +1,25 @@
+name: Erratum or question on the requirement text
+description: Something in spec/protocol.md is wrong, unclear or contradicts itself.
+labels: [erratum]
+body:
+  - type: input
+    id: requirement
+    attributes:
+      label: Requirement id
+      description: The id the text gives, such as crossing-3, or the section.
+    validations:
+      required: true
+  - type: textarea
+    id: says
+    attributes:
+      label: What it says
+      description: Quote the sentence or the scenario.
+    validations:
+      required: true
+  - type: textarea
+    id: wrong
+    attributes:
+      label: What is wrong or unclear
+      description: What you read it to mean, and why that is a problem.
+    validations:
+      required: true

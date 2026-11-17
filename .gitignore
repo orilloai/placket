@@ -36,3 +36,5 @@ go.work.sum
 
 # GoReleaser's output: ignored, so a release build sees a clean tree and Go stamps no +dirty.
 dist/
+# The binary the README builds at the root.
+/placket

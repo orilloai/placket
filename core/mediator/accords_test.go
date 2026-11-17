@@ -2,6 +2,7 @@ package mediator_test
 
 import (
 	"encoding/json"
+	"slices"
 	"sort"
 	"testing"
 
@@ -52,10 +53,27 @@ func signed(t testing.TB, o map[string]any, typeURI string, k signing.Key) map[s
 }
 
 // buildSet builds a founding set of the parties under the policy's roles, with the mediator, the operator
-// and the principal every test set uses, both lists in actor-reference order (setup-contract-10).
+// and the principal every test set uses, both lists in actor-reference order (setup-contract-10). The
+// policy has one entry, the principal, which may grant the policy's roles and every party's, and each
+// binding names the typed hash of that policy (setup-contract-2).
 func buildSet(t testing.TB, roles []string, parties ...party) []byte {
 	t.Helper()
 	med, op, pr := key(t, "mediator"), key(t, "operator"), key(t, "principal")
+	grants := append([]string{}, roles...)
+	for _, p := range parties {
+		for _, r := range p.roles {
+			if !slices.Contains(grants, r) {
+				grants = append(grants, r)
+			}
+		}
+	}
+	policy := map[string]any{"roles": append([]string{}, roles...),
+		"principals": []any{map[string]any{"principal": pr.Reference(), "roles": grants}}}
+	pb, _ := json.Marshal(policy)
+	policyHash, err := canonical.TypedHash(pb)
+	if err != nil {
+		t.Fatal(err)
+	}
 	type entry struct {
 		actor      string
 		decl, bind map[string]any
@@ -71,7 +89,7 @@ func buildSet(t testing.TB, roles []string, parties ...party) []byte {
 			actor: k.Reference(),
 			decl:  signed(t, map[string]any{"actor": k.Reference(), "terms": terms}, signing.TypeDeclaration, k),
 			bind: signed(t, map[string]any{
-				"actor": k.Reference(), "principal": pr.Reference(), "roles": p.roles,
+				"actor": k.Reference(), "principal": pr.Reference(), "roles": p.roles, "policy": policyHash,
 				"mediator": med.Reference(), "until": "2027-11-12T00:00:00Z",
 			}, signing.TypeBinding, pr),
 		})
@@ -84,7 +102,7 @@ func buildSet(t testing.TB, roles []string, parties ...party) []byte {
 	}
 	kernel, _ := canonical.TypedHash([]byte(`"placket reference decision module 0.1"`))
 	b, _ := json.Marshal(map[string]any{
-		"policy":   map[string]any{"roles": roles, "principals": []string{pr.Reference()}},
+		"policy":   policy,
 		"mediator": map[string]any{"actor": med.Reference(), "operator": op.Reference(), "runs": "process"},
 		"card": map[string]any{"spec": "0.1", "kernel": map[string]any{"version": "0.1.0", "hash": kernel},
 			"judges": []any{}, "checks": []any{}},

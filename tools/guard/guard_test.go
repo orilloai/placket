@@ -43,13 +43,16 @@ func copyRepo(t *testing.T) string {
 }
 
 // copyTree copies the tree at src, without .git and the fixtures of the tests, into a new directory.
-// .git is left out whether it is a directory or, in a worktree or a submodule, a file. Each file is a
+// .git is left out whether it is a directory or, in a worktree or a submodule, a file. Where src is
+// the top of a git work tree, only the files git tracks are copied, so a file the writer's checkout
+// holds and git does not, such as a binary built there, is no part of a case. Each file is a
 // hard link to the source's where the file system allows it, so the copy is quick; the helpers that
 // change the copy replace a file and never write into it, so the source never changes.
 func copyTree(t *testing.T, src string) string {
 	t.Helper()
 	dst := t.TempDir()
 	skip := map[string]bool{".git": true, "tests/testdata": true, "tools/guard/testdata": true}
+	tracked, ok := newTree(src).tracked()
 	err := filepath.WalkDir(src, func(p string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
@@ -60,6 +63,9 @@ func copyTree(t *testing.T, src string) string {
 			if d.IsDir() {
 				return filepath.SkipDir
 			}
+			return nil
+		}
+		if ok && !d.IsDir() && !tracked[filepath.ToSlash(rel)] {
 			return nil
 		}
 		to := filepath.Join(dst, rel)
@@ -187,11 +193,22 @@ func refusalLines(name string, lines []string) []string {
 	return out
 }
 
+// ruleDocs is the topic file of docs/rules/ that holds each rule's heading, which its closing
+// "refused:" line links.
+var ruleDocs = map[string]string{
+	"core-no-deps": "modules.md", "core-imports": "modules.md", "root-module": "modules.md",
+	"core-no-world": "core.md", "core-no-panic": "core.md", "specs-name-behaviour": "core.md", "constants-once": "core.md",
+	"schemas-hold": "tests.md", "vectors-independent": "tests.md",
+	"product-words-once": "adapters.md", "claims-stop-at-crossing": "adapters.md", "main-is-thin": "adapters.md",
+	"machine-rules-in-ci": "changes.md", "ci-stays-fast": "changes.md", "no-hidden-text": "changes.md", "agents-md-short": "changes.md",
+}
+
 var placeRE = regexp.MustCompile(`^[^ ]+: [^ :]+(:[0-9]+)?: `)
 
 // checkContract holds a rule's lines to the output contract: each line starts with the rule's name or
 // is an indented detail line under one; a refusal line names a file, with its line where it has one;
-// and the last line is "<rule>: ok", or "<rule>: refused: <why> (AGENTS.md, <rule>)" when it refused.
+// and the last line is "<rule>: ok", or "<rule>: refused: <why> (docs/rules/<file>.md#<rule>)" when it
+// refused, its file the one that holds the rule's heading.
 func checkContract(t *testing.T, name string, lines []string, refused bool) {
 	t.Helper()
 	if len(lines) == 0 {
@@ -211,7 +228,7 @@ func checkContract(t *testing.T, name string, lines []string, refused bool) {
 	}
 	last := lines[len(lines)-1]
 	if refused {
-		if !strings.HasPrefix(last, name+": refused: ") || !strings.HasSuffix(last, " (AGENTS.md, "+name+")") {
+		if !strings.HasPrefix(last, name+": refused: ") || !strings.HasSuffix(last, " (docs/rules/"+ruleDocs[name]+"#"+name+")") {
 			t.Fatalf("%s refused, and its last line is %q", name, last)
 		}
 	} else if last != name+": ok" {
@@ -311,7 +328,7 @@ func hasPlace(l, name string, places []string) bool {
 // allCases is every case of the checker's tests, for the test that each rule has one that refuses.
 func allCases(t *testing.T) []tcase {
 	var all []tcase
-	for _, cs := range [][]tcase{coreCases, parserCases, shadowCases, checksCases, specCases(t), schemaFetchCases(), ciCases(t), markerCases(t), gitCases} {
+	for _, cs := range [][]tcase{coreCases, parserCases, shadowCases, checksCases, specCases(t), schemaFetchCases(), ciCases(t), markerCases(t), gitCases, agentsCases(t), hiddenCases} {
 		all = append(all, cs...)
 	}
 	return all
@@ -371,7 +388,7 @@ func TestCommand(t *testing.T) {
 	if rc := run(dir, []string{"core-no-panic", "main-is-thin"}, &b); rc != 1 {
 		t.Fatalf("got %d and %q; want 1", rc, b.String())
 	}
-	want := "core-no-panic: core/p/p.go:7: panic(\"empty\")\ncore-no-panic: refused: no non-test code in core/ calls panic (AGENTS.md, core-no-panic)\nmain-is-thin: ok\n"
+	want := "core-no-panic: core/p/p.go:7: panic(\"empty\")\ncore-no-panic: refused: no non-test code in core/ calls panic (docs/rules/core.md#core-no-panic)\nmain-is-thin: ok\n"
 	if b.String() != want {
 		t.Fatalf("got %q, want %q", b.String(), want)
 	}

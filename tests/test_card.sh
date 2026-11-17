@@ -46,8 +46,9 @@ for k in mediator operator principal party; do
 done
 echo '{"terms":[{"stance":"want","dir":"give","with":["role:peer"],"select":{"kind":["note"]}},{"stance":"want","dir":"get","with":["role:peer"],"select":{"kind":["note"]}}]}' >party.terms
 ./this declare --key party.key --terms party.terms >party.declaration || fail "declare"
-./this bind --key principal.key --actor "$(cat party.ref)" --role peer --mediator "$(cat mediator.ref)" --until 2099-01-01T00:00:00Z >party.binding || fail "bind"
-echo "{\"roles\":[\"peer\"],\"principals\":[\"$(cat principal.ref)\"]}" >policy.json
+echo "{\"roles\":[\"peer\"],\"principals\":[{\"principal\":\"$(cat principal.ref)\",\"roles\":[\"peer\"]}]}" >policy.json
+./this bind --key principal.key --actor "$(cat party.ref)" --role peer --mediator "$(cat mediator.ref)" --until 2099-01-01T00:00:00Z \
+	--policy policy.json >party.binding || fail "bind"
 echo "{\"actor\":\"$(cat mediator.ref)\",\"operator\":\"$(cat operator.ref)\",\"runs\":\"process\"}" >mediator.json
 found() {
 	"$1" founding --policy policy.json --mediator mediator.json --card "$2" --declaration party.declaration --binding party.binding >"$3" 2>"$tmp/out"

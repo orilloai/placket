@@ -24,11 +24,13 @@ func (f finding) place() string {
 	return f.file
 }
 
-// A rule is one check of the tree, named as AGENTS.md names it. why is the reason its closing
-// "refused:" line gives. ordered rules print their findings in the order found; the others print them
+// A rule is one check of the tree, named by its public name. doc is the topic file of docs/rules/
+// that holds the rule's heading, which its closing "refused:" line links; why is the reason that line
+// gives. ordered rules print their findings in the order found; the others print them
 // by file, then line, then text, and print a line found twice once.
 type rule struct {
 	name    string
+	doc     string
 	why     string
 	ordered bool
 	check   func(*tree) []finding
@@ -41,20 +43,22 @@ var rules []rule
 
 func init() {
 	rules = []rule{
-		{name: "core-no-deps", why: "core/go.mod requires no module", check: coreNoDeps},
-		{name: "core-imports", why: "nothing under core/ imports adapters/, cmd/ or recipes/, and no import path is written with an escape", check: coreImports},
-		{name: "core-no-world", why: "no non-test code in core/ reads the clock, randomness, the environment or files, or touches the network, the process or memory, or prints; the core is Go alone, without cgo or other sources, and no import path is written with an escape", check: coreNoWorld},
-		{name: "core-no-panic", why: "no non-test code in core/ calls panic", check: coreNoPanic},
-		{name: "specs-name-behaviour", why: "the requirement text names behaviour under the ids spec/ids.txt lists, each once with a scenario, and never Go code", ordered: true, check: specsNameBehaviour},
-		{name: "schemas-hold", why: "every schema compiles from the tree with nothing fetched, holds against its examples and has a row in the register", ordered: true, check: schemasHold},
-		{name: "vectors-independent", why: "no generator imports a core package its group tests, or the runner, and every generator is under its group's directory", check: vectorsIndependent},
-		{name: "constants-once", why: "a format constant is defined in one file and imported everywhere else", check: constantsOnce},
-		{name: "product-words-once", why: "the core never spells the outcome words the command line owns", check: productWordsOnce},
-		{name: "claims-stop-at-crossing", why: "nothing placket prints speaks of what a receiver does with content after receipt", check: claimsStopAtCrossing},
-		{name: "main-is-thin", why: "cmd/placket/main.go stays under 40 lines and every command is tested from adapters/cli", check: mainIsThin},
-		{name: "root-module", why: "the root module requires the core and replaces it with ./core, and no go.work is committed", check: rootModule},
-		{name: "machine-rules-in-ci", why: "every tool make ci runs is pinned to an exact version, and make ci runs every check and step", check: machineRulesInCI},
-		{name: "ci-stays-fast", why: "no test or script clears PLACKET_IN_CI, the marker that stops a make ci inside make ci", check: ciStaysFast},
+		{name: "core-no-deps", doc: "modules.md", why: "core/go.mod requires no module", check: coreNoDeps},
+		{name: "core-imports", doc: "modules.md", why: "nothing under core/ imports adapters/, cmd/ or recipes/, and no import path is written with an escape", check: coreImports},
+		{name: "core-no-world", doc: "core.md", why: "no non-test code in core/ reads the clock, randomness, the environment or files, or touches the network, the process or memory, or prints; the core is Go alone, without cgo or other sources, and no import path is written with an escape", check: coreNoWorld},
+		{name: "core-no-panic", doc: "core.md", why: "no non-test code in core/ calls panic", check: coreNoPanic},
+		{name: "specs-name-behaviour", doc: "core.md", why: "the requirement text names behaviour under the ids spec/ids.txt lists, each once with a scenario, and never Go code", ordered: true, check: specsNameBehaviour},
+		{name: "schemas-hold", doc: "tests.md", why: "every schema compiles from the tree with nothing fetched, holds against its examples and has a row in the register", ordered: true, check: schemasHold},
+		{name: "vectors-independent", doc: "tests.md", why: "no generator imports a core package its group tests, or the runner, and every generator is under its group's directory", check: vectorsIndependent},
+		{name: "constants-once", doc: "core.md", why: "a format constant is defined in one file and imported everywhere else", check: constantsOnce},
+		{name: "product-words-once", doc: "adapters.md", why: "the core never spells the outcome words the command line owns", check: productWordsOnce},
+		{name: "claims-stop-at-crossing", doc: "adapters.md", why: "nothing placket prints speaks of what a receiver does with content after receipt", check: claimsStopAtCrossing},
+		{name: "main-is-thin", doc: "adapters.md", why: "cmd/placket/main.go stays under 40 lines and every command is tested from adapters/cli", check: mainIsThin},
+		{name: "root-module", doc: "modules.md", why: "the root module requires the core and replaces it with ./core, and no go.work is committed", check: rootModule},
+		{name: "machine-rules-in-ci", doc: "changes.md", why: "every tool make ci runs is pinned to an exact version, and make ci runs every check and step", check: machineRulesInCI},
+		{name: "ci-stays-fast", doc: "changes.md", why: "no test or script clears PLACKET_IN_CI, the marker that stops a make ci inside make ci", check: ciStaysFast},
+		{name: "no-hidden-text", doc: "changes.md", why: "no tracked file outside testdata/ holds a bidi control character, an invisible one or a NUL byte, or is a symbolic link", check: noHiddenText},
+		{name: "agents-md-short", doc: "changes.md", why: "AGENTS.md stays within 150 lines and 10 KiB, every public name has exactly one heading in docs/rules/ and a line in its index, and every link to a rule's heading resolves", check: agentsMDShort},
 	}
 }
 
@@ -122,7 +126,7 @@ func (r rule) run(t *tree) ([]string, bool) {
 		}
 	}
 	if refused {
-		lines = append(lines, r.name+": refused: "+r.why+" (AGENTS.md, "+r.name+")")
+		lines = append(lines, r.name+": refused: "+r.why+" (docs/rules/"+r.doc+"#"+r.name+")")
 	} else {
 		lines = append(lines, r.name+": ok")
 	}

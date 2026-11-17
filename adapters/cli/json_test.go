@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/orilloai/placket/adapters/cli"
+	"github.com/orilloai/placket/core/canonical"
 	"github.com/orilloai/placket/core/composition"
 )
 
@@ -277,7 +278,7 @@ func TestJSONAFounding(t *testing.T) {
 	o := object(t, run(t, env(), append(declare, "--json")...))
 	members(t, o, "exit", "declaration")
 	is(t, o, "declaration", must(t, declare...).stdout)
-	bind := []string{"bind", "--key", a.key("principal"), "--actor", a.refs["ann"], "--role", "peer", "--mediator", a.refs["mediator"], "--until", "2099-01-01T00:00:00Z"}
+	bind := []string{"bind", "--key", a.key("principal"), "--actor", a.refs["ann"], "--role", "peer", "--mediator", a.refs["mediator"], "--until", "2099-01-01T00:00:00Z", "--policy", filepath.Join(a.dir, "policy.json")}
 	o = object(t, run(t, env(), append(bind, "--json")...))
 	members(t, o, "exit", "binding")
 	is(t, o, "binding", must(t, bind...).stdout)
@@ -567,11 +568,16 @@ func TestJSONAShownReceiptAndAVerifiedJournal(t *testing.T) {
 	plain = must(t, verify...)
 	r = run(t, env(), append(verify, "--json")...)
 	o = object(t, r)
-	members(t, o, "exit", "verified", "mediator", "accord", "card", "operator", "runs", "module", "checks", "counts",
+	members(t, o, "exit", "verified", "mediator", "accord", "card", "operator", "runs", "module", "checks", "members", "counts",
 		"questionsClosed", "questionsOpen", "releases", "blockedReleases", "predicates", "claim", "notClaimed")
+	ann, bob := `{"actor":`+quote(a.refs["ann"])+`,"principal":`+quote(a.refs["principal"])+`,"roles":["peer"]}`,
+		`{"actor":`+quote(a.refs["bob"])+`,"principal":`+quote(a.refs["principal"])+`,"roles":["peer"]}`
+	if canonical.Less(a.refs["bob"], a.refs["ann"]) {
+		ann, bob = bob, ann
+	}
 	for name, want := range map[string]string{
 		"verified": "1", "mediator": quote(a.refs["mediator"]), "accord": quote(a.id), "card": quote(a.card),
-		"operator": quote(a.refs["operator"]), "runs": `"process"`,
+		"operator": quote(a.refs["operator"]), "runs": `"process"`, "members": "[" + ann + "," + bob + "]",
 		"module": `{"hash":"` + composition.KernelHash() + `","version":"` + composition.KernelVersion + `"}`, "checks": "[]",
 		"counts": `{"ask":0,"block":0,"pass":1}`, "questionsClosed": "0", "questionsOpen": "0", "releases": "0", "blockedReleases": "0",
 		"predicates": "[" + strings.TrimSuffix(plain.stdout, "\n") + "]", "claim": quote(cli.ClaimVerified), "notClaimed": quote(cli.Scope),

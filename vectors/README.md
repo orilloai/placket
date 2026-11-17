@@ -34,7 +34,7 @@ The `signatures` group holds, beside `sign` and `verify-signature` vectors, `ver
 
 ## How a vector is written and checked
 
-A vector's expected result never comes from the code it tests (`vectors-independent` in `AGENTS.md`).
+A vector's expected result never comes from the code it tests (`vectors-independent` in `docs/rules/tests.md`).
 
 - **Codes, offsets and verdicts are written by hand** from the protocol's check tables and requirement text, in each generator's tables. The vector's `tests` line says what it tests, and opens with the requirement ids it covers.
 - **Bytes, hashes and signatures are computed by the group's generator**, with the Go standard library and the kit. No generator imports any package of the core: the generators' module requires nothing, and a test of the kit (`TestGeneratorsImportNoCore`) reads the imports of every Go file here.
@@ -99,6 +99,7 @@ The runner prints every open entry and every entry with a `rest` on each run, an
 A change to a frozen format, the vector format included, carries a note here and in its row of `spec/frozen-formats.md`, in the same change (`format-change-noted`).
 
 - 0.1, before release: the register gains the answer call, the door's signed call that accepts or changes an answer, which parties keep beside the delivery it came with (`spec/frozen-formats.md`). No vector holds one, and no vector changes.
+- 0.1, before release: a principal per party (`spec/frozen-formats.md`). A founding set's policy lists each principal with the roles it may grant, and each binding names the typed hash of the policy it was signed for; founding gains `binding-role` and `binding-policy`, and the vector format's list of founding codes gains them too. Every group was written again: every founding set, binding and Accord id changed, and so did every scenario vector's receipts, ids and hashes that follow from them. No code, verdict, reason or step of a scenario changed.
 
 The vector format is at version 0.1 as written. The coverage list is this directory's own record, not a frozen format; its `tests` and `rest` members were added with the first vectors.
 

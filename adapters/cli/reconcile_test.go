@@ -3,6 +3,8 @@ package cli_test
 import (
 	"os"
 	"path/filepath"
+	"slices"
+	"sort"
 	"strings"
 	"testing"
 
@@ -83,9 +85,18 @@ func TestReconcileVerifyAndCancel(t *testing.T) {
 
 	r = must(t, "verify", "--mediator", s.refs["mediator"], "--receipts", s.journal(), "--founding", filepath.Join(s.dir, "founding.json"))
 	l := r.lines()
-	if len(l) != 9 || l[2] != "operator "+s.refs["operator"]+" runs process" || l[3] != "module 0.1.0 "+composition.KernelHash() ||
-		l[4] != "pass 6 block 3 ask 5" || l[5] != "questions closed 5 open 0" || l[6] != "releases 2 blocked releases 0" {
+	if len(l) != 12 || l[2] != "operator "+s.refs["operator"]+" runs process" || l[3] != "module 0.1.0 "+composition.KernelHash() ||
+		l[7] != "pass 6 block 3 ask 5" || l[8] != "questions closed 5 open 0" || l[9] != "releases 2 blocked releases 0" {
 		t.Fatalf("verify --founding: %q", l)
+	}
+	// One member line each, in actor-reference order, all under the one principal.
+	var members []string
+	for _, who := range []string{"proposer", "applier", "decider"} {
+		members = append(members, "member "+s.refs[who]+" roles "+who+" principal "+s.refs["principal"])
+	}
+	sort.Strings(members)
+	if !slices.Equal(l[4:7], members) {
+		t.Fatalf("verify --founding members: %q, want %q", l[4:7], members)
 	}
 	other := newAccord(t, "proposer", "applier", "decider")
 	if r := run(t, env(), "verify", "--mediator", s.refs["mediator"], "--receipts", s.journal(), "--founding", filepath.Join(other.dir, "founding.json")); r.code != 3 || r.stderr != "error founding\n" {

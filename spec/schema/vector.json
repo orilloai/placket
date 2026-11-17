@@ -567,6 +567,8 @@
                 "binding-missing",
                 "binding-principal",
                 "binding-signature",
+                "binding-role",
+                "binding-policy",
                 "binding-mediator",
                 "binding-expired",
                 "declaration-missing",
