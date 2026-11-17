@@ -114,14 +114,18 @@ var checksCases = []tcase{
 		"scripts/fetch.sh:7: golang.org/x/vuln/cmd/govulncheck@master: not an exact version",
 	}},
 	// Every action a workflow uses is pinned to 40 lowercase hex: a tag, a short hash, a branch, an
-	// image and upper-case hex are refused; a commit with a comment after it, a local action, a comment
-	// and a reusable workflow at a commit pass.
+	// image and upper-case hex are refused, under a quoted key or in a flow mapping too; a commit with
+	// a comment after it, a local action, a comment and a reusable workflow at a commit pass.
 	{name: "action-unpinned", fixture: "action-unpinned", refuse: []string{"machine-rules-in-ci"}, lines: []string{
 		".github/workflows/extra.yml:8: actions/checkout@v4: not pinned to a commit",
 		".github/workflows/extra.yml:10: actions/cache@0c45773: not pinned to a commit",
 		".github/workflows/extra.yml:13: actions/upload-artifact@main: not pinned to a commit",
 		".github/workflows/extra.yml:14: docker://alpine:3.20: not pinned to a commit",
 		".github/workflows/extra.yml:15: Actions/Setup-Go@924AE3A1CDED613372AB5595356FB5720E22BA16: not pinned to a commit",
+		".github/workflows/extra.yml:21: actions/checkout@v4: not pinned to a commit",
+		".github/workflows/extra.yml:22: actions/cache@v4: not pinned to a commit",
+		".github/workflows/extra.yml:23: actions/upload-artifact@v4: not pinned to a commit",
+		".github/workflows/extra.yml:24: actions/setup-go@v5: not pinned to a commit",
 	}},
 }
 

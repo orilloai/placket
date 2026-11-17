@@ -15,8 +15,9 @@ var (
 	toolVarRE  = regexp.MustCompile(`^[$][({]([A-Za-z_][A-Za-z0-9_]*)[)}]$`)
 	exactVerRE = regexp.MustCompile(`^[^@ ]+@v[0-9]+[.][0-9]+[.][0-9]+(-[0-9A-Za-z.-]+)?([+][0-9A-Za-z.-]+)?$`)
 	ciRuleRE   = regexp.MustCompile(`^ci[ \t]*:`)
-	// usesRE is a step's or a job's uses: in a workflow, with its value.
-	usesRE = regexp.MustCompile(`^[ \t]*(-[ \t]+)?uses[ \t]*:[ \t]*(.*)$`)
+	// usesRE is a step's or a job's uses: in a workflow, with its value: a key alone on its line or
+	// after a list's dash, or one in a flow mapping after its { or a comma, its name quoted or not.
+	usesRE = regexp.MustCompile(`(?:^[ \t]*(?:-[ \t]+)?|[{,][ \t]*)(?:uses|"uses"|'uses')[ \t]*:[ \t]*([^,}]*)`)
 	// pinnedRE is an action named at a commit: <owner>/<repo>[/<path>]@<40 lowercase hex>.
 	pinnedRE = regexp.MustCompile(`^[^@ ]+@[0-9a-f]{40}$`)
 )
@@ -30,7 +31,8 @@ var (
 // Anything else, @latest, a branch, a partial version or no version at all, is refused. Text after a
 // "#" that starts a word is a comment and is not read.
 //
-// Every action a workflow uses is pinned to a commit: each uses: in .github/workflows/ names
+// Every action a workflow uses is pinned to a commit: each uses: in .github/workflows/, as a block
+// key or in a flow mapping on one line, its name quoted or not, names
 // <action>@<40 lowercase hex>, or a local action under ./. A tag, a branch, a short hash or no version
 // is refused. Text after a "#" that starts a word is a comment and is not read.
 //
@@ -49,8 +51,8 @@ func machineRulesInCI(t *tree) []finding {
 		workflow := strings.HasPrefix(rel, ".github/workflows/")
 		for i, raw := range splitLines(string(b)) {
 			if workflow && strings.Contains(raw, "uses") {
-				if m := usesRE.FindStringSubmatch(shellCommentRE.ReplaceAllString(raw, "")); m != nil {
-					action := strings.Trim(strings.TrimSpace(m[2]), `"'`)
+				for _, m := range usesRE.FindAllStringSubmatch(shellCommentRE.ReplaceAllString(raw, ""), -1) {
+					action := strings.Trim(strings.TrimSpace(m[1]), `"'`)
 					if !strings.HasPrefix(action, "./") && !pinnedRE.MatchString(action) {
 						fs = append(fs, finding{file: rel, line: i + 1, text: action + ": not pinned to a commit"})
 					}
