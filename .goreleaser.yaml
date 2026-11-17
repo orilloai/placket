@@ -1,0 +1,96 @@
+# GoReleaser v2: what a placket release holds and how it is built (docs/release.md).
+#
+# The archives are reproducible: a rebuild at the tag gives the same bytes. Nothing is stamped at link
+# time; placket version reads the version Go stamps from the git state, and every time inside an
+# archive is the commit's. The SBOMs carry their own creation time, so they are signed, through
+# checksums.txt, but not reproducible.
+version: 2
+
+project_name: placket
+
+builds:
+  - id: placket
+    main: ./cmd/placket
+    binary: placket
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+    flags:
+      - -trimpath
+    # Set explicitly: GoReleaser's default ldflags add -X main.version and main.date, which change
+    # the bytes and are not how placket names its version.
+    ldflags:
+      - -s -w
+    mod_timestamp: "{{ .CommitTimestamp }}"
+
+archives:
+  - id: placket
+    ids:
+      - placket
+    formats:
+      - tar.gz
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    builds_info:
+      mtime: "{{ .CommitDate }}"
+      mode: 0755
+      owner: root
+      group: root
+    files:
+      - src: LICENSE
+        info:
+          mtime: "{{ .CommitDate }}"
+          mode: 0644
+          owner: root
+          group: root
+      - src: README.md
+        info:
+          mtime: "{{ .CommitDate }}"
+          mode: 0644
+          owner: root
+          group: root
+
+sboms:
+  - id: placket
+    artifacts: archive
+    cmd: syft
+    documents:
+      - "{{ .ArtifactName }}.sbom.json"
+    args:
+      - "$artifact"
+      - "--output"
+      - "spdx-json=$document"
+
+checksum:
+  name_template: checksums.txt
+  algorithm: sha256
+
+# cosign signs checksums.txt keyless, with the release workflow's OIDC identity, into a bundle.
+signs:
+  - id: checksums
+    cmd: cosign
+    artifacts: checksum
+    signature: "${artifact}.sigstore.json"
+    args:
+      - sign-blob
+      - "--bundle=${signature}"
+      - "${artifact}"
+      - "--yes"
+    output: true
+
+# The notes are the version's CHANGELOG.md section, given with --release-notes.
+changelog:
+  disable: true
+
+release:
+  github:
+    owner: orilloai
+    name: placket
+  # A draft, published by the workflow once every asset and attestation is in; a run that resumes
+  # replaces the draft an earlier run left.
+  draft: true
+  replace_existing_draft: true

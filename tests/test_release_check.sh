@@ -73,9 +73,15 @@ mv "$tmp/checksums" "$dir/checksums.txt"
 expect "an SBOM with no checksum is refused" 1 \
 	"release-check: refused: placket_0.0.0-SNAPSHOT-${head}_linux_arm64.tar.gz.sbom.json: no checksum" "$dir"
 
-# Three archives in place of four.
+# Three archives in place of four, and a file checksums.txt names that is not there.
 build "$dir" "$version"
 rm "$dir/placket_0.0.0-SNAPSHOT-${head}_linux_arm64.tar.gz"
+expect "a file checksums.txt names and the directory lacks is refused" 1 \
+	"release-check: refused: placket_0.0.0-SNAPSHOT-${head}_linux_arm64.tar.gz: missing" "$dir"
+build "$dir" "$version"
+rm "$dir/placket_0.0.0-SNAPSHOT-${head}_linux_arm64.tar.gz"
+grep -v 'linux_arm64.tar.gz$' "$dir/checksums.txt" >"$tmp/checksums"
+mv "$tmp/checksums" "$dir/checksums.txt"
 expect "three archives are refused" 1 "release-check: refused: $dir: 3 archives, not 4" "$dir"
 
 # A dirty build of HEAD, and a build of another commit.

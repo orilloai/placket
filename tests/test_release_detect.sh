@@ -153,6 +153,13 @@ expect "a resume in a private repository is refused" 1 "release: refused: reposi
 	--before "$before" --after "$after" --today 2026-12-01 --release-state draft --private
 g tag -d v0.1.0 >/dev/null
 
+echo more >"$repo/README.md"
+plain=$(commit 'No section')
+g tag -a v0.3.0 -m v0.3.0 "$plain"
+expect "a tag at a push whose changelog has no section for it is refused" 1 \
+	"release: refused: v0.3.0 is a tag at this push, and CHANGELOG.md has no section for 0.3.0" \
+	--before "$after" --after "$plain" --today 2026-12-01 --release-state none
+
 # A push whose before is the zero commit reads as one from an empty tree.
 fresh
 release_section 0.1.0 2026-12-31
