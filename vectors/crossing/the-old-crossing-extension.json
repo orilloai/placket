@@ -1,0 +1,229 @@
+{
+  "final": {
+    "delivered": {},
+    "pending": [],
+    "receipts": []
+  },
+  "foundedAt": "2026-11-12T08:00:00Z",
+  "founding": {
+    "bindings": [
+      {
+        "actor": "ed25519:375dea8c4519dbae84fc9eb513e97eb4b693968ef37d52ac10da7b79250c6a22",
+        "mediator": "ed25519:84254f9d593b0f7811b18c00b656a70fe1a9595ed353c73286ea83d300226ed3",
+        "policy": "sha256:9be7866811163fb218273cc74fffb0b0ec6d5fa57ed79dd2bd2b599e9da56550",
+        "principal": "ed25519:7953e3ee4311c21f4990662dbe506689868533db6fb93a77351351e8d6119574",
+        "roles": [
+          "decider"
+        ],
+        "sig": "88bd79d04722ef3e1db729e5a23580769c3ca83485ebeb8eb62e785c92445a45661d0aa0cf28525f3ad6d4b54da4ba02ab6204c377d23282c13bd67207e4790b",
+        "until": "2027-11-12T00:00:00Z"
+      },
+      {
+        "actor": "ed25519:7cf35b36b9d57c62b9f3d5be2eb4d39147afa1b7625cd0032443523254df3bea",
+        "mediator": "ed25519:84254f9d593b0f7811b18c00b656a70fe1a9595ed353c73286ea83d300226ed3",
+        "policy": "sha256:9be7866811163fb218273cc74fffb0b0ec6d5fa57ed79dd2bd2b599e9da56550",
+        "principal": "ed25519:7953e3ee4311c21f4990662dbe506689868533db6fb93a77351351e8d6119574",
+        "roles": [
+          "proposer"
+        ],
+        "sig": "0dcb40da9be0ad7dea514b37a1606b26ed83eee35f65e3e15fffecb36a78359509d2b51184f0cb19da12a1699eb244bc66f916d95919b270bb96f2256cbaac04",
+        "until": "2027-11-12T00:00:00Z"
+      },
+      {
+        "actor": "ed25519:a80586279ba17c5360b029018bf025be0169fdb02087e77301774c99eed92117",
+        "mediator": "ed25519:84254f9d593b0f7811b18c00b656a70fe1a9595ed353c73286ea83d300226ed3",
+        "policy": "sha256:9be7866811163fb218273cc74fffb0b0ec6d5fa57ed79dd2bd2b599e9da56550",
+        "principal": "ed25519:7953e3ee4311c21f4990662dbe506689868533db6fb93a77351351e8d6119574",
+        "roles": [
+          "applier"
+        ],
+        "sig": "8e1ddf94618df7d7460d2a20d3a03f594de9c03b25f2dc8efc88c2a3571934b953559d412ca585708b6d4ee9c760c55bc51c5b368923b3e775b152b7a0c52a04",
+        "until": "2027-11-12T00:00:00Z"
+      }
+    ],
+    "card": {
+      "checks": [],
+      "judges": [],
+      "kernel": {
+        "hash": "sha256:a8755bef6ff188c2dc6b74377a73c6a49d612fc44915675db9d2795bb5b99475",
+        "version": "0.1.0"
+      },
+      "spec": "0.1"
+    },
+    "declarations": [
+      {
+        "actor": "ed25519:375dea8c4519dbae84fc9eb513e97eb4b693968ef37d52ac10da7b79250c6a22",
+        "sig": "55642d296e6f6b5086f3157132eb5fe5b36001b7141b8812f41a8b9ecd0bfa031e8c34dc7bb5a88ff54a11cc392f08a3c2260d83d9e9911e7166f667cf83bb06",
+        "terms": [
+          {
+            "dir": "give",
+            "select": {
+              "kind": [
+                "answer",
+                "changed-version"
+              ]
+            },
+            "stance": "want",
+            "with": [
+              "role:proposer",
+              "role:applier"
+            ]
+          }
+        ]
+      },
+      {
+        "actor": "ed25519:7cf35b36b9d57c62b9f3d5be2eb4d39147afa1b7625cd0032443523254df3bea",
+        "sig": "d6859290e0f713addea89f5d7d54cf5161fa13a42b24d337785f7111c6486421cc9e5c4d51653a5ade8be2e6b7697d6ad13d43121a0f1ebce9c3a56bb9699a07",
+        "terms": [
+          {
+            "dir": "give",
+            "resolve": {
+              "timeout": 3600,
+              "to": [
+                "role:decider"
+              ]
+            },
+            "select": {
+              "kind": [
+                "proposal"
+              ]
+            },
+            "stance": "maybe",
+            "with": [
+              "role:applier"
+            ]
+          },
+          {
+            "dir": "give",
+            "select": {
+              "kind": [
+                "note"
+              ]
+            },
+            "stance": "want",
+            "with": [
+              "role:applier"
+            ]
+          },
+          {
+            "dir": "get",
+            "select": {
+              "kind": [
+                "answer",
+                "changed-version"
+              ]
+            },
+            "stance": "want",
+            "with": [
+              "role:decider"
+            ]
+          }
+        ]
+      },
+      {
+        "actor": "ed25519:a80586279ba17c5360b029018bf025be0169fdb02087e77301774c99eed92117",
+        "sig": "8620748e7e658b3e7759ccc3471449096cd76c93a3cb77e74537c30ada0df811ab77ae2133ee229da2867ef318a78a23697c562ea25df35de333a1f5c1f86c06",
+        "terms": [
+          {
+            "dir": "get",
+            "select": {
+              "kind": [
+                "proposal",
+                "note"
+              ]
+            },
+            "stance": "want",
+            "with": [
+              "role:proposer"
+            ]
+          },
+          {
+            "dir": "get",
+            "select": {
+              "kind": [
+                "changed-version"
+              ]
+            },
+            "stance": "want",
+            "with": [
+              "role:decider"
+            ]
+          }
+        ]
+      }
+    ],
+    "mediator": {
+      "actor": "ed25519:84254f9d593b0f7811b18c00b656a70fe1a9595ed353c73286ea83d300226ed3",
+      "operator": "ed25519:30f97501d13dd5589fc04e36ba98ccca1e44f52c1b3f578f1aca3c57c2181fbc",
+      "runs": "process"
+    },
+    "policy": {
+      "principals": [
+        {
+          "principal": "ed25519:7953e3ee4311c21f4990662dbe506689868533db6fb93a77351351e8d6119574",
+          "roles": [
+            "proposer",
+            "applier",
+            "decider"
+          ]
+        }
+      ],
+      "roles": [
+        "proposer",
+        "applier",
+        "decider"
+      ]
+    }
+  },
+  "keys": {
+    "applier": "6a77a51393d047f29da2c173546e7a48944dfee250de48f7df0c32342714dd0f",
+    "decider": "967669449644ad70603f59ce5af39168f96e635d3eaa6922360f041b1fcd75c7",
+    "mediator": "fe9e57f1593e51a5f6a95be1c651574f0f592958a72e93003fb0f06db6d28452",
+    "proposer": "d8eab9b5147bbc41c9fa836164a8932886ca26ae27b68c88e6714cef161b0983",
+    "stranger": "ccad0b2ffc9e7230a33399883af8bf4f662163554ad3f39547a66d29953fedeb"
+  },
+  "mediator": "mediator",
+  "operation": "scenario",
+  "spec": "0.1",
+  "steps": [
+    {
+      "as": "proposer",
+      "at": "2026-11-12T09:00:00Z",
+      "envelope": {
+        "hash": "sha256:5dd49ee3adf2d2d455c5438f06d6739a12588c3dccda65ec3ef8d500b438ba7f",
+        "seq": 1,
+        "sig": "d2d195ad85106ad2e96f0599844b6e32e2d097a3ce8cba7699bbccef429d030d1855972baa5768ae2469981acbc78c982dbc38f3fd8d647f9c0ab79ad273340b"
+      },
+      "expect": {
+        "rejection": "extension-missing"
+      },
+      "message": {
+        "extensions": [
+          "https://placket.dev/crossing/0.1"
+        ],
+        "messageId": "old-1",
+        "metadata": {
+          "https://placket.dev/crossing/0.1": {
+            "accord": "sha256:fdb4c6101b33876a56e9501d756b0905671a9a44c726e599c9a7a76270aab1df",
+            "to": "ed25519:a80586279ba17c5360b029018bf025be0169fdb02087e77301774c99eed92117"
+          }
+        },
+        "parts": [
+          {
+            "metadata": {
+              "https://placket.dev/crossing/0.1": {
+                "kind": "note",
+                "salt": "51fd27228b62a149bdfd3e6d7505a965f16867e9c07388513b3f6b14abeb463b"
+              }
+            },
+            "text": "Under the old host."
+          }
+        ],
+        "role": "ROLE_USER"
+      },
+      "op": "give"
+    }
+  ],
+  "tests": "crossing-1: a give whose extension and metadata are under the crossing extension's URI on another host is extension-missing, and nothing is written",
+  "vector": "crossing/the-old-crossing-extension"
+}

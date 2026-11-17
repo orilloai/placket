@@ -3,14 +3,14 @@
     "valid": false
   },
   "input": {
-    "hash": "sha256:30547b8152f3ef9816b59eba84150be7b10e1c7d42a9f7e6512f0cb0f6994437",
+    "hash": "sha256:bbe08efbd0d0461e3f9572fcf6712002bca786313767fcd611d533ab37420902",
     "seq": 1,
-    "sig": "0ca1427631d7816ba76571418f7c2774f2bae66f46669a8c0e70a8f04c1da35d5d3a0426d9e7902180ab0f9d931661d683fd6b2c372ef2060f267c4a7ce6c204"
+    "sig": "24ef87522e2e3798aa23cb8a6d54d8da5b5343eef594c69d6ad37156c81b09ab855b08a300c1a9b96cfbd5a9cce1b669f38f42ffa01ec04b7914a16381e3b00b"
   },
   "operation": "verify-signature",
   "reference": "ed25519:7cf35b36b9d57c62b9f3d5be2eb4d39147afa1b7625cd0032443523254df3bea",
   "spec": "0.1",
   "tests": "signing-2: an envelope signed by another key fails under the caller's",
-  "typeUri": "https://placket.dev/envelope/0.1",
+  "typeUri": "https://placket.tech/envelope/0.1",
   "vector": "signatures/envelope-by-another-key"
 }

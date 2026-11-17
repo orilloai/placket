@@ -252,6 +252,8 @@ func main() {
 	cardCheck := base()
 	cardCheck["card"].(kit.Obj)["checks"] = []any{kit.Obj{"name": "forbidden", "version": "0.1.0", "hash": kit.HashOf("a check")}}
 	cardModels := base()
+	cardSpec := base()
+	cardSpec["card"].(kit.Obj)["spec"] = "0.2"
 	cardModels["card"].(kit.Obj)["models"] = []any{}
 
 	auditor := base()
@@ -393,6 +395,7 @@ func main() {
 		refused("declaration-without-binding", "setup-contract-3: a declaration with no binding is binding-missing", noBinding, "binding-missing"),
 		refused("card-loads-a-check", "setup-contract-4: a card whose checks lists one check is invalid-shape", cardCheck, "invalid-shape"),
 		refused("card-unlisted-member", "setup-contract-4: a card with a member models is invalid-shape", cardModels, "invalid-shape"),
+		refused("a-card-of-another-spec", "setup-contract-4: a card whose spec is 0.2, a protocol number this version does not know, is invalid-shape", cardSpec, "invalid-shape"),
 		refused("policy-role-nobody-holds", "setup-contract-5: a policy role no binding gives is role-missing", auditor, "role-missing"),
 		refused("runs-container", "setup-contract-7: a mediator whose runs is container is invalid-shape", container, "invalid-shape"),
 		refused("two-defects-in-one-declaration", "setup-contract-8: the first declaration's bad signature comes before its expired binding", twoInOne, "declaration-signature"),

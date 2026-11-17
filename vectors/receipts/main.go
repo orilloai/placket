@@ -24,7 +24,7 @@ func at(n int) string {
 }
 
 func note(id string) kit.Obj {
-	return kit.Message(id, accord, kit.Applier, kit.TextPart("note", kit.Salt("receipts "+id, 16), "The note "+id+"."))
+	return kit.Message(id, accord, kit.Applier, kit.TextPart("note", kit.Salt("receipts "+id, 32), "The note "+id+"."))
 }
 
 // A journal writes receipts one after another as a mediator would, each chained in its pair.
@@ -115,9 +115,9 @@ func main() {
 	{
 		s := kit.NewScene(askAndLog, kit.Mediator, kit.Proposer, kit.Applier, kit.Decider)
 		s.Give(at(0), kit.Proposer, 1, note("note-1"), kit.Applier, "pass", "ok")
-		back := kit.Message("back-1", accord, kit.Proposer, kit.TextPart("note", kit.Salt("receipts back", 16), "Back."))
+		back := kit.Message("back-1", accord, kit.Proposer, kit.TextPart("note", kit.Salt("receipts back", 32), "Back."))
 		s.Give(at(1), kit.Applier, 1, back, kit.Proposer, "block", "no-match")
-		proposal := kit.Message("decider-proposal", accord, kit.Applier, kit.TextPart("proposal", kit.Salt("receipts decider", 16), "A proposal."))
+		proposal := kit.Message("decider-proposal", accord, kit.Applier, kit.TextPart("proposal", kit.Salt("receipts decider", 32), "A proposal."))
 		s.Give(at(2), kit.Decider, 1, proposal, kit.Applier, "block", "no-match")
 		s.Give(at(3), kit.Proposer, 2, note("note-2"), kit.Applier, "pass", "ok")
 		vs = append(vs, s.Vector("receipts/each-pair-its-own-chain",
@@ -190,6 +190,7 @@ func main() {
 	result := resign(a, func(st kit.Obj) { predicate(st)["result"] = "pass" })
 	otherSender := resign(a, func(st kit.Obj) { predicate(st)["envelope"].(kit.Obj)["sender"] = kit.Decider.Ref })
 	wrongType := resign(a, func(st kit.Obj) { st["_type"] = "https://in-toto.io/Statement/v0.1" })
+	oldDomain := resign(a, func(st kit.Obj) { st["predicateType"] = "https://placket.dev/receipt/0.1" })
 	twoSubjects := resign(a, func(st kit.Obj) { st["subject"] = append(st["subject"].([]any), kit.Copy(st["subject"].([]any)[0])) })
 	leap := resign(a, func(st kit.Obj) { predicate(st)["at"] = "2026-11-12T23:59:60Z" })
 	escalateResolution := resign(a, func(st kit.Obj) {
@@ -206,6 +207,8 @@ func main() {
 		verify("a-gives-receipt-echoes-another-members-envelope", "receipt-6: a crossing receipt from the proposer whose envelope's sender is the decider fails statement-type at 0",
 			list(otherSender), failsAt("statement-type", 0)),
 		verify("a-statement-of-another-type", "receipt-1: a statement whose _type is not in-toto's Statement v1 fails statement-type", list(wrongType), failsAt("statement-type", 0)),
+		verify("a-receipt-under-the-old-domain", "receipt-1: a receipt signed by the mediator whose predicateType is the receipt's on another host fails statement-type",
+			list(oldDomain), failsAt("statement-type", 0)),
 		verify("two-subjects", "receipt-2: a subject list of two entries fails statement-type", list(twoSubjects), failsAt("statement-type", 0)),
 		verify("a-time-with-second-60", "receipt-10: an at with second 60 fails statement-type", list(leap), failsAt("statement-type", 0)),
 	)
@@ -354,7 +357,7 @@ func main() {
 		// In the ask-and-log Accord the decider is every question's first answerer, and a proposal's
 		// deadline is its give's time plus 3600 seconds.
 		proposal := func(id string) kit.Obj {
-			return kit.Message(id, accord, kit.Applier, kit.TextPart("proposal", kit.Salt("receipts "+id, 16), "The proposal "+id+"."))
+			return kit.Message(id, accord, kit.Applier, kit.TextPart("proposal", kit.Salt("receipts "+id, 32), "The proposal "+id+"."))
 		}
 		s := kit.NewScene(askAndLog, kit.Mediator, kit.Proposer, kit.Applier, kit.Decider)
 		for i := 1; i <= 3; i++ {
@@ -368,7 +371,7 @@ func main() {
 
 		s = kit.NewScene(askAndLog, kit.Mediator, kit.Proposer, kit.Applier, kit.Decider)
 		q = s.Give(at(0), kit.Proposer, 1, proposal("chain-1"), kit.Applier, "escalate", "maybe")
-		s.Resolve(kit.Answer{At: at(1), Question: q, Action: "accepted", Text: "accepted", Salt: kit.Salt("receipts answer chain-1", 16),
+		s.Resolve(kit.Answer{At: at(1), Question: q, Action: "accepted", Text: "accepted", Salt: kit.Salt("receipts answer chain-1", 32),
 			By: kit.Decider, Verdict: kit.Verdict{Verdict: "pass", Reason: "ok"}})
 		vs = append(vs, s.Vector("receipts/the-answers-own-chain",
 			"receipt-5: the accept of an asked proposal is the first receipt from the decider to the proposer, so its seq is 1 and it has no prev", askAndLog))

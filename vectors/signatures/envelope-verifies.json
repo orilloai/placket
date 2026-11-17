@@ -3,14 +3,14 @@
     "valid": true
   },
   "input": {
-    "hash": "sha256:30547b8152f3ef9816b59eba84150be7b10e1c7d42a9f7e6512f0cb0f6994437",
+    "hash": "sha256:bbe08efbd0d0461e3f9572fcf6712002bca786313767fcd611d533ab37420902",
     "seq": 1,
-    "sig": "6e53d0d20fef0f726492250e7e571fa9bf631b69ad3d30981395cef6dafc2d288270b3199fc804e0b6f11dd31e7ba2dc40ca844796ad0795315fbc8bb132f703"
+    "sig": "cf39eb946fa7440c0a509358a80bc8c05e503f40f2f4009cc8f663c743b389989de66864e823fdc0c501c8a34c30c84bbd34f5d60491bd5448e826ca7b9dcf01"
   },
   "operation": "verify-signature",
   "reference": "ed25519:7cf35b36b9d57c62b9f3d5be2eb4d39147afa1b7625cd0032443523254df3bea",
   "spec": "0.1",
   "tests": "signing-2: an envelope verifies under the envelope type URI by its sender",
-  "typeUri": "https://placket.dev/envelope/0.1",
+  "typeUri": "https://placket.tech/envelope/0.1",
   "vector": "signatures/envelope-verifies"
 }

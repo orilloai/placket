@@ -23,7 +23,7 @@ var (
 const asked = "2026-11-12T09:00:00Z"
 
 func messageIn(set kit.Obj, id, kind, text string) kit.Obj {
-	return kit.Message(id, kit.HashOf(set), kit.Applier, kit.TextPart(kind, kit.Salt("questions "+id, 16), text))
+	return kit.Message(id, kit.HashOf(set), kit.Applier, kit.TextPart(kind, kit.Salt("questions "+id, 32), text))
 }
 
 func message(id, kind, text string) kit.Obj { return messageIn(askAndLog, id, kind, text) }
@@ -41,7 +41,7 @@ func proposal(s *kit.Scene, set kit.Obj, at string, seq int64, id string) string
 }
 
 // salt is the salt the mediator mints for an answer, given by the vector (conformance-vectors-2).
-func salt(label string) string { return kit.Salt("questions answer "+label, 16) }
+func salt(label string) string { return kit.Salt("questions answer "+label, 32) }
 
 var (
 	passOK      = kit.Verdict{Verdict: "pass", Reason: "ok"}
