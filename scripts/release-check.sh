@@ -22,6 +22,8 @@
 #               characters of HEAD's commit
 set -u
 
+# The release workflow is planned and not in the repository yet (docs/release.md); a release it
+# signs will carry this identity.
 workflow=orilloai/placket/.github/workflows/release.yml
 identity=https://github.com/$workflow@refs/heads/main
 issuer=https://token.actions.githubusercontent.com

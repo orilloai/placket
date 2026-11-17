@@ -412,6 +412,10 @@ func cutPrefix(s, p string) (string, bool) {
 // mediator that is not an actor reference is refused with mediator, and a seq or prev of the wrong
 // form with chain, so nothing of an unverified receipt reaches its reader unread. Whatever presents
 // what it returns must say that the receipt was not verified.
+//
+// It reads neither the payload type nor the envelope's other members (rows 2 and 3), so its code
+// can differ from the verifier's for one receipt: a wrong payload type with a payload that is not
+// base64 is the verifier's payload-type and Decode's signature.
 func Decode(receipt []byte) (Statement, error) {
 	v, _, err := shape.Decode(receipt)
 	if err != nil {
