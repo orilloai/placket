@@ -165,10 +165,7 @@ func main() {
 	closed, ask := all[4], before[1]
 	asker, receiver := kit.Proposer.Ref, kit.Applier.Ref
 	finals := func(change func([]any) []any) []any {
-		f := []any{}
-		for _, x := range kit.Copy(s.Finals()).([]any) {
-			f = append(f, x)
-		}
+		f := append([]any{}, kit.Copy(s.Finals()).([]any)...)
 		return change(f)
 	}
 	unfetched := s.Unfetched()

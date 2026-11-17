@@ -16,14 +16,15 @@ import (
 )
 
 // closeRun runs a window with Close set and no socket, as `window close` does without --socket, and
-// returns what Run returned and the events it emitted.
-func closeRun(t *testing.T, w *world) (error, []local.Event) {
+// returns the events it emitted and what Run returned.
+func closeRun(t *testing.T, w *world) ([]local.Event, error) {
 	t.Helper()
 	cfg := w.window(t)
 	cfg.Close, cfg.Socket = true, ""
 	var events []local.Event
 	cfg.Event = func(e local.Event) { events = append(events, e) }
-	return local.Run(context.Background(), cfg), events
+	err := local.Run(context.Background(), cfg)
+	return events, err
 }
 
 // TestWindowCloseLocked is fork 1's guard (U23): a close of a journal a running window holds is
@@ -37,7 +38,7 @@ func TestWindowCloseLocked(t *testing.T) {
 		t.Fatalf("the ask: %+v", rep)
 	}
 	before := w.receipts(t)
-	err, _ := closeRun(t, w)
+	_, err := closeRun(t, w)
 	var je *journal.Error
 	if !errors.As(err, &je) || je.Code != journal.CodeLocked {
 		t.Fatalf("a close of a held journal: %v, want journal-locked", err)
@@ -49,7 +50,7 @@ func TestWindowCloseLocked(t *testing.T) {
 	if err := os.Remove(w.socket); err != nil {
 		t.Fatal(err)
 	}
-	err, events := closeRun(t, w)
+	events, err := closeRun(t, w)
 	if err != nil || len(events) != 1 || events[0].Kind != local.EventClosed || len(events[0].Outcomes) != 1 ||
 		events[0].Outcomes[0].Reason != receipts.ReasonClosed || events[0].Accord != w.accord {
 		t.Fatalf("the close: %v, %+v", err, events)
@@ -63,13 +64,13 @@ func TestWindowCloseLocked(t *testing.T) {
 	if _, err := os.Lstat(w.socket); !os.IsNotExist(err) {
 		t.Fatalf("a close without a socket made one: %v", err)
 	}
-	err, _ = closeRun(t, w)
+	_, err = closeRun(t, w)
 	var me *mediator.Error
 	if !errors.As(err, &me) || me.Code != mediator.CodeClosed {
 		t.Fatalf("a second close: %v, want closed", err)
 	}
 	empty := newWorld(t)
-	err, _ = closeRun(t, empty)
+	_, err = closeRun(t, empty)
 	if !errors.As(err, &je) || je.Code != journal.CodeJournal || je.Core != string(mediator.CodeUnfounded) {
 		t.Fatalf("the close of an empty journal: %v, want journal unfounded", err)
 	}
@@ -145,7 +146,7 @@ func TestTornCloseRefusedAtStart(t *testing.T) {
 	r := start(t, w.window(t))
 	w.give(t, "proposer", "applier", "p-1", "proposal", "A proposal.")
 	r.stop(t)
-	if err, _ := closeRun(t, w); err != nil {
+	if _, err := closeRun(t, w); err != nil {
 		t.Fatal(err)
 	}
 	path := filepath.Join(w.journal, journal.FileReceipts)
@@ -161,7 +162,7 @@ func TestTornCloseRefusedAtStart(t *testing.T) {
 		t.Fatalf("a start on a torn close: %v, want journal receipts.jsonl close", err)
 	}
 	w.clock.Set(w.clock.Now().Add(time.Hour))
-	err, events := closeRun(t, w)
+	events, err := closeRun(t, w)
 	if err != nil || len(events) != 1 || len(events[0].Outcomes) != 0 {
 		t.Fatalf("completing the close: %v, %+v", err, events)
 	}

@@ -55,7 +55,7 @@ func first(release error, close, rest *Error) error {
 func verifiedOf(entries []entry) []Verified {
 	out := make([]Verified, len(entries))
 	for i, e := range entries {
-		out[i] = Verified{s: e.s, c: e.c}
+		out[i] = Verified(e)
 	}
 	return out
 }
@@ -291,7 +291,7 @@ type Place struct {
 func Releases(list []Verified) ([]Place, error) {
 	entries := make([]entry, len(list))
 	for i, v := range list {
-		entries[i] = entry{s: v.s, c: v.c}
+		entries[i] = entry(v)
 	}
 	return releases(entries, false)
 }
