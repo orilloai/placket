@@ -78,8 +78,8 @@ type Event struct {
 	// For started: whether the Accord was founded now, and its id and card.
 	Founded      bool
 	Accord, Card string
-	// For started on a closed Accord, and for closed: the close receipt's id; for closed, also its
-	// bytes in CloseReceipt.
+	// For started on a closed Accord, and for closed: the close receipt's id, and its bytes in
+	// CloseReceipt.
 	Close        string
 	CloseReceipt []byte
 	// For a call: its op and caller.
@@ -162,7 +162,7 @@ func Run(ctx context.Context, cfg Window) error {
 	defer l.Close()
 	started := Event{Kind: EventStarted, Founded: founded, Accord: w.m.Accord(), Card: w.m.Card()}
 	if c, ok := w.m.Closed(); ok {
-		started.Close = c.ID
+		started.Close, started.CloseReceipt = c.ID, c.Receipt
 	}
 	cfg.Event(started)
 	if cfg.Ready != nil {

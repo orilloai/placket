@@ -332,7 +332,8 @@ func TestClosedQuestionsAndResult(t *testing.T) {
 
 // TestWindowCloseServes is U22's --socket case (close-1, close-3): `window close --socket` writes
 // the close, prints the closed start line, serves the closed Accord, whose get returns the close,
-// and exits 0 when interrupted.
+// and exits 0 when interrupted; its --json object holds the close as it does without --socket, its
+// id and its receipt, the journal's last line.
 func TestWindowCloseServes(t *testing.T) {
 	t.Parallel()
 	a := newAccord(t, "p1", "p2")
@@ -343,10 +344,10 @@ func TestWindowCloseServes(t *testing.T) {
 	ready := make(chan struct{})
 	e := env()
 	e.Context, e.Ready = ctx, ready
-	stderr := &syncBuffer{}
+	stdout, stderr := &syncBuffer{}, &syncBuffer{}
 	done := make(chan int, 1)
 	go func() {
-		done <- cli.Run(e, a.closeArgs("--socket", a.socket()), strings.NewReader(""), &bytes.Buffer{}, stderr)
+		done <- cli.Run(e, a.closeArgs("--socket", a.socket(), "--json"), strings.NewReader(""), stdout, stderr)
 	}()
 	select {
 	case <-ready:
@@ -365,6 +366,19 @@ func TestWindowCloseServes(t *testing.T) {
 	id := strings.TrimPrefix(lines[0], "close ")
 	if !slices.Equal(r.lines(), []string{"close " + id}) || lines[1] != "accord "+a.id+" closed "+id {
 		t.Fatalf("stderr %q; the get: %v", lines, r)
+	}
+	journalLines := a.journalLines(t)
+	var obj struct {
+		Accord string
+		Close  struct {
+			ReceiptID string
+			Receipt   json.RawMessage
+		}
+		Closings []json.RawMessage
+	}
+	if err := json.Unmarshal([]byte(stdout.String()), &obj); err != nil || obj.Accord != a.id || obj.Close.ReceiptID != id ||
+		!bytes.Equal(obj.Close.Receipt, journalLines[len(journalLines)-1]) || obj.Closings == nil {
+		t.Fatalf("the object %s: %v", stdout.String(), err)
 	}
 }
 

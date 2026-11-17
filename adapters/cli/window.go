@@ -94,7 +94,8 @@ func (r *run) windowError(err error) int {
 // --accord must be the founding set's Accord id: the close cannot be undone. A running window holds
 // the journal's lock, so the command is journal-locked; an empty journal is tool error journal,
 // unfounded; a closed one is tool error closed. With --socket it then serves the closed Accord until
-// interrupted, as `window` does; without it, it exits 0.
+// interrupted, as `window` does; without it, it exits 0. Its --json object, written at exit, holds
+// accord, close (closeObject) and closings, in both modes.
 func closeCommand(r *run, args []string) int {
 	fs := flags("window close")
 	keyPath, founding := fs.String("key", "", "the mediator's key file"), fs.String("founding", "", "the founding set")
@@ -131,6 +132,12 @@ func closeCommand(r *run, args []string) int {
 	return r.windowError(err)
 }
 
+// closeObject is the close as the --json object of window and window close holds it, in both modes:
+// its id and its receipt, as an outcome is.
+func closeObject(e local.Event) map[string]any {
+	return map[string]any{memberReceiptID: e.Close, "receipt": json.RawMessage(e.CloseReceipt)}
+}
+
 // event prints one line per event of the window.
 func (r *run) event(e local.Event, operator string) {
 	switch e.Kind {
@@ -142,7 +149,7 @@ func (r *run) event(e local.Event, operator string) {
 		if e.Close != "" {
 			how = wordClosed
 			fmt.Fprintln(r.stderr, "accord "+e.Accord+" "+how+" "+e.Close)
-			r.put(memberClose, e.Close)
+			r.put(memberClose, closeObject(e))
 		} else {
 			fmt.Fprintln(r.stderr, "accord "+e.Accord+" "+how)
 		}
@@ -165,7 +172,7 @@ func (r *run) event(e local.Event, operator string) {
 		}
 		r.put(memberAccord, e.Accord)
 		r.put(memberClosings, closings)
-		r.put(memberClose, map[string]any{memberReceiptID: e.Close, "receipt": json.RawMessage(e.CloseReceipt)})
+		r.put(memberClose, closeObject(e))
 		if len(e.Outcomes) == 0 {
 			return
 		}
