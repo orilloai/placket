@@ -30,8 +30,8 @@ func TestKernelHash(t *testing.T) {
 	if got := composition.KernelHash(); got != want {
 		t.Fatalf("kernel hash %q, want %q", got, want)
 	}
-	if composition.KernelVersion != "0.1.0" {
-		t.Fatalf("kernel version %q, want 0.1.0", composition.KernelVersion)
+	if composition.KernelVersion != "0.2.0" {
+		t.Fatalf("kernel version %q, want 0.2.0", composition.KernelVersion)
 	}
 	if setup.Spec != "0.1" {
 		t.Fatalf("spec %q, want 0.1", setup.Spec)
@@ -42,7 +42,7 @@ func TestKernelHash(t *testing.T) {
 // replaced founds, and its card hash is the typed hash of Card (setup-contract-4).
 func TestCard(t *testing.T) {
 	t.Parallel()
-	want := `{"checks":[],"judges":[],"kernel":{"hash":"` + composition.KernelHash() + `","version":"0.1.0"},"spec":"0.1"}`
+	want := `{"judges":[],"kernel":{"hash":"` + composition.KernelHash() + `","version":"0.2.0"},"spec":"0.1"}`
 	if got := string(composition.Card()); got != want {
 		t.Fatalf("card %s, want %s", got, want)
 	}

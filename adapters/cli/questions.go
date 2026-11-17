@@ -1,6 +1,8 @@
 package cli
 
 import (
+	"encoding/json"
+
 	"github.com/orilloai/placket/adapters/local"
 )
 
@@ -10,9 +12,11 @@ func init() {
 
 // questionsCommand is `questions`, with the socket flags: the open questions this key may answer,
 // one JSON object per line, {"asker","deadline","form","id","kind"} and the part: a text part's
-// text or a data part's canonical JSON in message, a raw part's size in bytes in size. A text or data
-// part the window's reply has no room for is shown by its size too (local.MaxReply). On a terminal
-// the line is escaped, which leaves it the same JSON.
+// text or a data part's canonical JSON in message, a raw part's size in bytes in size, never its
+// bytes. Under --json each question also has receiptId and receipt, the ask's, and never the part's
+// salt or a raw body. When the window left questions out of its reply, to keep it under
+// local.MaxReply, the oldest come first and the rest show once those close. On a terminal the line
+// is escaped, which leaves it the same JSON.
 func questionsCommand(r *run, args []string) int {
 	fs := flags("questions")
 	keyPath, socket, accord, stateDir := socketFlags(fs)
@@ -38,14 +42,18 @@ func questionsCommand(r *run, args []string) int {
 	defer func() { r.put("questions", list) }()
 	for _, q := range rep.Questions {
 		o := map[string]any{"id": q.ID, "asker": q.Asker, "kind": q.Kind, "deadline": q.Deadline, "form": q.Form}
-		if q.Message != nil {
+		switch {
+		case q.Message != nil:
 			o["message"] = *q.Message
-		}
-		if q.Size != nil {
+		case q.Size != nil:
 			o["size"] = *q.Size
 		}
 		line(r.stdout, r.screenJSON(canonicalJSON(o)))
-		list = append(list, o)
+		j := map[string]any{memberReceiptID: q.ID, memberReceipt: json.RawMessage(q.Receipt)}
+		for k, v := range o {
+			j[k] = v
+		}
+		list = append(list, j)
 	}
 	return ExitOK
 }

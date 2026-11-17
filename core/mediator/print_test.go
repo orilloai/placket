@@ -22,12 +22,12 @@ func TestMediatorNeverPrints(t *testing.T) {
 	p, ap := ptesting.Key(t, "proposer"), ptesting.Key(t, "applier")
 	const body = "the body of a queued part"
 	note := message(t, m.Accord(), "n", ap.Reference(), "note", body, nil)
-	if _, err := m.Give(p.Reference(), note, envelope(t, 1, note, p), "2026-11-12T09:00:00Z"); err != nil {
+	if _, err := m.Give(p.Reference(), note, envelope(t, 1, note, p), nil, "2026-11-12T09:00:00Z"); err != nil {
 		t.Fatal(err)
 	}
 	const asked = "the body of a held proposal"
 	prop := message(t, m.Accord(), "q", ap.Reference(), "proposal", asked, nil)
-	if out, err := m.Give(p.Reference(), prop, envelope(t, 2, prop, p), "2026-11-12T09:01:00Z"); err != nil || out.Verdict != "escalate" {
+	if out, err := m.Give(p.Reference(), prop, envelope(t, 2, prop, p), nil, "2026-11-12T09:01:00Z"); err != nil || out.Verdict != "escalate" {
 		t.Fatalf("got %+v, %v", out, err)
 	}
 	seed := sha256.Sum256([]byte("placket vectors: key mediator"))

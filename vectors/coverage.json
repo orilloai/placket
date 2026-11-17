@@ -48,17 +48,17 @@
     "scenarios": {"reference forms": {"vectors": ["signatures/reference-forms", "signatures/reference-uppercase", "signatures/reference-short", "signatures/reference-other-prefix"]}, "a small-order key": {"vectors": ["signatures/small-order-key", "founding/small-order-actor"]}}
   },
   "signing-2": {
-    "vectors": ["signatures/binding-under-declaration-uri", "founding/binding-under-declaration-uri", "signatures/envelope-by-another-key", "crossing/an-envelope-by-another-key", "signatures/malleated-signature", "signatures/receipt-malleated-signature", "signatures/binding-verifies", "signatures/canonical-form-is-signed", "signatures/edited-after-signing", "signatures/envelope-verifies", "signatures/sig-missing", "signatures/sig-uppercase", "signatures/sign-binding", "signatures/sign-declaration", "signatures/sign-envelope", "signatures/sign-ignores-sig", "signatures/type-uri-of-the-operation"],
+    "vectors": ["signatures/binding-under-declaration-uri", "founding/binding-under-declaration-uri", "signatures/envelope-by-another-key", "crossing/an-envelope-by-another-key", "signatures/malleated-signature", "signatures/receipt-malleated-signature", "signatures/binding-verifies", "signatures/canonical-form-is-signed", "signatures/edited-after-signing", "signatures/envelope-verifies", "signatures/sig-missing", "signatures/sig-uppercase", "signatures/sign-binding", "signatures/sign-declaration", "signatures/sign-envelope", "signatures/sign-ignores-sig", "signatures/type-uri-of-the-operation", "signatures/answer-verifies", "signatures/answer-by-another-key", "signatures/answer-under-the-envelope-uri"],
     "scenarios": {"the type URI comes from the operation": {"vectors": ["signatures/binding-under-declaration-uri", "founding/binding-under-declaration-uri"]}, "signed by another key": {"vectors": ["signatures/envelope-by-another-key", "crossing/an-envelope-by-another-key"]}, "a malleated signature": {"vectors": ["signatures/malleated-signature", "signatures/receipt-malleated-signature"]}}
   },
   "signing-4": {
-    "vectors": ["signatures/receipt-verifies", "signatures/receipt-placket-payload-type", "signatures/a-binding-under-the-old-domain"],
+    "vectors": ["signatures/receipt-verifies", "signatures/receipt-placket-payload-type", "signatures/a-binding-under-the-old-domain", "signatures/answer-sign-accepted", "signatures/answer-sign-cancelled", "signatures/receipt-answer-payload-type"],
     "tests": ["core/signing:TestPayloadSignaturesRefuseTheThreeTypeURIs"],
-    "scenarios": {"a placket URI as a payload type": {"tests": ["core/signing:TestPayloadSignaturesRefuseTheThreeTypeURIs"]}}
+    "scenarios": {"a placket URI as a payload type": {"vectors": ["signatures/receipt-answer-payload-type"], "tests": ["core/signing:TestPayloadSignaturesRefuseTheThreeTypeURIs", "core/signing:TestTheAnswerCallIsAnObjectType"]}, "an answer call signed and verified": {"vectors": ["signatures/answer-verifies", "signatures/answer-by-another-key", "signatures/answer-under-the-envelope-uri"]}}
   },
   "setup-contract-1": {
-    "vectors": ["founding/selector-not-a-role", "founding/maybe-without-resolve", "founding/term-names-a-check", "founding/declaration-edited", "founding/resolve-on-a-want"],
-    "scenarios": {"a selector that is not a role": {"vectors": ["founding/selector-not-a-role"]}, "a maybe without its rule": {"vectors": ["founding/maybe-without-resolve"]}, "a term that names a check": {"vectors": ["founding/term-names-a-check"]}, "a declaration edited after signing": {"vectors": ["founding/declaration-edited"]}}
+    "vectors": ["founding/selector-not-a-role", "founding/maybe-without-resolve", "founding/term-names-a-check", "founding/declaration-edited", "founding/resolve-on-a-want", "founding/judge-unknown", "founding/a-judge-named-twice", "founding/a-judge-of-another-use", "founding/judged"],
+    "scenarios": {"a selector that is not a role": {"vectors": ["founding/selector-not-a-role"]}, "a maybe without its rule": {"vectors": ["founding/maybe-without-resolve"]}, "a term that names a check": {"vectors": ["founding/term-names-a-check"]}, "a declaration edited after signing": {"vectors": ["founding/declaration-edited"]}, "a judge the card does not name": {"vectors": ["founding/judge-unknown"]}, "a judge named twice": {"vectors": ["founding/a-judge-named-twice"]}}
   },
   "setup-contract-2": {
     "vectors": ["founding/one-binding-two-roles", "founding/binding-expires-at-founding", "founding/until-second-60", "founding/until-hour-24", "founding/until-day-not-in-calendar", "founding/two-principals"],
@@ -69,8 +69,8 @@
     "scenarios": {"a binding by an unlisted principal": {"vectors": ["founding/binding-unlisted-principal"]}, "a binding that gives a role its principal may not grant": {"vectors": ["founding/binding-role-not-granted"]}, "a binding signed for another policy": {"vectors": ["founding/binding-other-policy"]}, "a binding for another mediator": {"vectors": ["founding/binding-other-mediator"]}, "a binding with no declaration": {"vectors": ["founding/binding-without-declaration"]}}
   },
   "setup-contract-4": {
-    "vectors": ["founding/card-loads-a-check", "founding/card-unlisted-member", "founding/a-card-of-another-spec"],
-    "scenarios": {"a card that loads a check": {"vectors": ["founding/card-loads-a-check"]}, "a member the card does not list": {"vectors": ["founding/card-unlisted-member"]}, "a card of another spec": {"vectors": ["founding/a-card-of-another-spec"]}}
+    "vectors": ["founding/card-loads-a-check", "founding/card-unlisted-member", "founding/a-card-of-another-spec", "founding/card-judge-name-twice", "founding/judged"],
+    "scenarios": {"a card that loads a check": {"vectors": ["founding/card-loads-a-check"]}, "a member the card does not list": {"vectors": ["founding/card-unlisted-member"]}, "a card of another spec": {"vectors": ["founding/a-card-of-another-spec"]}, "a judge the card names twice": {"vectors": ["founding/card-judge-name-twice"], "tests": ["core/setup:TestCardJudgeNameTwice"]}}
   },
   "setup-contract-5": {
     "vectors": ["founding/ask-and-log", "founding/ask-and-log-later", "founding/policy-role-nobody-holds", "founding/compose", "founding/policy-without-roles", "founding/own-no", "founding/long-wait", "founding/unanswered", "founding/answer-under-maybe", "founding/a-role-held-not-required"],
@@ -85,7 +85,7 @@
     "scenarios": {"a class other than process": {"vectors": ["founding/runs-container"]}, "the operator changes the id": {"vectors": ["founding/ask-and-log", "founding/operator-changes-the-id"]}}
   },
   "setup-contract-8": {
-    "vectors": ["founding/two-defects-in-one-declaration", "founding/defects-in-two-declarations", "founding/unlisted-principal-and-expired", "founding/bad-binding-signature-and-other-mediator", "founding/bad-declaration-signature-and-term", "founding/shape-and-two-bindings-one-actor", "founding/two-bindings-one-actor-and-an-actor", "founding/maybe-without-resolve-and-a-bad-term", "founding/a-check-and-maybe-without-resolve", "founding/a-check-and-no-binding", "founding/a-bad-term-and-no-binding", "founding/unlisted-principal-and-bad-signature", "founding/other-mediator-and-expired", "founding/expired-and-a-binding-without-declaration", "founding/a-binding-without-declaration-and-a-role-nobody-holds", "founding/ungranted-role-and-other-mediator", "founding/ungranted-role-and-other-policy", "founding/bad-binding-signature-and-ungranted-role", "founding/other-policy-and-other-mediator", "founding/other-policy-and-expired"],
+    "vectors": ["founding/two-defects-in-one-declaration", "founding/defects-in-two-declarations", "founding/unlisted-principal-and-expired", "founding/bad-binding-signature-and-other-mediator", "founding/bad-declaration-signature-and-term", "founding/shape-and-two-bindings-one-actor", "founding/two-bindings-one-actor-and-an-actor", "founding/maybe-without-resolve-and-a-bad-term", "founding/a-judge-and-maybe-without-resolve", "founding/a-judge-and-no-binding", "founding/a-bad-term-and-no-binding", "founding/unlisted-principal-and-bad-signature", "founding/other-mediator-and-expired", "founding/expired-and-a-binding-without-declaration", "founding/a-binding-without-declaration-and-a-role-nobody-holds", "founding/ungranted-role-and-other-mediator", "founding/ungranted-role-and-other-policy", "founding/bad-binding-signature-and-ungranted-role", "founding/other-policy-and-other-mediator", "founding/other-policy-and-expired"],
     "scenarios": {"two defects in one declaration": {"vectors": ["founding/two-defects-in-one-declaration"]}, "defects in two declarations": {"vectors": ["founding/defects-in-two-declarations"]}, "a role its principal may not grant and another mediator": {"vectors": ["founding/ungranted-role-and-other-mediator"]}, "a role its principal may not grant and another policy": {"vectors": ["founding/ungranted-role-and-other-policy"]}}
   },
   "setup-contract-9": {
@@ -96,16 +96,20 @@
     "vectors": ["founding/declarations-out-of-order", "founding/two-bindings-one-actor"],
     "scenarios": {"declarations out of order": {"vectors": ["founding/declarations-out-of-order"]}, "two bindings for one actor": {"vectors": ["founding/two-bindings-one-actor"]}}
   },
+  "setup-contract-11": {
+    "vectors": ["founding/supersedes", "founding/supersedes-close-not-a-hash"],
+    "scenarios": {"a policy that supersedes an earlier Accord": {"vectors": ["founding/supersedes"], "tests": ["core/setup:TestSupersedes"]}, "a close that is not a typed hash": {"vectors": ["founding/supersedes-close-not-a-hash"]}}
+  },
   "crossing-1": {
     "vectors": ["crossing/a-message-from-another-accord", "crossing/an-unknown-receiver", "crossing/a-member-the-frame-does-not-list", "crossing/a-give-in-the-agents-role", "crossing/the-old-crossing-extension", "crossing/a-reserved-gate", "crossing/bodies-roles-and-replies"],
     "scenarios": {"a message from another Accord": {"vectors": ["crossing/a-message-from-another-accord"]}, "an unknown receiver": {"vectors": ["crossing/an-unknown-receiver"]}, "a member the frame does not list": {"vectors": ["crossing/a-member-the-frame-does-not-list"]}, "a give in the agent's role": {"vectors": ["crossing/a-give-in-the-agents-role"]}, "a reserved gate": {"vectors": ["crossing/a-reserved-gate"]}}
   },
   "crossing-2": {
-    "vectors": ["crossing/one-body", "crossing/a-url-body", "crossing/part-metadata", "crossing/bodies-roles-and-replies"],
-    "scenarios": {"two bodies": {"vectors": ["crossing/one-body"]}, "a url body": {"vectors": ["crossing/a-url-body"]}, "a salt of 31 or 33 bytes": {"vectors": ["crossing/part-metadata"]}}
+    "vectors": ["crossing/one-body", "crossing/a-url-body", "crossing/part-metadata", "crossing/bodies-roles-and-replies", "crossing/a-part-with-a-media-type"],
+    "scenarios": {"two bodies": {"vectors": ["crossing/one-body"]}, "a url body": {"vectors": ["crossing/a-url-body"]}, "a salt of 31 or 33 bytes": {"vectors": ["crossing/part-metadata"]}, "a part's media type": {"vectors": ["crossing/a-part-with-a-media-type"]}}
   },
   "crossing-3": {
-    "vectors": ["crossing/a-give-then-the-end-state", "crossing/bodies-roles-and-replies", "crossing/a-delivery-is-fetched-once", "crossing/no-delivery-for-a-block"],
+    "vectors": ["crossing/a-give-then-the-end-state", "crossing/bodies-roles-and-replies", "crossing/a-delivery-is-fetched-once", "crossing/no-delivery-for-a-block", "crossing/a-part-with-a-media-type", "questions/an-accept-releases-the-asked-part"],
     "scenarios": {"whoever holds the body and salt can show the part": {"vectors": ["crossing/a-give-then-the-end-state", "crossing/bodies-roles-and-replies"]}, "a delivery is fetched once": {"vectors": ["crossing/a-delivery-is-fetched-once"]}, "no delivery for a block": {"vectors": ["crossing/no-delivery-for-a-block"]}}
   },
   "crossing-4": {
@@ -132,38 +136,38 @@
     "vectors": ["crossing/no-beside-want", "crossing/the-senders-own-no"],
     "scenarios": {"no beside want": {"vectors": ["crossing/no-beside-want"]}}
   },
-  "composition-4": {
-    "vectors": ["crossing/a-give-then-the-end-state", "crossing/need-meets-want", "crossing/maybe-rules-that-agree", "crossing/no-beside-want", "founding/term-names-a-check"],
-    "scenarios": {"no check runs in this version": {"vectors": ["crossing/a-give-then-the-end-state", "crossing/need-meets-want", "crossing/maybe-rules-that-agree", "crossing/no-beside-want", "founding/term-names-a-check"]}}
-  },
   "composition-5": {
-    "vectors": ["crossing/maybe-rules-that-agree", "crossing/maybe-rules-that-differ", "crossing/an-answer-that-meets-a-maybe-term"],
-    "scenarios": {"maybe rules that agree": {"vectors": ["crossing/maybe-rules-that-agree"]}, "maybe rules that differ": {"vectors": ["crossing/maybe-rules-that-differ"]}, "an answer that meets a maybe term": {"vectors": ["crossing/an-answer-that-meets-a-maybe-term"]}}
+    "vectors": ["crossing/maybe-rules-that-agree", "crossing/maybe-rules-that-differ", "crossing/an-answer-that-meets-a-maybe-term", "crossing/judges-differ", "crossing/judge-one-side"],
+    "scenarios": {"maybe rules that agree": {"vectors": ["crossing/maybe-rules-that-agree"]}, "maybe rules that differ": {"vectors": ["crossing/maybe-rules-that-differ"]}, "an answer that meets a maybe term": {"vectors": ["crossing/an-answer-that-meets-a-maybe-term"]}, "maybe rules whose judges differ": {"vectors": ["crossing/judges-differ", "crossing/judge-one-side"], "tests": ["core/composition:TestJudgeOneSideIsAsked"]}}
   },
   "composition-6": {
     "vectors": ["crossing/need-meets-want"],
     "scenarios": {"need meets want": {"vectors": ["crossing/need-meets-want"]}}
   },
+  "composition-7": {
+    "vectors": ["crossing/judge-pass", "crossing/judge-block", "crossing/judge-one-side", "crossing/judges-differ", "crossing/judge-advise", "crossing/judge-beside-a-want", "crossing/a-judge-never-acts-at-release"],
+    "scenarios": {"a judge both sides consented to": {"vectors": ["crossing/judge-pass", "crossing/judge-block"], "tests": ["core/composition:TestJudgeDecides"]}, "a judge only one side consented to": {"vectors": ["crossing/judge-one-side", "crossing/judge-advise", "crossing/judge-beside-a-want"], "tests": ["core/composition:TestJudgeWantBesideMaybeIsAsked", "core/composition:TestAdviseNeverDecides"]}}
+  },
   "maybe-1": {
     "vectors": ["questions/a-proposal-is-asked-about", "questions/open-questions-in-the-order-opened", "questions/the-asked-part-is-held", "questions/the-deadline-of-an-asked-proposal", "questions/a-deadline-past-the-last-time"],
-    "scenarios": {"a proposal is asked about": {"vectors": ["questions/a-proposal-is-asked-about", "questions/the-deadline-of-an-asked-proposal"]}, "a deadline past the last time": {"vectors": ["questions/a-deadline-past-the-last-time"], "tests": ["core/mediator:TestADeadlineAtTheLastTime"]}}
+    "scenarios": {"a proposal is asked about": {"vectors": ["questions/a-proposal-is-asked-about", "questions/the-deadline-of-an-asked-proposal"]}, "a deadline past the last time": {"vectors": ["questions/a-deadline-past-the-last-time"], "tests": ["core/mediator:TestADeadlineAtTheLastTime"]}, "what an answerer is shown": {"tests": ["adapters/local:TestTheQuestionsReplyShowsWhatIsAsked", "core/mediator:TestQuestionReadsAnOpenQuestion"]}}
   },
   "maybe-3": {
     "vectors": ["questions/an-accept-that-passes", "questions/an-accept-the-askers-terms-do-not-take"],
     "scenarios": {"an accept that passes": {"vectors": ["questions/an-accept-that-passes"]}, "an accept the asker's terms do not take": {"vectors": ["questions/an-accept-the-askers-terms-do-not-take"], "tests": ["core/mediator:TestABlockedAcceptReleasesNothing"]}}
   },
   "maybe-4": {
-    "vectors": ["questions/a-decline-releases-nothing", "questions/a-cancel", "questions/an-undeliverable-question", "questions/a-question-nobody-can-answer"],
-    "scenarios": {"a decline": {"vectors": ["questions/a-decline-releases-nothing"]}, "a question nobody can answer": {"vectors": ["questions/a-question-nobody-can-answer"], "tests": ["core/mediator:TestNobodyCanAnswer"]}}
+    "vectors": ["questions/a-decline-releases-nothing", "questions/cancel-by-asker", "questions/an-undeliverable-question", "questions/a-question-nobody-can-answer"],
+    "scenarios": {"a decline": {"vectors": ["questions/a-decline-releases-nothing"]}, "a question nobody can answer": {"vectors": ["questions/a-question-nobody-can-answer"], "tests": ["core/mediator:TestNobodyCanAnswer"]}, "the asker cancels": {"vectors": ["questions/cancel-by-asker"], "tests": ["core/mediator:TestACancelQueuesNothing"]}}
   },
   "maybe-5": {
     "vectors": ["questions/one-receipt-at-the-deadline", "questions/before-the-deadline", "questions/the-deadline-of-an-asked-proposal"],
     "scenarios": {"one receipt at the deadline": {"vectors": ["questions/one-receipt-at-the-deadline"]}, "before the deadline": {"vectors": ["questions/before-the-deadline"]}}
   },
   "maybe-6": {
-    "vectors": ["questions/the-proposer-answers-its-own-proposal"],
+    "vectors": ["questions/the-proposer-answers-its-own-proposal", "questions/cancel-by-answerer", "questions/a-cancel-nobody-can-answer"],
     "tests": ["core/mediator:TestAnAskerWhoHoldsTheRoleAnswers"],
-    "scenarios": {"the proposer answers its own proposal": {"vectors": ["questions/the-proposer-answers-its-own-proposal"], "tests": ["core/mediator:TestTheProposerIsNotAnAnswerer"]}}
+    "scenarios": {"the proposer answers its own proposal": {"vectors": ["questions/the-proposer-answers-its-own-proposal"], "tests": ["core/mediator:TestTheProposerIsNotAnAnswerer"]}, "an answerer cancels": {"vectors": ["questions/cancel-by-answerer"]}, "a cancel of a question nobody can answer": {"vectors": ["questions/a-cancel-nobody-can-answer"], "tests": ["core/mediator:TestNobodyCancelsAQuestionNoOneCanAnswer"]}}
   },
   "maybe-7": {
     "vectors": ["questions/a-second-answer", "questions/an-answer-at-the-deadline"],
@@ -176,13 +180,21 @@
   },
   "maybe-9": {
     "vectors": ["questions/a-change-returned-to-the-asker"],
-    "tests": ["core/mediator:TestAnEmptyChange", "core/mediator:TestAShortSaltIsMisuse", "core/mediator:TestAnUnknownActionIsMisuse"],
+    "tests": ["core/mediator:TestAnEmptyChange", "core/mediator:TestAShortSaltIsMisuse"],
     "scenarios": {"a change returned to the asker": {"vectors": ["questions/a-change-returned-to-the-asker"]}, "an empty change": {"tests": ["core/mediator:TestAnEmptyChange"]}}
   },
   "maybe-10": {
-    "vectors": ["questions/an-accept-releases-the-asked-part", "questions/a-change-released-to-the-receiver", "questions/a-decline-releases-nothing", "questions/an-accept-the-askers-terms-do-not-take"],
+    "vectors": ["questions/an-accept-releases-the-asked-part", "questions/a-change-released-to-the-receiver", "questions/a-decline-releases-nothing", "questions/an-accept-the-askers-terms-do-not-take", "crossing/a-judge-never-acts-at-release"],
     "tests": ["core/mediator:TestAChangeReleasedToItsAnswerer", "core/mediator:TestAChangeReleasedToItsAsker", "core/mediator:TestABlockedAcceptReleasesNothing"],
-    "scenarios": {"an accept releases the asked part with its digest unchanged": {"vectors": ["questions/an-accept-releases-the-asked-part"]}, "a change returned to the asker and released to the receiver under one digest": {"vectors": ["questions/a-change-released-to-the-receiver"]}, "an accept's release is decided again and passes": {"vectors": ["questions/an-accept-releases-the-asked-part"]}, "a release receipt echoes the question's envelope and counts as an echo for the asker only": {"vectors": ["receipts/a-release-counts-as-an-echo-for-the-asker-only", "receipts/a-resolution-counts-as-an-echo-for-the-asker-only", "questions/an-accept-releases-the-asked-part", "questions/a-change-released-to-the-receiver"]}, "a decline releases nothing": {"vectors": ["questions/a-decline-releases-nothing"]}}
+    "scenarios": {"an accept releases the asked part with its digest unchanged": {"vectors": ["questions/an-accept-releases-the-asked-part"]}, "a change returned to the asker and released to the receiver under one digest": {"vectors": ["questions/a-change-released-to-the-receiver"]}, "an accept's release is decided again and passes": {"vectors": ["questions/an-accept-releases-the-asked-part"]}, "a release receipt echoes the question's envelope and counts as an echo for the asker only": {"vectors": ["receipts/a-release-counts-as-an-echo-for-the-asker-only", "receipts/a-resolution-counts-as-an-echo-for-the-asker-only", "questions/an-accept-releases-the-asked-part", "questions/a-change-released-to-the-receiver"]}, "a decline releases nothing": {"vectors": ["questions/a-decline-releases-nothing"]}, "a judge never acts at release": {"vectors": ["crossing/a-judge-never-acts-at-release"], "tests": ["core/mediator:TestReleaseNotJudged"]}}
+  },
+  "maybe-11": {
+    "vectors": ["questions/answer-call-refused", "questions/answer-body-refused", "signatures/answer-verifies"],
+    "scenarios": {"a call signed by another key": {"vectors": ["questions/answer-call-refused"]}, "a text the digest does not name": {"vectors": ["questions/answer-body-refused"], "tests": ["core/mediator:TestResolveRows"]}}
+  },
+  "maybe-12": {
+    "vectors": ["questions/an-accept-releases-the-asked-part", "crossing/a-judge-never-acts-at-release"],
+    "scenarios": {"the call inside both deliveries": {"vectors": ["questions/an-accept-releases-the-asked-part"], "tests": ["core/mediator:TestReleaseNotJudged", "adapters/local:TestTheJournalKeepsEveryAcceptedCall"]}}
   },
   "receipt-1": {
     "vectors": ["receipts/three-gives-are-echoed", "receipts/a-chain-verifies", "receipts/a-statement-of-another-type", "receipts/a-receipt-under-the-old-domain"],
@@ -197,33 +209,53 @@
     "scenarios": {"the first receipt of a pair": {"vectors": ["receipts/three-gives-are-echoed"]}}
   },
   "receipt-4": {
-    "vectors": ["receipts/a-block-with-reason-maybe", "receipts/a-block-with-reason-ok", "receipts/a-resolution-reason-on-a-crossing-receipt", "receipts/a-reserved-check-reason", "receipts/an-escalate-resolution"],
-    "scenarios": {"a block with reason maybe": {"vectors": ["receipts/a-block-with-reason-maybe"]}, "a block with reason ok": {"vectors": ["receipts/a-block-with-reason-ok"]}, "a resolution reason on a crossing receipt": {"vectors": ["receipts/a-resolution-reason-on-a-crossing-receipt"]}}
+    "vectors": ["receipts/a-block-with-reason-maybe", "receipts/a-block-with-reason-ok", "receipts/a-resolution-reason-on-a-crossing-receipt", "receipts/a-retired-check-reason", "receipts/an-escalate-resolution", "receipts/a-judge-reason", "receipts/a-judge-reason-naming-another-judge", "receipts/a-judge-reason-by-the-terms"],
+    "scenarios": {"a block with reason maybe": {"vectors": ["receipts/a-block-with-reason-maybe"]}, "a block with reason ok": {"vectors": ["receipts/a-block-with-reason-ok"]}, "a resolution reason on a crossing receipt": {"vectors": ["receipts/a-resolution-reason-on-a-crossing-receipt"]}, "a judge's block": {"vectors": ["receipts/a-judge-reason", "receipts/a-retired-check-reason"]}}
   },
   "receipt-5": {
     "vectors": ["receipts/three-gives-are-echoed", "receipts/each-pair-its-own-chain", "receipts/a-first-receipt-at-seq-2", "receipts/a-first-receipt-with-a-prev", "receipts/a-prev-that-is-not-the-one-before", "receipts/the-answers-own-chain"],
     "scenarios": {"two receipts in one pair": {"vectors": ["receipts/three-gives-are-echoed", "receipts/each-pair-its-own-chain"]}, "the answer's own chain": {"vectors": ["receipts/the-answers-own-chain"]}}
   },
   "receipt-9": {
-    "vectors": ["receipts/an-unlisted-predicate-member"],
-    "scenarios": {"an unlisted member": {"vectors": ["receipts/an-unlisted-predicate-member"]}}
+    "vectors": ["receipts/an-unlisted-predicate-member", "receipts/a-predicate-with-no-by"],
+    "scenarios": {"an unlisted member": {"vectors": ["receipts/an-unlisted-predicate-member", "receipts/a-predicate-with-no-by"]}}
   },
   "receipt-10": {
     "vectors": ["receipts/three-gives-are-echoed", "receipts/a-time-with-second-60", "receipts/a-timeouts-time"],
     "tests": ["core/mediator:TestTwoMediatorsOneRecord"],
     "scenarios": {"a timeout's time": {"vectors": ["receipts/a-timeouts-time"]}, "two mediators, one record": {"tests": ["core/mediator:TestTwoMediatorsOneRecord"]}}
   },
+  "receipt-11": {
+    "vectors": ["receipts/a-predicate-with-no-by", "receipts/a-by-with-a-score", "receipts/the-mediator-on-a-crossing-receipt", "receipts/a-timeout-by-the-terms", "receipts/a-judge-reason-naming-another-judge", "crossing/judge-pass", "questions/an-accept-releases-the-asked-part"],
+    "scenarios": {"every event names its decider": {"vectors": ["crossing/a-give-then-the-end-state", "crossing/judge-pass", "questions/a-proposal-is-asked-about", "questions/an-accept-releases-the-asked-part", "questions/a-decline-releases-nothing", "questions/an-undeliverable-question", "questions/one-receipt-at-the-deadline"]}, "a by that does not fit": {"vectors": ["receipts/a-timeout-by-the-terms", "receipts/a-judge-reason-naming-another-judge"], "tests": ["core/receipts:TestByFitsTheReceipt"]}}
+  },
   "crossing-5": {
     "vectors": ["receipts/three-gives-are-echoed", "receipts/a-gives-receipt-echoes-another-members-envelope", "receipts/a-resolution-counts-as-an-echo-for-the-asker-only", "receipts/a-resolution-echoes-the-questions-envelope"],
     "scenarios": {"every give is echoed": {"vectors": ["receipts/three-gives-are-echoed"]}, "a resolution echoes the question's envelope": {"vectors": ["receipts/a-resolution-echoes-the-questions-envelope"]}}
   },
   "receipt-6": {
-    "vectors": ["receipts/a-chain-verifies", "receipts/a-blocked-release", "receipts/a-change-and-its-release", "receipts/a-change-released-to-its-answerer", "receipts/a-change-released-under-another-digest", "receipts/a-closing-addressed-to-the-receiver", "receipts/a-closing-of-the-wrong-subject", "receipts/a-decline-closes-a-question", "receipts/a-decline-of-another-part", "receipts/a-gives-receipt-echoes-another-members-envelope", "receipts/a-keyid-of-another-mediator", "receipts/a-list-cut-short-verifies", "receipts/a-mediator-that-is-not-a-reference", "receipts/a-mediator-that-is-not-a-reference", "receipts/a-member-the-receipt-does-not-list", "receipts/a-receipt-that-names-another-mediator", "receipts/a-release-after-a-blocked-answer", "receipts/a-release-after-a-decline", "receipts/a-release-failure-before-a-later-row", "receipts/a-release-not-right-after-its-answer", "receipts/a-release-with-no-answer-before-it", "receipts/a-removed-middle-receipt", "receipts/a-resolution-that-belongs-to-no-question", "receipts/a-second-ask-with-an-earlier-questions-envelope", "receipts/a-second-release", "receipts/a-signature-of-63-bytes", "receipts/an-accept-and-its-release", "receipts/an-accepts-release-of-the-wrong-form", "receipts/an-edited-receipt", "receipts/an-empty-list-verifies", "receipts/payload-bytes-not-canonical", "receipts/payload-not-in-base64", "receipts/receipt-bytes-not-canonical", "receipts/signed-again-by-another-key", "receipts/the-first-failure-of-the-first-failing-receipt", "receipts/the-first-failure-of-the-first-failing-receipt", "receipts/two-signatures"],
-    "scenarios": {"an edited receipt": {"vectors": ["receipts/an-edited-receipt"]}, "a receipt that names another mediator": {"vectors": ["receipts/a-receipt-that-names-another-mediator"]}, "a removed middle receipt": {"vectors": ["receipts/a-removed-middle-receipt"]}, "a release with no answer before it": {"vectors": ["receipts/a-release-with-no-answer-before-it"]}, "a give's receipt that echoes another member's envelope": {"vectors": ["receipts/a-gives-receipt-echoes-another-members-envelope"]}, "a second ask with an earlier question's envelope": {"vectors": ["receipts/a-second-ask-with-an-earlier-questions-envelope"]}, "the first failure of the first failing receipt": {"vectors": ["receipts/the-first-failure-of-the-first-failing-receipt"]}, "a mediator that is not a reference": {"vectors": ["receipts/a-mediator-that-is-not-a-reference"]}}
+    "vectors": ["receipts/a-chain-verifies", "receipts/a-blocked-release", "receipts/a-change-and-its-release", "receipts/a-change-released-to-its-answerer", "receipts/a-change-released-under-another-digest", "receipts/a-closing-addressed-to-the-receiver", "receipts/a-closing-of-the-wrong-subject", "receipts/a-decline-closes-a-question", "receipts/a-decline-of-another-part", "receipts/a-gives-receipt-echoes-another-members-envelope", "receipts/a-keyid-of-another-mediator", "receipts/a-list-cut-short-verifies", "receipts/a-mediator-that-is-not-a-reference", "receipts/a-member-the-receipt-does-not-list", "receipts/a-receipt-that-names-another-mediator", "receipts/a-release-after-a-blocked-answer", "receipts/a-release-after-a-decline", "receipts/a-release-failure-before-a-later-row", "receipts/a-release-not-right-after-its-answer", "receipts/a-release-with-no-answer-before-it", "receipts/a-removed-middle-receipt", "receipts/a-resolution-that-belongs-to-no-question", "receipts/a-second-ask-with-an-earlier-questions-envelope", "receipts/a-second-release", "receipts/a-signature-of-63-bytes", "receipts/an-accept-and-its-release", "receipts/an-accepts-release-of-the-wrong-form", "receipts/an-edited-receipt", "receipts/an-empty-list-verifies", "receipts/payload-bytes-not-canonical", "receipts/payload-not-in-base64", "receipts/receipt-bytes-not-canonical", "receipts/signed-again-by-another-key", "receipts/the-first-failure-of-the-first-failing-receipt", "receipts/two-signatures", "receipts/a-release-of-another-answer", "receipts/an-answer-on-a-give"],
+    "scenarios": {"an edited receipt": {"vectors": ["receipts/an-edited-receipt"]}, "a receipt that names another mediator": {"vectors": ["receipts/a-receipt-that-names-another-mediator"]}, "a removed middle receipt": {"vectors": ["receipts/a-removed-middle-receipt"]}, "a release with no answer before it": {"vectors": ["receipts/a-release-with-no-answer-before-it"]}, "a give's receipt that echoes another member's envelope": {"vectors": ["receipts/a-gives-receipt-echoes-another-members-envelope"]}, "a second ask with an earlier question's envelope": {"vectors": ["receipts/a-second-ask-with-an-earlier-questions-envelope"]}, "the first failure of the first failing receipt": {"vectors": ["receipts/the-first-failure-of-the-first-failing-receipt"]}, "a mediator that is not a reference": {"vectors": ["receipts/a-mediator-that-is-not-a-reference"]}, "a release of another answer": {"vectors": ["receipts/a-release-of-another-answer"], "tests": ["core/receipts:TestByOfAReleaseIsItsClosings"]}, "a subset that starts late": {"tests": ["core/receipts:TestVerifySubset", "adapters/cli:TestVerifyASubset"]}}
   },
   "receipt-8": {
     "tests": ["core/receipts:TestAForgedReceiptShowsAsARealOne"],
     "scenarios": {"a forged receipt shown": {"tests": ["core/receipts:TestAForgedReceiptShowsAsARealOne"]}}
+  },
+  "verify-1": {
+    "vectors": ["conform/a-worked-journal-conforms", "conform/a-founding-set-of-another-accord", "conform/another-accord-from-a-stranger", "conform/a-stranger-gives", "conform/a-subset-conforms"],
+    "scenarios": {"a journal verified by its Accord id": {"vectors": ["conform/a-worked-journal-conforms", "conform/a-founding-set-of-another-accord"], "tests": ["adapters/cli:TestVerifyByTheAccordID"]}}
+  },
+  "verify-2": {
+    "vectors": ["conform/a-pass-the-terms-block", "conform/another-module", "conform/an-accept-from-a-non-answerer", "conform/a-timeout-not-at-its-deadline", "conform/a-judge-pass-whose-judge-advises", "conform/a-judge-block-conforms", "conform/a-call-signed-by-another-key", "conform/a-call-of-another-accord", "conform/a-release-the-call-did-not-ask-for", "conform/a-release-missing", "conform/a-change-to-its-answerer-releases-nothing", "conform/a-change-to-its-asker-releases-nothing", "conform/a-body-that-is-the-part", "conform/a-body-changed"],
+    "scenarios": {"decisions the Accord did not allow": {"vectors": ["conform/a-pass-the-terms-block", "conform/an-accept-from-a-non-answerer", "conform/a-timeout-not-at-its-deadline", "conform/a-judge-pass-whose-judge-advises"]}, "calls that do not fit": {"vectors": ["conform/a-call-signed-by-another-key", "conform/a-call-of-another-accord", "conform/a-release-the-call-did-not-ask-for", "conform/a-release-missing", "conform/a-change-to-its-answerer-releases-nothing", "conform/a-change-to-its-asker-releases-nothing"]}, "one body": {"vectors": ["conform/a-body-that-is-the-part", "conform/a-body-changed"], "tests": ["adapters/cli:TestVerifyOneBody"]}}
+  },
+  "verify-3": {
+    "vectors": ["conform/an-answer-unwitnessed", "conform/a-call-matching-no-receipt"],
+    "scenarios": {"with and without the calls": {"vectors": ["conform/a-worked-journal-conforms", "conform/an-answer-unwitnessed"], "tests": ["adapters/cli:TestVerifyWitnessesTheAnswer"]}}
+  },
+  "verify-4": {
+    "tests": ["adapters/cli:TestVerifyByTheAccordID", "adapters/cli:TestVerifyASubset"],
+    "scenarios": {"no close receipt": {"tests": ["adapters/cli:TestVerifyByTheAccordID", "adapters/cli:TestVerifyASubset"]}}
   },
   "receipt-7": {
     "vectors": ["receipts/a-removed-last-receipt", "receipts/an-unfetched-delivery", "receipts/a-submission-with-no-receipt", "receipts/a-kept-receipt-from-another-accord", "receipts/an-echo-matches-seq-and-hash", "receipts/a-kept-receipt-that-blocked", "receipts/a-kept-receipt-to-another-party", "receipts/a-presented-list-that-fails", "receipts/a-presented-receipt-from-another-accord", "receipts/a-reconciling-mediator-that-is-not-a-reference", "receipts/a-release-counts-as-an-echo-for-the-asker-only", "receipts/everything-matches", "receipts/a-resolution-counts-as-an-echo-for-the-asker-only", "receipts/a-failing-list-and-another-accord", "receipts/a-failing-list-and-a-failing-kept-receipt", "receipts/another-accord-and-a-failing-kept-receipt", "receipts/kept-receipts-that-fail-for-two-parties"],
@@ -238,11 +270,11 @@
     "scenarios": {"an answer's salt": {"vectors": ["questions/an-accept-that-passes"]}}
   },
   "conformance-vectors-3": {
-    "vectors": ["crossing/a-give-then-the-end-state"],
+    "vectors": ["crossing/a-give-then-the-end-state", "crossing/judge-pass"],
     "scenarios": {"a give, then the end state": {"vectors": ["crossing/a-give-then-the-end-state"]}}
   },
   "conformance-vectors-4": {
-    "vectors": ["founding/binding-unlisted-principal"],
+    "vectors": ["founding/binding-unlisted-principal", "conform/a-worked-journal-conforms"],
     "scenarios": {"a founding refusal": {"vectors": ["founding/binding-unlisted-principal"]}}
   },
   "conformance-vectors-5": {
@@ -250,8 +282,8 @@
     "scenarios": {"a receipt that differs in one byte": {"tests": ["core/conformance:TestAReceiptDifferingInOneByteFails"]}}
   },
   "conformance-vectors-6": {
-    "vectors": ["questions/an-accept-releases-the-asked-part", "questions/a-change-released-to-the-receiver", "questions/a-cancel", "questions/a-change-returned-to-the-asker"],
-    "scenarios": {"an accepted answer with release": {"vectors": ["questions/an-accept-releases-the-asked-part"]}, "a change with release": {"vectors": ["questions/a-change-released-to-the-receiver"]}}
+    "vectors": ["questions/an-accept-releases-the-asked-part", "questions/a-change-released-to-the-receiver", "questions/cancel-by-asker", "questions/a-change-returned-to-the-asker", "questions/an-undeliverable-question"],
+    "scenarios": {"an accepted answer with release": {"vectors": ["questions/an-accept-releases-the-asked-part"]}, "a change with release": {"vectors": ["questions/a-change-released-to-the-receiver"]}, "an answer step that does not pair with its call": {"tests": ["core/conformance:TestAnswerStepPairing"]}}
   },
   "conformance-vectors-7": {
     "vectors": ["questions/one-receipt-at-the-deadline"],
@@ -300,6 +332,10 @@
   "commands-7": {
     "tests": ["adapters/cli:TestReleasedKeptEveryConditionAloneAndCombined", "adapters/cli:TestReleasedKeptEveryMatchInFetchOrder", "adapters/cli:TestReleasedKeptALineChangedAndNothingKept"],
     "scenarios": {"every condition alone and combined": {"tests": ["adapters/cli:TestReleasedKeptEveryConditionAloneAndCombined"]}, "every match in fetch order": {"tests": ["adapters/cli:TestReleasedKeptEveryMatchInFetchOrder"]}, "a kept line changed, and nothing kept": {"tests": ["adapters/cli:TestReleasedKeptALineChangedAndNothingKept"]}}
+  },
+  "commands-8": {
+    "tests": ["adapters/cli:TestVerifyJSONHoldsTheLines", "adapters/cli:TestVerifyANonconformingLog", "adapters/cli:TestVerifyCustody", "adapters/cli:TestVerifyAnotherModule"],
+    "scenarios": {"the lines of a verified journal": {"tests": ["adapters/cli:TestVerifyJSONHoldsTheLines"]}, "a log that does not conform": {"tests": ["adapters/cli:TestVerifyANonconformingLog"]}}
   },
   "log-1": {
     "tests": ["adapters/cli:TestTheLogOfTheWorkedExample", "adapters/cli:TestLogWithoutAllIsUnchanged"],

@@ -10,7 +10,9 @@
 #   resolution receipt and, for a change, its release.
 # - Actors' signatures (signing-2): sign vectors, re-signed with the signer's seed; valid
 #   verify-signature vectors; every declaration and binding of an accepted set; every accepted
-#   give's envelope.
+#   give's envelope; every answer call of a resolve step and of a conform vector that conforms.
+# - Deciders (receipt-11): every receipt an answer step writes names the typed hash of its call,
+#   and an accept's or a change's call names its receipt's digest.
 # - Receipts' signatures (section 8, row 3): every receipt a scenario writes, delivers, or expects of a
 #   give, resolve or tick step, a resolve step's release included, and every
 #   receipt a verify or reconcile vector expects to pass that row. A receipt expected to fail
@@ -57,6 +59,7 @@ intoto=application/vnd.in-toto+json
 tdecl=https://placket.tech/declaration/0.1
 tbind=https://placket.tech/binding/0.1
 tenv=https://placket.tech/envelope/0.1
+tanswer=https://placket.tech/answer/0.1
 
 hex2bin() { tr -d '\n' | tr 'abcdef' 'ABCDEF' | basenc --base16 -d; }
 bin2hex() { od -An -v -tx1 | tr -d ' \n'; }
@@ -281,6 +284,27 @@ for f in "$V"/*/*.json; do
 		jq . "$tmp/in" >"$tmp/obj" 2>/dev/null || { bad "$n: the input is not JSON"; continue; }
 		sigcheck "$n" "$g" "$tmp/obj" "$(jq -r .typeUri "$f")" "$(jq -r .reference "$f")"
 		;;
+	conform)
+		# Every receipt, under the founding set's mediator, and, where the receipts conform, every
+		# answer call given, under the answer type URI by its from.
+		med=$(jq -r .founding.mediator.actor "$f")
+		nr=$(jq '.receipts | length' "$f")
+		i=0
+		while [ "$i" -lt "$nr" ]; do
+			jq ".receipts[$i].receipt" "$f" >"$tmp/r"
+			receiptcheck "$n: receipt $i" "$g" "$tmp/r" "$med"
+			i=$((i + 1))
+		done
+		if [ "$(jq -r '.expect.conforms // false' "$f")" = true ]; then
+			na=$(jq '.answers | length' "$f")
+			i=0
+			while [ "$i" -lt "$na" ]; do
+				jq ".answers[$i].call" "$f" >"$tmp/callj"
+				sigcheck "$n: answer call $i" "$g" "$tmp/callj" "$tanswer" "$(jq -r .from "$tmp/callj")"
+				i=$((i + 1))
+			done
+		fi
+		;;
 	scenario)
 		rebuilt "$n: the founding set" '.founding' "$f" "$tmp/set" || continue
 		accord=sha256:$(sha "$tmp/set")
@@ -357,23 +381,38 @@ for f in "$V"/*/*.json; do
 				# resolution's subject and, for a change, the release's; an accept's release against
 				# the question's subject, the asked part.
 				if jq -e "$s.expect | has(\"receipt\")" "$f" >/dev/null; then
-					action=$(jq -r "$s.action" "$f")
+					# An answer step's call: its signature under the answer type URI by its from, and
+					# its typed hash, the by every receipt it writes names (maybe-11, receipt-11).
+					action=undeliverable
+					callid=
+					if jq -e "$s | has(\"callHex\")" "$f" >/dev/null; then
+						jq -r "$s.callHex" "$f" | hex2bin >"$tmp/call"
+						jq . "$tmp/call" >"$tmp/callj"
+						action=$(jq -r .action "$tmp/callj")
+						sigcheck "$n: step $i: the answer call" "$g" "$tmp/callj" "$tanswer" "$(jq -r .from "$tmp/callj")"
+						callid=sha256:$(sha "$tmp/call")
+					fi
 					jq "$s.expect.receipt" "$f" >"$tmp/r"
 					if receiptcheck "$n: step $i" "$g" "$tmp/r" "$med" "$(jq -r "$s.expect.receiptId" "$f")"; then
 						cp "$tmp/statement" "$tmp/st"
+						if [ -n "$callid" ]; then
+							if [ "$(jq -r .predicate.by.answer "$tmp/st")" = "$callid" ]; then counted "$g"; else bad "$n: step $i: the receipt's by is not its call's typed hash"; fi
+						fi
 						if [ "$action" = accepted ] || [ "$action" = changed ]; then
-							jq -c "{salt: $s.salt, text: $s.content.answer}" "$f" >"$tmp/answer"
+							jq -c "{salt: $s.salt, text: $s.answer}" "$f" >"$tmp/answer"
 							digestcheck "$n: step $i: the answer" "$g" "$tmp/answer" "$tmp/st"
+							if [ "$(jq -r .digest "$tmp/callj")" = "$(jq -r '.subject[0].digest["salted-sha256"]' "$tmp/st")" ]; then counted "$g"; else bad "$n: step $i: the call's digest is not the receipt's"; fi
 						fi
 					fi
 					if jq -e "$s.expect | has(\"release\")" "$f" >/dev/null; then
 						jq "$s.expect.release.receipt" "$f" >"$tmp/r"
 						if receiptcheck "$n: step $i: the release" "$g" "$tmp/r" "$med" "$(jq -r "$s.expect.release.receiptId" "$f")"; then
 							cp "$tmp/statement" "$tmp/rst"
+							if [ "$(jq -r .predicate.by.answer "$tmp/rst")" = "$callid" ]; then counted "$g"; else bad "$n: step $i: the release's by is not its call's typed hash"; fi
 							if [ "$action" = changed ]; then
 								digestcheck "$n: step $i: the released version" "$g" "$tmp/answer" "$tmp/rst"
 							else
-								qi=$(jq --arg q "$(jq -r "$s.question" "$f")" '[.final.receipts[].receiptId] | index($q) // -1' "$f")
+								qi=$(jq --arg q "$(jq -r .question "$tmp/callj")" '[.final.receipts[].receiptId] | index($q) // -1' "$f")
 								if [ "$qi" -ge 0 ]; then
 									jq -r ".final.receipts[$qi].receipt.payload" "$f" | base64 -d >"$tmp/qst"
 									if [ "$(jq -c .subject "$tmp/qst")" = "$(jq -c .subject "$tmp/rst")" ]; then counted "$g"; else bad "$n: step $i: the release names another part than the question's"; fi

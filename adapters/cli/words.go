@@ -3,8 +3,8 @@ package cli
 import (
 	"github.com/orilloai/placket/adapters/export"
 	"github.com/orilloai/placket/adapters/local"
+	"github.com/orilloai/placket/core/answer"
 	"github.com/orilloai/placket/core/composition"
-	"github.com/orilloai/placket/core/mediator"
 	"github.com/orilloai/placket/core/receipts"
 )
 
@@ -17,10 +17,10 @@ const (
 	WordAsk           = export.WordAsk
 	WordReleased      = "released"
 	WordOK            = composition.ReasonOK
-	WordAccepted      = string(mediator.Accepted)
-	WordChanged       = string(mediator.Changed)
-	WordDeclined      = string(mediator.Declined)
-	WordCancelled     = string(mediator.Cancelled)
+	WordAccepted      = string(answer.Accepted)
+	WordChanged       = string(answer.Changed)
+	WordDeclined      = string(answer.Declined)
+	WordCancelled     = string(answer.Cancelled)
 	WordTimeout       = receipts.ReasonTimeout
 	WordUndeliverable = receipts.ReasonUndeliverable
 	WordBlocked       = export.AnswerBlocked
@@ -36,7 +36,6 @@ const (
 	wordFounded    = "founded"
 	wordReloaded   = local.EventReloaded
 	wordFetched    = "fetched"
-	lineVerified   = "verified %d receipts"
 	lineQuestions  = "questions closed %d open %d"
 	lineReleases   = "releases %d blocked releases %d"
 )
@@ -57,6 +56,32 @@ const (
 	LineNoValue         = "no release holds this value at this path"
 	LineNoKept          = "no part this key kept matches"
 	LineNoKeptValue     = "no part this key kept holds this value at this path"
+)
+
+// The lines verify prints (commands-8, verify-1 to verify-4), each verb filled in order; under
+// --json each is also its member.
+const (
+	LineValid              = "valid: %d receipts signed by mediator %s"
+	LineConforms           = "conforms: every decision is one this Accord let its decider make"
+	LineConformNoFounding  = "conformance not checked: give --founding"
+	LineConformOtherModule = "conformance not checked: the card's module is not this build's"
+	LineNotConform         = "does not conform: %s at receipts.jsonl line %d"
+	LineNotComplete        = "complete: not claimed: this Accord has no close receipt"
+	LineSubsetNotComplete  = "complete: not claimed: only a subset was given"
+	LineCustody            = "custody: operator %s is principal of %d of %d members"
+	LineSupersedes         = "supersedes accord %s close %s"
+	LineChainStart         = "chain %s to %s not checked before seq %d"
+	LineWitnessed          = "%s witnessed: signed by key %s, which principal %s bound to role %s"
+	LineUnwitnessed        = "%s unwitnessed: only the mediator says a key holding role %s answered"
+	LineUnwitnessedCancel  = "%s unwitnessed: only the mediator says the asker cancelled"
+	LineByJudge            = "%s judge: the mediator says judge %s of the card decided"
+	LineByDeadline         = "%s mediator: the deadline passed"
+	LineByUndeliverable    = "%s mediator: nobody could be reached to answer"
+	LineOutsideSubset      = "%d decisions not checked: their question is not in the subset"
+	LineTermsDecided       = "terms decided %d"
+	LineUnmatched          = "answer calls matching no receipt %d"
+	LineBody               = "body: the part of receipt %s is the one it names"
+	LineBodyNot            = "body: does not conform at receipts.jsonl line %d"
 )
 
 // The labels of the lines version prints, each also its member under --json (docs/release.md).

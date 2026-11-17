@@ -41,6 +41,23 @@
             ],
             "additionalProperties": false
           }
+        },
+        "supersedes": {
+          "description": "The earlier Accord this one supersedes: its id and the id of its close receipt, two typed hashes, signed through each binding's policy hash (setup-contract-11).",
+          "type": "object",
+          "properties": {
+            "accord": {
+              "$ref": "hash.json"
+            },
+            "close": {
+              "$ref": "hash.json"
+            }
+          },
+          "required": [
+            "accord",
+            "close"
+          ],
+          "additionalProperties": false
         }
       },
       "required": [

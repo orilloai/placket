@@ -1,6 +1,9 @@
 package shape
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 // TestTimestamp holds the one timestamp rule: whole seconds, Z, a calendar date, 00:00:00 to
 // 23:59:59, no leap second.
@@ -64,5 +67,22 @@ func TestLabelsAndGates(t *testing.T) {
 	}
 	if b, ok := Base64("YQ=="); !ok || string(b) != "a" {
 		t.Fatal("YQ== does not decode")
+	}
+}
+
+// TestMediaType holds a part's media type to lowercase type/subtype with no parameters, each side
+// 1 to 127 characters (crossing-2).
+func TestMediaType(t *testing.T) {
+	t.Parallel()
+	long := strings.Repeat("a", 127)
+	for s, want := range map[string]bool{
+		"application/json": true, "text/plain": true, "application/vnd.placket+json": true,
+		"image/svg+xml": true, long + "/" + long: true,
+		"Application/JSON": false, "json": false, "text/plain; charset=utf-8": false, "/json": false,
+		"application/": false, "a/b/c": false, "a/.b": false, "": false, long + "a/b": false,
+	} {
+		if got := MediaType(s); got != want {
+			t.Errorf("MediaType(%q) = %v, want %v", s, got, want)
+		}
 	}
 }

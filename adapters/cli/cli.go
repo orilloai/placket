@@ -66,10 +66,13 @@ const (
 	codeFormat  = "format"
 	codeFound   = "founding"
 	codeVerify  = "verify"
-	codeAccord  = string(export.CodeAccord)
-	codeCard    = string(export.CodeCard)
-	codeRand    = "rand"
-	codePath    = "path"
+	// codeAsked: the question the window shows is not the part its ask's receipt names, so the
+	// command signs no answer to it.
+	codeAsked  = "asked"
+	codeAccord = string(export.CodeAccord)
+	codeCard   = string(export.CodeCard)
+	codeRand   = "rand"
+	codePath   = "path"
 	// codeReply: the window's reply is not what the call asked for.
 	codeReply = "reply"
 	// codeEnvelope: an envelope could not be signed.

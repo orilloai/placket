@@ -112,12 +112,12 @@ func TestVerifyNamesWhoStandsBehindEachMember(t *testing.T) {
 
 	l := must(t, verify...).lines()
 	counts := slices.IndexFunc(l, func(s string) bool { return strings.HasPrefix(s, cli.WordPass+" ") })
-	if counts < 3 || !strings.HasPrefix(l[counts-3], "module ") {
+	if counts < 4 || !strings.HasPrefix(l[counts-4], "module ") || !strings.HasPrefix(l[counts-1], "custody: ") {
 		t.Fatalf("verify printed %q", l)
 	}
 	for i, m := range want {
-		if line := "member " + m.Actor + " roles peer principal " + m.Principal; l[counts-2+i] != line {
-			t.Fatalf("line %d is %q, want %q", counts-2+i, l[counts-2+i], line)
+		if line := "member " + m.Actor + " roles peer principal " + m.Principal; l[counts-3+i] != line {
+			t.Fatalf("line %d is %q, want %q", counts-3+i, l[counts-3+i], line)
 		}
 	}
 }

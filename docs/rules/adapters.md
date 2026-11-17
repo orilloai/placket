@@ -52,9 +52,9 @@ Checked by: the reviewer.
 
 ## `door-owns-clock`
 
-The door reads the clock once per call, at whole seconds, and uses that one time for the call; it also mints the salts and decides what the core cannot know.
+The door reads the clock once per call, at whole seconds, and uses that one time for the call, and decides what the core cannot know. A salt is minted with `crypto/rand` by the party that gives or answers, and the door mints none.
 
-Why: the core takes the world as parameters (`core-no-world`), and one time per call keeps a call's receipts consistent.
+Why: the core takes the world as parameters (`core-no-world`), one time per call keeps a call's receipts consistent, and an answerer that minted its own salt can show what it signed (`docs/adr/0021-who-decided-and-the-answer-call.md`).
 
 Checked by: the reviewer.
 
@@ -124,9 +124,9 @@ Checked by: `make ci` checks string literals, step `claims-stop-at-crossing`; th
 
 ## `answer-call-attached`
 
-The door attaches the answerer's signed call to a delivery whose body is that call's answer, and nowhere else; it is never written to the receipts and is gone from the journal once fetched.
+The answerer's signed call travels inside every delivery its answer queues, as the delivery's `answer`, the released part included. The journal keeps each call it accepted in `answers.jsonl`, with no body and no salt, before the receipts of its closing. The call is never in a receipt: a receipt names it by its typed hash.
 
-Why: the receiver can verify who answered, and the journal keeps no clear text it does not need.
+Why: every party an answer reaches, and the operator's journal, can show who answered, so a verifier can say an answer is witnessed, and the journal keeps no clear text it does not need (`docs/adr/0021-who-decided-and-the-answer-call.md`).
 
 Checked by: the reviewer.
 

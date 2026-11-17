@@ -36,7 +36,7 @@ func chain(t testing.TB, med signing.Key, n int) ([][]byte, []string) {
 				Accord: accord, Card: card, Kind: receipts.KindCrossing, From: from, To: to,
 				Seq: int64(i), Prev: prev, At: "2026-11-12T09:00:00Z",
 				Envelope: receipts.Envelope{Sender: from, Seq: int64(i), Hash: mhash},
-				Verdict:  "pass", Reason: "ok",
+				Verdict:  "pass", Reason: "ok", By: receipts.By{Decider: receipts.ByTerms},
 			}, med)
 		if err != nil {
 			t.Fatal(err)
@@ -121,7 +121,7 @@ func TestBuildDependsOnEachInput(t *testing.T) {
 	sub := receipts.Subject{Name: "note", Digest: strings.Repeat("ab", 32)}
 	pred := receipts.Predicate{
 		Accord: accord, Card: card, Kind: receipts.KindCrossing, From: from, To: from, Seq: 1,
-		At: "2026-11-12T09:00:00Z", Envelope: receipts.Envelope{Sender: from, Seq: 1, Hash: mhash}, Verdict: "pass", Reason: "ok",
+		At: "2026-11-12T09:00:00Z", Envelope: receipts.Envelope{Sender: from, Seq: 1, Hash: mhash}, Verdict: "pass", Reason: "ok", By: receipts.By{Decider: receipts.ByTerms},
 	}
 	base, v, err := receipts.Build(sub, pred, med)
 	if err != nil {
@@ -158,7 +158,7 @@ func TestBuildRefusesWhatAVerifierRefuses(t *testing.T) {
 	from := ptesting.Key(t, "proposer").Reference()
 	good := receipts.Predicate{
 		Accord: accord, Card: card, Kind: receipts.KindCrossing, From: from, To: from, Seq: 1,
-		At: "2026-11-12T09:00:00Z", Envelope: receipts.Envelope{Sender: from, Seq: 1, Hash: mhash}, Verdict: "pass", Reason: "ok",
+		At: "2026-11-12T09:00:00Z", Envelope: receipts.Envelope{Sender: from, Seq: 1, Hash: mhash}, Verdict: "pass", Reason: "ok", By: receipts.By{Decider: receipts.ByTerms},
 	}
 	sub := receipts.Subject{Name: "note", Digest: strings.Repeat("ab", 32)}
 	for name, change := range map[string]func(p *receipts.Predicate){
@@ -280,6 +280,7 @@ func FuzzBuild(f *testing.F) {
 		r, _, err := receipts.Build(receipts.Subject{Name: name, Digest: digest}, receipts.Predicate{
 			Accord: accord, Card: card, Kind: kind, From: party, To: party, Seq: 1, At: at,
 			Envelope: receipts.Envelope{Sender: party, Seq: 1, Hash: mhash}, Verdict: verdict, Reason: reason,
+			By: receipts.By{Decider: receipts.ByTerms},
 		}, med)
 		if err != nil {
 			return
@@ -298,7 +299,7 @@ func TestVerifiedIsWhatWasChecked(t *testing.T) {
 	from := ptesting.Key(t, "proposer").Reference()
 	r, built, err := receipts.Build(receipts.Subject{Name: "note", Digest: strings.Repeat("ab", 32)}, receipts.Predicate{
 		Accord: accord, Card: card, Kind: receipts.KindCrossing, From: from, To: from, Seq: 1,
-		At: "2026-11-12T09:00:00Z", Envelope: receipts.Envelope{Sender: from, Seq: 1, Hash: mhash}, Verdict: "pass", Reason: "ok",
+		At: "2026-11-12T09:00:00Z", Envelope: receipts.Envelope{Sender: from, Seq: 1, Hash: mhash}, Verdict: "pass", Reason: "ok", By: receipts.By{Decider: receipts.ByTerms},
 	}, med)
 	if err != nil {
 		t.Fatal(err)

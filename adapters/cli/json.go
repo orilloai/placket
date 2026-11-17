@@ -132,6 +132,12 @@ func deliveryObject(d *delivery, body bool) map[string]any {
 	if d.Re != "" {
 		o["re"] = d.Re
 	}
+	if d.MediaType != nil {
+		o["mediaType"] = *d.MediaType
+	}
+	if len(d.Answer) > 0 {
+		o["answer"] = d.Answer
+	}
 	switch {
 	case !body:
 	case d.Text != nil:

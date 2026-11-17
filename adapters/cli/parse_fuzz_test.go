@@ -42,8 +42,7 @@ func FuzzDelivery(f *testing.F) {
 	k := fuzzKey(f)
 	s := &session{key: k, client: &local.Client{Key: k, Accord: "sha256:" + string(bytes.Repeat([]byte("0"), 64))}}
 	f.Fuzz(func(t *testing.T, b []byte) {
-		_ = keptLine(b, nil)
-		_ = keptLine(b, []byte(`{}`))
+		_ = keptLine(b)
 		var d delivery
 		if json.Unmarshal(b, &d) != nil {
 			return

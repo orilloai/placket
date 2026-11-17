@@ -125,8 +125,8 @@ func TestEachWordIsDefinedOnce(t *testing.T) {
 		t.Fatal(err)
 	}
 	core := map[string]string{
-		"WordPass": "composition", "WordBlock": "composition", "WordOK": "composition", "WordAccepted": "mediator",
-		"WordChanged": "mediator", "WordDeclined": "mediator", "WordCancelled": "mediator", "WordTimeout": "receipts",
+		"WordPass": "composition", "WordBlock": "composition", "WordOK": "composition", "WordAccepted": "answer",
+		"WordChanged": "answer", "WordDeclined": "answer", "WordCancelled": "answer", "WordTimeout": "receipts",
 		"WordUndeliverable": "receipts", "WordBlocked": "export", "WordOpen": "export",
 	}
 	defined := map[string]string{}

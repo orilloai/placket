@@ -42,7 +42,6 @@
       }
     ],
     "card": {
-      "checks": [],
       "judges": [],
       "kernel": {
         "hash": "sha256:a8755bef6ff188c2dc6b74377a73c6a49d612fc44915675db9d2795bb5b99475",
@@ -190,9 +189,9 @@
       "as": "proposer",
       "at": "2026-11-12T09:00:00Z",
       "envelope": {
-        "hash": "sha256:efe09a98a9396f0e8517757301f9bfb5f1fdbbe2f0dc593b0808a8e559efbdbb",
+        "hash": "sha256:502f1e479fc3070802726ecefecc0c08123425216c39b8ced540a76fb59c9b9c",
         "seq": 1,
-        "sig": "85eee9a6a0b151c10f00f4dd4b49053054c61b754b120b6a73eb1bcc7c64f5bfd417cdc3058a13026704fed164b63de5f51f71ac2fb99f32cc9deaa52899af0f"
+        "sig": "c3aca67e048372a1c770949c66d1e8d312231335c1cf069627cfe2d5abee0c2bd33349d9fa97d2ca965c5b37fcf76a697eed915660b0bd39b7515bc51b0bd10b"
       },
       "expect": {
         "rejection": "part-metadata"
@@ -204,7 +203,7 @@
         "messageId": "meta-a",
         "metadata": {
           "https://placket.tech/crossing/0.1": {
-            "accord": "sha256:fdb4c6101b33876a56e9501d756b0905671a9a44c726e599c9a7a76270aab1df",
+            "accord": "sha256:04f71f9b99b729d07bc824bcae742abc9f51f31d2b9d59e968a5c169e15b9303",
             "to": "ed25519:a80586279ba17c5360b029018bf025be0169fdb02087e77301774c99eed92117"
           }
         },
@@ -227,9 +226,9 @@
       "as": "proposer",
       "at": "2026-11-12T09:01:00Z",
       "envelope": {
-        "hash": "sha256:69e5f0a5698ed72b61b9060a8abe5c0e1e0de6ea6378c924d0622cacdf2f5d92",
+        "hash": "sha256:449e624400c61b53656964cb72707662c609d880add943653f2b0feae898e738",
         "seq": 1,
-        "sig": "2226ec25408ce69e9d69092331f061b23240e5ce5a2ac0e31440f326027ff32bf8597c3082801f0cd289ab40a74ad2cdf0c4b6840b46540b971d19aef812c807"
+        "sig": "a83377b22ee79e58af0d563e36c2b912804a75639489072498025b8b6d76e93f2f54734f749a2533ccf3d0b33704d2eef84f5c78705913607f1818af47e47b0e"
       },
       "expect": {
         "rejection": "part-metadata"
@@ -241,7 +240,7 @@
         "messageId": "meta-b",
         "metadata": {
           "https://placket.tech/crossing/0.1": {
-            "accord": "sha256:fdb4c6101b33876a56e9501d756b0905671a9a44c726e599c9a7a76270aab1df",
+            "accord": "sha256:04f71f9b99b729d07bc824bcae742abc9f51f31d2b9d59e968a5c169e15b9303",
             "to": "ed25519:a80586279ba17c5360b029018bf025be0169fdb02087e77301774c99eed92117"
           }
         },
@@ -264,9 +263,9 @@
       "as": "proposer",
       "at": "2026-11-12T09:02:00Z",
       "envelope": {
-        "hash": "sha256:31405a9c2198852ce123fc1b045654d10bce2ecc20d177196bcd077c438bb63c",
+        "hash": "sha256:249e82633a7e5eefd5e066522ba426305f142f2cf38b24d2da77ac5ef99f47ab",
         "seq": 1,
-        "sig": "e960ef4dcce546663c3b3add3ed148f57d47aad4a88eee8b34fae1ff2d0f43777dac96f4c298332c782a08d2a8e7a614396c938c049d8e0f7ca3d2fb5a9d2700"
+        "sig": "92540366e73a5d635b188d05f69a858263a01b1c93daf47e0236fa4de23c2661534cb40fc8b4ce3f71ad3b1ae9db73632e5abff3f87fcb89d3b94706e8abff03"
       },
       "expect": {
         "rejection": "part-metadata"
@@ -278,7 +277,7 @@
         "messageId": "meta-c",
         "metadata": {
           "https://placket.tech/crossing/0.1": {
-            "accord": "sha256:fdb4c6101b33876a56e9501d756b0905671a9a44c726e599c9a7a76270aab1df",
+            "accord": "sha256:04f71f9b99b729d07bc824bcae742abc9f51f31d2b9d59e968a5c169e15b9303",
             "to": "ed25519:a80586279ba17c5360b029018bf025be0169fdb02087e77301774c99eed92117"
           }
         },
@@ -301,9 +300,9 @@
       "as": "proposer",
       "at": "2026-11-12T09:03:00Z",
       "envelope": {
-        "hash": "sha256:813d578d719e1b8919b15af1aa2501fde7ea6419b122b60a311f64f3a843cc8b",
+        "hash": "sha256:0bedbebc82372862ceaba66ce35264f67714f1a8e890388a493f7985488f2aba",
         "seq": 1,
-        "sig": "a564cd5c3deb7418b7c3b26442ae0fc1e1247c3931d1876b73e20df69539157fc82bc2650d6362298a513be7581105f2948bdb68bb3f7f53270d9156ca01850b"
+        "sig": "d26b2d02ba2c339c28cbf9154ff6370a485f428d9bc568018303e77643173f58090f3be5fdf5156f9b9d892a3603d7a16800d6c91298f46d2a405527529fce0f"
       },
       "expect": {
         "rejection": "part-metadata"
@@ -315,7 +314,7 @@
         "messageId": "meta-d",
         "metadata": {
           "https://placket.tech/crossing/0.1": {
-            "accord": "sha256:fdb4c6101b33876a56e9501d756b0905671a9a44c726e599c9a7a76270aab1df",
+            "accord": "sha256:04f71f9b99b729d07bc824bcae742abc9f51f31d2b9d59e968a5c169e15b9303",
             "to": "ed25519:a80586279ba17c5360b029018bf025be0169fdb02087e77301774c99eed92117"
           }
         },
@@ -338,9 +337,9 @@
       "as": "proposer",
       "at": "2026-11-12T09:04:00Z",
       "envelope": {
-        "hash": "sha256:08057bacb4efc44d7ae2c3597d0b901cd7545a5513378b8eb2b2d44fc5a93a25",
+        "hash": "sha256:5eacccdaaacd8d127138bb73d79d26ae29a046bc1a7817c0989fef26f8fb6569",
         "seq": 1,
-        "sig": "47ba7132a8cbacf1f499e46117caddcbf747287dfa29e3a6fc2114163b3933832d815c4fc9099f252ad00bf6c602473b5852b5ceba9d3c27d87eaf620d865502"
+        "sig": "b8782716eba425118c934e65381fd7cd951756d1e1df8b21789d62033662a86dbcc576c66c21a73651e9272c952658d284daa0fc7b10f41171358eb2b757d90b"
       },
       "expect": {
         "rejection": "part-metadata"
@@ -352,7 +351,7 @@
         "messageId": "meta-e",
         "metadata": {
           "https://placket.tech/crossing/0.1": {
-            "accord": "sha256:fdb4c6101b33876a56e9501d756b0905671a9a44c726e599c9a7a76270aab1df",
+            "accord": "sha256:04f71f9b99b729d07bc824bcae742abc9f51f31d2b9d59e968a5c169e15b9303",
             "to": "ed25519:a80586279ba17c5360b029018bf025be0169fdb02087e77301774c99eed92117"
           }
         },
@@ -374,9 +373,9 @@
       "as": "proposer",
       "at": "2026-11-12T09:05:00Z",
       "envelope": {
-        "hash": "sha256:56d1ff893b4bad475693f8f59c1da4d64dc936ad11d64b0cef80d0fe032db6f2",
+        "hash": "sha256:857a55de95b54b677572d6752da2c2d5db57bc4d1b2d7942407e3c3c4def1faf",
         "seq": 1,
-        "sig": "f41ae8eb58a16f186c77d1634fcac525e5606179d85b1813f588fdc2fc4cb916a1da6a1988e9de1d4c27a9a7dcddf39504f06237abeb31ec4483b441ba25440f"
+        "sig": "6afe0a30d56f467a3283eaeb0d5807fc7805790e5e4a5380e0a343c87a76af9b678d89f91470a6db01e8724dbfaa7b63a8f3601a3dcc7f3c3f0c30a45d96b70d"
       },
       "expect": {
         "rejection": "part-metadata"
@@ -388,7 +387,7 @@
         "messageId": "meta-f",
         "metadata": {
           "https://placket.tech/crossing/0.1": {
-            "accord": "sha256:fdb4c6101b33876a56e9501d756b0905671a9a44c726e599c9a7a76270aab1df",
+            "accord": "sha256:04f71f9b99b729d07bc824bcae742abc9f51f31d2b9d59e968a5c169e15b9303",
             "to": "ed25519:a80586279ba17c5360b029018bf025be0169fdb02087e77301774c99eed92117"
           }
         },
@@ -411,9 +410,9 @@
       "as": "proposer",
       "at": "2026-11-12T09:06:00Z",
       "envelope": {
-        "hash": "sha256:15cc9b18e6b9116902ad70dd0fa053c4bb84642b963bc0c560c38181e489e271",
+        "hash": "sha256:349965812095a7067181be46b7a0102ec7e8b7397455c07b5ee37ef9420d9268",
         "seq": 1,
-        "sig": "cb0d174d245334f1d5e63f376710090b9b3dc8a7632e80ebb047bab505a389d8223f0acb346e38e88affcc6495728ed541c843708c0a9942e02b37a11f321a00"
+        "sig": "c8fffe252b739abab6582fff3069cd12e854e5ad213845778a5ca1b47cff0f2c39c4ccde6409fc990d9bf9731b456d0f16aba9bed43cc63f35a309126b604a0a"
       },
       "expect": {
         "rejection": "part-metadata"
@@ -425,7 +424,7 @@
         "messageId": "meta-g",
         "metadata": {
           "https://placket.tech/crossing/0.1": {
-            "accord": "sha256:fdb4c6101b33876a56e9501d756b0905671a9a44c726e599c9a7a76270aab1df",
+            "accord": "sha256:04f71f9b99b729d07bc824bcae742abc9f51f31d2b9d59e968a5c169e15b9303",
             "to": "ed25519:a80586279ba17c5360b029018bf025be0169fdb02087e77301774c99eed92117"
           }
         },
@@ -449,9 +448,9 @@
       "as": "proposer",
       "at": "2026-11-12T09:07:00Z",
       "envelope": {
-        "hash": "sha256:abb0d5330602b3ade691f86f430ef8b7f62bafd10319e081ef8aab5f40528780",
+        "hash": "sha256:a43e406705496e3c1819e091f6958eec0c139fe8cb6076564d33b1d20b2f6636",
         "seq": 1,
-        "sig": "8123ebda9d708091db7cb0de75c4b728db17939bbe814d541db185ed2ae6e7dda4df9abc0558d97cbf816a2e00d3fd2c63cd08ff26645bd2aebcc64258daa503"
+        "sig": "9f6d3cdd0c95069b31a4af7a1f26f028b1669b8d93ba516068804d799a854e90173c732384d501f1fce4ba956a8e6afd15f0ec3469df74bde75dcc671632a907"
       },
       "expect": {
         "rejection": "part-metadata"
@@ -463,7 +462,7 @@
         "messageId": "meta-none",
         "metadata": {
           "https://placket.tech/crossing/0.1": {
-            "accord": "sha256:fdb4c6101b33876a56e9501d756b0905671a9a44c726e599c9a7a76270aab1df",
+            "accord": "sha256:04f71f9b99b729d07bc824bcae742abc9f51f31d2b9d59e968a5c169e15b9303",
             "to": "ed25519:a80586279ba17c5360b029018bf025be0169fdb02087e77301774c99eed92117"
           }
         },

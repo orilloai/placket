@@ -12,6 +12,7 @@ import (
 	ptesting "github.com/orilloai/placket/core/internal/testing"
 	"github.com/orilloai/placket/core/internal/testing/seeds"
 	"github.com/orilloai/placket/core/mediator"
+	"github.com/orilloai/placket/core/receipts"
 )
 
 // askWith asks the decider about a proposal whose part has the body given, as name and value, at
@@ -24,7 +25,7 @@ func askWith(t testing.TB, m *mediator.Mediator, seq int64, id, name string, val
 		delete(part, "text")
 		part[name] = value
 	})
-	out, err := m.Give(p.Reference(), msg, envelope(t, seq, msg, p), "2026-11-12T09:00:00Z")
+	out, err := m.Give(p.Reference(), msg, envelope(t, seq, msg, p), nil, "2026-11-12T09:00:00Z")
 	if err != nil || out.Verdict != "escalate" {
 		t.Fatalf("the ask: %+v, %v", out, err)
 	}
@@ -33,8 +34,9 @@ func askWith(t testing.TB, m *mediator.Mediator, seq int64, id, name string, val
 
 // TestQuestionReadsAnOpenQuestion reads an open question as the mediator's own reference, which is
 // no member, and as its answerer: each gets the question's id, asker, receiver, kind, form, deadline,
-// roles and part. A text part is its text, a raw part its decoded bytes and a data part its canonical
-// bytes (maybe-1).
+// roles, part, salt and the ask's receipt. A text part is its text, a raw part its decoded bytes and
+// a data part its canonical bytes, and its salted digest under the salt is the receipt's subject
+// digest (maybe-1, U11).
 func TestQuestionReadsAnOpenQuestion(t *testing.T) {
 	t.Parallel()
 	p, ap, d := ptesting.Key(t, "proposer").Reference(), ptesting.Key(t, "applier").Reference(), ptesting.Key(t, "decider").Reference()
@@ -57,8 +59,15 @@ func TestQuestionReadsAnOpenQuestion(t *testing.T) {
 			if err != nil || !ok {
 				t.Fatalf("%s as %s: %v, %v", c.form, caller, ok, err)
 			}
+			st := statement(t, m, c.id)
+			if receipts.Digest(q.Salt, q.Part) != st.Subject.Digest || len(q.Salt) != mediator.SaltBytes {
+				t.Fatalf("%s as %s: the part and its salt do not make the ask's digest", c.form, caller)
+			}
+			if s, err := receipts.Decode(q.Receipt); err != nil || s.ID != c.id {
+				t.Fatalf("%s as %s: the ask's receipt is %v, %v", c.form, caller, s.ID, err)
+			}
 			want := mediator.Question{ID: c.id, Asker: p, Receiver: ap, Kind: "proposal", Form: c.form,
-				Deadline: "2026-11-12T10:00:00Z", Roles: []string{"decider"}, Part: c.part}
+				Deadline: "2026-11-12T10:00:00Z", Roles: []string{"decider"}, Part: c.part, Salt: q.Salt, Receipt: q.Receipt}
 			if !reflect.DeepEqual(q, want) {
 				t.Fatalf("%s as %s: got %q %q %q %q %q %q %q %x", c.form, caller, q.ID, q.Asker, q.Receiver, q.Kind, q.Form, q.Deadline, q.Roles, q.Part)
 			}
@@ -77,7 +86,7 @@ func TestQuestionRowsInOrder(t *testing.T) {
 	m := found(t)
 	open := ask(t, m, 1, "p-1", "2026-11-12T09:00:00Z")
 	closed := ask(t, m, 2, "p-2", "2026-11-12T09:00:00Z")
-	if _, err := m.Resolve(d, closed, mediator.Resolution{Action: mediator.Declined}, "2026-11-12T09:01:00Z"); err != nil {
+	if _, err := m.Resolve(d, decline(t, m, d, closed), "2026-11-12T09:01:00Z"); err != nil {
 		t.Fatal(err)
 	}
 	unknown := "sha256:" + strings.Repeat("ab", 32)

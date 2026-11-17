@@ -303,3 +303,29 @@ func isTypeURI(err error) bool {
 	var e *Error
 	return errors.As(err, &e) && e.Code == CodeTypeURI && err.Error() == "signing: type-uri"
 }
+
+// TestTheAnswerCallIsAnObjectType signs and verifies an answer call under TypeAnswer, the fourth
+// object type of signing-4, and refuses a payload signature under it (maybe-11).
+func TestTheAnswerCallIsAnObjectType(t *testing.T) {
+	t.Parallel()
+	k := testKey(t, "decider")
+	call := []byte(`{"accord":"sha256:` + strings.Repeat("ab", 32) + `","action":"declined","from":"` + k.Reference() + `","question":"sha256:` + strings.Repeat("cd", 32) + `"}`)
+	sig, err := Sign(call, TypeAnswer, k)
+	if err != nil {
+		t.Fatalf("Sign under TypeAnswer: %v", err)
+	}
+	signed := append(append([]byte(nil), call[:len(call)-1]...), []byte(`,"sig":"`+sig+`"}`)...)
+	if !Verify(signed, TypeAnswer, k.Reference()) {
+		t.Fatal("an answer call signed under TypeAnswer does not verify")
+	}
+	if Verify(signed, TypeEnvelope, k.Reference()) {
+		t.Fatal("an answer call verifies under the envelope's type URI")
+	}
+	var e *Error
+	if _, err := SignPayload(TypeAnswer, call, k); !errors.As(err, &e) || e.Code != CodeTypeURI {
+		t.Fatalf("SignPayload under TypeAnswer = %v, want type-uri", err)
+	}
+	if VerifyPayload(TypeAnswer, call, make([]byte, 64), k.Reference()) {
+		t.Fatal("a payload signature under TypeAnswer verifies")
+	}
+}

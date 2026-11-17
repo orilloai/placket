@@ -222,6 +222,10 @@ func main() {
 	maybeBare := kit.Term("maybe", "give", []string{"applier"}, []string{"proposal"})
 	check := kit.Term("want", "give", []string{"applier"}, []string{"note"})
 	check["checks"] = []any{kit.Obj{"name": "forbidden", "corpus": "tests"}}
+	// A maybe term naming jev, a judge the ask-and-log card does not list.
+	judgeTerm := kit.JudgedMaybe("give", []string{"applier"}, []string{"note"}, []string{"decider"}, 60, kit.Judges("jev", "decide"))
+	judgeTwice := kit.JudgedMaybe("give", []string{"applier"}, []string{"note"}, []string{"decider"}, 60, kit.Judges("jev", "decide", "jev", "advise"))
+	judgeUse := kit.JudgedMaybe("give", []string{"applier"}, []string{"note"}, []string{"decider"}, 60, kit.Judges("jev", "decides"))
 	noDir := kit.Term("want", "give", []string{"applier"}, []string{"note"})
 	delete(noDir, "dir")
 	resolveOnWant := kit.Term("want", "give", []string{"applier"}, []string{"note"})
@@ -251,6 +255,13 @@ func main() {
 
 	cardCheck := base()
 	cardCheck["card"].(kit.Obj)["checks"] = []any{kit.Obj{"name": "forbidden", "version": "0.1.0", "hash": kit.HashOf("a check")}}
+	// A card listing jev twice under two hashes: a repeated name, not a repeated entry.
+	judgeNameTwice := base()
+	judgeNameTwice["card"].(kit.Obj)["judges"] = []any{kit.Jev, kit.Obj{"name": "jev", "version": "1.0.0", "hash": kit.HashOf("another build of jev")}}
+	// A policy whose supersedes names a close that is not a typed hash, the bindings signed again.
+	badClose := kit.Superseding().Build()
+	badClose["policy"].(kit.Obj)["supersedes"].(kit.Obj)["close"] = "a close receipt"
+	badClose = rebind(badClose)
 	cardModels := base()
 	cardSpec := base()
 	cardSpec["card"].(kit.Obj)["spec"] = "0.2"
@@ -305,8 +316,8 @@ func main() {
 	aliceDecl["actor"] = "alice"
 	twoBindingsAlice = put(twoBindingsAlice, "declarations", append(list(twoBindingsAlice, "declarations"), aliceDecl), true)
 	maybeThenBadTerm := withProposerTerms(maybeBare, badTerm)
-	checkThenMaybe := withProposerTerms(check, maybeBare)
-	checkNoBinding := remove(withProposerTerms(check), "bindings", kit.Proposer)
+	judgeThenMaybe := withProposerTerms(judgeTerm, maybeBare)
+	judgeNoBinding := remove(withProposerTerms(judgeTerm), "bindings", kit.Proposer)
 	badTermNoBinding := remove(withProposerTerms(badTerm), "bindings", kit.Proposer)
 	// The binding's principal is unlisted and its signature is another binding's.
 	unlistedBadSig := binding(kit.Proposer, kit.OtherPrincipal, kit.Mediator, kit.Until, "proposer")
@@ -356,6 +367,8 @@ func main() {
 		accepted("own-no", "setup-contract-5: the set of the scenario in which the sender refuses founds", kit.OwnNo().Build(), at),
 		accepted("long-wait", "setup-contract-5: the set whose maybe term waits the largest timeout founds", kit.LongWait().Build(), at),
 		accepted("unanswered", "setup-contract-5: a set whose maybe rule names a role no binding gives founds, since only the policy's roles must be held", kit.Unanswered().Build(), at),
+		accepted("judged", "setup-contract-1, setup-contract-4: the set of the judge scenarios, whose card lists jev and whose maybe terms list it to decide or to advise, founds", kit.Judged().Build(), at),
+		accepted("supersedes", "setup-contract-11: a set whose policy supersedes an earlier Accord, by its id and its close receipt's id, founds", kit.Superseding().Build(), at),
 		accepted("answer-under-maybe", "setup-contract-5: the set in which the asker gets answers under a maybe term founds", kit.AnswerUnderMaybe().Build(), at),
 		accepted("one-binding-two-roles", "setup-contract-2: one binding gives an actor two of the policy's three roles, the third held by another", twoRoles, at),
 		accepted("operator-changes-the-id", "setup-contract-7: a set differing from ask-and-log only in its operator founds to another id", otherOperator, at),
@@ -382,7 +395,10 @@ func main() {
 
 		refused("selector-not-a-role", "setup-contract-1: a with selector that is not role:<label> is term-invalid", withProposerTerms(selector), "term-invalid"),
 		refused("maybe-without-resolve", "setup-contract-1: a maybe term with no resolve is maybe-without-resolve", withProposerTerms(maybeBare), "maybe-without-resolve"),
-		refused("term-names-a-check", "setup-contract-1: a term that names a check is check-unknown, since the card loads no check", withProposerTerms(check), "check-unknown"),
+		refused("term-names-a-check", "setup-contract-1: a term with checks holds a member a term does not list, and is term-invalid", withProposerTerms(check), "term-invalid"),
+		refused("judge-unknown", "setup-contract-1: a maybe term whose resolve names jev, under a card whose judges are empty, is judge-unknown", withProposerTerms(judgeTerm), "judge-unknown"),
+		refused("a-judge-named-twice", "setup-contract-1: a resolve whose judges list jev twice is term-invalid", withProposerTerms(judgeTwice), "term-invalid"),
+		refused("a-judge-of-another-use", "setup-contract-1: a judge whose use is neither decide nor advise is term-invalid", withProposerTerms(judgeUse), "term-invalid"),
 		refused("resolve-on-a-want", "setup-contract-1: a resolve on a term that is not a maybe is term-invalid", withProposerTerms(resolveOnWant), "term-invalid"),
 		refused("declaration-edited", "setup-contract-1: a declaration whose terms changed after it was signed is declaration-signature", edited, "declaration-signature"),
 		refused("binding-expires-at-founding", "setup-contract-2: a binding whose until equals the founding time is binding-expired", untilAt(at), "binding-expired"),
@@ -393,7 +409,9 @@ func main() {
 		refused("binding-other-mediator", "setup-contract-3: a binding naming another mediator is binding-mediator", otherMediator, "binding-mediator"),
 		refused("binding-without-declaration", "setup-contract-3: two declarations and three bindings is declaration-missing", noDeclaration, "declaration-missing"),
 		refused("declaration-without-binding", "setup-contract-3: a declaration with no binding is binding-missing", noBinding, "binding-missing"),
-		refused("card-loads-a-check", "setup-contract-4: a card whose checks lists one check is invalid-shape", cardCheck, "invalid-shape"),
+		refused("card-loads-a-check", "setup-contract-4: a card with a checks member, a member the card does not list, is invalid-shape", cardCheck, "invalid-shape"),
+		refused("card-judge-name-twice", "setup-contract-4: a card whose judges list jev twice, under two hashes, is invalid-shape", judgeNameTwice, "invalid-shape"),
+		refused("supersedes-close-not-a-hash", "setup-contract-11: a policy whose supersedes names a close that is not a typed hash is invalid-shape", badClose, "invalid-shape"),
 		refused("card-unlisted-member", "setup-contract-4: a card with a member models is invalid-shape", cardModels, "invalid-shape"),
 		refused("a-card-of-another-spec", "setup-contract-4: a card whose spec is 0.2, a protocol number this version does not know, is invalid-shape", cardSpec, "invalid-shape"),
 		refused("policy-role-nobody-holds", "setup-contract-5: a policy role no binding gives is role-missing", auditor, "role-missing"),
@@ -406,8 +424,8 @@ func main() {
 		refused("shape-and-two-bindings-one-actor", "setup-contract-8: a set's defect of shape comes before two bindings for one actor", containerTwoBindings, "invalid-shape"),
 		refused("two-bindings-one-actor-and-an-actor", "setup-contract-8: two bindings for one actor come before a declaration whose actor is no reference", twoBindingsAlice, "binding-duplicate"),
 		refused("maybe-without-resolve-and-a-bad-term", "setup-contract-8: a malformed term comes before a maybe term with no resolve listed ahead of it", maybeThenBadTerm, "term-invalid"),
-		refused("a-check-and-maybe-without-resolve", "setup-contract-8: a maybe term with no resolve comes before a check named by a term listed ahead of it", checkThenMaybe, "maybe-without-resolve"),
-		refused("a-check-and-no-binding", "setup-contract-8: a check a term names comes before the declaration's missing binding", checkNoBinding, "check-unknown"),
+		refused("a-judge-and-maybe-without-resolve", "setup-contract-8: a maybe term with no resolve comes before a judge the card lacks named by a term listed ahead of it", judgeThenMaybe, "maybe-without-resolve"),
+		refused("a-judge-and-no-binding", "setup-contract-8: a judge the card lacks comes before the declaration's missing binding", judgeNoBinding, "judge-unknown"),
 		refused("a-bad-term-and-no-binding", "setup-contract-8: a malformed term comes before the declaration's missing binding", badTermNoBinding, "term-invalid"),
 		refused("unlisted-principal-and-bad-signature", "setup-contract-8: a binding's unlisted principal comes before its bad signature", unlistedBadSig, "binding-principal"),
 		refused("other-mediator-and-expired", "setup-contract-8: the other mediator a binding names comes before its expiry", otherMediatorExpired, "binding-mediator"),

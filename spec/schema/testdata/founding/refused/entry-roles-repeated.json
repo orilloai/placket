@@ -35,7 +35,6 @@
     }
   ],
   "card": {
-    "checks": [],
     "judges": [],
     "kernel": {
       "hash": "sha256:a8755bef6ff188c2dc6b74377a73c6a49d612fc44915675db9d2795bb5b99475",

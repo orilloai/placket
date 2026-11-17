@@ -174,9 +174,10 @@ func TestTheCommandsReadTheReplyForItsForm(t *testing.T) {
 	// release blocked and exits 1.
 	answered := st.Predicate
 	answered.Kind = receipts.KindResolution
+	answered.By = receipts.By{Decider: receipts.ByAnswer, Answer: "sha256:" + strings.Repeat("a1", 32)}
 	resReceipt, resID := sign(receipts.Subject{Name: receipts.NameAnswer, Digest: st.Subject.Digest}, answered)
 	blocked := st.Predicate
-	blocked.Verdict, blocked.Reason = "block", "no-match"
+	blocked.Verdict, blocked.Reason, blocked.By = "block", "no-match", answered.By
 	relReceipt, relID := sign(st.Subject, blocked)
 	w.set(t, map[string]any{"ok": true,
 		"outcome": map[string]any{"verdict": "pass", "reason": "ok", "receiptId": resID, "receipt": resReceipt},
@@ -221,6 +222,7 @@ func TestTheCommandsReadTheReplyForItsForm(t *testing.T) {
 	add("a body not its receipt's", "p2", "text", "another note")
 	add("a receipt that is no receipt", "p2", "receipt", map[string]any{"a": 1})
 	add("a receipt to another key", "p1", "", nil)
+	add("an answer call its receipt names not", "p2", "answer", map[string]any{"action": "accepted"})
 	// A receipt of this very part, to this key, but under another Accord.
 	elsewhere := st.Predicate
 	elsewhere.Accord = "sha256:" + strings.Repeat("0", 64)

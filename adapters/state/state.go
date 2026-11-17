@@ -9,10 +9,12 @@
 //	                 removed again only on a rejection, so a lost submission shows as missing (crossing-5);
 //	                 the next seq is above both this file's highest and the seq file's
 //	delivered.jsonl  one receipt per line, the receipt of each delivery fetched
-//	kept.jsonl       one part per line that the actor chose to keep: a part it gave,
-//	                 {"message","receipt"}, the message as standard base64 of its exact bytes; or a
-//	                 part it fetched, or a version it gave as an answer, as the delivery holds it, with
-//	                 "answerCall" beside it when one travelled with it
+//	kept.jsonl       one line per thing the actor chose to keep: a part it gave,
+//	                 {"message","receipt"}, the message as standard base64 of its exact bytes; a part
+//	                 it fetched, or a version it gave as an answer, as the delivery holds it, the
+//	                 answer call inside it when an answer queued it; or an answer call it signed,
+//	                 {"answer","salt"}, the call and the salt it minted for the answer. An answer line
+//	                 has no receipt, which tells it from a part: a reader of parts passes over it
 //	salts.jsonl      one {"receiptId","salt"} per delivery fetched: the salt it came with, by the id
 //	                 of its receipt, so the actor can later show which receipt a file's bytes are of
 //

@@ -35,7 +35,10 @@ type Window struct {
 	Disk journal.Disk
 	// Now is the door's clock (door-owns-clock): read once per call, and at each idle tick.
 	Now func() time.Time
-	// Rand is where the door mints an answer's salt.
+	// Rand is read by nothing: the answerer mints its answer's salt, and the door mints none.
+	//
+	// Deprecated: setting it changes nothing (door-owns-clock,
+	// docs/adr/0021-who-decided-and-the-answer-call.md). It is removed at the release.
 	Rand io.Reader
 	// Stderr takes the journal's repairs and clean-ups.
 	Stderr io.Writer
@@ -545,14 +548,15 @@ func (w *window) op(c Call, at string, ev *Event) ([]byte, error) {
 }
 
 func (w *window) give(c Call, at string, ev *Event) ([]byte, error) {
-	out, err := w.m.Give(c.Caller, c.Message, c.Envelope, at)
+	// No judge runs at this door: every give is decided with no judgment (composition-7).
+	out, err := w.m.Give(c.Caller, c.Message, c.Envelope, nil, at)
 	if err != nil {
 		return refused(err, ev), nil
 	}
 	switch out.Verdict {
 	case string(composition.Pass):
 		if q, ok := w.m.Queued(out.ReceiptID); ok {
-			if err := w.j.PutHeld(q.To, q.Delivery, nil); err != nil {
+			if err := w.j.PutHeld(q.To, q.Delivery); err != nil {
 				return nil, err
 			}
 		}
@@ -600,12 +604,11 @@ func (w *window) get(c Call, ev *Event) ([]byte, error) {
 	if err := json.Unmarshal(d, &head); err != nil {
 		return nil, &journal.Error{Code: journal.CodeJournal, File: journal.DirHeld}
 	}
-	answerCall, err := w.j.TakeHeld(head.ReceiptID)
-	if err != nil {
+	if err := w.j.TakeHeld(head.ReceiptID); err != nil {
 		return nil, err
 	}
 	ev.Fetched = head.ReceiptID
-	return encodeReply(wireReply{Delivery: d, AnswerCall: answerCall}), nil
+	return encodeReply(wireReply{Delivery: d}), nil
 }
 
 // questions answers a questions call with the open questions the caller may answer. The core says
@@ -631,55 +634,53 @@ func (w *window) questions(c Call, ev *Event) []byte {
 		case !ok:
 			continue
 		}
-		n := len(q.Part)
-		a := wireAsked{ID: &q.ID, Asker: &q.Asker, Kind: &q.Kind, Deadline: &q.Deadline, Form: &q.Form, Size: &n}
-		if q.Form != "raw" {
-			s := string(q.Part)
-			a.Message = &s
-		}
-		list = append(list, a)
+		list = append(list, wireAskedOf(q))
 	}
 	return questionsReply(list, ev)
 }
 
+// wireAskedOf is an open question as the questions reply names it to an answerer (maybe-1): its
+// id, asker, kind, deadline and form, the ask's receipt, the part's salt in hex, its size, and its
+// body in the form it was given, a raw body as standard base64.
+func wireAskedOf(q mediator.Question) wireAsked {
+	n := len(q.Part)
+	salt := hex.EncodeToString(q.Salt)
+	a := wireAsked{ID: &q.ID, Asker: &q.Asker, Kind: &q.Kind, Deadline: &q.Deadline, Form: &q.Form, Size: &n,
+		Receipt: q.Receipt, Salt: &salt}
+	switch q.Form {
+	case "text":
+		t := string(q.Part)
+		a.Text = &t
+	case "raw":
+		r := b64.EncodeToString(q.Part)
+		a.Raw = &r
+	default:
+		a.Data = q.Part
+	}
+	return a
+}
+
 // questionsReply encodes the questions reply in at most MaxReply bytes, so a client reads every
 // reply the window sends, however many questions are open and however large their parts. Each
-// question in list carries its part's Size, and a text or data question its Message too. First
-// every question is counted by its size alone; a question that would take the reply past MaxReply
-// even so is left out, with every one after it, until earlier questions close. Then, oldest first,
-// a text or data question keeps its message while the reply still fits, and is otherwise shown by
-// its size alone, as a raw part always is.
+// question goes whole, oldest first, while the reply fits; the first that does not fit is left out
+// with every one after it, and the reply says more, so the client answers and asks again.
 func questionsReply(list []wireAsked, ev *Event) []byte {
+	t := true
 	empty := []wireAsked{}
-	used := len(encodeReply(wireReply{Questions: &empty}))
+	used := len(encodeReply(wireReply{Questions: &empty, More: &t}))
+	var more *bool
 	for i := range list {
-		a := list[i]
-		a.Message = nil
-		n := encodedLen(a)
+		n := encodedLen(list[i])
 		if i > 0 {
 			n++ // the comma before it
 		}
 		if used+n > MaxReply {
-			list = list[:i]
+			list, more = list[:i], &t
 			break
 		}
 		used += n
 	}
-	for i := range list {
-		if list[i].Message == nil {
-			continue
-		}
-		bare := list[i]
-		bare.Message = nil
-		grow := encodedLen(list[i]) - encodedLen(bare)
-		if used+grow > MaxReply {
-			list[i].Message = nil
-			continue
-		}
-		used += grow
-		list[i].Size = nil
-	}
-	b := encodeReply(wireReply{Questions: &list})
+	b := encodeReply(wireReply{Questions: &list, More: more})
 	if len(b) > MaxReply {
 		ev.Door = Internal
 		return refusal(byDoor, string(Internal))
@@ -700,34 +701,22 @@ func encodedLen(a wireAsked) int {
 	return len(c)
 }
 
+// resolve hands the mediator the answerer's signed call, text and salt as the call carried them
+// (door-passes-bytes). When it is accepted, the journal takes the call before the receipts of its
+// closing, and every delivery it queued, the call inside each (answer-call-attached).
 func (w *window) resolve(c Call, at string, ev *Event) ([]byte, error) {
-	r := mediator.Resolution{Action: mediator.Action(c.Action), Answer: c.Answer}
-	var salt []byte
-	if r.Action == mediator.Accepted || r.Action == mediator.Changed {
-		salt = make([]byte, mediator.SaltBytes)
-		if _, err := io.ReadFull(w.cfg.Rand, salt); err != nil {
-			ev.Door = Internal
-			return refusal(byDoor, string(Internal)), nil
-		}
-		r.Salt, r.Release = salt, true
-	}
-	outs, err := w.m.Resolve(c.Caller, c.Question, r, at)
+	outs, err := w.m.Resolve(c.Caller, mediator.Resolution{Call: c.AnswerCall, Text: c.Answer, Salt: c.Salt}, at)
 	if err != nil {
 		return refused(err, ev), nil
 	}
+	if err := w.j.AddAnswer(c.AnswerCall); err != nil {
+		return nil, err
+	}
 	for _, o := range outs {
-		q, ok := w.m.Queued(o.ReceiptID)
-		if !ok {
-			continue
-		}
-		// The answer call travels beside a delivery whose body is its answer: the answer or the
-		// version, each queued by a resolution receipt, never the released proposal.
-		var answerCall []byte
-		if s, err := receipts.Decode(o.Receipt); err == nil && s.Predicate.Kind == receipts.KindResolution {
-			answerCall = AnswerCall(c)
-		}
-		if err := w.j.PutHeld(q.To, q.Delivery, answerCall); err != nil {
-			return nil, err
+		if q, ok := w.m.Queued(o.ReceiptID); ok {
+			if err := w.j.PutHeld(q.To, q.Delivery); err != nil {
+				return nil, err
+			}
 		}
 	}
 	if err := w.j.AddReceipts(receiptsOf(outs)); err != nil {
@@ -738,10 +727,6 @@ func (w *window) resolve(c Call, at string, ev *Event) ([]byte, error) {
 	if len(outs) > 1 {
 		reply.Release = wire(outs[1])
 		ev.Release = 1
-	}
-	if salt != nil {
-		s := hex.EncodeToString(salt)
-		reply.Salt = &s
 	}
 	return encodeReply(reply), nil
 }

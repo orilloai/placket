@@ -114,8 +114,8 @@ func TestTwoMediatorsOneRecord(t *testing.T) {
 		}
 		msg := message(t, acc, "m-"+string(rune('a'+i)), g.to.Reference(), g.kind, "Part "+string(rune('a'+i)), nil)
 		env := envelope(t, g.seq, msg, g.from)
-		oa, errA := a.Give(g.from.Reference(), msg, env, g.at)
-		ob, errB := b.Give(g.from.Reference(), msg, env, g.at)
+		oa, errA := a.Give(g.from.Reference(), msg, env, nil, g.at)
+		ob, errB := b.Give(g.from.Reference(), msg, env, nil, g.at)
 		if g.code != "" {
 			if !rejected(errA, g.code) || !rejected(errB, g.code) {
 				t.Fatalf("give %d: %v and %v, want %s", i, errA, errB, g.code)
@@ -160,7 +160,7 @@ func TestTwoMediatorsOneRecord(t *testing.T) {
 func TestAStrangersBytesAreNotRead(t *testing.T) {
 	t.Parallel()
 	m := found(t)
-	_, err := m.Give(ptesting.Key(t, "stranger").Reference(), []byte("not json {"), []byte{0xff}, "2026-11-12T09:00:00Z")
+	_, err := m.Give(ptesting.Key(t, "stranger").Reference(), []byte("not json {"), []byte{0xff}, nil, "2026-11-12T09:00:00Z")
 	if !rejected(err, mediator.NotAMember) || err.Error() != "mediator: rejected: not-a-member" {
 		t.Fatalf("got %v", err)
 	}
@@ -182,7 +182,7 @@ func TestARejectedGiveChangesNothing(t *testing.T) {
 	bad := message(t, m.Accord(), "bad", ap.Reference(), "note", "Two parts.", func(x map[string]any) {
 		x["parts"] = append(x["parts"].([]any), x["parts"].([]any)[0])
 	})
-	if _, err := m.Give(p.Reference(), bad, envelope(t, 1, bad, p), "2026-11-12T09:00:00Z"); !rejected(err, mediator.OnePart) {
+	if _, err := m.Give(p.Reference(), bad, envelope(t, 1, bad, p), nil, "2026-11-12T09:00:00Z"); !rejected(err, mediator.OnePart) {
 		t.Fatalf("got %v", err)
 	}
 	if len(m.Receipts()) != 0 || len(m.Pending()) != 0 {
@@ -192,7 +192,7 @@ func TestARejectedGiveChangesNothing(t *testing.T) {
 		t.Fatalf("a rejected give queued %s, %v", d, err)
 	}
 	good := message(t, m.Accord(), "good", ap.Reference(), "note", "One part.", nil)
-	out, err := m.Give(p.Reference(), good, envelope(t, 1, good, p), "2026-11-12T09:01:00Z")
+	out, err := m.Give(p.Reference(), good, envelope(t, 1, good, p), nil, "2026-11-12T09:01:00Z")
 	if err != nil || out.Verdict != "pass" {
 		t.Fatalf("got %+v, %v", out, err)
 	}
@@ -213,12 +213,12 @@ func TestTheSenderIsTheCaller(t *testing.T) {
 		msg := message(t, m.Accord(), "from", ap.Reference(), "note", "A note.", func(x map[string]any) {
 			x["metadata"].(map[string]any)[extension].(map[string]any)["from"] = from
 		})
-		if _, err := m.Give(p.Reference(), msg, envelope(t, 1, msg, p), "2026-11-12T09:00:00Z"); !rejected(err, mediator.ExtensionMissing) {
+		if _, err := m.Give(p.Reference(), msg, envelope(t, 1, msg, p), nil, "2026-11-12T09:00:00Z"); !rejected(err, mediator.ExtensionMissing) {
 			t.Fatalf("a from of %s: %v", from, err)
 		}
 	}
 	msg := message(t, m.Accord(), "signed", ap.Reference(), "note", "A note.", nil)
-	if _, err := m.Give(p.Reference(), msg, envelope(t, 1, msg, ap), "2026-11-12T09:00:00Z"); !rejected(err, mediator.EnvelopeSignature) {
+	if _, err := m.Give(p.Reference(), msg, envelope(t, 1, msg, ap), nil, "2026-11-12T09:00:00Z"); !rejected(err, mediator.EnvelopeSignature) {
 		t.Fatalf("an envelope by another member: %v", err)
 	}
 	if len(m.Receipts()) != 0 {
@@ -233,12 +233,12 @@ func TestReadsAreCopies(t *testing.T) {
 	m := found(t)
 	p, ap := ptesting.Key(t, "proposer"), ptesting.Key(t, "applier")
 	note := message(t, m.Accord(), "n", ap.Reference(), "note", "A note.", nil)
-	out, err := m.Give(p.Reference(), note, envelope(t, 1, note, p), "2026-11-12T09:00:00Z")
+	out, err := m.Give(p.Reference(), note, envelope(t, 1, note, p), nil, "2026-11-12T09:00:00Z")
 	if err != nil {
 		t.Fatal(err)
 	}
 	prop := message(t, m.Accord(), "q", ap.Reference(), "proposal", "A proposal.", nil)
-	if _, err := m.Give(p.Reference(), prop, envelope(t, 2, prop, p), "2026-11-12T09:01:00Z"); err != nil {
+	if _, err := m.Give(p.Reference(), prop, envelope(t, 2, prop, p), nil, "2026-11-12T09:01:00Z"); err != nil {
 		t.Fatal(err)
 	}
 	want := append([]byte(nil), m.Receipts()[0]...)
@@ -271,7 +271,7 @@ func TestFoundOnlyItsOwnSets(t *testing.T) {
 		t.Fatalf("got %v", err)
 	}
 	m := found(t)
-	if _, err := m.Give(ptesting.Key(t, "proposer").Reference(), nil, nil, "2026-11-12 09:00:00"); err == nil || err.Error() != "mediator: at" {
+	if _, err := m.Give(ptesting.Key(t, "proposer").Reference(), nil, nil, nil, "2026-11-12 09:00:00"); err == nil || err.Error() != "mediator: at" {
 		t.Fatalf("a time off the timestamp rule: %v", err)
 	}
 }
@@ -324,7 +324,7 @@ func TestErrorTextQuotesNoInput(t *testing.T) {
 		if c.env != nil {
 			env = c.env(msg)
 		}
-		_, err := m.Give(c.caller.Reference(), msg, env, "2026-11-12T09:00:00Z")
+		_, err := m.Give(c.caller.Reference(), msg, env, nil, "2026-11-12T09:00:00Z")
 		if !rejected(err, c.code) || err.Error() != "mediator: rejected: "+string(c.code) || strings.Contains(err.Error(), secret) {
 			t.Fatalf("got %v, want %s", err, c.code)
 		}
@@ -349,11 +349,11 @@ func FuzzGive(f *testing.F) {
 	f.Fuzz(func(t *testing.T, message, envelope []byte, caller, at string) {
 		m := found(t)
 		first := note
-		if _, err := m.Give(p.Reference(), first, envelopeFor(t, first, p), "2026-11-12T09:00:00Z"); err != nil {
+		if _, err := m.Give(p.Reference(), first, envelopeFor(t, first, p), nil, "2026-11-12T09:00:00Z"); err != nil {
 			t.Fatal(err)
 		}
 		before := len(m.Receipts())
-		_, err := m.Give(caller, message, envelope, at)
+		_, err := m.Give(caller, message, envelope, nil, at)
 		if err != nil && len(m.Receipts()) != before {
 			t.Fatal("a rejected give wrote a receipt")
 		}

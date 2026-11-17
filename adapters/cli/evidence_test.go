@@ -5,9 +5,11 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 
+	"github.com/orilloai/placket/adapters/cli"
 	"github.com/orilloai/placket/adapters/keyfile"
 	"github.com/orilloai/placket/core/receipts"
 )
@@ -74,7 +76,7 @@ func TestAJournalThatIsNotThereOrCut(t *testing.T) {
 	fresh := newAccord(t, "p1", "p2")
 	fresh.start(t)
 	fresh.window.stop(t)
-	if r := must(t, "verify", "--mediator", fresh.refs["mediator"], "--receipts", fresh.journal()); !strings.HasPrefix(r.stderr, "verified 0 receipts\n") {
+	if r := must(t, "verify", "--mediator", fresh.refs["mediator"], "--receipts", fresh.journal()); !strings.Contains(r.stderr, "\n"+fmt.Sprintf(cli.LineValid, 0, fresh.refs["mediator"])+"\n") {
 		t.Fatalf("verify of a journal with no receipt yet: %v", r)
 	}
 
@@ -93,7 +95,7 @@ func TestAJournalThatIsNotThereOrCut(t *testing.T) {
 			t.Fatalf("%s of a cut journal:\n%v\nwanted:\n%v", args[0], r, want)
 		}
 	}
-	if r := must(t, "verify", "--mediator", s.refs["mediator"], "--receipts", cut); r.lines()[1] != fmt.Sprintf("verified %d receipts", n) {
+	if r := must(t, "verify", "--mediator", s.refs["mediator"], "--receipts", cut); !slices.Contains(r.lines(), fmt.Sprintf(cli.LineValid, n, s.refs["mediator"])) {
 		t.Fatalf("verify of a cut journal: %v", r)
 	}
 }
@@ -122,14 +124,14 @@ func TestVerifyFoundingNeedsItsMediator(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dir, "receipts.jsonl"), append(again, '\n'), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if r := must(t, "verify", "--mediator", s.refs["stranger"], "--receipts", dir); r.lines()[1] != "mediator "+s.refs["stranger"]+" accord "+s.id+" card "+s.card {
+	if r := must(t, "verify", "--mediator", s.refs["stranger"], "--receipts", dir); r.lines()[0] != "mediator "+s.refs["stranger"]+" accord "+s.id+" card "+s.card {
 		t.Fatalf("verify under the other key: %v", r)
 	}
 	r := run(t, env(), "verify", "--mediator", s.refs["stranger"], "--receipts", dir, "--founding", filepath.Join(s.dir, "founding.json"))
 	if r.code != 3 || r.stdout != "" || r.stderr != "error founding\n" {
 		t.Fatalf("verify --founding under a key that is not the set's mediator: %v", r)
 	}
-	if r := must(t, "verify", "--mediator", s.refs["mediator"], "--receipts", s.journal(), "--founding", filepath.Join(s.dir, "founding.json")); r.lines()[2] != "operator "+s.refs["operator"]+" runs process" {
+	if r := must(t, "verify", "--mediator", s.refs["mediator"], "--receipts", s.journal(), "--founding", filepath.Join(s.dir, "founding.json")); r.lines()[1] != "operator "+s.refs["operator"]+" runs process" {
 		t.Fatalf("verify --founding under the set's mediator: %v", r)
 	}
 }

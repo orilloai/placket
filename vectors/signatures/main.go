@@ -53,6 +53,16 @@ func envelope(signer kit.Key) kit.Obj {
 	return kit.Envelope(1, m, signer)
 }
 
+// answerCall is the decider's answer call of the action on a question of the ask-and-log Accord
+// (maybe-11), signed by signer.
+func answerCall(action string, signer kit.Key) kit.Obj {
+	digest := ""
+	if action == "accepted" || action == "changed" {
+		digest = kit.Sum(kit.FromHex(kit.Salt("signatures answer", 32)), []byte("accepted"))
+	}
+	return kit.AnswerCall(kit.HashOf(kit.AskAndLog().Build()), kit.HashOf("signatures: a question"), action, digest, true, signer)
+}
+
 func sign(name, tests string, input kit.Obj, t string, signer kit.Key) kit.Vector {
 	return kit.Vector{Name: "signatures/" + name, Tests: tests, Operation: "sign", Members: kit.Obj{
 		"keys": kit.Obj{signer.Name: signer.Seed}, "input": input, "typeUri": t, "signer": signer.Name,
@@ -80,7 +90,7 @@ func receipt(payloadType string, mutate func(sig []byte) []byte) kit.Obj {
 	st := kit.Canon(kit.Statement("note", kit.Sum([]byte("a note")), kit.Pred{
 		Accord: kit.HashOf(set), Card: kit.HashOf(set["card"]), Kind: "crossing",
 		From: kit.Proposer.Ref, To: kit.Applier.Ref, Seq: 1, At: "2026-11-12T09:00:00Z",
-		Sender: kit.Proposer.Ref, ESeq: 1, EHash: kit.HashOf("a message"), Verdict: "pass", Reason: "ok",
+		Sender: kit.Proposer.Ref, ESeq: 1, EHash: kit.HashOf("a message"), Verdict: "pass", Reason: "ok", By: kit.ByTerms,
 	}, kit.Mediator))
 	sig := kit.Mediator.Sign(kit.PAE(payloadType, st))
 	if mutate != nil {
@@ -162,6 +172,19 @@ func main() {
 			spaced, kit.TypeDeclaration, ref, true),
 		verify("type-uri-of-the-operation", "signing-2: a declaration's signature fails under the envelope type URI",
 			d, kit.TypeEnvelope, ref, false),
+
+		sign("answer-sign-accepted", "maybe-11, signing-4: an accept's call, its digest and release, signed by its answerer under the answer type URI",
+			kit.Unsigned(answerCall("accepted", kit.Decider)), kit.TypeAnswer, kit.Decider),
+		sign("answer-sign-cancelled", "maybe-11, signing-4: a cancel's call, with no digest and no release, signed by its asker under the answer type URI",
+			kit.Unsigned(answerCall("cancelled", kit.Proposer)), kit.TypeAnswer, kit.Proposer),
+		verify("answer-verifies", "maybe-11, signing-2: an answer call verifies under the answer type URI by its from",
+			answerCall("changed", kit.Decider), kit.TypeAnswer, kit.Decider.Ref, true),
+		verify("answer-by-another-key", "maybe-11, signing-2: an answer call fails under a key other than the one that signed it",
+			answerCall("declined", kit.Decider), kit.TypeAnswer, kit.Proposer.Ref, false),
+		verify("answer-under-the-envelope-uri", "signing-2, signing-4: an answer call's signature fails under the envelope type URI",
+			answerCall("accepted", kit.Decider), kit.TypeEnvelope, kit.Decider.Ref, false),
+		verifyReceipt("receipt-answer-payload-type", "signing-4: a receipt under the answer type URI as its payload type is refused",
+			receipt(kit.TypeAnswer, nil), kit.Obj{"code": "payload-type", "index": 0}),
 
 		verifyReceipt("receipt-verifies", "signing-4: a receipt's signature is a payload signature under application/vnd.in-toto+json",
 			receipt(kit.PayloadType, nil), kit.Obj{"verified": 1}),

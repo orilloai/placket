@@ -21,7 +21,7 @@ func TestExportErrorsQuoteNothing(t *testing.T) {
 		{`{"payload":"` + p + `","payloadType":"` + secret + `","signatures":[]}`, "export: verify: payload-type, index 0"},
 		{secret, "export: verify: not-canonical, index 0"},
 	} {
-		_, err := Build(m, [][]byte{[]byte(c.receipt)}, nil, func(string) {})
+		_, err := Build(m, [][]byte{[]byte(c.receipt)}, nil, nil, func(string) {})
 		if err == nil || strings.Contains(err.Error(), secret) || err.Error() != c.want {
 			t.Fatalf("%s: got %v, want %q", c.receipt, err, c.want)
 		}

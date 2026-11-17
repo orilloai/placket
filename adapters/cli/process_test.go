@@ -7,11 +7,14 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strings"
 	"sync"
 	"syscall"
 	"testing"
 	"time"
+
+	"github.com/orilloai/placket/adapters/cli"
 )
 
 // TestCommandsAtOnce runs two give processes for one actor at once, and eight actors calling at
@@ -69,7 +72,7 @@ func TestCommandsAtOnce(t *testing.T) {
 	for e := range errs {
 		t.Fatal(e)
 	}
-	if r := must(t, "verify", "--mediator", a.refs["mediator"], "--receipts", a.journal()); !strings.HasPrefix(r.stderr, "verified 26 receipts\n") {
+	if r := must(t, "verify", "--mediator", a.refs["mediator"], "--receipts", a.journal()); !strings.Contains(r.stderr, "\n"+fmt.Sprintf(cli.LineValid, 26, a.refs["mediator"])+"\n") {
 		t.Fatalf("verify: %v", r)
 	}
 
@@ -153,7 +156,7 @@ func TestAWindowKilled(t *testing.T) {
 	if len(got) != 1 || got[0].stdout != "Rename total.\n" {
 		t.Fatalf("the applier fetched %v", got)
 	}
-	if r := must(t, "verify", "--mediator", a.refs["mediator"], "--receipts", a.journal()); r.lines()[0] != fmt.Sprintf("verified %d receipts", before+1) {
+	if r := must(t, "verify", "--mediator", a.refs["mediator"], "--receipts", a.journal()); !slices.Contains(r.lines(), fmt.Sprintf(cli.LineValid, before+1, a.refs["mediator"])) {
 		t.Fatalf("verify: %v", r)
 	}
 	if !strings.Contains(logs[1].String(), "reloaded block undeliverable ") {

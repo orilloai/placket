@@ -181,7 +181,7 @@ for a in proposer applier decider; do
 done
 
 step "10. verify, reconcile and the log; then one byte of a receipt changed"
-run verifier verify --mediator "$(ref mediator)" --receipts journal --founding founding.json
+run verifier verify --accord "$accord" --receipts journal --founding founding.json
 card=$(awk '$1 == "card" { print $2 }' founding.out)
 run verifier reconcile --mediator "$(ref mediator)" --accord "$accord" --card "$card" --receipts journal \
 	--kept "proposer.key.state/${accord#sha256:}" --kept "applier.key.state/${accord#sha256:}" --kept "decider.key.state/${accord#sha256:}"

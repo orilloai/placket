@@ -1,0 +1,20 @@
+{
+  "expect": {
+    "valid": false
+  },
+  "input": {
+    "accord": "sha256:04f71f9b99b729d07bc824bcae742abc9f51f31d2b9d59e968a5c169e15b9303",
+    "action": "accepted",
+    "digest": "aa7eb7aef4421a15042c1d350fb0c7c5fdb96b6976964c934f85331fe026fecf",
+    "from": "ed25519:375dea8c4519dbae84fc9eb513e97eb4b693968ef37d52ac10da7b79250c6a22",
+    "question": "sha256:713cb8a02f99b328f5e1f5543bfd4c461c55165e469e187413f20157e7c0b54f",
+    "release": true,
+    "sig": "ee6badab0a214121e57ed9497bd04e5023437b72115d6c143e5a36e7f239bf1fd154d26732df55c9e1a3c3ac725d4ce9729fc439bab9d08bc93ba78fb116830a"
+  },
+  "operation": "verify-signature",
+  "reference": "ed25519:375dea8c4519dbae84fc9eb513e97eb4b693968ef37d52ac10da7b79250c6a22",
+  "spec": "0.1",
+  "tests": "signing-2, signing-4: an answer call's signature fails under the envelope type URI",
+  "typeUri": "https://placket.tech/envelope/0.1",
+  "vector": "signatures/answer-under-the-envelope-uri"
+}

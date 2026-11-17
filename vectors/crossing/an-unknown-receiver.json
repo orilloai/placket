@@ -42,7 +42,6 @@
       }
     ],
     "card": {
-      "checks": [],
       "judges": [],
       "kernel": {
         "hash": "sha256:a8755bef6ff188c2dc6b74377a73c6a49d612fc44915675db9d2795bb5b99475",
@@ -190,9 +189,9 @@
       "as": "proposer",
       "at": "2026-11-12T09:00:00Z",
       "envelope": {
-        "hash": "sha256:8843c86c7e44a0f0768fe3935dd68b0010a0297e1b7d74d968727aee798e4082",
+        "hash": "sha256:da4e5daf255c7bba585130c14c2dcb6f60da461f4e341547700ec490f250532d",
         "seq": 1,
-        "sig": "92748783627ad22fa9e93701a2a005765d2a013af761855fce45539c289b32a97124344e4ca556fc96fdfebb27e1b027130d8401e165881d0fa0b1799b567f0b"
+        "sig": "ff4850252e83e5cd4ca3083cba784e850f76996f1bba0f7619cde15bcc242bdce5b80f166c00238a14c940043ffa41eff27b8fd537ce2c7622069db34192dd04"
       },
       "expect": {
         "rejection": "receiver-unknown"
@@ -204,7 +203,7 @@
         "messageId": "unknown",
         "metadata": {
           "https://placket.tech/crossing/0.1": {
-            "accord": "sha256:fdb4c6101b33876a56e9501d756b0905671a9a44c726e599c9a7a76270aab1df",
+            "accord": "sha256:04f71f9b99b729d07bc824bcae742abc9f51f31d2b9d59e968a5c169e15b9303",
             "to": "ed25519:2108ae3a477fbfdd11cbc878effff5cda4cc633a88f8b2e74380915a13d18b71"
           }
         },

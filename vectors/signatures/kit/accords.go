@@ -123,3 +123,47 @@ func AnswerUnderMaybe() Set {
 	s.Parties[0].Terms[2] = Maybe("get", []string{"decider"}, []string{"answer"}, []string{"decider"}, 60)
 	return s
 }
+
+// Judged is the Accord of the judge scenarios (composition-7), under JudgedCard, whose one judge is
+// jev. The proposer gives each kind to the applier, asked about by the decider within 3600 seconds;
+// the kinds differ only in the judges the two sides' maybe terms list.
+//
+//   - report: both sides list jev with use decide, so jev's judgment decides.
+//   - review: only the proposer's term lists jev, so the part is asked.
+//   - survey: the proposer lists jev to decide and the applier to advise, so the part is asked.
+//   - digest: both sides list jev to advise, so the part is asked.
+//   - ledger: as report, and the proposer also wants to give it, so the part is asked.
+//
+// The decider gives answers and changed versions to the proposer, who gets them.
+func Judged() Set {
+	decide, advise := Judges("jev", "decide"), Judges("jev", "advise")
+	to := []string{"decider"}
+	return Set{
+		Mediator: Mediator, Operator: Operator, Principal: Principal, Card: JudgedCard(),
+		Roles: []string{"proposer", "applier", "decider"},
+		Parties: []Party{
+			{Key: Proposer, Roles: []string{"proposer"}, Terms: []Obj{
+				JudgedMaybe("give", []string{"applier"}, []string{"report", "review", "survey", "ledger"}, to, 3600, decide),
+				JudgedMaybe("give", []string{"applier"}, []string{"digest"}, to, 3600, advise),
+				Term("want", "give", []string{"applier"}, []string{"ledger"}),
+				Term("want", "get", []string{"decider"}, []string{"answer", "changed-version"}),
+			}},
+			{Key: Applier, Roles: []string{"applier"}, Terms: []Obj{
+				JudgedMaybe("get", []string{"proposer"}, []string{"report", "ledger"}, to, 3600, decide),
+				Maybe("get", []string{"proposer"}, []string{"review"}, to, 3600),
+				JudgedMaybe("get", []string{"proposer"}, []string{"survey", "digest"}, to, 3600, advise),
+			}},
+			{Key: Decider, Roles: []string{"decider"}, Terms: []Obj{
+				Term("want", "give", []string{"proposer", "applier"}, []string{"answer", "changed-version"}),
+			}},
+		},
+	}
+}
+
+// Superseding is the ask-and-log Accord whose policy supersedes an earlier Accord, by its id and the
+// id of its close receipt (setup-contract-11).
+func Superseding() Set {
+	s := AskAndLog()
+	s.Supersedes = Obj{"accord": HashOf("placket vectors: an earlier Accord"), "close": HashOf("placket vectors: its close receipt")}
+	return s
+}

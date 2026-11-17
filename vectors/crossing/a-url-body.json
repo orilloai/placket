@@ -42,7 +42,6 @@
       }
     ],
     "card": {
-      "checks": [],
       "judges": [],
       "kernel": {
         "hash": "sha256:a8755bef6ff188c2dc6b74377a73c6a49d612fc44915675db9d2795bb5b99475",
@@ -190,9 +189,9 @@
       "as": "proposer",
       "at": "2026-11-12T09:00:00Z",
       "envelope": {
-        "hash": "sha256:e65befd326407913087a8269c213d5029f20c25ef83db7545d41e784bc40df8c",
+        "hash": "sha256:402aace750ec802680e991b7f12c4a7d13558238d73c2d3824c7055dafe385d8",
         "seq": 1,
-        "sig": "da39e1c2f7780d207a216b2df45e71c9c8156ceaca71e86930c6f8bc1e65b9d2656aeb3c13b88c2d1ac872039f75302e7d4bed44ee816d679cb9bf7359f38900"
+        "sig": "c796a0cb104415b6f525785a441280dabda6a7079776bda1dacda85bb5841126e7aefa44f1c4ff88a973599720b3ca4bfb20cd6767f66d4d692934c3d545830d"
       },
       "expect": {
         "rejection": "url-unsupported"
@@ -204,7 +203,7 @@
         "messageId": "url",
         "metadata": {
           "https://placket.tech/crossing/0.1": {
-            "accord": "sha256:fdb4c6101b33876a56e9501d756b0905671a9a44c726e599c9a7a76270aab1df",
+            "accord": "sha256:04f71f9b99b729d07bc824bcae742abc9f51f31d2b9d59e968a5c169e15b9303",
             "to": "ed25519:a80586279ba17c5360b029018bf025be0169fdb02087e77301774c99eed92117"
           }
         },
@@ -227,9 +226,9 @@
       "as": "proposer",
       "at": "2026-11-12T09:01:00Z",
       "envelope": {
-        "hash": "sha256:4edbbab4661b6c2aa50826f0dbbbbcd15ba8e9116f4096c325dc27ad54ddec84",
+        "hash": "sha256:afb9fbfa2ce08857ddc85cf9c1087be828fefa7872d6e5bfcaed2cb6732d2f43",
         "seq": 1,
-        "sig": "7912d6efa6aee4a872ae9e1fb5e250b396b1e1346e4ab1524ee4a93ed685b87dfafba1905413938d42ec0e74f4fc16b8d8bcfe7f02b6912a1954024350c0e00d"
+        "sig": "78b9c43d3c17a075f98b80fd7c89d6ccacf3cf27ae8b6fe5fe3f1624cb0a8bfcd01f027ff525db201992d03ef93d9832bf5ecbb6cb2d93f9c72ca132498f3208"
       },
       "expect": {
         "rejection": "one-body"
@@ -241,7 +240,7 @@
         "messageId": "url-2",
         "metadata": {
           "https://placket.tech/crossing/0.1": {
-            "accord": "sha256:fdb4c6101b33876a56e9501d756b0905671a9a44c726e599c9a7a76270aab1df",
+            "accord": "sha256:04f71f9b99b729d07bc824bcae742abc9f51f31d2b9d59e968a5c169e15b9303",
             "to": "ed25519:a80586279ba17c5360b029018bf025be0169fdb02087e77301774c99eed92117"
           }
         },

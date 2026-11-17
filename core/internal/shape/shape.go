@@ -104,6 +104,28 @@ func words(s, joins string) bool {
 	return !prevJoin
 }
 
+// MediaType reports whether s is a part's media type (crossing-2): a type and a subtype joined by
+// one slash, no parameters, each 1 to 127 characters of lowercase letters, digits and !#$&^_.+-,
+// starting with a letter or a digit (RFC 6838's restricted names, lowercase).
+func MediaType(s string) bool {
+	t, sub, ok := strings.Cut(s, "/")
+	return ok && restrictedName(t) && restrictedName(sub)
+}
+
+func restrictedName(s string) bool {
+	if s == "" || len(s) > 127 {
+		return false
+	}
+	for i := 0; i < len(s); i++ {
+		c := s[i]
+		alnum := (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9')
+		if !alnum && (i == 0 || strings.IndexByte("!#$&^_.+-", c) < 0) {
+			return false
+		}
+	}
+	return true
+}
+
 // Selector reports whether s is a role selector, role:<label> (setup-contract-1), and returns the
 // label.
 func Selector(s string) (string, bool) {

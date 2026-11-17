@@ -5,7 +5,7 @@ How placket's code handles keys, cryptography, untrusted bytes, files and the so
 ## Cryptography comes from the standard library
 
 - Signing is `crypto/ed25519`, hashing is `crypto/sha256`, and randomness is `crypto/rand`. No primitive is written by hand, and no third-party cryptography is added ([`crypto-from-stdlib`](../rules/core.md#crypto-from-stdlib)).
-- The core draws no randomness and reads no clock: the door mints salts with `crypto/rand` and passes them in, with the time and the keys ([`core-no-world`](../rules/core.md#core-no-world), [`inputs-as-parameters`](../rules/core.md#inputs-as-parameters), [`door-owns-clock`](../rules/adapters.md#door-owns-clock)).
+- The core draws no randomness and reads no clock: the party that gives or answers mints its salt with `crypto/rand`, the door reads the time, and both reach the core as parameters, with the keys ([`core-no-world`](../rules/core.md#core-no-world), [`inputs-as-parameters`](../rules/core.md#inputs-as-parameters), [`door-owns-clock`](../rules/adapters.md#door-owns-clock)).
 - `math/rand` is never used for anything a party could guess to its advantage: a salt, a nonce, a key, an identifier.
 - The door signs and verifies a call with the core's own payload-signing functions, and defines no second construction ([`call-signing`](../rules/adapters.md#call-signing)).
 

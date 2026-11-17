@@ -26,8 +26,8 @@ func replyOf(t testing.TB, o map[string]any) []byte {
 // TestParseReplyReadsOnlyWhatAWindowSends reads replies a window does not send. What a reply names
 // reaches a person's terminal, so a refusal's code is a label, an outcome's receipt id, verdict and
 // reason are those of its receipt, and an open question's id is a typed hash, its asker an actor
-// reference, its kind a label and its form one of the three. Each is refused, and the reply a window
-// sends is read as sent.
+// reference, its kind a label, its form one of the three with that one body, its receipt an object
+// and its salt hex. Each is refused, and the reply a window sends is read as sent.
 func TestParseReplyReadsOnlyWhatAWindowSends(t *testing.T) {
 	t.Parallel()
 	w := newWorld(t)
@@ -47,7 +47,7 @@ func TestParseReplyReadsOnlyWhatAWindowSends(t *testing.T) {
 	}
 	question := func(change func(map[string]any)) map[string]any {
 		m := map[string]any{"id": o.ReceiptID, "asker": asker, "kind": "proposal", "deadline": "2026-11-12T10:00:00Z", "form": "text",
-			"message": "a\x1b]52;c;aGk=\x07b"}
+			"text": "a\x1b]52;c;aGk=\x07b", "size": 9, "salt": strings.Repeat("ab", 32), "receipt": json.RawMessage(o.Receipt)}
 		if change != nil {
 			change(m)
 		}
@@ -95,6 +95,13 @@ func TestParseReplyReadsOnlyWhatAWindowSends(t *testing.T) {
 		{"a question whose asker is no reference", question(func(m map[string]any) { m["asker"] = "\u202eproposer" })},
 		{"a question whose kind is a path", question(func(m map[string]any) { m["kind"] = "/../../x" })},
 		{"a question of no form", question(func(m map[string]any) { m["form"] = "html" })},
+		{"a question of a form its body is not", question(func(m map[string]any) { m["form"] = "raw" })},
+		{"a question with two bodies", question(func(m map[string]any) { m["data"] = 1 })},
+		{"a question with no receipt", question(func(m map[string]any) { delete(m, "receipt") })},
+		{"a question whose salt is no hex", question(func(m map[string]any) { m["salt"] = "zz" })},
+		{"a question with no size", question(func(m map[string]any) { delete(m, "size") })},
+		{"more of no questions", map[string]any{"ok": true, "more": true}},
+		{"more false", map[string]any{"ok": true, "more": false, "questions": []any{}}},
 	}
 	for _, c := range cases {
 		if _, ok := local.ParseReply(replyOf(t, c.reply)); ok {

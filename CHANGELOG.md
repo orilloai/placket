@@ -10,6 +10,15 @@ This file covers the tool and its Go API. Changes to the protocol's frozen forma
 
 ### Added
 
+- Every receipt names who decided in its predicate's `by`: the terms, a judge of the card, an answer call by its typed hash, or the mediator with its event (decision record 0021).
+- An answer is one signed call, under `https://placket.tech/answer/0.1`: `placket answer`, `change`, `decline` and `cancel` each sign one, over the answer's salted digest under a salt the answerer mints. The call travels inside every delivery it queues, and the journal keeps every accepted call in `answers.jsonl`.
+- `placket verify --accord A --founding F` takes the mediator from the founding set whose typed hash is A, and checks conformance to the Accord: it prints `valid`, `conforms` and `complete` lines, one line per decision the terms did not make, and the custody line. `--answers`, `--subset` and `--delivery` witness answers, check a subset and check one delivery's body.
+- `placket answer --no-release` and `change --no-release` sign an answer that asks for no release; `answer --keep` keeps the call and the salt it signed.
+- `placket show` prints a receipt's decider on the line after its verdict, and `--json` holds it as `by`.
+- A maybe term may list the judges it grants, each to decide or to advise, and the card lists the judges a term may name; founding refuses an unknown judge with `judge-unknown`. No judge runs yet.
+- A part may carry `mediaType`, which its delivery carries; a policy may carry `supersedes`.
+- Go packages `core/answer` and `core/conform`.
+- `docs/adr/0021`: who decided, the answer call, judges as a format, and conformance in verify.
 - `mediator.SaltBytes`, 32: the length of every salt (decision record 0020).
 - `docs/adr/0020`: every placket URI under `placket.tech` with one protocol number, salts of exactly 32 bytes, and A2A's meaning of role.
 - `placket version` prints which build a binary is: its version as Go stamped it, the commit and its time, the Go release and the decision module; `--json` prints the same as one object.
@@ -25,6 +34,12 @@ This file covers the tool and its Go API. Changes to the protocol's frozen forma
 
 ### Changed
 
+- `placket verify` prints its `valid:` line, with the count and the mediator, after the counts, in place of `verified <n> receipts`, and its `--json` object's `checks` is `judges`.
+- `placket cancel` is the asker's: an answerer's cancel is refused with `not-an-answerer`.
+- `placket answer`, `change` and `decline` check that the question the window shows is the part its ask's receipt names before they sign, and stop with `error asked` when it is not.
+- The window mints no salt: an answer's salt is the answerer's. The answer's text, version and salt that do not fit its call are refused with `answer-body`, in place of the `salt` and `answer` errors.
+- `log`'s `answer_signed` reads the journal's `answers.jsonl` and the calls inside kept deliveries.
+- The card's `checks`, the term's `checks` and the reason `check:<name>` are gone; the decision module's version is `0.2.0`.
 - Every placket URI is under `https://placket.tech/`: every schema `$id`, the type URIs of declarations, bindings and envelopes, the receipt's predicate type and the crossing extension. Journals, state and receipts made under `https://placket.dev/` are refused like any foreign one.
 - A salt is exactly 32 bytes, and placket mints 32: `give`, the window's answers, and every salt a give, an answer, a reloaded delivery, `get`, `released` and `log --kept` read.
 - `placket give` writes `ROLE_USER`.

@@ -2,8 +2,9 @@
 // mediator's key alone, reads one without verifying it, recognises a question's receipts and its
 // release, and reconciles presented receipts with what each party kept.
 //
-// It implements receipt-1 to receipt-10 and crossing-5: the receipt (receipt-1), its subject
-// (receipt-2), its predicate (receipt-3, receipt-9), verdicts and reasons (receipt-4), chains
+// It implements receipt-1 to receipt-11 and crossing-5: the receipt (receipt-1), its subject
+// (receipt-2), its predicate (receipt-3, receipt-9), its decider (receipt-11), verdicts and reasons
+// (receipt-4), chains
 // (receipt-5), the verifier (receipt-6, section 8's table), reconciliation (receipt-7, section 9's
 // table), reading without verifying (receipt-8), sequence numbers and times (receipt-10), and the
 // echoed envelope (crossing-5). Releases is the one function that recognises a question's receipts
@@ -107,6 +108,80 @@ type Envelope struct {
 	Hash   string
 }
 
+// Decider is who decided what a receipt states, the form of its predicate's by (receipt-11).
+type Decider string
+
+// The four deciders (receipt-11): the terms, a judge of the card by its name, an answer by its call's
+// typed hash, and the mediator with the event that made it decide.
+const (
+	ByTerms    Decider = "terms"
+	ByJudge    Decider = "judge"
+	ByAnswer   Decider = "answer"
+	ByMediator Decider = "mediator"
+)
+
+// Event is what made the mediator decide (receipt-11): a question's deadline passed (maybe-5), or
+// nobody could be reached to answer it (maybe-4). The list is closed.
+type Event string
+
+// The events of a mediator's decision (receipt-11).
+const (
+	EventDeadline      Event = "deadline"
+	EventUndeliverable Event = "undeliverable"
+)
+
+// By is a predicate's decider (receipt-11): its Decider, and exactly the field that Decider names,
+// Judge for a judge, Answer for an answer, Event for the mediator; none for the terms.
+type By struct {
+	Decider Decider
+	Judge   string
+	Answer  string
+	Event   Event
+}
+
+// value writes b as the predicate's by: "terms", or an object of one member.
+func (b By) value() any {
+	switch b.Decider {
+	case ByTerms:
+		return string(ByTerms)
+	case ByJudge:
+		return shape.Object{string(ByJudge): b.Judge}
+	case ByAnswer:
+		return shape.Object{string(ByAnswer): b.Answer}
+	case ByMediator:
+		return shape.Object{string(ByMediator): string(b.Event)}
+	}
+	return nil
+}
+
+// readBy reads a predicate's by for form (receipt-11): "terms"; or an object of exactly one member,
+// judge with a label, answer with a typed hash, or mediator with deadline or undeliverable.
+func readBy(v any) (By, bool) {
+	if s, ok := v.(string); ok {
+		return By{Decider: ByTerms}, s == string(ByTerms)
+	}
+	o, ok := v.(shape.Object)
+	if !ok || len(o) != 1 {
+		return By{}, false
+	}
+	for k, x := range o {
+		s, ok := x.(string)
+		if !ok {
+			return By{}, false
+		}
+		switch Decider(k) {
+		case ByJudge:
+			return By{Decider: ByJudge, Judge: s}, shape.Label(s)
+		case ByAnswer:
+			return By{Decider: ByAnswer, Answer: s}, shape.Hash(s)
+		case ByMediator:
+			e := Event(s)
+			return By{Decider: ByMediator, Event: e}, e == EventDeadline || e == EventUndeliverable
+		}
+	}
+	return By{}, false
+}
+
 // A Predicate is what a receipt states (receipt-3). Prev is empty exactly when Seq is 1.
 type Predicate struct {
 	Accord, Card, Mediator string
@@ -117,6 +192,7 @@ type Predicate struct {
 	At                     string
 	Envelope               Envelope
 	Verdict, Reason        string
+	By                     By
 }
 
 // A Statement is a receipt's statement as read from its payload, and the receipt's id, the typed hash
@@ -153,7 +229,7 @@ func (p Predicate) value() shape.Object {
 		"accord": p.Accord, "card": p.Card, "mediator": p.Mediator, "kind": p.Kind,
 		"from": p.From, "to": p.To, "seq": p.Seq, "at": p.At,
 		"envelope": shape.Object{"sender": p.Envelope.Sender, "seq": p.Envelope.Seq, "hash": p.Envelope.Hash},
-		"verdict":  p.Verdict, "reason": p.Reason,
+		"verdict":  p.Verdict, "reason": p.Reason, "by": p.By.value(),
 	}
 	if p.Prev != "" {
 		o["prev"] = p.Prev
@@ -302,7 +378,7 @@ func readStatement(payload []byte) (reading, bool) {
 	out.Subject = Subject{Name: name, Digest: digest}
 
 	p, ok := o["predicate"].(shape.Object)
-	if !ok || !shape.Only(p, "accord", "card", "kind", "from", "to", "at", "envelope", "verdict", "reason", "",
+	if !ok || !shape.Only(p, "accord", "card", "kind", "from", "to", "at", "envelope", "verdict", "reason", "by", "",
 		"mediator", "seq", "prev") {
 		return out, false
 	}
@@ -333,6 +409,9 @@ func readStatement(payload []byte) (reading, bool) {
 	pr.Verdict, _ = p["verdict"].(string)
 	pr.Reason, _ = p["reason"].(string)
 	if !pairs(pr.Kind, pr.Verdict, pr.Reason) {
+		return out, false
+	}
+	if pr.By, ok = readBy(p["by"]); !ok || !fits(pr.Kind, pr.Verdict, pr.Reason, pr.By) {
 		return out, false
 	}
 	e, ok := p["envelope"].(shape.Object)
@@ -376,11 +455,13 @@ func pairs(kind, verdict, reason string) bool {
 		return false
 	}
 	resolutionOnly := reason == ReasonDeclined || reason == ReasonCancelled || reason == ReasonTimeout || reason == ReasonUndeliverable
-	if !resolutionOnly && reason != composition.ReasonOK && reason != composition.ReasonNoMatch &&
-		reason != composition.ReasonMaybe && !checkReason(reason) {
+	_, judged := judgeReason(reason)
+	if !resolutionOnly && !judged && reason != composition.ReasonOK && reason != composition.ReasonNoMatch &&
+		reason != composition.ReasonMaybe {
 		return false
 	}
-	if kind == KindCrossing && resolutionOnly {
+	if (kind == KindCrossing && resolutionOnly) || (kind == KindResolution && judged) ||
+		(judged && verdict != string(composition.Block)) {
 		return false
 	}
 	switch composition.Verdict(verdict) {
@@ -394,11 +475,39 @@ func pairs(kind, verdict, reason string) bool {
 	return false
 }
 
-// checkReason reports whether r is check: and a label, the reserved reason of a failing check
-// (receipt-4), read for shape only.
-func checkReason(r string) bool {
-	name, ok := cutPrefix(r, "check:")
-	return ok && shape.Label(name)
+// judgeReason reads r as a judge's block, the reason composition.ReasonJudge writes: judge: and a
+// label, the judge's card name (receipt-4).
+func judgeReason(r string) (string, bool) {
+	name, ok := cutPrefix(r, composition.ReasonJudge(""))
+	return name, ok && shape.Label(name)
+}
+
+// fits reports whether a predicate's by fits its kind, verdict and reason, by the table of receipt-11
+// that the verifier's row 4 reads. A judge's block names the judge its reason names. Whether an
+// answer's receipt is a release, and whose answer, is row 7's to read across the list.
+func fits(kind, verdict, reason string, by By) bool {
+	if name, judged := judgeReason(reason); judged {
+		return kind == KindCrossing && by.Decider == ByJudge && by.Judge == name
+	}
+	pass, block := verdict == string(composition.Pass), verdict == string(composition.Block)
+	if kind == KindCrossing {
+		switch {
+		case verdict == string(composition.Escalate):
+			return by.Decider == ByTerms
+		case pass:
+			return by.Decider == ByTerms || by.Decider == ByJudge || by.Decider == ByAnswer
+		case block:
+			return by.Decider == ByTerms || by.Decider == ByAnswer
+		}
+		return false
+	}
+	switch reason {
+	case ReasonTimeout:
+		return by.Decider == ByMediator && by.Event == EventDeadline
+	case ReasonUndeliverable:
+		return by.Decider == ByMediator && by.Event == EventUndeliverable
+	}
+	return (pass || block) && by.Decider == ByAnswer
 }
 
 func cutPrefix(s, p string) (string, bool) {
@@ -406,6 +515,20 @@ func cutPrefix(s, p string) (string, bool) {
 		return s[len(p):], true
 	}
 	return "", false
+}
+
+// showBy is the line that names a receipt's decider (receipt-8, receipt-11): by terms, by judge and
+// its name, by answer and its call's typed hash, or by mediator and its event.
+func showBy(b By) string {
+	switch b.Decider {
+	case ByJudge:
+		return "by judge " + b.Judge
+	case ByAnswer:
+		return "by answer " + b.Answer
+	case ByMediator:
+		return "by mediator " + string(b.Event)
+	}
+	return "by " + string(b.Decider)
 }
 
 // Decode reads a receipt's statement from its payload without verifying anything: not its
@@ -462,6 +585,7 @@ func Show(receipt []byte) ([]string, error) {
 		"receipt " + s.ID,
 		p.Kind + " from " + p.From + " to " + p.To,
 		"verdict " + p.Verdict + ", reason " + p.Reason,
+		showBy(p.By),
 		"subject " + s.Subject.Name + ", salted-sha256 " + s.Subject.Digest,
 		"accord " + p.Accord + ", card " + p.Card,
 		"mediator " + p.Mediator + ", seq " + strconv.FormatInt(p.Seq, 10) + ", at " + p.At,

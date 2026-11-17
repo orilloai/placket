@@ -24,7 +24,8 @@
         "found",
         "scenario",
         "verify",
-        "reconcile"
+        "reconcile",
+        "conform"
       ]
     },
     "keys": {
@@ -78,6 +79,21 @@
       "items": {
         "$ref": "#/$defs/receiptBytes"
       }
+    },
+    "answers": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/answerBytes"
+      }
+    },
+    "subset": {
+      "type": "boolean"
+    },
+    "kernel": {
+      "$ref": "hash.json"
+    },
+    "delivery": {
+      "$ref": "delivery.json"
     },
     "accord": {
       "type": "string"
@@ -433,6 +449,48 @@
           }
         }
       }
+    },
+    {
+      "if": {
+        "properties": {
+          "operation": {
+            "const": "conform"
+          }
+        }
+      },
+      "then": {
+        "propertyNames": {
+          "enum": [
+            "vector",
+            "spec",
+            "tests",
+            "operation",
+            "accord",
+            "reference",
+            "founding",
+            "receipts",
+            "answers",
+            "subset",
+            "kernel",
+            "delivery",
+            "expect"
+          ]
+        },
+        "required": [
+          "accord",
+          "receipts",
+          "kernel",
+          "expect"
+        ],
+        "properties": {
+          "accord": {
+            "$ref": "hash.json"
+          },
+          "expect": {
+            "$ref": "#/$defs/conformExpect"
+          }
+        }
+      }
     }
   ],
   "$defs": {
@@ -563,7 +621,7 @@
                 "declaration-signature",
                 "term-invalid",
                 "maybe-without-resolve",
-                "check-unknown",
+                "judge-unknown",
                 "binding-missing",
                 "binding-principal",
                 "binding-signature",
@@ -919,8 +977,10 @@
             "one-body",
             "url-unsupported",
             "part-metadata",
+            "answer-call",
             "no-open-question",
-            "not-an-answerer"
+            "not-an-answerer",
+            "answer-body"
           ]
         }
       },
@@ -1017,6 +1077,26 @@
         },
         "envelopeHex": {
           "$ref": "#/$defs/hex"
+        },
+        "judge": {
+          "description": "The judgment the give hands the decision: a judge's card name and its verdict (conformance-vectors-3, composition-7).",
+          "type": "object",
+          "properties": {
+            "name": {
+              "$ref": "term.json#/$defs/label"
+            },
+            "verdict": {
+              "enum": [
+                "pass",
+                "block"
+              ]
+            }
+          },
+          "required": [
+            "name",
+            "verdict"
+          ],
+          "additionalProperties": false
         },
         "expect": {
           "oneOf": [
@@ -1121,43 +1201,29 @@
       "additionalProperties": false
     },
     "resolve": {
+      "description": "A resolve step (conformance-vectors-6): an answer step, holding callHex, the answer call's canonical bytes, and answer and salt, the answer's text and the answerer's salt, which the runner hands the mediator as given; by names the caller, and without it the caller is the call's from. Or the mediator's finding that nobody can answer question, undeliverable, which takes no caller. A step holds no action: the action and the release are inside callHex, which a schema cannot read, so the runner pairs them with expect.",
       "properties": {
         "op": true,
         "at": {
           "$ref": "timestamp.json"
         },
-        "question": {
-          "$ref": "hash.json"
+        "callHex": {
+          "$ref": "#/$defs/hex"
         },
-        "action": {
-          "enum": [
-            "accepted",
-            "changed",
-            "declined",
-            "cancelled",
-            "undeliverable"
-          ]
-        },
-        "by": {
-          "$ref": "#/$defs/name"
-        },
-        "content": {
-          "type": "object",
-          "properties": {
-            "answer": {
-              "type": "string"
-            }
-          },
-          "required": [
-            "answer"
-          ],
-          "additionalProperties": false
+        "answer": {
+          "type": "string"
         },
         "salt": {
           "$ref": "part.json#/$defs/salt"
         },
-        "release": {
+        "question": {
+          "$ref": "hash.json"
+        },
+        "undeliverable": {
           "const": true
+        },
+        "by": {
+          "$ref": "#/$defs/name"
         },
         "expect": {
           "oneOf": [
@@ -1172,213 +1238,66 @@
       },
       "required": [
         "at",
-        "question",
-        "action",
         "expect"
       ],
       "additionalProperties": false,
-      "allOf": [
+      "oneOf": [
         {
-          "if": {
-            "properties": {
-              "action": {
-                "enum": [
-                  "accepted",
-                  "changed"
+          "required": [
+            "callHex"
+          ],
+          "not": {
+            "anyOf": [
+              {
+                "required": [
+                  "question"
+                ]
+              },
+              {
+                "required": [
+                  "undeliverable"
                 ]
               }
-            }
-          },
-          "then": {
-            "required": [
-              "content",
-              "salt"
+            ]
+          }
+        },
+        {
+          "required": [
+            "question",
+            "undeliverable"
+          ],
+          "not": {
+            "anyOf": [
+              {
+                "required": [
+                  "callHex"
+                ]
+              },
+              {
+                "required": [
+                  "answer"
+                ]
+              },
+              {
+                "required": [
+                  "salt"
+                ]
+              },
+              {
+                "required": [
+                  "by"
+                ]
+              }
             ]
           },
-          "else": {
-            "not": {
-              "anyOf": [
-                {
-                  "required": [
-                    "content"
-                  ]
+          "properties": {
+            "expect": {
+              "properties": {
+                "verdict": {
+                  "const": "block"
                 },
-                {
-                  "required": [
-                    "salt"
-                  ]
-                },
-                {
-                  "required": [
-                    "release"
-                  ]
-                }
-              ]
-            }
-          }
-        },
-        {
-          "if": {
-            "properties": {
-              "action": {
-                "const": "changed"
-              }
-            }
-          },
-          "then": {
-            "properties": {
-              "content": {
-                "properties": {
-                  "answer": {
-                    "minLength": 1
-                  }
-                }
-              }
-            }
-          }
-        },
-        {
-          "if": {
-            "properties": {
-              "action": {
-                "const": "undeliverable"
-              }
-            }
-          },
-          "then": {
-            "not": {
-              "required": [
-                "by"
-              ]
-            }
-          }
-        },
-        {
-          "if": {
-            "not": {
-              "required": [
-                "release"
-              ]
-            }
-          },
-          "then": {
-            "properties": {
-              "expect": {
-                "not": {
-                  "required": [
-                    "release"
-                  ]
-                }
-              }
-            }
-          }
-        },
-        {
-          "if": {
-            "required": [
-              "action"
-            ],
-            "properties": {
-              "action": {
-                "enum": [
-                  "accepted",
-                  "changed"
-                ]
-              }
-            }
-          },
-          "then": {
-            "properties": {
-              "expect": {
-                "properties": {
-                  "reason": {
-                    "not": {
-                      "enum": [
-                        "declined",
-                        "cancelled",
-                        "timeout",
-                        "undeliverable"
-                      ]
-                    }
-                  }
-                }
-              }
-            }
-          }
-        },
-        {
-          "if": {
-            "required": [
-              "action"
-            ],
-            "properties": {
-              "action": {
-                "const": "declined"
-              }
-            }
-          },
-          "then": {
-            "properties": {
-              "expect": {
-                "properties": {
-                  "verdict": {
-                    "const": "block"
-                  },
-                  "reason": {
-                    "const": "declined"
-                  }
-                }
-              }
-            }
-          }
-        },
-        {
-          "if": {
-            "required": [
-              "action"
-            ],
-            "properties": {
-              "action": {
-                "const": "cancelled"
-              }
-            }
-          },
-          "then": {
-            "properties": {
-              "expect": {
-                "properties": {
-                  "verdict": {
-                    "const": "block"
-                  },
-                  "reason": {
-                    "const": "cancelled"
-                  }
-                }
-              }
-            }
-          }
-        },
-        {
-          "if": {
-            "required": [
-              "action"
-            ],
-            "properties": {
-              "action": {
-                "const": "undeliverable"
-              }
-            }
-          },
-          "then": {
-            "properties": {
-              "expect": {
-                "properties": {
-                  "verdict": {
-                    "const": "block"
-                  },
-                  "reason": {
-                    "const": "undeliverable"
-                  }
+                "reason": {
+                  "const": "undeliverable"
                 }
               }
             }
@@ -1544,6 +1463,102 @@
               }
             }
           }
+        }
+      ]
+    },
+    "answerBytes": {
+      "description": "An answer call a verifier is given: as a JSON value, call, whose bytes are its canonical form, or as hex, callHex (conformance-vectors-8).",
+      "type": "object",
+      "properties": {
+        "call": {
+          "$ref": "answer.json"
+        },
+        "callHex": {
+          "$ref": "#/$defs/hex"
+        }
+      },
+      "additionalProperties": false,
+      "oneOf": [
+        {
+          "required": [
+            "call"
+          ]
+        },
+        {
+          "required": [
+            "callHex"
+          ]
+        }
+      ]
+    },
+    "conformExpect": {
+      "description": "A conform vector's result (verify-2): the first failure, its code, a validity code of section 8 or a conformance code, and its index; or the whole list conforms, with the number of answers witnessed and unwitnessed, the calls that match no receipt, whether the card's module is the trusted one, and, with a delivery, that its body is the part of its receipt.",
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "code": {
+              "enum": [
+                "reference",
+                "not-canonical",
+                "payload-type",
+                "signature",
+                "statement-type",
+                "mediator",
+                "chain",
+                "release",
+                "founding",
+                "accord",
+                "party",
+                "decision",
+                "witness",
+                "body"
+              ]
+            },
+            "index": {
+              "type": "integer",
+              "minimum": -1
+            }
+          },
+          "required": [
+            "code",
+            "index"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "conforms": {
+              "type": "boolean"
+            },
+            "witnessed": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "unwitnessed": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "unmatched": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "module": {
+              "type": "boolean"
+            },
+            "body": {
+              "const": true
+            }
+          },
+          "required": [
+            "conforms",
+            "witnessed",
+            "unwitnessed",
+            "unmatched",
+            "module"
+          ],
+          "additionalProperties": false
         }
       ]
     }

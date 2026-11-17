@@ -13,8 +13,8 @@ import (
 
 	"github.com/orilloai/placket/adapters/journal"
 	"github.com/orilloai/placket/adapters/local"
+	"github.com/orilloai/placket/core/answer"
 	"github.com/orilloai/placket/core/composition"
-	"github.com/orilloai/placket/core/mediator"
 	"github.com/orilloai/placket/core/receipts"
 )
 
@@ -37,7 +37,7 @@ func script(q *[2]string) []step {
 			}
 			return s
 		case r.Delivery != nil:
-			return string(r.Delivery) + string(r.AnswerCall)
+			return string(r.Delivery)
 		}
 		return "ok " + string(r.Rejection) + string(r.Error) + string(r.Door)
 	}
@@ -48,7 +48,7 @@ func script(q *[2]string) []step {
 			return reply(r)
 		}, false},
 		{func(t *testing.T, w *world) string {
-			return reply(w.call(t, "decider", local.OpResolve, local.ResolveArgs(q[0], mediator.Accepted, "accepted")))
+			return reply(w.call(t, "decider", local.OpResolve, w.answerArgs(t, "decider", q[0], answer.Accepted, "accepted")))
 		}, true},
 		{func(t *testing.T, w *world) string { return reply(w.call(t, "applier", local.OpGet, nil)) }, true},
 		{func(t *testing.T, w *world) string { return reply(w.call(t, "proposer", local.OpGet, nil)) }, true},
@@ -64,7 +64,7 @@ func script(q *[2]string) []step {
 			return reply(r)
 		}, false},
 		{func(t *testing.T, w *world) string {
-			return reply(w.call(t, "decider", local.OpResolve, local.ResolveArgs(q[1], mediator.Changed, "Hide notes.")))
+			return reply(w.call(t, "decider", local.OpResolve, w.answerArgs(t, "decider", q[1], answer.Changed, "Hide notes.")))
 		}, true},
 		{func(t *testing.T, w *world) string { return reply(w.call(t, "applier", local.OpGet, nil)) }, true},
 		{func(t *testing.T, w *world) string { return reply(w.call(t, "applier", local.OpGet, nil)) }, true},

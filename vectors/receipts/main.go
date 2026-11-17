@@ -7,6 +7,7 @@
 package main
 
 import (
+	"strconv"
 	"strings"
 
 	"github.com/orilloai/placket/vectors/signatures/kit"
@@ -29,17 +30,50 @@ func note(id string) kit.Obj {
 
 // A journal writes receipts one after another as a mediator would, each chained in its pair.
 type journal struct {
-	s *kit.Scene
-	n int
+	s     *kit.Scene
+	n     int
+	asked map[string]bool
 }
 
-func newJournal(set kit.Obj) *journal { return &journal{s: kit.NewScene(set, kit.Mediator)} }
+func newJournal(set kit.Obj) *journal {
+	return &journal{s: kit.NewScene(set, kit.Mediator), asked: map[string]bool{}}
+}
+
+// answered is the decider of every answer's receipt the journals write: one answer call's typed hash
+// (receipt-11). These vectors are verifier inputs; no call is checked against it.
+var answered = kit.Obj{"answer": kit.HashOf("receipts: an answer call")}
+
+// byOf is the decider a receipt of the journal names, as receipt-11 pairs it with the receipt: the
+// mediator's for a timeout or an undeliverable, an answer's for any other resolution receipt and for
+// a crossing receipt that echoes an asked envelope after it was asked, a release, and the terms' for
+// any other crossing receipt.
+func (j *journal) byOf(kind string, e envelope, verdict, reason string) any {
+	switch {
+	case reason == "timeout":
+		return kit.ByDeadline
+	case reason == "undeliverable":
+		return kit.ByUndeliverable
+	case kind == "resolution":
+		return answered
+	case verdict == "escalate":
+		j.asked[e.key()] = true
+		return kit.ByTerms
+	case j.asked[e.key()]:
+		return answered
+	}
+	return kit.ByTerms
+}
 
 // envelope is an echoed envelope.
 type envelope struct {
 	sender kit.Key
 	seq    int64
 	hash   string
+}
+
+// key names an envelope by its sender, seq and hash.
+func (e envelope) key() string {
+	return e.sender.Ref + " " + strconv.FormatInt(e.seq, 10) + " " + e.hash
 }
 
 func env(sender kit.Key, seq int64, label string) envelope {
@@ -54,7 +88,7 @@ func part(name, label string) subject {
 }
 
 func (j *journal) write(kind string, from, to kit.Key, sub subject, e envelope, verdict, reason string) kit.Obj {
-	r, _ := j.s.Write(kind, from, to, sub.name, sub.digest, at(j.n), e.sender, e.seq, e.hash, verdict, reason)
+	r, _ := j.s.Write(kind, from, to, sub.name, sub.digest, at(j.n), e.sender, e.seq, e.hash, verdict, reason, j.byOf(kind, e, verdict, reason))
 	j.n++
 	return r
 }
@@ -197,11 +231,27 @@ func main() {
 		predicate(st)["kind"], predicate(st)["verdict"], predicate(st)["reason"] = "resolution", "escalate", "maybe"
 	})
 	checkReason := resign(a, func(st kit.Obj) { predicate(st)["verdict"], predicate(st)["reason"] = "block", "check:forbidden" })
+	judgeReason := resign(a, func(st kit.Obj) {
+		predicate(st)["verdict"], predicate(st)["reason"], predicate(st)["by"] = "block", "judge:jev", kit.ByJudge("jev")
+	})
+	otherJudge := resign(a, func(st kit.Obj) {
+		predicate(st)["verdict"], predicate(st)["reason"], predicate(st)["by"] = "block", "judge:jev", kit.ByJudge("other")
+	})
+	judgeByTerms := resign(a, func(st kit.Obj) { predicate(st)["verdict"], predicate(st)["reason"] = "block", "judge:jev" })
+	noBy := resign(a, func(st kit.Obj) { delete(predicate(st), "by") })
+	scored := resign(a, func(st kit.Obj) { predicate(st)["by"] = kit.Obj{"judge": "jev", "score": 9} })
+	mediatorOnACrossing := resign(a, func(st kit.Obj) { predicate(st)["by"] = kit.ByDeadline })
 	vs = append(vs,
 		verify("a-block-with-reason-maybe", "receipt-4: a crossing predicate with verdict block and reason maybe is accepted", list(maybeBlock), verified(1)),
 		verify("a-block-with-reason-ok", "receipt-4: a crossing predicate with verdict block and reason ok is refused", list(okBlock), failsAt("statement-type", 0)),
 		verify("a-resolution-reason-on-a-crossing-receipt", "receipt-4: a crossing predicate with reason declined is refused", list(declined), failsAt("statement-type", 0)),
-		verify("a-reserved-check-reason", "receipt-4: check:<name> is read for shape only and accepted", list(checkReason), verified(1)),
+		verify("a-retired-check-reason", "receipt-4: check:<name> is no reason of this version, and a block with it fails statement-type", list(checkReason), failsAt("statement-type", 0)),
+		verify("a-judge-reason", "receipt-4, receipt-11: a crossing block with reason judge:jev and by the judge jev verifies", list(judgeReason), verified(1)),
+		verify("a-judge-reason-naming-another-judge", "receipt-11: a block with reason judge:jev whose by names the judge other fails statement-type", list(otherJudge), failsAt("statement-type", 0)),
+		verify("a-judge-reason-by-the-terms", "receipt-11: a block with reason judge:jev whose by is the terms fails statement-type", list(judgeByTerms), failsAt("statement-type", 0)),
+		verify("a-predicate-with-no-by", "receipt-3, receipt-11: a predicate with no by fails statement-type", list(noBy), failsAt("statement-type", 0)),
+		verify("a-by-with-a-score", "receipt-11: a by holding a score beside the judge's name fails statement-type", list(scored), failsAt("statement-type", 0)),
+		verify("the-mediator-on-a-crossing-receipt", "receipt-11: a crossing receipt whose by is the mediator fails statement-type", list(mediatorOnACrossing), failsAt("statement-type", 0)),
 		verify("an-escalate-resolution", "receipt-4: a resolution receipt's verdict is pass or block, never escalate", list(escalateResolution), failsAt("statement-type", 0)),
 		verify("an-unlisted-predicate-member", "receipt-9: a predicate with a member result is refused", list(result), failsAt("statement-type", 0)),
 		verify("a-gives-receipt-echoes-another-members-envelope", "receipt-6: a crossing receipt from the proposer whose envelope's sender is the decider fails statement-type at 0",
@@ -263,6 +313,20 @@ func main() {
 		ans := j.resolution(kit.Decider, kit.Proposer, answer, qenv, "pass", "ok")
 		rel := j.crossing(kit.Proposer, kit.Applier, asked, qenv, "block", "no-match")
 		vs = append(vs, verify("a-blocked-release", "receipt-6: a release with verdict block is a blocked release and verifies", list(q, ans, rel), verified(3)))
+	}
+	{
+		j := newJournal(askAndLog)
+		q := ask(j)
+		ans := j.resolution(kit.Decider, kit.Proposer, answer, qenv, "pass", "ok")
+		rel := resign(j.crossing(kit.Proposer, kit.Applier, asked, qenv, "pass", "ok"), func(st kit.Obj) {
+			predicate(st)["by"] = kit.Obj{"answer": kit.HashOf("receipts: another answer call")}
+		})
+		vs = append(vs, verify("a-release-of-another-answer", "receipt-6, receipt-11: a release whose by names another answer than its closing's fails release", list(q, ans, rel), failsAt("release", 2)))
+		give := newJournal(askAndLog).crossing(kit.Proposer, kit.Applier, part("note", "answered"), env(kit.Proposer, 9, "answered"), "pass", "ok")
+		answeredGive := resign(give, func(st kit.Obj) { predicate(st)["by"] = answered })
+		vs = append(vs, verify("an-answer-on-a-give", "receipt-6, receipt-11: a crossing receipt an answer decided that is no question's release fails release", list(answeredGive), failsAt("release", 0)))
+		timeout := resign(j.resolution(kit.Decider, kit.Proposer, asked, qenv, "block", "timeout"), func(st kit.Obj) { predicate(st)["by"] = kit.ByTerms })
+		vs = append(vs, verify("a-timeout-by-the-terms", "receipt-11: a timeout whose by is the terms fails statement-type", list(q, timeout), failsAt("statement-type", 1)))
 	}
 	{
 		j := newJournal(askAndLog)

@@ -18,7 +18,7 @@ func TestAFetchedDeliveryIsNotKept(t *testing.T) {
 	ids := []string{"n-1", "n-2", "n-3"}
 	for i, id := range ids {
 		msg := message(t, m.Accord(), id, ap.Reference(), "note", "The note "+id+".", nil)
-		if _, err := m.Give(p.Reference(), msg, envelope(t, int64(i+1), msg, p), "2026-11-12T09:00:00Z"); err != nil {
+		if _, err := m.Give(p.Reference(), msg, envelope(t, int64(i+1), msg, p), nil, "2026-11-12T09:00:00Z"); err != nil {
 			t.Fatalf("give %s: %v", id, err)
 		}
 	}

@@ -1,0 +1,19 @@
+{
+  "judges": [
+    {
+      "name": "jev",
+      "version": "1.0.0",
+      "hash": "sha256:abababababababababababababababababababababababababababababababab"
+    },
+    {
+      "name": "jev",
+      "version": "1.0.0",
+      "hash": "sha256:abababababababababababababababababababababababababababababababab"
+    }
+  ],
+  "kernel": {
+    "hash": "sha256:f6bbbbe1be3180d154b58b431f948409f06502f81e4797d585a4fcfacdadae02",
+    "version": "0.1.0"
+  },
+  "spec": "0.1"
+}

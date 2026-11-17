@@ -22,6 +22,7 @@ setup-contract-7
 setup-contract-8
 setup-contract-9
 setup-contract-10
+setup-contract-11
 crossing-1
 crossing-2
 crossing-3
@@ -31,9 +32,9 @@ crossing-7
 composition-1
 composition-2
 composition-3
-composition-4
 composition-5
 composition-6
+composition-7
 maybe-1
 maybe-3
 maybe-4
@@ -43,6 +44,8 @@ maybe-7
 maybe-8
 maybe-9
 maybe-10
+maybe-11
+maybe-12
 receipt-1
 receipt-2
 receipt-3
@@ -50,9 +53,14 @@ receipt-4
 receipt-5
 receipt-9
 receipt-10
+receipt-11
 crossing-5
 receipt-6
 receipt-8
+verify-1
+verify-2
+verify-3
+verify-4
 receipt-7
 conformance-vectors-1
 conformance-vectors-2
@@ -72,5 +80,6 @@ commands-4
 commands-5
 commands-6
 commands-7
+commands-8
 log-1
 log-2

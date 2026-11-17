@@ -74,7 +74,7 @@ func TestDoorRowsOneCheckEach(t *testing.T) {
 		if c.extra {
 			env = envelopeWith(t, 1, msg, p, "note", "x")
 		}
-		out, err := m.Give(p.Reference(), msg, env, "2026-11-12T09:00:00Z")
+		out, err := m.Give(p.Reference(), msg, env, nil, "2026-11-12T09:00:00Z")
 		if c.code == "" {
 			if err != nil || out.Verdict != "pass" {
 				t.Fatalf("%s: got %+v, %v", c.name, out, err)
@@ -117,7 +117,7 @@ func TestAChainPerOrderedPair(t *testing.T) {
 	p, ap, d := ptesting.Key(t, "proposer"), ptesting.Key(t, "applier"), ptesting.Key(t, "decider")
 	for i, to := range []signing.Key{ap, d, ap} {
 		msg := message(t, m.Accord(), "m-"+string(rune('a'+i)), to.Reference(), "note", "A note.", nil)
-		if _, err := m.Give(p.Reference(), msg, envelope(t, int64(i+1), msg, p), "2026-11-12T09:00:00Z"); err != nil {
+		if _, err := m.Give(p.Reference(), msg, envelope(t, int64(i+1), msg, p), nil, "2026-11-12T09:00:00Z"); err != nil {
 			t.Fatalf("give %d: %v", i, err)
 		}
 	}

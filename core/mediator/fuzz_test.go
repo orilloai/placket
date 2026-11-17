@@ -25,7 +25,7 @@ func FuzzGet(f *testing.F) {
 	f.Fuzz(func(t *testing.T, caller string) {
 		m := found(t)
 		note := message(t, m.Accord(), "n", ap.Reference(), "note", "A note.", nil)
-		if _, err := m.Give(p.Reference(), note, envelopeFor(t, note, p), "2026-11-12T09:00:00Z"); err != nil {
+		if _, err := m.Give(p.Reference(), note, envelopeFor(t, note, p), nil, "2026-11-12T09:00:00Z"); err != nil {
 			t.Fatal(err)
 		}
 		d, err := m.Get(caller)

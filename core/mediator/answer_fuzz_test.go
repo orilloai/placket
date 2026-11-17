@@ -28,25 +28,26 @@ func written(t *testing.T, m *mediator.Mediator, before int, err error) {
 	}
 }
 
-// FuzzResolve answers an open question with any caller, id, action, text, salt, release and time. It
-// never panics; a refusal writes nothing, and every receipt written verifies (core-no-panic).
+// FuzzResolve answers an open question with any caller, call, text, salt and time. It never panics;
+// a refusal writes nothing, and every receipt written verifies (core-no-panic). Its seeds are signed
+// calls of each action, by the decider and the proposer, and the answer texts of the vectors.
 func FuzzResolve(f *testing.F) {
-	_, q := opened(f)
+	m, q := opened(f)
 	d, p := ptesting.Key(f, "decider").Reference(), ptesting.Key(f, "proposer").Reference()
-	f.Add(d, q, "accepted", "accepted", []byte("an answer's salt of thirty-two b"), true, "2026-11-12T09:01:00Z")
-	f.Add(d, q, "changed", "A version.", []byte("an answer's salt of thirty-two b"), true, "2026-11-12T09:01:00Z")
-	f.Add(d, q, "changed", "", []byte("an answer's salt of thirty-two b"), false, "2026-11-12T09:01:00Z")
-	f.Add(d, q, "declined", "", []byte(nil), true, "2026-11-12T09:01:00Z")
-	f.Add(d, q, "cancelled", "x", []byte("short"), false, "2026-11-12T10:00:00Z")
-	f.Add(p, q, "accepted", "accepted", []byte("an answer's salt of thirty-two b"), false, "2026-11-12T09:01:00Z")
-	f.Add("", "", "", "", []byte(nil), false, "")
-	for _, s := range seeds.Values(f, "questions", "content") {
-		f.Add(d, q, "changed", s, []byte("an answer's salt of thirty-two b"), true, "2026-11-12T09:01:00Z")
+	salt := []byte("an answer's salt of thirty-two b")
+	for _, r := range []mediator.Resolution{accept(f, m, d, q, true), change(f, m, d, q, false), decline(f, m, d, q), cancel(f, m, p, q), accept(f, m, p, q, false)} {
+		f.Add(d, r.Call, r.Text, r.Salt, "2026-11-12T09:01:00Z")
+		f.Add(p, r.Call, r.Text, r.Salt, "2026-11-12T10:00:00Z")
 	}
-	f.Fuzz(func(t *testing.T, caller, questionID, action, answer string, salt []byte, release bool, at string) {
+	f.Add(d, decline(f, m, d, q).Call, "x", salt, "2026-11-12T09:01:00Z")
+	f.Add("", []byte(nil), "", []byte(nil), "")
+	for _, s := range seeds.Values(f, "questions", "answer") {
+		f.Add(d, []byte(s), s, salt, "2026-11-12T09:01:00Z")
+	}
+	f.Fuzz(func(t *testing.T, caller string, call []byte, text string, salt []byte, at string) {
 		m, _ := opened(t)
 		before := len(m.Receipts())
-		outs, err := m.Resolve(caller, questionID, mediator.Resolution{Action: mediator.Action(action), Answer: answer, Salt: salt, Release: release}, at)
+		outs, err := m.Resolve(caller, mediator.Resolution{Call: call, Text: text, Salt: salt}, at)
 		written(t, m, before, err)
 		if err == nil && (len(outs) == 0 || len(m.Receipts()) != before+len(outs) || len(m.Pending()) != 0) {
 			t.Fatalf("an answer wrote %d receipts for %d outcomes", len(m.Receipts())-before, len(outs))
@@ -120,7 +121,7 @@ func FuzzTheReads(f *testing.F) {
 func FuzzReload(f *testing.F) {
 	m, q := opened(f)
 	d := ptesting.Key(f, "decider").Reference()
-	if _, err := m.Resolve(d, q, accept(true), "2026-11-12T09:01:00Z"); err != nil {
+	if _, err := m.Resolve(d, accept(f, m, d, q, true), "2026-11-12T09:01:00Z"); err != nil {
 		f.Fatal(err)
 	}
 	q2 := ask(f, m, 2, "p-2", "2026-11-12T09:02:00Z")

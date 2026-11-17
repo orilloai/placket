@@ -18,7 +18,8 @@
 //	released_at    the release receipt's time, when it passed
 //	comment        the text of a comment the answerer gave the asker about the question, from the
 //	               giver's kept message, since only an envelope covers its re
-//	answer_signed  yes when a kept answer call for the row verified
+//	answer_signed  yes when an answer call whose typed hash the closing's by names reads, from the
+//	               journal's answers.jsonl, a kept answer line or a kept delivery (receipt-11)
 //	answerer       the closing receipt's from
 //	receipts       the ids of every receipt the row rests on
 //	text           with words: the asked part's text
@@ -35,8 +36,9 @@
 //
 // A kept part is used only when a verified receipt covers it: a part the actor gave by its
 // envelope's hash (its body, kind, topic and re), a part it fetched or a version it gave as an
-// answer by the salted digest (its body alone). A kept part that no receipt covers, and an answer
-// call that does not verify, are left out, each with a note naming the receipt.
+// answer by the salted digest (its body alone). A kept part that no receipt covers is left out, with
+// a note naming the receipt. An answer call that does not read, or that no closing names, is not
+// evidence of anything, and is passed over.
 package export
 
 import (
@@ -50,7 +52,7 @@ import (
 	"strings"
 
 	"github.com/orilloai/placket/adapters/internal/strict"
-	"github.com/orilloai/placket/adapters/local"
+	"github.com/orilloai/placket/core/answer"
 	"github.com/orilloai/placket/core/canonical"
 	"github.com/orilloai/placket/core/composition"
 	"github.com/orilloai/placket/core/mediator"
@@ -119,9 +121,9 @@ type Log struct {
 func Closing(p receipts.Predicate, s receipts.Subject) string {
 	if p.Verdict == string(composition.Pass) {
 		if s.Name == receipts.NameChanged {
-			return string(mediator.Changed)
+			return string(answer.Changed)
 		}
-		return string(mediator.Accepted)
+		return string(answer.Accepted)
 	}
 	switch p.Reason {
 	case receipts.ReasonDeclined, receipts.ReasonCancelled, receipts.ReasonTimeout, receipts.ReasonUndeliverable:
@@ -138,24 +140,26 @@ type keptPart struct {
 	topic, re  string
 	text       string
 	salt       []byte
-	answerCall []byte
+	answerCall []byte // the answer call inside a kept delivery, when an answer queued it
 }
 
 // Build makes the log of the receipts, verified under the mediator's reference, with the kept parts,
-// each one line of a kept.jsonl: one row per question (log-1). It verifies first and makes no row when the receipts fail, none when
-// they name more than one Accord or card, and none when receipts.Releases refuses them. Each kept part left out is noted.
-func Build(mediatorRef string, list [][]byte, kept [][]byte, note func(string)) (Log, error) {
-	return build(mediatorRef, list, kept, false, note)
+// each one line of a kept.jsonl, and the answer calls, each one line of a journal's answers.jsonl:
+// one row per question (log-1). It verifies first and makes no row when the receipts fail, none when
+// they name more than one Accord or card, and none when receipts.Releases refuses them. Each kept
+// part left out is noted; a kept answer call, a line of its own, is no part and is never noted.
+func Build(mediatorRef string, list, kept, answers [][]byte, note func(string)) (Log, error) {
+	return build(mediatorRef, list, kept, answers, false, note)
 }
 
 // BuildAll makes the log as Build does, with a row for every crossing that belongs to no question
 // besides the questions' rows, each where its receipt stands in the journal, and the columns of all
 // (log-2).
-func BuildAll(mediatorRef string, list [][]byte, kept [][]byte, note func(string)) (Log, error) {
-	return build(mediatorRef, list, kept, true, note)
+func BuildAll(mediatorRef string, list, kept, answers [][]byte, note func(string)) (Log, error) {
+	return build(mediatorRef, list, kept, answers, true, note)
 }
 
-func build(mediatorRef string, list [][]byte, kept [][]byte, all bool, note func(string)) (Log, error) {
+func build(mediatorRef string, list, kept, answers [][]byte, all bool, note func(string)) (Log, error) {
 	verified, err := receipts.Verify(mediatorRef, list)
 	if err != nil {
 		var re *receipts.Error
@@ -194,7 +198,22 @@ func build(mediatorRef string, list [][]byte, kept [][]byte, all bool, note func
 		byID[s.ID] = i
 	}
 	var parts []keptPart
+	// The answer calls that read, by their typed hash (receipt-11): the journal's, the ones a key
+	// kept, and the ones inside the deliveries it kept.
+	calls := map[string]answer.Call{}
+	signed := func(b []byte) {
+		if c, err := answer.Read(b); err == nil {
+			calls[answer.ID(b)] = c
+		}
+	}
+	for _, b := range answers {
+		signed(b)
+	}
 	for _, line := range kept {
+		if call, ok := keptAnswer(line); ok {
+			signed(call)
+			continue
+		}
 		p, id, ok := readKept(line, st, byID)
 		if !ok {
 			if id != "" {
@@ -205,6 +224,9 @@ func build(mediatorRef string, list [][]byte, kept [][]byte, all bool, note func
 			continue
 		}
 		parts = append(parts, p)
+		if p.answerCall != nil {
+			signed(p.answerCall)
+		}
 	}
 
 	for qi, pl := range places {
@@ -236,6 +258,11 @@ func build(mediatorRef string, list [][]byte, kept [][]byte, all bool, note func
 			row.AnsweredAt, row.Answerer = closing.Predicate.At, closing.Predicate.From
 			row.Answer = Closing(closing.Predicate, closing.Subject)
 			row.Receipts = append(row.Receipts, closing.ID)
+			if by := closing.Predicate.By; by.Decider == receipts.ByAnswer {
+				if c, ok := calls[by.Answer]; ok && c.Accord == lg.Accord && c.Question == q.ID {
+					row.AnswerSigned = Signed
+				}
+			}
 		}
 		if release != nil {
 			row.Receipts = append(row.Receipts, release.ID)
@@ -259,17 +286,9 @@ func build(mediatorRef string, list [][]byte, kept [][]byte, all bool, note func
 			case !p.given && release != nil && p.receipt == release.ID && q.Subject.Name == p.kind && row.Text == "":
 				row.Text = p.text
 			}
-			if !p.given && closing != nil && row.Answer == string(mediator.Changed) &&
+			if !p.given && closing != nil && row.Answer == string(answer.Changed) &&
 				st[byID[p.receipt]].Subject.Digest == closing.Subject.Digest {
 				row.ChangedText = p.text
-			}
-			if p.answerCall != nil && closing != nil && (row.Answer == string(mediator.Accepted) || row.Answer == string(mediator.Changed)) &&
-				(p.receipt == closing.ID || (release != nil && p.receipt == release.ID)) {
-				if signedBy(p, closing, lg.Accord, q.ID) {
-					row.AnswerSigned = Signed
-				} else {
-					note("the answer call kept with receipt " + p.receipt + " does not verify; left out")
-				}
 			}
 		}
 		lg.Rows = append(lg.Rows, row)
@@ -300,19 +319,22 @@ func crossingRow(s receipts.Statement, parts []keptPart) Row {
 	return row
 }
 
-// signedBy checks a kept answer call against its row: its signature under the row's answerer, its
-// Accord, its question, its action against the answer's kind, and its answer, under the kept salt,
-// against the closing receipt's digest.
-func signedBy(p keptPart, closing *receipts.Statement, accord, question string) bool {
-	sa, ok := local.VerifyAnswerCall(p.answerCall, closing.Predicate.From)
-	if !ok || sa.Accord != accord || sa.Question != question {
-		return false
+// keptAnswer reads a kept line of an answer call its key signed, {"answer","salt"}, and returns the
+// call's bytes in canonical form. It reports false for any other line: a kept part has a receipt, and
+// an answer line none. It checks no signature.
+func keptAnswer(line []byte) ([]byte, bool) {
+	var k struct {
+		Answer json.RawMessage `json:"answer"`
+		Salt   *string         `json:"salt"`
 	}
-	want := string(mediator.Accepted)
-	if closing.Subject.Name == receipts.NameChanged {
-		want = string(mediator.Changed)
+	if _, err := canonical.Form(line); err != nil || !strict.Decode(line, &k) || len(k.Answer) == 0 || k.Answer[0] != '{' || k.Salt == nil {
+		return nil, false
 	}
-	return sa.Action == want && receipts.Digest(p.salt, []byte(sa.Answer)) == closing.Subject.Digest
+	c, err := canonical.Form(k.Answer)
+	if err != nil {
+		return nil, false
+	}
+	return c, true
 }
 
 // readKept reads one kept line and checks that a verified receipt covers it. It returns the id of
@@ -457,20 +479,21 @@ func readBody(b []byte) (keptPart, []byte, bool) {
 }
 
 // readFetched reads a kept line of a part the actor fetched or a version it gave as an answer, as
-// the delivery holds it, with answerCall beside it: its kind, re, salt and text, the answer call, and
-// the bytes the salted digest covers. It checks no receipt.
+// the delivery holds it, the answer call inside it when an answer queued it: its kind, re, salt and
+// text, the answer call, and the bytes the salted digest covers. It checks no receipt.
 func readFetched(line []byte) (keptPart, []byte, bool) {
 	var k struct {
-		AnswerCall json.RawMessage `json:"answerCall"`
-		Kind       *string         `json:"kind"`
-		MessageID  *string         `json:"messageId"`
-		Re         *string         `json:"re"`
-		Receipt    json.RawMessage `json:"receipt"`
-		ReceiptID  *string         `json:"receiptId"`
-		Salt       *string         `json:"salt"`
-		Text       json.RawMessage `json:"text"`
-		Raw        json.RawMessage `json:"raw"`
-		Data       json.RawMessage `json:"data"`
+		Answer    json.RawMessage `json:"answer"`
+		MediaType *string         `json:"mediaType"`
+		Kind      *string         `json:"kind"`
+		MessageID *string         `json:"messageId"`
+		Re        *string         `json:"re"`
+		Receipt   json.RawMessage `json:"receipt"`
+		ReceiptID *string         `json:"receiptId"`
+		Salt      *string         `json:"salt"`
+		Text      json.RawMessage `json:"text"`
+		Raw       json.RawMessage `json:"raw"`
+		Data      json.RawMessage `json:"data"`
 	}
 	if !strict.Decode(line, &k) || k.Kind == nil || k.Salt == nil || k.MessageID == nil || len(k.Receipt) == 0 {
 		return keptPart{}, nil, false
@@ -487,8 +510,10 @@ func readFetched(line []byte) (keptPart, []byte, bool) {
 	if k.Re != nil {
 		p.re = *k.Re
 	}
-	if len(k.AnswerCall) > 0 {
-		p.answerCall = append([]byte(nil), k.AnswerCall...)
+	if len(k.Answer) > 0 {
+		if c, err := canonical.Form(k.Answer); err == nil {
+			p.answerCall = c
+		}
 	}
 	return p, body, true
 }

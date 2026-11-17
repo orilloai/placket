@@ -109,8 +109,8 @@ func TestTheSocketIsPrivateBeforeItIsReachable(t *testing.T) {
 }
 
 // TestAQuestionsReplyLeavesOutWhatItsSizeCannotHold builds the questions reply for five questions
-// of about 1 MiB each, even shown by size: the reply holds the oldest three, which fit within
-// MaxReply, in order, and leaves out the two after them; the door reports nothing of its own.
+// of about 1 MiB each: the reply holds the oldest three, which fit within MaxReply, in order, leaves
+// out the two after them and says more; the door reports nothing of its own.
 func TestAQuestionsReplyLeavesOutWhatItsSizeCannotHold(t *testing.T) {
 	t.Parallel()
 	str := func(s string) *string { return &s }
@@ -118,7 +118,8 @@ func TestAQuestionsReplyLeavesOutWhatItsSizeCannotHold(t *testing.T) {
 	for i := range list {
 		size := 10
 		list[i] = wireAsked{Asker: str("a"), Deadline: str("2099-01-01T00:00:00Z"), Form: str("text"),
-			ID: str(strings.Repeat(string(rune('a'+i)), 1<<20)), Kind: str("proposal"), Message: str("0123456789"), Size: &size}
+			ID: str(strings.Repeat(string(rune('a'+i)), 1<<20)), Kind: str("proposal"), Text: str("0123456789"), Size: &size,
+			Receipt: json.RawMessage(`{}`), Salt: str(strings.Repeat("00", 32))}
 	}
 	var ev Event
 	b := questionsReply(list, &ev)
@@ -126,7 +127,7 @@ func TestAQuestionsReplyLeavesOutWhatItsSizeCannotHold(t *testing.T) {
 		t.Fatalf("a reply of %d bytes, door %q", len(b), ev.Door)
 	}
 	var r wireReply
-	if err := json.Unmarshal(b, &r); err != nil || r.Questions == nil || len(*r.Questions) != 3 {
+	if err := json.Unmarshal(b, &r); err != nil || r.Questions == nil || len(*r.Questions) != 3 || r.More == nil || !*r.More {
 		t.Fatalf("read as %v, with questions %v", err, r.Questions != nil)
 	}
 	for i, q := range *r.Questions {
@@ -238,7 +239,7 @@ func TestAQuestionsReplyCountsTheCommas(t *testing.T) {
 		t.Fatalf("a reply of %d bytes, door %q", len(b), ev.Door)
 	}
 	var r wireReply
-	if err := json.Unmarshal(b, &r); err != nil || r.Questions == nil || len(*r.Questions) != 3 {
+	if err := json.Unmarshal(b, &r); err != nil || r.Questions == nil || len(*r.Questions) != 3 || r.More == nil || !*r.More {
 		t.Fatalf("read as %v, with questions %v", err, r.Questions != nil)
 	}
 }

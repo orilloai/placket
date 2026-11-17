@@ -22,7 +22,7 @@ func give(t testing.TB, m *mediator.Mediator, from, to string, seq int64, id, ki
 	t.Helper()
 	f, r := ptesting.Key(t, from), ptesting.Key(t, to)
 	msg := message(t, m.Accord(), id, r.Reference(), kind, "Part "+id+".", nil)
-	out, err := m.Give(f.Reference(), msg, envelope(t, seq, msg, f), at)
+	out, err := m.Give(f.Reference(), msg, envelope(t, seq, msg, f), nil, at)
 	if err != nil {
 		t.Fatalf("give %s: %v", id, err)
 	}
@@ -68,11 +68,11 @@ func record(t *testing.T) before {
 	}
 	var err error
 	b.accepted = ask(t, b.m, 2, "p-1", "2026-11-12T09:00:00Z")
-	if b.acceptOuts, err = b.m.Resolve(d, b.accepted, accept(true), "2026-11-12T09:10:00Z"); err != nil || len(b.acceptOuts) != 2 {
+	if b.acceptOuts, err = b.m.Resolve(d, accept(t, b.m, d, b.accepted, true), "2026-11-12T09:10:00Z"); err != nil || len(b.acceptOuts) != 2 {
 		t.Fatalf("the accept: %+v, %v", b.acceptOuts, err)
 	}
 	b.changed = ask(t, b.m, 3, "p-2", "2026-11-12T09:20:00Z")
-	if b.changeOuts, err = b.m.Resolve(d, b.changed, change(false), "2026-11-12T09:30:00Z"); err != nil || len(b.changeOuts) != 1 {
+	if b.changeOuts, err = b.m.Resolve(d, change(t, b.m, d, b.changed, false), "2026-11-12T09:30:00Z"); err != nil || len(b.changeOuts) != 1 {
 		t.Fatalf("the change: %+v, %v", b.changeOuts, err)
 	}
 	b.first = ask(t, b.m, 4, "p-3", "2026-11-12T09:40:00Z")
@@ -160,7 +160,7 @@ func TestReloadCarriesOn(t *testing.T) {
 
 	// A closed question takes no answer.
 	for _, q := range []string{b.first, b.second, b.accepted} {
-		if _, err := r.Resolve(d, q, accept(true), "2026-11-12T11:01:00Z"); !rejected(err, mediator.NoOpenQuestion) {
+		if _, err := r.Resolve(d, accept(t, r, d, q, true), "2026-11-12T11:01:00Z"); !rejected(err, mediator.NoOpenQuestion) {
 			t.Fatalf("an answer to %s: %v", q, err)
 		}
 	}
@@ -193,10 +193,10 @@ func TestReloadCarriesOn(t *testing.T) {
 	for _, s := range st {
 		last[[2]string{s.Predicate.From, s.Predicate.To}] = s
 	}
-	if _, err := r.Give(p, msgFor(t, r, "n-5", ap), envelope(t, 5, msgFor(t, r, "n-5", ap), ptesting.Key(t, "proposer")), "2026-11-12T11:02:00Z"); !rejected(err, mediator.EnvelopeSequence) {
+	if _, err := r.Give(p, msgFor(t, r, "n-5", ap), envelope(t, 5, msgFor(t, r, "n-5", ap), ptesting.Key(t, "proposer")), nil, "2026-11-12T11:02:00Z"); !rejected(err, mediator.EnvelopeSequence) {
 		t.Fatalf("the proposer's last envelope again: %v", err)
 	}
-	if _, err := r.Give(d, msgFor(t, r, "a-2", p), envelope(t, 1, msgFor(t, r, "a-2", p), ptesting.Key(t, "decider")), "2026-11-12T11:02:00Z"); !rejected(err, mediator.EnvelopeSequence) {
+	if _, err := r.Give(d, msgFor(t, r, "a-2", p), envelope(t, 1, msgFor(t, r, "a-2", p), ptesting.Key(t, "decider")), nil, "2026-11-12T11:02:00Z"); !rejected(err, mediator.EnvelopeSequence) {
 		t.Fatalf("the decider's last envelope again: %v", err)
 	}
 	for _, c := range []struct {
@@ -316,16 +316,16 @@ func TestReloadRefusesEachFault(t *testing.T) {
 			receipts.Subject{Name: "note", Digest: strings.Repeat("ab", 32)},
 			receipts.Predicate{Accord: another, Card: ask.Predicate.Card, Kind: receipts.KindCrossing, From: ask.Predicate.From,
 				To: ask.Predicate.To, At: "2026-11-12T10:50:00Z", Envelope: receipts.Envelope{Sender: ask.Predicate.From, Seq: 6, Hash: another},
-				Verdict: "pass", Reason: "ok"})), code: mediator.CodeJournal, index: len(list)},
+				Verdict: "pass", Reason: "ok", By: receipts.By{Decider: receipts.ByTerms}})), code: mediator.CodeJournal, index: len(list)},
 		{name: "a receipt of another card", list: append(append([][]byte(nil), list...), built(t, list,
 			receipts.Subject{Name: "note", Digest: strings.Repeat("ab", 32)},
 			receipts.Predicate{Accord: ask.Predicate.Accord, Card: another, Kind: receipts.KindCrossing, From: ask.Predicate.From,
 				To: ask.Predicate.To, At: "2026-11-12T10:50:00Z", Envelope: receipts.Envelope{Sender: ask.Predicate.From, Seq: 6, Hash: another},
-				Verdict: "pass", Reason: "ok"})), code: mediator.CodeJournal, index: len(list)},
+				Verdict: "pass", Reason: "ok", By: receipts.By{Decider: receipts.ByTerms}})), code: mediator.CodeJournal, index: len(list)},
 		{name: "a receipt edited in one byte", list: edited, code: mediator.CodeJournal, index: 3, inner: receipts.CodeSignature},
 		{name: "a release with no answer before it", list: append(append([][]byte(nil), list...), built(t, list, ask.Subject,
 			receipts.Predicate{Accord: ask.Predicate.Accord, Card: ask.Predicate.Card, Kind: receipts.KindCrossing, From: ask.Predicate.From,
-				To: ask.Predicate.To, At: "2026-11-12T10:50:00Z", Envelope: ask.Predicate.Envelope, Verdict: "pass", Reason: "ok"})),
+				To: ask.Predicate.To, At: "2026-11-12T10:50:00Z", Envelope: ask.Predicate.Envelope, Verdict: "pass", Reason: "ok", By: receipts.By{Decider: receipts.ByTerms}})),
 			code: mediator.CodeJournal, index: len(list), inner: receipts.CodeRelease},
 		{name: "a delivery for a party the receipt queued nothing for", queued: append(append([]mediator.Queued(nil), queued[:len(queued)-1]...),
 			mediator.Queued{To: ptesting.Key(t, "proposer").Reference(), Delivery: released.Delivery}), code: mediator.CodeHeld, index: len(queued) - 1},
@@ -441,7 +441,7 @@ func TestTwoMediatorsOneRecordThroughAReload(t *testing.T) {
 		r, outs := reload(t, b, "2026-11-12T11:00:00Z")
 		give(t, r, "proposer", "applier", 6, "n-6", "note", "2026-11-12T11:01:00Z")
 		q := ask(t, r, 7, "p-7", "2026-11-12T11:02:00Z")
-		if _, err := r.Resolve(ptesting.Key(t, "decider").Reference(), q, change(true), "2026-11-12T11:03:00Z"); err != nil {
+		if _, err := r.Resolve(ptesting.Key(t, "decider").Reference(), change(t, r, ptesting.Key(t, "decider").Reference(), q, true), "2026-11-12T11:03:00Z"); err != nil {
 			t.Fatal(err)
 		}
 		ask(t, r, 8, "p-8", "2026-11-12T11:04:00Z")
@@ -492,7 +492,7 @@ func TestReloadRefusesASaltOfAnotherLength(t *testing.T) {
 		r := built(t, list, receipts.Subject{Name: "note", Digest: receipts.Digest(salt, []byte(body))},
 			receipts.Predicate{Accord: ask.Predicate.Accord, Card: ask.Predicate.Card, Kind: receipts.KindCrossing, From: p, To: ap,
 				At: "2026-11-12T10:50:00Z", Envelope: receipts.Envelope{Sender: p, Seq: 6, Hash: "sha256:" + strings.Repeat("cd", 32)},
-				Verdict: "pass", Reason: "ok"})
+				Verdict: "pass", Reason: "ok", By: receipts.By{Decider: receipts.ByTerms}})
 		st, err := receipts.Decode(r)
 		if err != nil {
 			t.Fatal(err)

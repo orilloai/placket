@@ -2,12 +2,14 @@
 // founding's check table, and holds what the founded Accord says: its id and card hash, its members,
 // the roles their bindings give them, the principals that signed those bindings, and their terms.
 //
-// It implements setup-contract-1 to setup-contract-10: declarations and terms (setup-contract-1),
-// bindings and roles (setup-contract-2, setup-contract-3), the card (setup-contract-4), the Accord id
+// It implements setup-contract-1 to setup-contract-11: declarations and terms, a maybe term's judges
+// among them (setup-contract-1), bindings and roles (setup-contract-2, setup-contract-3), the card
+// and its judges (setup-contract-4), the Accord id
 // (setup-contract-5), a principal per party and the roles the policy lets it grant
 // (setup-contract-2, setup-contract-3, setup-contract-9), membership (setup-contract-6), the mediator and its operator
 // (setup-contract-7), the refusal order (setup-contract-8), the shape of a set (setup-contract-9) and
-// the order of its lists (setup-contract-10).
+// the order of its lists (setup-contract-10), and the earlier Accord a policy supersedes
+// (setup-contract-11).
 package setup
 
 import (
@@ -32,10 +34,12 @@ const (
 	DeclarationSignature Code = "declaration-signature"
 	TermInvalid          Code = "term-invalid"
 	MaybeWithoutResolve  Code = "maybe-without-resolve"
-	CheckUnknown         Code = "check-unknown"
-	BindingMissing       Code = "binding-missing"
-	BindingPrincipal     Code = "binding-principal"
-	BindingSignature     Code = "binding-signature"
+	// JudgeUnknown: a term's resolve names a judge the card's judges do not list (setup-contract-1,
+	// setup-contract-8).
+	JudgeUnknown     Code = "judge-unknown"
+	BindingMissing   Code = "binding-missing"
+	BindingPrincipal Code = "binding-principal"
+	BindingSignature Code = "binding-signature"
 	// BindingRole: a binding gives a role its principal's policy entry does not list
 	// (setup-contract-3).
 	BindingRole Code = "binding-role"
@@ -47,6 +51,12 @@ const (
 	DeclarationMissing Code = "declaration-missing"
 	RoleMissing        Code = "role-missing"
 )
+
+// CheckUnknown was row 8's code, when a term could name a check.
+//
+// Deprecated: founding never returns it. Row 8 is JudgeUnknown, and a term with checks is
+// TermInvalid (docs/adr/0021-who-decided-and-the-answer-call.md). It is removed at the release.
+const CheckUnknown Code = "check-unknown"
 
 // CodeAt is not a founding code: the founding time its caller gave does not keep the timestamp rule.
 const CodeAt Code = "at"
@@ -79,31 +89,62 @@ type Term struct {
 	With []string
 	// Kinds are the kinds its select names.
 	Kinds []string
-	// Checks are the checks it names. A founded Accord has none in this version.
+	// Checks is always nil.
+	//
+	// Deprecated: a term names no check; founding refuses a term with checks as TermInvalid
+	// (docs/adr/0021-who-decided-and-the-answer-call.md). It is removed at the release.
 	Checks []Check
 	// Resolve is the rule of a maybe term, and nil on any other.
 	Resolve *Rule
 }
 
-// A Check is a check a term names (setup-contract-1).
+// A Check was a check a term named.
+//
+// Deprecated: nothing builds or reads one (docs/adr/0021-who-decided-and-the-answer-call.md). It is
+// removed at the release.
 type Check struct{ Name, Corpus string }
 
-// A Rule is a maybe term's resolve: the role labels of who answers, and the timeout in seconds
-// (setup-contract-1, maybe-1).
+// Use is what a term grants a judge: to decide where the terms would ask, or to advise only
+// (setup-contract-1, composition-7).
+type Use string
+
+// The two uses of a judge (setup-contract-1).
+const (
+	Decide Use = "decide"
+	Advise Use = "advise"
+)
+
+// A Judge is one entry of a maybe term's resolve.judges: the judge's card name and the use the term
+// grants it (setup-contract-1, composition-7).
+type Judge struct {
+	Name string
+	Use  Use
+}
+
+// A CardJudge is one entry of the card's judges: a judge's name, and the version and hash that pin
+// its build (setup-contract-4). It is distinct from Judge, since a term grants a use and the card
+// pins a build.
+type CardJudge struct{ Name, Version, Hash string }
+
+// A Rule is a maybe term's resolve: the role labels of who answers, the timeout in seconds, and the
+// judges it lists, in order (setup-contract-1, maybe-1, composition-7).
 type Rule struct {
 	To      []string
 	Timeout int64
+	Judges  []Judge
 }
 
 // An Accord is a founded founding set (setup-contract-5, record 0005). Its
 // read methods take a nil *Accord as an Accord with no members and no terms, and return zero values,
 // so a caller handed none fails closed and never panics (core-no-panic).
 type Accord struct {
-	id, card, mediator string
-	members            []string
-	roles              map[string][]string
-	principals         map[string]string
-	terms              map[string][]Term
+	id, card, mediator, operator string
+	supersedes                   [2]string
+	judges                       []CardJudge
+	members                      []string
+	roles                        map[string][]string
+	principals                   map[string]string
+	terms                        map[string][]Term
 }
 
 // ID returns the Accord id: the typed hash of the set's canonical bytes (setup-contract-5).
@@ -129,6 +170,32 @@ func (a *Accord) Mediator() string {
 		return ""
 	}
 	return a.mediator
+}
+
+// Operator returns the reference of the party that runs the mediator, the set's mediator.operator
+// (setup-contract-7).
+func (a *Accord) Operator() string {
+	if a == nil {
+		return ""
+	}
+	return a.operator
+}
+
+// CardJudges returns the card's judges, in card order (setup-contract-4).
+func (a *Accord) CardJudges() []CardJudge {
+	if a == nil {
+		return nil
+	}
+	return append([]CardJudge(nil), a.judges...)
+}
+
+// Supersedes returns the earlier Accord the policy supersedes, by its id and the id of its close
+// receipt; ok is false when the policy has no supersedes (setup-contract-11).
+func (a *Accord) Supersedes() (accord, close string, ok bool) {
+	if a == nil || a.supersedes[0] == "" {
+		return "", "", false
+	}
+	return a.supersedes[0], a.supersedes[1], true
 }
 
 // Members returns the actors with a declaration in the set, in actor-reference order
@@ -176,9 +243,10 @@ func (a *Accord) Terms(actor string) []Term {
 		c := t
 		c.With = append([]string(nil), t.With...)
 		c.Kinds = append([]string(nil), t.Kinds...)
-		c.Checks = append([]Check(nil), t.Checks...)
+		c.Checks = nil
 		if t.Resolve != nil {
-			r := Rule{To: append([]string(nil), t.Resolve.To...), Timeout: t.Resolve.Timeout}
+			r := Rule{To: append([]string(nil), t.Resolve.To...), Timeout: t.Resolve.Timeout,
+				Judges: append([]Judge(nil), t.Resolve.Judges...)}
 			c.Resolve = &r
 		}
 		out = append(out, c)
@@ -217,7 +285,7 @@ func Found(set []byte, at string) (*Accord, error) {
 	if !ok || !shape.Only(top, "policy", "mediator", "card", "declarations", "bindings") {
 		return fail(InvalidShape)
 	}
-	grants, roles, ok := policy(top["policy"])
+	grants, roles, supersedes, ok := policy(top["policy"])
 	if !ok {
 		return fail(InvalidShape)
 	}
@@ -229,8 +297,12 @@ func Found(set []byte, at string) (*Accord, error) {
 	}
 	ps := sha256.Sum256(policyBytes)
 	policyHash := canonical.HashPrefix + hex.EncodeToString(ps[:])
-	mediator, ok := mediatorOf(top["mediator"])
-	if !ok || !card(top["card"]) {
+	mediator, operator, ok := mediatorOf(top["mediator"])
+	if !ok {
+		return fail(InvalidShape)
+	}
+	judges, ok := card(top["card"])
+	if !ok {
 		return fail(InvalidShape)
 	}
 	decls, ok := declarations(top["declarations"])
@@ -252,7 +324,7 @@ func Found(set []byte, at string) (*Accord, error) {
 		byActor[b.actor] = b
 	}
 
-	a := &Accord{mediator: mediator, roles: map[string][]string{}, principals: map[string]string{}, terms: map[string][]Term{}}
+	a := &Accord{mediator: mediator, operator: operator, supersedes: supersedes, judges: judges, roles: map[string][]string{}, principals: map[string]string{}, terms: map[string][]Term{}}
 	// Rows 4 to 15, each declaration's in actor-reference order.
 	for _, d := range decls {
 		actor, ok := d.actor.(string)
@@ -271,11 +343,15 @@ func Found(set []byte, at string) (*Accord, error) {
 				return fail(MaybeWithoutResolve)
 			}
 		}
+		// Row 8: every judge a resolve names is a judge of the card (setup-contract-1).
 		for _, t := range ts {
-			if len(t.Checks) > 0 {
-				// The card loads no check in this version (setup-contract-4), so every named check is
-				// unknown.
-				return fail(CheckUnknown)
+			if t.Resolve == nil {
+				continue
+			}
+			for _, j := range t.Resolve.Judges {
+				if !hasJudge(judges, j.Name) {
+					return fail(JudgeUnknown)
+				}
 			}
 		}
 		b, ok := byActor[actor]
@@ -335,6 +411,16 @@ func Found(set []byte, at string) (*Accord, error) {
 	return a, nil
 }
 
+// hasJudge reports whether the card's judges list one named name.
+func hasJudge(judges []CardJudge, name string) bool {
+	for _, j := range judges {
+		if j.Name == name {
+			return true
+		}
+	}
+	return false
+}
+
 // expired reports whether a binding's until is not later than the founding time. Both keep the
 // timestamp rule, whose fixed form orders as text.
 func expired(until, at string) bool { return until <= at }
@@ -350,84 +436,101 @@ func reference(v any) (string, bool) {
 
 // policy reads the policy: exactly roles, distinct labels, and principals, a non-empty list of
 // entries, each exactly a principal, an actor reference no other entry names, and roles, a non-empty
-// list of distinct labels (setup-contract-9). It returns the roles each principal may grant.
-func policy(v any) (map[string]map[string]bool, []string, bool) {
+// list of distinct labels (setup-contract-9); and optionally supersedes, exactly accord and close,
+// two typed hashes (setup-contract-11). It returns the roles each principal may grant, and the
+// earlier Accord's id and close receipt's id, or two empty strings.
+func policy(v any) (map[string]map[string]bool, []string, [2]string, bool) {
+	var sup [2]string
 	o, ok := v.(shape.Object)
-	if !ok || !shape.Only(o, "roles", "principals") {
-		return nil, nil, false
+	if !ok || !shape.Only(o, "roles", "principals", "", "supersedes") {
+		return nil, nil, sup, false
+	}
+	if x, has := o["supersedes"]; has {
+		so, ok := x.(shape.Object)
+		if !ok || !shape.Only(so, "accord", "close") || !hash(so["accord"]) || !hash(so["close"]) {
+			return nil, nil, sup, false
+		}
+		sup = [2]string{so["accord"].(string), so["close"].(string)}
 	}
 	var roles []string
 	if l, ok := o["roles"].([]any); ok && len(l) == 0 {
 		roles = nil
 	} else if roles, ok = shape.Strings(o["roles"], shape.Label); !ok {
-		return nil, nil, false
+		return nil, nil, sup, false
 	}
 	l, ok := o["principals"].([]any)
 	if !ok || len(l) == 0 {
-		return nil, nil, false
+		return nil, nil, sup, false
 	}
 	grants := map[string]map[string]bool{}
 	for _, x := range l {
 		e, ok := x.(shape.Object)
 		if !ok || !shape.Only(e, "principal", "roles") {
-			return nil, nil, false
+			return nil, nil, sup, false
 		}
 		p, ok := reference(e["principal"])
 		if _, seen := grants[p]; !ok || seen {
-			return nil, nil, false
+			return nil, nil, sup, false
 		}
 		rs, ok := shape.Strings(e["roles"], shape.Label)
 		if !ok {
-			return nil, nil, false
+			return nil, nil, sup, false
 		}
 		grants[p] = map[string]bool{}
 		for _, r := range rs {
 			grants[p][r] = true
 		}
 	}
-	return grants, roles, true
+	return grants, roles, sup, true
 }
 
 // mediatorOf reads the mediator: exactly actor and operator, actor references, and runs, process
-// (setup-contract-7).
-func mediatorOf(v any) (string, bool) {
+// (setup-contract-7). It returns the actor and the operator.
+func mediatorOf(v any) (string, string, bool) {
 	o, ok := v.(shape.Object)
 	if !ok || !shape.Only(o, "actor", "operator", "runs") {
-		return "", false
+		return "", "", false
 	}
 	actor, ok := reference(o["actor"])
 	if !ok {
-		return "", false
+		return "", "", false
 	}
-	if _, ok := reference(o["operator"]); !ok || o["runs"] != "process" {
-		return "", false
+	operator, ok := reference(o["operator"])
+	if !ok || o["runs"] != "process" {
+		return "", "", false
 	}
-	return actor, true
+	return actor, operator, true
 }
 
-// card reads the card for shape: spec 0.1, the kernel's version and hash, the reserved judges, and
-// an empty checks (setup-contract-4).
-func card(v any) bool {
+// card reads the card for shape: exactly spec 0.1, the kernel's version and hash, and judges, an
+// ordered list of a name, a version and a hash each, no two of one name (setup-contract-4). It
+// returns the judges.
+func card(v any) ([]CardJudge, bool) {
 	o, ok := v.(shape.Object)
-	if !ok || !shape.Only(o, "spec", "kernel", "judges", "checks") || o["spec"] != Spec {
-		return false
+	if !ok || !shape.Only(o, "spec", "kernel", "judges") || o["spec"] != Spec {
+		return nil, false
 	}
 	k, ok := o["kernel"].(shape.Object)
 	if !ok || !shape.Only(k, "version", "hash") || !version(k["version"]) || !hash(k["hash"]) {
-		return false
+		return nil, false
 	}
-	judges, ok := o["judges"].([]any)
+	l, ok := o["judges"].([]any)
 	if !ok {
-		return false
+		return nil, false
 	}
-	for _, j := range judges {
+	judges := []CardJudge{}
+	for _, j := range l {
 		c, ok := j.(shape.Object)
 		if !ok || !shape.Only(c, "name", "version", "hash") || !label(c["name"]) || !version(c["version"]) || !hash(c["hash"]) {
-			return false
+			return nil, false
 		}
+		name := c["name"].(string)
+		if hasJudge(judges, name) {
+			return nil, false
+		}
+		judges = append(judges, CardJudge{Name: name, Version: c["version"].(string), Hash: c["hash"].(string)})
 	}
-	checks, ok := o["checks"].([]any)
-	return ok && len(checks) == 0
+	return judges, true
 }
 
 func label(v any) bool {
@@ -538,8 +641,9 @@ func bindings(v any) ([]binding, bool) {
 }
 
 // terms reads a declaration's terms (setup-contract-1): a non-empty list of terms, each with exactly
-// stance, dir, with and select, and checks and resolve where they may be. Whether a maybe term has its
-// resolve is the next row's.
+// stance, dir, with and select, and resolve where it may be, with its judges. A term with checks
+// holds a member the term does not list. Whether a maybe term has its resolve is the next row's, and
+// whether the card has each judge the row after.
 func terms(v any) ([]Term, bool) {
 	l, ok := v.([]any)
 	if !ok || len(l) == 0 {
@@ -548,7 +652,7 @@ func terms(v any) ([]Term, bool) {
 	out := make([]Term, 0, len(l))
 	for _, x := range l {
 		o, ok := x.(shape.Object)
-		if !ok || !shape.Only(o, "stance", "dir", "with", "select", "", "checks", "resolve") {
+		if !ok || !shape.Only(o, "stance", "dir", "with", "select", "", "resolve") {
 			return nil, false
 		}
 		var t Term
@@ -572,25 +676,12 @@ func terms(v any) ([]Term, bool) {
 		if t.Kinds, ok = shape.Strings(sel["kind"], shape.Label); !ok {
 			return nil, false
 		}
-		if c, has := o["checks"]; has {
-			cl, ok := c.([]any)
-			if !ok || len(cl) == 0 {
-				return nil, false
-			}
-			for _, y := range cl {
-				co, ok := y.(shape.Object)
-				if !ok || !shape.Only(co, "name", "corpus") || !label(co["name"]) || !label(co["corpus"]) {
-					return nil, false
-				}
-				t.Checks = append(t.Checks, Check{Name: co["name"].(string), Corpus: co["corpus"].(string)})
-			}
-		}
 		if r, has := o["resolve"]; has {
 			if t.Stance != StanceMaybe {
 				return nil, false
 			}
 			ro, ok := r.(shape.Object)
-			if !ok || !shape.Only(ro, "to", "timeout") {
+			if !ok || !shape.Only(ro, "to", "timeout", "", "judges") {
 				return nil, false
 			}
 			to, ok := selectors(ro["to"])
@@ -602,8 +693,39 @@ func terms(v any) ([]Term, bool) {
 				return nil, false
 			}
 			t.Resolve = &Rule{To: to, Timeout: timeout}
+			if j, has := ro["judges"]; has {
+				if t.Resolve.Judges, ok = termJudges(j); !ok {
+					return nil, false
+				}
+			}
 		}
 		out = append(out, t)
+	}
+	return out, true
+}
+
+// termJudges reads a resolve's judges: a non-empty ordered list of objects of exactly a name, a
+// label, and a use, decide or advise, no two of one name (setup-contract-1).
+func termJudges(v any) ([]Judge, bool) {
+	l, ok := v.([]any)
+	if !ok || len(l) == 0 {
+		return nil, false
+	}
+	out := make([]Judge, 0, len(l))
+	seen := map[string]bool{}
+	for _, x := range l {
+		o, ok := x.(shape.Object)
+		if !ok || !shape.Only(o, "name", "use") || !label(o["name"]) {
+			return nil, false
+		}
+		name := o["name"].(string)
+		u, _ := o["use"].(string)
+		use := Use(u)
+		if (use != Decide && use != Advise) || seen[name] {
+			return nil, false
+		}
+		seen[name] = true
+		out = append(out, Judge{Name: name, Use: use})
 	}
 	return out, true
 }

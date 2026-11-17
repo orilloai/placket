@@ -17,7 +17,8 @@ func init() {
 
 // logCommand is `log --mediator M --receipts DIR [--kept DIR...] [--format json|csv] [--words |
 // --no-words] [--all]`: the export, one row per question, and with --all one for every crossing
-// besides, in journal order (log-1, log-2). JSON carries the claim and the scope line; with
+// besides, in journal order (log-1, log-2). The journal's answers.jsonl, when it has one, is read
+// beside its receipts, for answer_signed. JSON carries the claim and the scope line; with
 // CSV they are printed on standard error. On a terminal the cells' control characters are escaped.
 // A journal that does not verify prints no row and exits 3.
 func logCommand(r *run, args []string) int {
@@ -37,6 +38,10 @@ func logCommand(r *run, args []string) int {
 	if err != nil {
 		return r.failed(err)
 	}
+	answers, err := journal.ReadAnswers(*dir, r.stderr)
+	if err != nil {
+		return r.failed(err)
+	}
 	var lines [][]byte
 	for _, path := range kept {
 		d, err := state.Read(path)
@@ -53,7 +58,7 @@ func logCommand(r *run, args []string) int {
 	if *all {
 		build = export.BuildAll
 	}
-	lg, err := build(*med, list, lines, func(s string) { fmt.Fprintln(r.stderr, s) })
+	lg, err := build(*med, list, lines, answers, func(s string) { fmt.Fprintln(r.stderr, s) })
 	if err != nil {
 		var ee *export.Error
 		if errors.As(err, &ee) && ee.Index >= 0 {
