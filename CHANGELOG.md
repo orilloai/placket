@@ -25,7 +25,7 @@ This file covers the tool and its Go API. Changes to the protocol's frozen forma
 
 - `placket key` writes a key file atomically: to a temporary file, synced, then linked into place, so a crash never leaves half a key. It still never overwrites an existing file.
 - `bind` requires `--policy FILE`, and an Accord's policy gives each principal the roles it may grant (decision record 0014).
-- Text and flags that are not valid UTF-8 are refused, never repaired: `give`, `answer` and `change --text` give tool error `text`, and `bind --actor`, `--role` and `--mediator` give `usage`.
+- Text and flags that are not valid UTF-8 are refused, never repaired: `give`, `answer` and `change --text` give tool error `text`, `decline` and `change --comment` give `comment`, and `give --to`, `--kind`, `--re` and `--topic` and `bind --actor`, `--role` and `--mediator` give `usage`.
 - `--accord` must be an Accord id, `sha256:` and 64 lowercase hex characters, before any path is built from it; otherwise `usage`.
 - `give --as raw --text` is `usage`: `--text` gives a text part only.
 - `verify --founding` on a journal with no receipts checks the founding set and that its mediator is `--mediator`, with no Accord to compare, where it gave `error founding` before.

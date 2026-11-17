@@ -44,6 +44,46 @@ func TestTextThatIsNotUTF8IsRefused(t *testing.T) {
 	must(t, a.as("decider", "answer", "--question", q)...)
 }
 
+// TestCommentsAndHeadersThatAreNotUTF8AreRefused declines and changes with a comment holding a byte
+// that is not UTF-8: tool error comment, exit 3, nothing sent, so the question stays open. A give
+// whose receiver, kind, re or topic is not UTF-8 is tool error usage and sends nothing. Nothing is
+// repaired into other text (parse-strict).
+func TestCommentsAndHeadersThatAreNotUTF8AreRefused(t *testing.T) {
+	t.Parallel()
+	a := newAccord(t, "proposer", "applier", "decider")
+	a.start(t)
+	q := a.openOne(t, "Rename total.")
+	before := string(a.receipts(t))
+	for _, args := range [][]string{
+		{"decline", "--question", q, "--comment", notUTF8},
+		{"change", "--question", q, "--text", "Rename sum.", "--comment", notUTF8},
+	} {
+		r := run(t, env(), a.as("decider", args...)...)
+		if r.code != 3 || r.stdout != "" || r.stderr != "error comment\n" {
+			t.Fatalf("%s: %v", args[0], r)
+		}
+	}
+	if string(a.receipts(t)) != before {
+		t.Fatal("a comment that is not UTF-8 sent a call")
+	}
+	for _, bad := range []string{"--to", "--kind", "--re", "--topic"} {
+		flags := map[string]string{"--to": a.refs["applier"], "--kind": "proposal", "--re": q, "--topic": "names"}
+		flags[bad] = notUTF8
+		args := []string{"give", "--text", "Rename count."}
+		for f, v := range flags {
+			args = append(args, f, v)
+		}
+		r := run(t, env(), a.as("proposer", args...)...)
+		if r.code != 3 || r.stdout != "" || r.stderr != "error usage\n" {
+			t.Fatalf("give with %s not UTF-8: %v", bad, r)
+		}
+	}
+	if string(a.receipts(t)) != before {
+		t.Fatal("a give with a header that is not UTF-8 sent a call")
+	}
+	must(t, a.as("decider", "decline", "--question", q, "--comment", "Not now.")...)
+}
+
 // TestBindRefusesFlagsThatAreNotUTF8 binds with an actor, a role or a mediator holding a byte that
 // is not UTF-8: each is tool error usage and prints no binding.
 func TestBindRefusesFlagsThatAreNotUTF8(t *testing.T) {

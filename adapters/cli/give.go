@@ -66,6 +66,16 @@ func (r *run) readBody(text, file, as string, textSet bool) (body, int) {
 	return body{}, r.tool(codeUsage)
 }
 
+// allUTF8 reports whether every string is UTF-8.
+func allUTF8(list ...string) bool {
+	for _, s := range list {
+		if !utf8.ValidString(s) {
+			return false
+		}
+	}
+	return true
+}
+
 // uuid is a fresh lowercase UUID version 4.
 func uuid(rand io.Reader) (string, bool) {
 	b := make([]byte, 16)
@@ -163,7 +173,8 @@ func giveCommand(r *run, args []string) int {
 	text, file, as := fs.String("text", "", "text"), fs.String("file", "", "file"), fs.String("as", "text", "text, raw or data")
 	re, topic := fs.String("re", "", "re"), fs.String("topic", "", "topic")
 	keep, wait := fs.Bool("keep", false, "keep the part"), fs.Bool("wait", false, "wait for the answer")
-	if !r.parse(fs, args, "key", "socket", "accord", "to", "kind") {
+	// A receiver, kind, re or topic that is not UTF-8 is refused, never repaired (parse-strict).
+	if !r.parse(fs, args, "key", "socket", "accord", "to", "kind") || !allUTF8(*to, *kind, *re, *topic) {
 		return r.tool(codeUsage)
 	}
 	textSet := false

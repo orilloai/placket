@@ -3,7 +3,6 @@ package cli
 import (
 	"encoding/json"
 	"time"
-	"unicode/utf8"
 
 	"github.com/orilloai/placket/adapters/keyfile"
 	"github.com/orilloai/placket/adapters/local"
@@ -32,10 +31,8 @@ func bindCommand(r *run, args []string) int {
 		return r.tool(codeUsage)
 	}
 	// A flag that is not UTF-8 is refused, never repaired into another value (parse-strict).
-	for _, s := range append([]string{*actor, *med}, roles...) {
-		if !utf8.ValidString(s) {
-			return r.tool(codeUsage)
-		}
+	if !allUTF8(append([]string{*actor, *med}, roles...)...) {
+		return r.tool(codeUsage)
 	}
 	if t, err := time.Parse(time.RFC3339, *until); err != nil || local.Stamp(t) != *until {
 		return r.tool(codeUntil)
