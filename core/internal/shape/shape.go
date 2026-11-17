@@ -60,9 +60,10 @@ func Timestamp(s string) bool {
 }
 
 // AddSeconds returns the timestamp n seconds after ts; a time past LastTime is LastTime (maybe-1). A
-// ts that does not keep the timestamp rule gives the empty string.
+// ts that does not keep the timestamp rule, or a negative n, which no timeout is, gives the empty
+// string.
 func AddSeconds(ts string, n int64) string {
-	if !Timestamp(ts) {
+	if !Timestamp(ts) || n < 0 {
 		return ""
 	}
 	t, _ := time.Parse(layout, ts)

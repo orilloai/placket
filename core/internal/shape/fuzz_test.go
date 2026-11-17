@@ -50,7 +50,8 @@ func FuzzTimestamp(f *testing.F) {
 }
 
 // FuzzAddSeconds adds any number of seconds to any string. A timestamp plus a number from 0 is a
-// timestamp no earlier, and at most the last time; anything but a timestamp gives no time (maybe-1).
+// timestamp no earlier, and at most the last time; anything but a timestamp, or a negative number,
+// gives no time (maybe-1).
 func FuzzAddSeconds(f *testing.F) {
 	for _, c := range []struct {
 		s string
@@ -75,6 +76,9 @@ func FuzzAddSeconds(f *testing.F) {
 			return
 		}
 		if n < 0 {
+			if out != "" {
+				t.Fatalf("AddSeconds(%q, %d) = %q, want no time", s, n, out)
+			}
 			return
 		}
 		if !Timestamp(out) || out < s || out > LastTime {
