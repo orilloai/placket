@@ -171,6 +171,57 @@ func TestReadRepairsWhatWasNeverWritten(t *testing.T) {
 	}
 }
 
+// TestACutAnswerLineIsRepairedAtStart cuts the last line of answers.jsonl, as a crash during its
+// append leaves it: the next start removes the cut line, with one line on stderr, and the call the
+// restarted window appends next is a whole line of its own, which ReadAnswers reads beside the
+// first.
+func TestACutAnswerLineIsRepairedAtStart(t *testing.T) {
+	t.Parallel()
+	dir := filepath.Join(t.TempDir(), "j")
+	j, err := journal.Open(dir, &bytes.Buffer{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := j.Found(accord, card, med, "2026-11-12T09:00:00Z"); err != nil {
+		t.Fatal(err)
+	}
+	call := func(action string) string {
+		return `{"accord":"` + accord + `","action":"` + action + `","from":"` + med + `","question":"` + id + `","sig":"` + strings.Repeat("ab", 64) + `"}`
+	}
+	if err := j.AddAnswer([]byte(call("declined"))); err != nil {
+		t.Fatal(err)
+	}
+	_ = j.Close()
+	path := filepath.Join(dir, journal.FileAnswers)
+	f, err := os.OpenFile(path, os.O_APPEND|os.O_WRONLY, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.WriteString(call("cancelled")[:40]); err != nil {
+		t.Fatal(err)
+	}
+	_ = f.Close()
+	var stderr bytes.Buffer
+	j, err = journal.Open(dir, &stderr)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer j.Close()
+	if _, err := j.Read(); err != nil {
+		t.Fatal(err)
+	}
+	if want := "journal: answers.jsonl line 2 had no line feed and was never answered; removed\n"; stderr.String() != want {
+		t.Fatalf("stderr: %q", stderr.String())
+	}
+	if err := j.AddAnswer([]byte(call("cancelled"))); err != nil {
+		t.Fatal(err)
+	}
+	calls, err := journal.ReadAnswers(dir, &bytes.Buffer{})
+	if err != nil || len(calls) != 2 || string(calls[0]) != call("declined") || string(calls[1]) != call("cancelled") {
+		t.Fatalf("ReadAnswers after the restart: %q, %v", calls, err)
+	}
+}
+
 // TestReadRefusesWhatNoWindowWrote reads journals whose files are not in their formats: each is
 // CodeJournal, naming the file and the line.
 func TestReadRefusesWhatNoWindowWrote(t *testing.T) {

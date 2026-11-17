@@ -256,6 +256,14 @@ func verifyCommand(r *run, args []string) int {
 	}
 	decisions := []any{}
 	terms, outside := 0, 0
+	// The closing of each question, by the question's index: an unwitnessed release names the roles
+	// of its closing's from, the answerer, not of its own, the asker.
+	closings := map[int]receipts.Statement{}
+	for i, pl := range sub.Places {
+		if pl.Role == receipts.RoleClosing {
+			closings[pl.Question] = st[i]
+		}
+	}
 	for _, d := range report.Decisions {
 		switch {
 		case d.By.Decider == receipts.ByTerms:
@@ -263,7 +271,11 @@ func verifyCommand(r *run, args []string) int {
 		case !d.Checked && *subset:
 			outside++
 		case a != nil:
-			l := decisionLine(a, st[d.Index], d, answers)
+			answerer := st[d.Index].Predicate.From
+			if pl := sub.Places[d.Index]; pl.Role == receipts.RoleRelease {
+				answerer = closings[pl.Question].Predicate.From
+			}
+			l := decisionLine(a, st[d.Index], d, answers, answerer)
 			fmt.Fprintln(r.stderr, l)
 			decisions = append(decisions, map[string]any{memberReceiptID: st[d.Index].ID, "line": l})
 		}
@@ -332,8 +344,9 @@ func validity(mediatorRef string, list [][]byte, subset bool) (receipts.Subset, 
 // decisionLine is the line verify prints for a receipt the terms did not decide (commands-8): an
 // answer witnessed, by the key that signed its call and who bound it to which roles, or unwitnessed;
 // a judge of the card; or the mediator, by its event. An unwitnessed answer names the roles of the
-// receipt's from, as its binding gives them.
-func decisionLine(a *setup.Accord, s receipts.Statement, d conform.Decision, answers [][]byte) string {
+// answerer, the from of the question's closing, as its binding gives them. A call is read only in
+// its canonical bytes, as conform matches it.
+func decisionLine(a *setup.Accord, s receipts.Statement, d conform.Decision, answers [][]byte, answerer string) string {
 	switch d.By.Decider {
 	case receipts.ByJudge:
 		return fmt.Sprintf(LineByJudge, s.ID, d.By.Judge)
@@ -345,7 +358,7 @@ func decisionLine(a *setup.Accord, s receipts.Statement, d conform.Decision, ans
 	}
 	if d.Witness == conform.Witnessed {
 		for _, b := range answers {
-			if answer.ID(b) != d.By.Answer {
+			if c, err := canonical.Form(b); err != nil || !bytes.Equal(c, b) || answer.ID(b) != d.By.Answer {
 				continue
 			}
 			if c, err := answer.Read(b); err == nil {
@@ -356,7 +369,7 @@ func decisionLine(a *setup.Accord, s receipts.Statement, d conform.Decision, ans
 	if s.Predicate.Reason == receipts.ReasonCancelled {
 		return fmt.Sprintf(LineUnwitnessedCancel, s.ID)
 	}
-	return fmt.Sprintf(LineUnwitnessed, s.ID, strings.Join(a.Roles(s.Predicate.From), ","))
+	return fmt.Sprintf(LineUnwitnessed, s.ID, strings.Join(a.Roles(answerer), ","))
 }
 
 // putModule puts the operator and the decision module of a founded set: operator, runs, module and

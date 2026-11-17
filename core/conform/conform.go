@@ -121,6 +121,11 @@ type question struct {
 // 4, per receipt in list order, every row of one receipt before the next; the first failure is a
 // *Error with its code and the receipt's index. Row 3 runs only when the card's kernel hash is
 // Kernel; rows 1, 2 and 4 run whatever the module. Row 5 is Body's.
+//
+// A validity or founding failure returns an empty Report. A conformance failure returns the Report
+// of the whole list with it: every receipt's decision, each witness the calls show, and the count of
+// calls matching no receipt, so that a log that does not conform can still be read decision by
+// decision. Only the first failure is returned.
 func Check(e Evidence) (Report, error) {
 	if len(e.Founding) == 0 {
 		sub, err := verify(e.Mediator, e.Receipts, e.Subset)
@@ -129,7 +134,8 @@ func Check(e Evidence) (Report, error) {
 		}
 		r := Report{Mediator: e.Mediator, Subset: sub}
 		for i, v := range sub.Verified {
-			r.Decisions = append(r.Decisions, Decision{Index: i, By: v.Statement().Predicate.By})
+			r.Decisions = append(r.Decisions, Decision{Index: i, By: v.Statement().Predicate.By,
+				Checked: sub.Places[i].Role != receipts.RoleOutside})
 		}
 		return r, nil
 	}
@@ -158,23 +164,34 @@ func Check(e Evidence) (Report, error) {
 	}
 	c := checker{e: e, a: a, r: &r, questions: map[int]*question{}, calls: map[string][]byte{}, used: map[string]bool{}}
 	for _, b := range e.Answers {
-		if id := answer.ID(b); id != "" {
+		if id := callID(b); id != "" {
 			if _, seen := c.calls[id]; !seen {
 				c.calls[id] = b
 			}
 		}
 	}
+	var first error
 	for i := range sub.Verified {
-		if err := c.receipt(i); err != nil {
-			return Report{}, err
+		if code := c.receipt(i); code != "" && first == nil {
+			first = &Error{Code: code, Index: i}
 		}
 	}
 	for _, b := range e.Answers {
-		if id := answer.ID(b); id == "" || !c.used[id] {
+		if id := callID(b); id == "" || !c.used[id] {
 			r.Unmatched++
 		}
 	}
-	return r, nil
+	return r, first
+}
+
+// callID is the typed hash of a call given in its canonical bytes, and empty for any other bytes. A
+// call is matched to a receipt only as it was signed: answer.ID would give a copy re-encoded with
+// other whitespace or member order the same hash, though only the canonical bytes read.
+func callID(b []byte) string {
+	if c, err := canonical.Form(b); err != nil || string(c) != string(b) {
+		return ""
+	}
+	return answer.ID(b)
 }
 
 // verify is the validity the evidence asks for: of a whole list, or of a subset.
@@ -218,47 +235,50 @@ type checker struct {
 
 func (c *checker) statement(i int) receipts.Statement { return c.r.Subset.Verified[i].Statement() }
 
-// receipt runs rows 1 to 4 over the receipt at index i, and records its decision.
-func (c *checker) receipt(i int) error {
+// receipt runs rows 1 to 4 over the receipt at index i, records its decision, and returns the code
+// of the first row that failed, or none. A row after a failed one is not run, but the receipt's
+// question is recorded and its decision appended whatever failed, so the receipts after it are read
+// as the list holds them.
+func (c *checker) receipt(i int) Code {
 	s := c.statement(i)
 	p := s.Predicate
 	place := c.r.Subset.Places[i]
 	d := Decision{Index: i, By: p.By, Checked: place.Role != receipts.RoleOutside}
-	fail := func(code Code) error { return &Error{Code: code, Index: i} }
-	// Row 1: the Accord and the card.
-	if p.Accord != c.e.Accord || p.Card != c.a.Card() {
-		return fail(CodeAccord)
-	}
-	// Row 2: the parties are members, or the sender the mediator where it closes a question (maybe-4,
-	// maybe-5).
-	byMediator := p.Kind == receipts.KindResolution && (p.Reason == receipts.ReasonTimeout || p.Reason == receipts.ReasonUndeliverable) &&
-		p.From == c.r.Mediator
-	if !c.a.Member(p.To) || (!c.a.Member(p.From) && !byMediator) {
-		return fail(CodeParty)
-	}
 	if place.Role == receipts.RoleQuestion {
 		c.questions[i] = &question{index: i, ask: s, closing: -1, release: -1}
 	}
 	var q *question
 	if place.Role == receipts.RoleClosing || place.Role == receipts.RoleRelease {
 		q = c.questions[place.Question]
-		if place.Role == receipts.RoleClosing {
+		switch {
+		case q == nil:
+		case place.Role == receipts.RoleClosing:
 			q.closing = i
-		} else {
+		default:
 			q.release = i
 		}
 	}
-	// Row 3: the decision, by the module the verifier trusts.
-	if c.r.Module && d.Checked {
-		if !c.decided(i, s, place, q) {
-			return fail(CodeDecision)
-		}
+	var failed Code
+	// Row 1: the Accord and the card.
+	if p.Accord != c.e.Accord || p.Card != c.a.Card() {
+		failed = CodeAccord
 	}
-	// Row 4: the witness of an answer.
+	// Row 2: the parties are members, or the sender the mediator where it closes a question (maybe-4,
+	// maybe-5).
+	byMediator := p.Kind == receipts.KindResolution && (p.Reason == receipts.ReasonTimeout || p.Reason == receipts.ReasonUndeliverable) &&
+		p.From == c.r.Mediator
+	if failed == "" && (!c.a.Member(p.To) || (!c.a.Member(p.From) && !byMediator)) {
+		failed = CodeParty
+	}
+	// Row 3: the decision, by the module the verifier trusts.
+	if failed == "" && c.r.Module && d.Checked && !c.decided(i, s, place, q) {
+		failed = CodeDecision
+	}
+	// Row 4: the witness of an answer. It is read even after a failed row, for the report.
 	if p.By.Decider == receipts.ByAnswer && d.Checked {
 		w, ok := c.witness(i, s, place, q)
-		if !ok {
-			return fail(CodeWitness)
+		if !ok && failed == "" {
+			failed = CodeWitness
 		}
 		d.Witness = w
 	} else if p.By.Decider == receipts.ByAnswer {
@@ -268,13 +288,16 @@ func (c *checker) receipt(i int) error {
 		}
 	}
 	c.r.Decisions = append(c.r.Decisions, d)
-	return nil
+	return failed
 }
 
 // decided is row 3 for the receipt at index i: decided again as the module decides it, with the
 // judgment its by claims, it is the decision the receipt states (verify-2).
 func (c *checker) decided(i int, s receipts.Statement, place receipts.Place, q *question) bool {
 	p := s.Predicate
+	if q == nil && (place.Role == receipts.RoleClosing || place.Role == receipts.RoleRelease) {
+		return false
+	}
 	switch place.Role {
 	case receipts.RoleGive, receipts.RoleQuestion:
 		var j *composition.Judgment

@@ -27,8 +27,9 @@
 //
 // The receipts are evidence (journal-is-evidence): nothing rewrites or truncates receipts.jsonl but
 // the one repair at the start, of a last line with no line feed, which was never answered. A last
-// line of questions.jsonl with no line feed was never written either, and is removed. Both repairs
-// print one line on the error writer. Read hands mediator.Reload what the files hold and judges
+// line of questions.jsonl with no line feed was never written either, and is removed, and so is one
+// of answers.jsonl, a call whose closing was never written, so that the next call appended is a line
+// of its own. Each repair prints one line on the error writer. Read hands mediator.Reload what the files hold and judges
 // none of it: every check of what was read is Reload's. Read's only clean-ups are the two Reload
 // documents: a held file whose receipt was never journaled is removed by RemoveStrays once the
 // rest reloaded, and a questions.jsonl line
@@ -402,9 +403,10 @@ func heldName(receiptID string) string {
 }
 
 // Read reads the journal for Reload. A journal no window founded an Accord in is Empty. It repairs
-// what was never written, an unterminated last line of receipts.jsonl or questions.jsonl, and makes
-// the clean-ups Reload documents, each with a line on the error writer. A file whose lines or
-// members are not what a window writes is CodeJournal, with the file and line.
+// what was never written, an unterminated last line of receipts.jsonl, questions.jsonl or
+// answers.jsonl, so that the next line appended starts a line of its own, and makes the clean-ups
+// Reload documents, each with a line on the error writer. A file whose lines or members are not what
+// a window writes is CodeJournal, with the file and line.
 func (j *Journal) Read() (*Record, error) {
 	b, err := io.ReadAll(io.NewSectionReader(j.lock, 0, 1<<20))
 	if err != nil {
@@ -431,6 +433,12 @@ func (j *Journal) Read() (*Record, error) {
 	}
 	questions, err := j.repairedLines(FileQuestions)
 	if err != nil {
+		return nil, err
+	}
+	// A cut call line is a call whose closing was never written, since the call is synced first: it
+	// is removed, and AddAnswer then appends whole lines only. The calls themselves are verify's and
+	// log's to read.
+	if _, err := j.repairedLines(FileAnswers); err != nil {
 		return nil, err
 	}
 

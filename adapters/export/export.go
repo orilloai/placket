@@ -338,18 +338,19 @@ func keptAnswer(line []byte) ([]byte, bool) {
 }
 
 // fits reports whether an answer call that read is the one the closing of question q says decided
-// it: of this Accord and this question, with the action the closing records, signed by the party
-// that action is for. An accept or a change is signed by the closing's from, and its digest is the
-// closing's subject digest; a cancel is signed by the asker; a decline is signed by the closing's
-// from, the first answerer, since the log reads no founding set and cannot tell another answerer
-// from a key outside the Accord. A closing the mediator decided has no call.
+// it: of this Accord and this question, with the action the closing records. An accept or a change
+// is signed by the closing's from, and its digest is the closing's subject digest; a cancel is
+// signed by the asker. A decline may be signed by any answerer of the question, while its closing's
+// from is always the first; the log reads no founding set to know the answerers, and the closing's
+// by.answer already binds this call to it, so a decline's signer is not compared. A closing the
+// mediator decided has no call.
 func fits(c answer.Call, closing, q receipts.Statement, accord string) bool {
 	if c.Accord != accord || c.Question != q.ID {
 		return false
 	}
 	switch closing.Predicate.Reason {
 	case receipts.ReasonDeclined:
-		return c.Action == answer.Declined && c.From == closing.Predicate.From
+		return c.Action == answer.Declined
 	case receipts.ReasonCancelled:
 		return c.Action == answer.Cancelled && c.From == q.Predicate.From
 	case receipts.ReasonTimeout, receipts.ReasonUndeliverable:

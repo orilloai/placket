@@ -83,8 +83,9 @@ func TestVerifyByTheAccordID(t *testing.T) {
 }
 
 // TestVerifyWitnessesTheAnswer verifies the journal with its answers.jsonl and with it removed: the
-// accept and its release are witnessed by the decider's key, and then unwitnessed, the roles its
-// binding gives named; both exit 0 (verify-3, U22).
+// accept and its release are witnessed by the decider's key, and then unwitnessed, the roles the
+// decider's binding gives named for both, the release's sender being the asker; both exit 0
+// (verify-3, U22).
 func TestVerifyWitnessesTheAnswer(t *testing.T) {
 	t.Parallel()
 	a, _ := accepted(t)
@@ -102,7 +103,8 @@ func TestVerifyWitnessesTheAnswer(t *testing.T) {
 		t.Fatal(err)
 	}
 	r = verifyAccord(t, a, bare)
-	if r.code != 0 || !slices.Contains(r.lines(), fmt.Sprintf(cli.LineUnwitnessed, ids[1], "decider")) || !slices.Contains(r.lines(), cli.LineConforms) {
+	if r.code != 0 || !slices.Contains(r.lines(), fmt.Sprintf(cli.LineUnwitnessed, ids[1], "decider")) ||
+		!slices.Contains(r.lines(), fmt.Sprintf(cli.LineUnwitnessed, ids[2], "decider")) || !slices.Contains(r.lines(), cli.LineConforms) {
 		t.Fatalf("verify without answers.jsonl: %v", r)
 	}
 	// The calls given in a file of their own witness the answer again.
@@ -127,7 +129,8 @@ func TestVerifyWitnessesTheAnswer(t *testing.T) {
 
 // TestVerifyASubset verifies the last two receipts of a chain of three as a subset: it exits 0, says
 // the chain was not checked before seq 2 and that completeness is not claimed of a subset; without
-// --subset it fails chain at line 1 (receipt-6, U24, U23).
+// --subset it fails chain at line 1 (receipt-6, U24, U23). A whole journal given as a subset has
+// no decision outside it.
 func TestVerifyASubset(t *testing.T) {
 	t.Parallel()
 	a := newAccord(t, "p1", "p2")
@@ -148,6 +151,13 @@ func TestVerifyASubset(t *testing.T) {
 	}
 	if r := run(t, env(), "verify", "--receipts", dir, "--mediator", a.refs["mediator"]); r.code != 3 || r.stderr != "error verify chain receipts.jsonl line 1\n" {
 		t.Fatalf("verify of the subset as a whole: %v", r)
+	}
+	// A whole journal given as a subset with no founding set leaves no question out: its answer's
+	// decisions are not counted as outside the subset.
+	acc, _ := accepted(t)
+	if r := run(t, env(), "verify", "--receipts", acc.journal(), "--mediator", acc.refs["mediator"], "--subset"); r.code != 0 ||
+		!slices.Contains(r.lines(), fmt.Sprintf(cli.LineOutsideSubset, 0)) {
+		t.Fatalf("verify --subset of a whole journal: %v", r)
 	}
 }
 
@@ -237,18 +247,18 @@ func TestVerifyCustody(t *testing.T) {
 	}
 }
 
-// TestVerifyANonconformingLog verifies a journal with a receipt the mediator's key signed whose
-// decision breaks the terms, a pass of a kind no term names: it exits 1, prints the valid line and
-// does not conform: decision at its line, and still prints the complete, claim and scope lines
-// (verify-2, U28).
+// TestVerifyANonconformingLog verifies the accept journal with one more receipt the mediator's key
+// signed, whose decision breaks the terms, a pass of a kind no term names: it exits 1, prints the
+// valid line and does not conform: decision at its line, and still prints every line of the log:
+// the accept and its release witnessed, the count of the terms' decisions, the complete, claim and
+// scope lines, and in --json the same decisions (verify-2, commands-8, U28).
 func TestVerifyANonconformingLog(t *testing.T) {
 	t.Parallel()
-	a := newAccord(t, "p1", "p2")
-	a.start(t)
-	must(t, a.as("p1", "give", "--to", a.refs["p2"], "--kind", "note", "--text", "one")...)
+	a, _ := accepted(t)
 	dir := copyDir(t, a.journal())
+	ids := journalIDs(t, a, dir)
 	b, _ := os.ReadFile(filepath.Join(dir, "receipts.jsonl"))
-	first, err := receipts.Decode(bytes.TrimSuffix(b, []byte("\n")))
+	release, err := receipts.Decode(bytes.Split(b, []byte("\n"))[2])
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -256,9 +266,9 @@ func TestVerifyANonconformingLog(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	p := first.Predicate
-	p.Seq, p.Prev = 2, first.ID
-	p.Envelope.Seq = 2
+	p := release.Predicate
+	p.Seq, p.Prev, p.By = p.Seq+1, release.ID, receipts.By{Decider: receipts.ByTerms}
+	p.Envelope = receipts.Envelope{Sender: p.From, Seq: p.Envelope.Seq + 1, Hash: "sha256:" + strings.Repeat("ef", 32)}
 	bad, _, err := receipts.Build(receipts.Subject{Name: "secret", Digest: strings.Repeat("ab", 32)}, p, mk)
 	if err != nil {
 		t.Fatal(err)
@@ -266,13 +276,23 @@ func TestVerifyANonconformingLog(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dir, "receipts.jsonl"), append(append(b, bad...), '\n'), 0o600); err != nil {
 		t.Fatal(err)
 	}
+	witnessed := func(id string) string {
+		return fmt.Sprintf(cli.LineWitnessed, id, a.refs["decider"], a.refs["principal"], "decider")
+	}
 	r := verifyAccord(t, a, dir)
 	l := r.lines()
 	n := len(l)
-	if r.code != 1 || l[n-5] != fmt.Sprintf(cli.LineValid, 2, a.refs["mediator"]) || l[n-4] != fmt.Sprintf(cli.LineNotConform, "decision", 2) ||
-		l[n-3] != cli.LineNotComplete || l[n-2] != cli.ClaimVerified || l[n-1] != cli.Scope {
+	if r.code != 1 || l[n-5] != fmt.Sprintf(cli.LineValid, 4, a.refs["mediator"]) || l[n-4] != fmt.Sprintf(cli.LineNotConform, "decision", 4) ||
+		l[n-3] != cli.LineNotComplete || l[n-2] != cli.ClaimVerified || l[n-1] != cli.Scope ||
+		!slices.Contains(l, witnessed(ids[1])) || !slices.Contains(l, witnessed(ids[2])) || !slices.Contains(l, fmt.Sprintf(cli.LineTermsDecided, 2)) {
 		t.Fatalf("verify of a nonconforming log: %v", r)
 	}
+	o := object(t, verifyAccord(t, a, dir, "--json"))
+	var decisions []struct{ ReceiptID, Line string }
+	if err := json.Unmarshal(o["decisions"], &decisions); err != nil || len(decisions) != 2 || decisions[0].Line != witnessed(ids[1]) {
+		t.Fatalf("decisions %s", o["decisions"])
+	}
+	is(t, o, "unmatched", "0")
 }
 
 // TestVerifyAnotherModule verifies a founding set whose card names another kernel hash: conformance

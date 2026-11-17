@@ -12,8 +12,10 @@ import (
 // TestAnswerSignedFitsTheClosing gives a log of one question and its closing, decided by the answer
 // call answers.jsonl holds, for each call in turn: answer_signed is yes only when the call is signed
 // by the party its action is for and records what the closing does. An accept is the closing's
-// from's, with the closing's digest; a decline is the closing's from's; a cancel is the asker's. A
-// call signed by any other key, or of another action or digest, reads as not signed (log-1).
+// from's, with the closing's digest; a cancel is the asker's; a decline may be any answerer's, though
+// the closing's from is the first answerer, since the closing's by.answer names the call. An accept
+// or a cancel signed by any other key, or a call of another action or digest, reads as not signed
+// (log-1, U30).
 func TestAnswerSignedFitsTheClosing(t *testing.T) {
 	t.Parallel()
 	key := func(b byte) signing.Key {
@@ -54,8 +56,8 @@ func TestAnswerSignedFitsTheClosing(t *testing.T) {
 			"pass", "ok", receipts.Subject{Name: receipts.NameAnswer, Digest: text}, ""},
 		{"a decline by the closing's from", answerer, answer.Call{Action: answer.Declined},
 			"block", "declined", part, Signed},
-		{"a decline by another key", stranger, answer.Call{Action: answer.Declined},
-			"block", "declined", part, ""},
+		{"a decline by another answerer", stranger, answer.Call{Action: answer.Declined},
+			"block", "declined", part, Signed},
 		{"a cancel for a decline", asker, answer.Call{Action: answer.Cancelled},
 			"block", "declined", part, ""},
 		{"a cancel by the asker", asker, answer.Call{Action: answer.Cancelled},

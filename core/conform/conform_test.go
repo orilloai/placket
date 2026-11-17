@@ -381,3 +381,67 @@ func TestASubsetMayLeaveTheReleaseOut(t *testing.T) {
 		t.Fatalf("the same receipts as a subset: %+v, %v", r, err)
 	}
 }
+
+// TestANonconformingLogKeepsItsReport puts a pass the terms block between the worked journal's
+// question and its accept: Check fails decision at that receipt, and still returns the report of the
+// whole list, every receipt's decision with the accept and its release witnessed after the failure,
+// so that a verifier can show the log it refuses (verify-2, commands-8).
+func TestANonconformingLogKeepsItsReport(t *testing.T) {
+	t.Parallel()
+	w := journal(t)
+	ask, err := receipts.Decode(w.list[1])
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := newSigner(t)
+	s.list = append(s.list, w.list[0], w.list[1])
+	pair := [2]string{ask.Predicate.From, ask.Predicate.To}
+	s.chains[pair], s.ids[pair] = ask.Predicate.Seq, ask.ID
+	forged := ask.Predicate
+	forged.Verdict, forged.Reason, forged.At = "pass", "ok", "2026-11-12T09:01:30Z"
+	forged.Envelope = receipts.Envelope{Sender: forged.From, Seq: 3, Hash: "sha256:" + strings.Repeat("ef", 32)}
+	s.add(t, receipts.Subject{Name: "tests", Digest: strings.Repeat("cd", 32)}, forged)
+	for _, b := range w.list[2:] {
+		st, err := receipts.Decode(b)
+		if err != nil {
+			t.Fatal(err)
+		}
+		s.add(t, st.Subject, st.Predicate)
+	}
+	e := w.evidence()
+	e.Receipts = s.list
+	r, err := Check(e)
+	if !isCode(err, CodeDecision, 2) {
+		t.Fatalf("got %v, want decision at 2", err)
+	}
+	var got []Witness
+	for _, d := range r.Decisions {
+		got = append(got, d.Witness)
+	}
+	if want := []Witness{"", "", "", Witnessed, Witnessed}; strings.Join(ws(got), ",") != strings.Join(ws(want), ",") ||
+		len(r.Subset.Verified) != 5 || r.Unmatched != 0 || !r.Module {
+		t.Fatalf("witnesses %v, want %v; report %+v", got, want, r)
+	}
+}
+
+// TestARecodedCallIsNotTheCall gives, before the decider's call, a copy of it with one space added:
+// answer.ID gives the copy the receipt's by.answer, but only the canonical bytes are the call, so
+// the copy matches no receipt, the log still conforms, and the copy is counted unmatched (verify-3).
+func TestARecodedCallIsNotTheCall(t *testing.T) {
+	t.Parallel()
+	w := journal(t)
+	twin := append([]byte("{ "), w.call[1:]...)
+	if answer.ID(twin) != answer.ID(w.call) {
+		t.Fatal("the twin does not share the call's typed hash")
+	}
+	e := w.evidence()
+	e.Answers = [][]byte{twin, w.call}
+	r, err := Check(e)
+	if err != nil || r.Unmatched != 1 || r.Decisions[2].Witness != Witnessed {
+		t.Fatalf("the twin first: %+v, %v", r, err)
+	}
+	e.Answers = [][]byte{twin}
+	if r, err := Check(e); err != nil || r.Unmatched != 1 || r.Decisions[2].Witness != Unwitnessed {
+		t.Fatalf("the twin alone: %+v, %v", r, err)
+	}
+}

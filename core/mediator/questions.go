@@ -354,7 +354,7 @@ func (m *Mediator) release(b *batch, q *question, action answer.Action, answerer
 
 // Undeliverable closes the question questionID as one nobody can be reached to answer, at the time
 // at (maybe-4): a resolution receipt from its first answerer, or from the mediator's own reference
-// when it has none, to the asker, block, undeliverable. It reads only row 2 of section 6: an id that
+// when it has none, to the asker, block, undeliverable. It reads only row 3 of section 6: an id that
 // names no question open before its deadline is rejected with no-open-question (maybe-7).
 func (m *Mediator) Undeliverable(questionID, at string) (Outcome, error) {
 	if !m.founded() {
