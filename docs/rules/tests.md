@@ -60,7 +60,7 @@ Checked by: `make ci`, step `schemas-hold`.
 
 ## `fuzz-parsers`
 
-Every function that parses untrusted input has a fuzz test, seeded from the vectors.
+Every function that parses untrusted input has a fuzz test, seeded from the vectors. A door format has no vectors, so its parser's fuzz test is seeded from the format's own test cases.
 
 Why: a parser meets hostile bytes first, and a fuzz test finds the input no one thought to write.
 

@@ -12,7 +12,7 @@ Checked by: `make ci`, step `core-no-world`.
 
 ## `core-no-panic`
 
-No function in `core/` panics on input. The machine half: no non-test file in `core/` calls `panic`. The other half: every exported function that takes bytes or a string has a fuzz test with a committed seed corpus, and a new entry point adds or extends one.
+No function in `core/` panics on input. The machine half: no non-test file in `core/` calls `panic`. The other half: every exported function that takes bytes or a string has a fuzz test with a committed seed corpus, and a new entry point adds or extends one. Seeds given with `f.Add` in the test are a committed seed corpus; a `testdata/fuzz/` directory is not needed.
 
 Why: a mediator that crashes on a hostile message denies the service to every party at once.
 
@@ -92,7 +92,7 @@ Checked by: `make ci`, step `constants-once`.
 
 ## `parse-strict`
 
-Untrusted bytes are parsed strictly. Duplicate keys, non-canonical encodings and trailing data are refused. The door sets a size limit for every decoder.
+Untrusted bytes are parsed strictly. Duplicate keys, trailing data and any other bytes the canonical form refuses are refused, never repaired. The door sets a size limit for every decoder.
 
 Why: two readers that accept different bytes as one value let a sender show each of them something different.
 

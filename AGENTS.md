@@ -9,7 +9,7 @@ This file is the entry point for anyone who builds or reviews placket, agents fi
 - `make ci`: every check, the one entry point. `make <step>` runs one step, named as `make ci` prints it.
 - `make red-green-tests BASE=origin/main`: every test the change adds or changes is red on `main` and green at the head. It reads commits, so commit first.
 - `make demo`: the worked example, run by hand.
-- Go 1.27 (toolchain go1.27.4); `jq` and `sh` for the shell tests and patterns.
+- Go 1.27 (toolchain go1.27.4); `jq` and `sh` for the shell tests and patterns; OpenSSL 3, GNU `basenc`, `perl`, `git` and `tar` for the shell tests too.
 - GitHub runs `make ci` and `red-green-tests` on every pull request and every push to `main`; that run is the one that counts.
 
 ## The map
@@ -29,13 +29,13 @@ This file is the entry point for anyone who builds or reviews placket, agents fi
 - `scripts/`: scripts run by hand or by a workflow, such as the demo, each with its test in `tests/`.
 - `.github/`: workflows, templates and code owners. Workflows are the maintainer's alone.
 - `review/` (none yet): the review passes, the maintainer's to change.
-- `out/`: a builder's notes for the next round of a change; removed before it merges.
+- `out/`: a builder's notes for the next round of a change; removed before it merges, which the reviewer checks, since `make ci` cannot tell a branch from a merge.
 
 Fixtures for any check go under a `testdata/` directory, which Go's tools and `make ci` skip.
 
 ## Always true, on every change
 
-- Dependencies point one way: `cmd` to `adapters` to `core`, and `recipes` to `core` (`core-imports`, `root-module`).
+- Dependencies point one way: `cmd` to `adapters` to `core`, and `recipes` to `core` (`core-imports`, `root-module`, `recipes-core-only`).
 - The core is pure: it takes the time, salts and keys as parameters, and never reads the world (`core-no-world`).
 - Behaviour lands in `spec/protocol.md` and the vectors before code (`specs-name-behaviour`, `vectors-independent`).
 - Every test a change adds or changes is red against `main` and green at the head, and none is removed or skipped unexplained (`red-green-tests`).

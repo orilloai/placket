@@ -32,7 +32,7 @@ Go cannot reliably wipe a secret from memory: the garbage collector may copy a v
 ## Untrusted bytes
 
 - Every byte from outside the process is untrusted: a call on the socket, a file a party hands over, a journal being verified.
-- Parsing is strict: a duplicate key, a non-canonical encoding or trailing data is refused, never repaired ([`parse-strict`](../rules/core.md#parse-strict)). The core judges the bytes as they were sent ([`door-passes-bytes`](../rules/adapters.md#door-passes-bytes)).
+- Parsing is strict: a duplicate key, trailing data or any other bytes the canonical form refuses are refused, never repaired ([`parse-strict`](../rules/core.md#parse-strict)). The core judges the bytes as they were sent ([`door-passes-bytes`](../rules/adapters.md#door-passes-bytes)).
 - The door checks a call in a fixed order, size first, and stops at the first failure, before the mediator sees anything ([`door-check-order`](../rules/adapters.md#door-check-order)).
 - Data that passed verification has a type only verification produces; no API hands unverified data on as trusted ([`verified-by-type`](../rules/core.md#verified-by-type)).
 
@@ -43,7 +43,7 @@ Go cannot reliably wipe a secret from memory: the garbage collector may copy a v
 
 ## Fuzzing
 
-- Every function that parses untrusted input has a fuzz test, seeded from the vectors ([`fuzz-parsers`](../rules/tests.md#fuzz-parsers)). In the core, every exported function that takes bytes or a string has one ([`core-no-panic`](../rules/core.md#core-no-panic)).
+- Every function that parses untrusted input has a fuzz test, seeded from the vectors, or for a door format from its own test cases ([`fuzz-parsers`](../rules/tests.md#fuzz-parsers)). In the core, every exported function that takes bytes or a string has one ([`core-no-panic`](../rules/core.md#core-no-panic)).
 - `make ci` runs each fuzz test on its seed corpus (`fuzz-seeds`). A crash found by a longer run is fixed with its input added to the corpus.
 
 ## Goroutines and the socket
@@ -55,4 +55,4 @@ Go cannot reliably wipe a secret from memory: the garbage collector may copy a v
 
 - Error text is the package and the code, plus an index, an actor or an offset where the requirement gives one; never a body, salt, seed, key, message or payload ([`error-text-no-content`](../rules/errors.md#error-text-no-content)).
 - A refusal returns a code, not a decoder's error, which may quote its input ([`errors-as-codes`](../rules/errors.md#errors-as-codes)).
-- Nothing a tool prints quotes a key or a salt; a body is printed only to the party it was released to.
+- Nothing a tool prints quotes a key. Placket hands a salt only to the party it was released to, or to an answerer of the open question that holds the part; a party may disclose its own salts. A body is printed only to the party it was released to.
