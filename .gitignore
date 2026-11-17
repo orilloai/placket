@@ -33,3 +33,6 @@ go.work.sum
 # Editor/IDE
 # .idea/
 # .vscode/
+
+# GoReleaser's output: ignored, so a release build sees a clean tree and Go stamps no +dirty.
+dist/

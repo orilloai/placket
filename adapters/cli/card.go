@@ -32,7 +32,7 @@ func cardCommand(r *run, args []string) int {
 	}
 	line(r.stdout, card)
 	fmt.Fprintln(r.stderr, "card "+h)
-	fmt.Fprintln(r.stderr, "module "+composition.KernelVersion+" "+composition.KernelHash())
+	fmt.Fprintln(r.stderr, LabelModule+" "+composition.KernelVersion+" "+composition.KernelHash())
 	return ExitOK
 }
 
