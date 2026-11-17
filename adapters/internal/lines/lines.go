@@ -1,5 +1,6 @@
 // Package lines reads the files placket is handed rather than writes itself: a journal being
-// verified, logged or reconciled, and a state directory's files. Such a file is read only when it is
+// verified, logged or reconciled, and a state directory's files; keyfile opens a key file through it
+// too. Such a file is read only when it is
 // a regular file, so a FIFO or a device never holds a command, and each of its lines is read with a
 // cap. The file as a whole has none, since a journal grows for as long as its Accord runs.
 package lines
@@ -78,6 +79,9 @@ func ReadAll(path string, max int) (b []byte, ok bool, err error) {
 	return b, len(b) <= max, nil
 }
 
+// openFile is os.OpenFile, a variable so a test can swap the file between the check and the open.
+var openFile = os.OpenFile
+
 // Open opens the regular file at path for reading, following links: ErrNotRegular for anything
 // else, checked before it is opened and again on what was opened.
 func Open(path string) (*os.File, error) {
@@ -90,7 +94,7 @@ func Open(path string) (*os.File, error) {
 	}
 	// O_NONBLOCK: should a FIFO take the path's place after the check, the open does not wait for a
 	// writer, and the check of the opened file below refuses it.
-	f, err := os.OpenFile(path, os.O_RDONLY|syscall.O_NONBLOCK, 0)
+	f, err := openFile(path, os.O_RDONLY|syscall.O_NONBLOCK, 0)
 	if err != nil {
 		return nil, err
 	}

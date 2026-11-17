@@ -13,7 +13,7 @@ import (
 )
 
 // TestReadSplitsWholeLinesUnderTheCap reads files of lines under a cap of 4 bytes: whole lines in
-// order, an unterminated last line left out and marked, a line past the cap marked by its number
+// order, an unterminated last line left out and marked, a line past the cap, ended or not, marked by its number
 // with the lines before it, and an empty file with no lines.
 func TestReadSplitsWholeLinesUnderTheCap(t *testing.T) {
 	t.Parallel()
@@ -28,6 +28,7 @@ func TestReadSplitsWholeLinesUnderTheCap(t *testing.T) {
 		{"a\nbc", []string{"a"}, true, 0},
 		{"a\nbcdef\ng\n", []string{"a"}, false, 2},
 		{"abcdef", nil, false, 1},
+		{"abcde", nil, false, 1},
 		{"abcde\n", nil, false, 1},
 		{"abcd", nil, true, 0},
 	} {

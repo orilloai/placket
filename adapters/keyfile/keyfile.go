@@ -15,6 +15,7 @@ import (
 	"path/filepath"
 	"syscall"
 
+	"github.com/orilloai/placket/adapters/internal/lines"
 	"github.com/orilloai/placket/core/signing"
 )
 
@@ -75,25 +76,17 @@ var getuid = os.Getuid
 
 // Read reads the key file at path. It follows a symbolic link and checks the file it reaches: a file
 // that is not regular is CodeRead, and one whose mode lets others read or write it, or that another
-// user owns, is CodeMode (keys-on-disk). Read checks the path before it opens it, so a FIFO or a
-// device never holds it, and checks the file it opened again, so a swap in between is refused.
+// user owns, is CodeMode (keys-on-disk). It opens the file as lines.Open does, which checks the path
+// before it opens it, so a FIFO or a device never holds it, and checks the file it opened again, so a
+// swap in between is refused.
 func Read(path string) (signing.Key, error) {
-	fi, err := os.Stat(path)
-	if err != nil {
-		return signing.Key{}, &Error{Code: CodeRead}
-	}
-	if err := private(fi); err != nil {
-		return signing.Key{}, err
-	}
-	// O_NONBLOCK: should a FIFO take the path's place after the check, the open does not wait for a
-	// writer, and the check of the opened file below refuses it.
-	f, err := os.OpenFile(path, os.O_RDONLY|syscall.O_NONBLOCK, 0)
+	f, err := lines.Open(path)
 	if err != nil {
 		return signing.Key{}, &Error{Code: CodeRead}
 	}
 	defer func() { _ = f.Close() }()
 	opened, err := f.Stat()
-	if err != nil || !os.SameFile(fi, opened) {
+	if err != nil {
 		return signing.Key{}, &Error{Code: CodeRead}
 	}
 	if err := private(opened); err != nil {
