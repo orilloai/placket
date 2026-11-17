@@ -148,7 +148,7 @@ func TestPayloadSignaturesRefuseTheFourTypeURIs(t *testing.T) {
 			t.Fatalf("SignPayload under %s: %x, %v", uri, sig, err)
 		}
 		// A raw Ed25519 signature over the very pre-authentication encoding an object signature uses.
-		raw := ed25519.Sign(k.private, PAE(uri, envelope))
+		raw := ed25519.Sign(k.bytes(), PAE(uri, envelope))
 		if VerifyPayload(uri, envelope, raw, k.Reference()) {
 			t.Fatalf("VerifyPayload under %s accepted a signature", uri)
 		}
@@ -159,11 +159,11 @@ func TestPayloadSignaturesRefuseTheFourTypeURIs(t *testing.T) {
 	if err != nil || !VerifyPayload(intoto, envelope, sig, k.Reference()) {
 		t.Fatalf("a payload under %s: %v", intoto, err)
 	}
-	if _, err := Sign(envelope, intoto, k); err == nil {
-		t.Fatalf("Sign accepted the payload type %s", intoto)
+	if _, err := Sign(envelope, intoto, k); !isTypeURI(err) {
+		t.Fatalf("Sign under the payload type %s: got %v, want %s", intoto, err, CodeTypeURI)
 	}
-	if _, err := Sign(envelope, TypeRegistration, k); err == nil {
-		t.Fatal("Sign accepted the reserved registration type URI")
+	if _, err := Sign(envelope, TypeRegistration, k); !isTypeURI(err) {
+		t.Fatalf("Sign under the reserved registration type URI: got %v, want %s", err, CodeTypeURI)
 	}
 	obj, _ := Sign(envelope, TypeEnvelope, k)
 	signed := []byte(strings.Replace(string(envelope), `"seq":1`, `"seq":1,"sig":"`+obj+`"`, 1))
@@ -180,7 +180,7 @@ func TestKeyNeverPrints(t *testing.T) {
 	k, _ := NewKey(seed[:])
 	for _, verb := range []string{"%v", "%+v", "%#v", "%s", "%q", "%x", "%X", "%d", "%T", "%z"} {
 		out := fmt.Sprintf(verb, k) + fmt.Sprintf(verb, &k) + fmt.Sprintf(verb, []Key{k})
-		for _, secret := range []string{hex.EncodeToString(seed[:]), hex.EncodeToString(k.private), fmt.Sprintf("%X", seed[:]), string(seed[:8])} {
+		for _, secret := range []string{hex.EncodeToString(seed[:]), hex.EncodeToString(k.bytes()), fmt.Sprintf("%X", seed[:]), string(seed[:8])} {
 			if strings.Contains(out, secret) {
 				t.Fatalf("%s prints the key: %q", verb, out)
 			}
@@ -280,4 +280,10 @@ func FuzzVerifyPayload(f *testing.F) {
 			}
 		}
 	})
+}
+
+// isTypeURI reports whether err is this package's Error with code type-uri.
+func isTypeURI(err error) bool {
+	var e *Error
+	return errors.As(err, &e) && e.Code == CodeTypeURI && err.Error() == "signing: type-uri"
 }

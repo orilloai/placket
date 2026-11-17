@@ -129,7 +129,7 @@ func FuzzSign(f *testing.F) {
 		}
 		raw, _ := hex.DecodeString(sig)
 		sb, _ := SigningBytes(object, typeURI)
-		if len(sig) != 128 || hex.EncodeToString(raw) != sig || !ed25519.Verify(k.private.Public().(ed25519.PublicKey), sb, raw) {
+		if len(sig) != 128 || hex.EncodeToString(raw) != sig || !ed25519.Verify(k.bytes().Public().(ed25519.PublicKey), sb, raw) {
 			t.Fatalf("a signature %q", sig)
 		}
 		u, _, _ := unsigned(object)
@@ -165,7 +165,7 @@ func FuzzSignPayload(f *testing.F) {
 				t.Fatalf("the zero key: %x, %v", sig, err)
 			}
 		default:
-			if err != nil || !ed25519.Verify(k.private.Public().(ed25519.PublicKey), PAE(payloadType, payload), sig) {
+			if err != nil || !ed25519.Verify(k.bytes().Public().(ed25519.PublicKey), PAE(payloadType, payload), sig) {
 				t.Fatalf("a payload signature %x, %v", sig, err)
 			}
 		}
