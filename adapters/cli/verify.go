@@ -180,6 +180,10 @@ func verifyCommand(r *run, args []string) int {
 		if err := conform.Body(report, deliveryBytes); err != nil {
 			var be *conform.Error
 			errors.As(err, &be)
+			if be.Index < 0 {
+				// A delivery that is not one, or whose receipt is none of these, has no line to name.
+				return r.tool(codeDelivery)
+			}
 			bodyLine = fmt.Sprintf(LineBodyNot, be.Index+1)
 			if a != nil {
 				conformErr = be

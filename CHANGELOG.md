@@ -34,11 +34,11 @@ This file covers the tool and its Go API. Changes to the protocol's frozen forma
 
 ### Changed
 
-- `placket verify` prints its `valid:` line, with the count and the mediator, after the counts, in place of `verified <n> receipts`, and its `--json` object's `checks` is `judges`.
+- `placket verify` prints its `valid:` line, with the count and the mediator, after the counts, in place of `verified <n> receipts`, and its `--json` object's `checks` is `judges`. A `--delivery` that is not a delivery, or whose receipt is none of the receipts, is tool error `delivery`.
 - `placket cancel` is the asker's: an answerer's cancel is refused with `not-an-answerer`.
-- `placket answer`, `change` and `decline` check that the question the window shows is the part its ask's receipt names before they sign, and stop with `error asked` when it is not.
+- `placket answer`, `change` and `decline` check that the window shows the question and that it is the part its ask's receipt names before they sign, and stop with `error asked` when it does not or is not, so an answer to a question that is closed, or that the key cannot answer, stops there. `placket questions` prints only the questions that pass the same check, and ends with `error asked` when it left one out.
 - The window mints no salt: an answer's salt is the answerer's. The answer's text, version and salt that do not fit its call are refused with `answer-body`, in place of the `salt` and `answer` errors.
-- `log`'s `answer_signed` reads the journal's `answers.jsonl` and the calls inside kept deliveries.
+- `log`'s `answer_signed` reads the journal's `answers.jsonl` and the calls inside kept deliveries, and says `yes` only for a call signed by the party its action is for: the closing's `from` for an accept, a change or a decline, the asker for a cancel.
 - The card's `checks`, the term's `checks` and the reason `check:<name>` are gone; the decision module's version is `0.2.0`.
 - Every placket URI is under `https://placket.tech/`: every schema `$id`, the type URIs of declarations, bindings and envelopes, the receipt's predicate type and the crossing extension. Journals, state and receipts made under `https://placket.dev/` are refused like any foreign one.
 - A salt is exactly 32 bytes, and placket mints 32: `give`, the window's answers, and every salt a give, an answer, a reloaded delivery, `get`, `released` and `log --kept` read.

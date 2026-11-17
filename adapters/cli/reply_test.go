@@ -11,16 +11,19 @@ import (
 	"testing"
 
 	"github.com/orilloai/placket/adapters/keyfile"
+	"github.com/orilloai/placket/adapters/local"
 	"github.com/orilloai/placket/core/canonical"
 	"github.com/orilloai/placket/core/receipts"
 )
 
 // A fakeWindow listens on a socket and answers every call with the reply it was last given,
-// whatever the call asked. It keeps the last call it read.
+// whatever the call asked, except an op it was given a reply of its own for (setOp). It keeps the
+// last call it read.
 type fakeWindow struct {
 	socket string
 	mu     sync.Mutex
 	reply  []byte
+	ops    map[string][]byte
 	last   []byte
 }
 
@@ -39,9 +42,19 @@ func newFakeWindow(t testing.TB, dir string) *fakeWindow {
 				return
 			}
 			call, _ := bufio.NewReader(c).ReadBytes('\n')
+			var named struct {
+				Call struct {
+					Op string `json:"op"`
+				} `json:"call"`
+			}
+			_ = json.Unmarshal(call, &named)
 			f.mu.Lock()
 			f.last = call
-			b := append(append([]byte(nil), f.reply...), '\n')
+			reply, ok := f.ops[named.Call.Op]
+			if !ok {
+				reply = f.reply
+			}
+			b := append(append([]byte(nil), reply...), '\n')
 			f.mu.Unlock()
 			_, _ = c.Write(b)
 			_ = c.Close()
@@ -53,6 +66,27 @@ func newFakeWindow(t testing.TB, dir string) *fakeWindow {
 // set makes the reply to every call o's canonical bytes.
 func (f *fakeWindow) set(t testing.TB, o any) {
 	t.Helper()
+	c := replyBytes(t, o)
+	f.mu.Lock()
+	f.reply = c
+	f.mu.Unlock()
+}
+
+// setOp sets the reply to every later call of op, whatever set gives the others.
+func (f *fakeWindow) setOp(t testing.TB, op string, o any) {
+	t.Helper()
+	c := replyBytes(t, o)
+	f.mu.Lock()
+	if f.ops == nil {
+		f.ops = map[string][]byte{}
+	}
+	f.ops[op] = c
+	f.mu.Unlock()
+}
+
+// replyBytes is a reply's canonical bytes.
+func replyBytes(t testing.TB, o any) []byte {
+	t.Helper()
 	b, err := json.Marshal(o)
 	if err != nil {
 		t.Fatal(err)
@@ -61,9 +95,7 @@ func (f *fakeWindow) set(t testing.TB, o any) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	f.mu.Lock()
-	f.reply = c
-	f.mu.Unlock()
+	return c
 }
 
 // lastCall is the last call the fake window read, as sent.
@@ -179,6 +211,9 @@ func TestTheCommandsReadTheReplyForItsForm(t *testing.T) {
 	blocked := st.Predicate
 	blocked.Verdict, blocked.Reason, blocked.By = "block", "no-match", answered.By
 	relReceipt, relID := sign(st.Subject, blocked)
+	w.setOp(t, local.OpQuestions, map[string]any{"ok": true, "questions": []any{map[string]any{"id": id, "asker": a.refs["p2"],
+		"kind": "note", "deadline": "2099-01-01T00:00:00Z", "form": "text", "text": "a note", "size": 6, "receipt": receipt,
+		"salt": delivery["salt"]}}})
 	w.set(t, map[string]any{"ok": true,
 		"outcome": map[string]any{"verdict": "pass", "reason": "ok", "receiptId": resID, "receipt": resReceipt},
 		"release": map[string]any{"verdict": "block", "reason": "no-match", "receiptId": relID, "receipt": relReceipt}})

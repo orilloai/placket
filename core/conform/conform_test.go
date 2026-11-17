@@ -323,3 +323,61 @@ func TestAWitnessThatDoesNotFit(t *testing.T) {
 		}
 	}
 }
+
+// TestADeclineUnderAnotherModule declines the worked journal's question with a call, under a card
+// whose module is not the one the verifier trusts, so that the question's rule is not known: a
+// decline signed by a member is witnessed, and one signed by a key outside the Accord fails witness
+// (verify-2, row 4, which still runs when row 3 is skipped).
+func TestADeclineUnderAnotherModule(t *testing.T) {
+	t.Parallel()
+	w := journal(t)
+	stAsk, _ := receipts.Decode(w.list[1])
+	stAccept, _ := receipts.Decode(w.list[2])
+	for name, c := range map[string]struct {
+		key  string
+		fail bool
+	}{
+		"signed by the decider":  {"decider", false},
+		"signed by the applier":  {"applier", false},
+		"signed by a stranger":   {"stranger", true},
+		"signed by the mediator": {"mediator", true},
+	} {
+		k := ptesting.Key(t, c.key)
+		b, err := answer.Sign(answer.Call{Accord: w.accord, Question: stAsk.ID, Action: answer.Declined, From: k.Reference()}, k)
+		if err != nil {
+			t.Fatal(err)
+		}
+		s := newSigner(t)
+		s.list = append(s.list, w.list[0], w.list[1])
+		s.chains[[2]string{stAsk.Predicate.From, stAsk.Predicate.To}], s.ids[[2]string{stAsk.Predicate.From, stAsk.Predicate.To}] = 2, stAsk.ID
+		d := stAccept.Predicate
+		d.Verdict, d.Reason, d.By = "block", receipts.ReasonDeclined, receipts.By{Decider: receipts.ByAnswer, Answer: answer.ID(b)}
+		s.add(t, stAsk.Subject, d)
+		e := w.evidence()
+		e.Receipts, e.Answers, e.Kernel = s.list, [][]byte{b}, composition.KernelHash()
+		r, err := Check(e)
+		switch {
+		case c.fail && !isCode(err, CodeWitness, 2):
+			t.Errorf("%s: got %v, want witness at 2", name, err)
+		case !c.fail && (err != nil || r.Module || r.Decisions[2].Witness != Witnessed):
+			t.Errorf("%s: %+v, %v", name, r, err)
+		}
+	}
+}
+
+// TestASubsetMayLeaveTheReleaseOut cuts the worked journal before the release of its accept, whose
+// call asks for one: the whole list fails witness at the accept, and the same receipts given as a
+// subset conform, since a subset may leave the release out (verify-2, row 4).
+func TestASubsetMayLeaveTheReleaseOut(t *testing.T) {
+	t.Parallel()
+	w := journal(t)
+	e := w.evidence()
+	e.Receipts = w.list[:3]
+	if _, err := Check(e); !isCode(err, CodeWitness, 2) {
+		t.Fatalf("the list cut before its release: %v", err)
+	}
+	e.Subset = true
+	if r, err := Check(e); err != nil || r.Decisions[2].Witness != Witnessed {
+		t.Fatalf("the same receipts as a subset: %+v, %v", r, err)
+	}
+}

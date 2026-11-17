@@ -259,7 +259,7 @@ func build(mediatorRef string, list, kept, answers [][]byte, all bool, note func
 			row.Answer = Closing(closing.Predicate, closing.Subject)
 			row.Receipts = append(row.Receipts, closing.ID)
 			if by := closing.Predicate.By; by.Decider == receipts.ByAnswer {
-				if c, ok := calls[by.Answer]; ok && c.Accord == lg.Accord && c.Question == q.ID {
+				if c, ok := calls[by.Answer]; ok && fits(c, *closing, q, lg.Accord) {
 					row.AnswerSigned = Signed
 				}
 			}
@@ -335,6 +335,31 @@ func keptAnswer(line []byte) ([]byte, bool) {
 		return nil, false
 	}
 	return c, true
+}
+
+// fits reports whether an answer call that read is the one the closing of question q says decided
+// it: of this Accord and this question, with the action the closing records, signed by the party
+// that action is for. An accept or a change is signed by the closing's from, and its digest is the
+// closing's subject digest; a cancel is signed by the asker; a decline is signed by the closing's
+// from, the first answerer, since the log reads no founding set and cannot tell another answerer
+// from a key outside the Accord. A closing the mediator decided has no call.
+func fits(c answer.Call, closing, q receipts.Statement, accord string) bool {
+	if c.Accord != accord || c.Question != q.ID {
+		return false
+	}
+	switch closing.Predicate.Reason {
+	case receipts.ReasonDeclined:
+		return c.Action == answer.Declined && c.From == closing.Predicate.From
+	case receipts.ReasonCancelled:
+		return c.Action == answer.Cancelled && c.From == q.Predicate.From
+	case receipts.ReasonTimeout, receipts.ReasonUndeliverable:
+		return false
+	}
+	want := answer.Accepted
+	if closing.Subject.Name == receipts.NameChanged {
+		want = answer.Changed
+	}
+	return c.Action == want && c.From == closing.Predicate.From && c.Digest == closing.Subject.Digest
 }
 
 // readKept reads one kept line and checks that a verified receipt covers it. It returns the id of

@@ -107,7 +107,7 @@ func TestCommandsAtOnce(t *testing.T) {
 
 // TestAWindowKilled kills a window process with SIGKILL while a question is open and a released
 // proposal is not yet fetched, and starts it again: the question is closed by one receipt, an answer
-// to it is no-open-question, the proposal is fetched once, and verify passes over the journal
+// to it is tool error asked, since the window no longer shows it, the proposal is fetched once, and verify passes over the journal
 // (restart-reproducible, LOG-13, LOG-18).
 func TestAWindowKilled(t *testing.T) {
 	t.Parallel()
@@ -149,7 +149,7 @@ func TestAWindowKilled(t *testing.T) {
 	if r.code != 1 || !regexp.MustCompile(`^undeliverable `+receiptID+`\n$`).MatchString(r.stderr) {
 		t.Fatalf("result: %v", r)
 	}
-	if r := run(t, env(), a.as("decider", "answer", "--question", open)...); r.code != 2 || r.stderr != "rejected no-open-question\n" {
+	if r := run(t, env(), a.as("decider", "answer", "--question", open)...); r.code != 3 || r.stderr != "error asked\n" {
 		t.Fatalf("an answer after the restart: %v", r)
 	}
 	got := a.drain(t, "applier")

@@ -355,7 +355,10 @@ func (c *checker) witness(i int, s receipts.Statement, place receipts.Place, q *
 	asker := q.ask.Predicate.From
 	switch p.Reason {
 	case receipts.ReasonDeclined:
-		return Witnessed, call.Action == answer.Declined && (!q.rule || contains(q.answerers, call.From))
+		// With the rule unknown, the module not this build's, the answerers are not known either: the
+		// signer must at least be a member.
+		signer := contains(q.answerers, call.From) || (!q.rule && c.a.Member(call.From))
+		return Witnessed, call.Action == answer.Declined && signer
 	case receipts.ReasonCancelled:
 		return Witnessed, call.Action == answer.Cancelled && call.From == asker
 	}
@@ -367,8 +370,9 @@ func (c *checker) witness(i int, s receipts.Statement, place receipts.Place, q *
 		return "", false
 	}
 	// A passing answer whose call asks for release has its release receipt right after it, unless it
-	// is a change whose receiver is its answerer or its asker, which releases nothing (maybe-10).
-	if p.Verdict == string(composition.Pass) && call.Release {
+	// is a change whose receiver is its answerer or its asker, which releases nothing (maybe-10). In a
+	// subset a receipt left out is no evidence that it was never written, so this is not checked.
+	if p.Verdict == string(composition.Pass) && call.Release && !c.e.Subset {
 		receiver := q.ask.Predicate.To
 		nothing := want == answer.Changed && (receiver == p.From || receiver == asker)
 		next := i + 1

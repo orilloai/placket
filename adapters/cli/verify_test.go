@@ -153,7 +153,9 @@ func TestVerifyASubset(t *testing.T) {
 
 // TestVerifyOneBody checks a delivery the receiver saved with get --json, under the mediator's
 // reference with no founding set: its body is the part its receipt names, exit 0; with one byte of
-// its text changed it is not, exit 1, and conformance is still not checked (verify-2 row 5, U25).
+// its text changed it is not, exit 1, and conformance is still not checked (verify-2 row 5, U25). A
+// file that is no delivery, and a delivery whose receipt is none of the journal's, are tool error
+// delivery, with no line printed.
 func TestVerifyOneBody(t *testing.T) {
 	t.Parallel()
 	a := newAccord(t, "p1", "p2")
@@ -180,6 +182,18 @@ func TestVerifyOneBody(t *testing.T) {
 	r = run(t, env(), "verify", "--receipts", a.journal(), "--accord", a.id, "--founding", filepath.Join(a.dir, "founding.json"), "--delivery", saved)
 	if r.code != 1 || !slices.Contains(r.lines(), fmt.Sprintf(cli.LineNotConform, "body", 1)) || !slices.Contains(r.lines(), fmt.Sprintf(cli.LineBodyNot, 1)) {
 		t.Fatalf("verify --accord --delivery of a changed body: %v", r)
+	}
+	other := strings.Replace(got.stdout, id, "sha256:"+strings.Repeat("ab", 32), 1)
+	for name, b := range map[string]string{"no delivery": "[]\n", "a delivery of another receipt": other} {
+		if err := os.WriteFile(saved, []byte(b), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		for _, form := range [][]string{{"--mediator", a.refs["mediator"]}, {"--accord", a.id, "--founding", filepath.Join(a.dir, "founding.json")}} {
+			args := append([]string{"verify", "--receipts", a.journal(), "--delivery", saved}, form...)
+			if r := run(t, env(), args...); r.code != 3 || r.stderr != "error delivery\n" {
+				t.Fatalf("verify %s of %s: %v", form[0], name, r)
+			}
+		}
 	}
 }
 

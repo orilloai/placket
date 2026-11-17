@@ -33,10 +33,9 @@ type answering struct {
 }
 
 // shown reads the question as the window shows it to this key's answerer and checks it before
-// anything is signed: the ask's receipt names the question, under this Accord, and its subject
-// digest is the salted digest of the body shown under the salt shown (crossing-3, maybe-1). A
-// question the window does not show is left to the mediator to refuse, unless the window left some
-// out of its reply. It returns 0, or the exit code of a refusal or of tool error asked.
+// anything is signed (asked). A question the window does not show is tool error asked too, whether
+// or not the window left some out of its reply: nothing is signed for a part that was not checked.
+// It returns 0, or the exit code of a refusal or of tool error asked.
 func (s *session) shown(question string) int {
 	rep, err := s.client.Call(local.OpQuestions, nil)
 	if err != nil {
@@ -46,20 +45,20 @@ func (s *session) shown(question string) int {
 		return code
 	}
 	for _, q := range rep.Questions {
-		if q.ID != question {
-			continue
+		if q.ID == question && s.asked(q) {
+			return 0
 		}
-		st, err := receipts.Decode(q.Receipt)
-		if err != nil || st.ID != question || st.Predicate.Accord != s.client.Accord || st.Subject.Name != q.Kind ||
-			receipts.Digest(q.Salt, askedBody(q)) != st.Subject.Digest {
-			return s.r.tool(codeAsked)
-		}
-		return 0
 	}
-	if rep.More {
-		return s.r.tool(codeAsked)
-	}
-	return 0
+	return s.r.tool(codeAsked)
+}
+
+// asked reports whether a question the window shows is the part its ask's receipt names: the
+// receipt is the question's, under this Accord, of the kind shown, and its subject digest is the
+// salted digest of the body shown under the salt shown (crossing-3, maybe-1).
+func (s *session) asked(q local.Asked) bool {
+	st, err := receipts.Decode(q.Receipt)
+	return err == nil && st.ID == q.ID && st.Predicate.Accord == s.client.Accord && st.Subject.Name == q.Kind &&
+		receipts.Digest(q.Salt, askedBody(q)) == st.Subject.Digest
 }
 
 // askedBody is the bytes of an asked part's body as the digest reads them: a text's UTF-8, a data

@@ -33,8 +33,8 @@ func (a *accord) receipts(t testing.TB) []byte {
 // TestAnAnswerNeedsItsText refuses a decline with no comment, or an empty one, with tool error
 // comment, and a change with no version, an empty one, or a file that is not UTF-8, with tool error
 // changed: each exits 3, sends no call, and leaves the question open. A change with a comment gives
-// the comment to the asker with re the question; a decline of a closed question is no-open-question,
-// exit 2, and gives no comment (RCP-01, RCP-02, RCP-05, RCP-12).
+// the comment to the asker with re the question; a decline of a closed question, which the window
+// no longer shows, is tool error asked, exit 3, and gives no comment (RCP-01, RCP-02, RCP-05, RCP-12).
 func TestAnAnswerNeedsItsText(t *testing.T) {
 	t.Parallel()
 	a := newAccord(t, "proposer", "applier", "decider")
@@ -73,7 +73,7 @@ func TestAnAnswerNeedsItsText(t *testing.T) {
 		t.Fatalf("the proposer fetched %v", got)
 	}
 	r = run(t, env(), a.as("decider", "decline", "--question", q, "--comment", "Too late.")...)
-	if r.code != 2 || r.stderr != "rejected no-open-question\n" {
+	if r.code != 3 || r.stderr != "error asked\n" {
 		t.Fatalf("a decline of a closed question: %v", r)
 	}
 	if got := a.drain(t, "proposer"); len(got) != 0 {
@@ -203,8 +203,9 @@ func TestTheAnswerCallTravelsWithTheAnswer(t *testing.T) {
 }
 
 // TestAnswerSignsOnlyWhatItChecked answers a question a window shows under a salt that does not make
-// the ask's receipt's digest: answer is tool error asked and sends no resolve call, its last call
-// the questions it read (U12).
+// the ask's receipt's digest, and then one the window does not show at all: answer is tool error
+// asked and sends no resolve call, its last call the questions it read; questions prints nothing of
+// the misstated part and is tool error asked (U12).
 func TestAnswerSignsOnlyWhatItChecked(t *testing.T) {
 	t.Parallel()
 	a := newAccord(t, "proposer", "applier", "decider")
@@ -219,6 +220,16 @@ func TestAnswerSignsOnlyWhatItChecked(t *testing.T) {
 		r := run(t, env(), w.as(a, "decider", args...)...)
 		if r.code != 3 || r.stderr != "error asked\n" || !bytes.Contains(w.lastCall(), []byte(`"op":"questions"`)) {
 			t.Fatalf("%s of a part the window misstates: %v, last call %s", args[0], r, w.lastCall())
+		}
+	}
+	if r := run(t, env(), w.as(a, "decider", "questions")...); r.code != 3 || r.stderr != "error asked\n" || r.stdout != "" {
+		t.Fatalf("questions of a part the window misstates: %v", r)
+	}
+	w.set(t, map[string]any{"ok": true, "questions": []any{}})
+	for _, args := range [][]string{{"answer", "--question", q}, {"change", "--question", q, "--text", "Rename it."}, {"decline", "--question", q, "--comment", "No."}} {
+		r := run(t, env(), w.as(a, "decider", args...)...)
+		if r.code != 3 || r.stderr != "error asked\n" || !bytes.Contains(w.lastCall(), []byte(`"op":"questions"`)) {
+			t.Fatalf("%s of a question the window does not show: %v, last call %s", args[0], r, w.lastCall())
 		}
 	}
 }

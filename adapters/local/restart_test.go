@@ -102,8 +102,9 @@ func play(t *testing.T, restart bool) ([]string, []byte, *world) {
 }
 
 // A recorder is a Disk that writes through the system's and notes, in order, what each write named:
-// the ids of the receipts a receipts.jsonl append holds, the question of a questions.jsonl line,
-// and the receipt a held file is named for.
+// the ids of the receipts a receipts.jsonl append holds and the answer calls they name, the question
+// of a questions.jsonl line, the receipt a held file is named for, and the id of each call an
+// answers.jsonl append holds.
 type recorder struct {
 	mu     sync.Mutex
 	writes []noted
@@ -112,6 +113,8 @@ type recorder struct {
 type noted struct {
 	file string
 	ids  []string
+	// calls holds, for a receipts.jsonl append, the by.answer of each receipt decided by an answer.
+	calls []string
 }
 
 func (r *recorder) note(path string, b []byte) {
@@ -125,6 +128,13 @@ func (r *recorder) note(path string, b []byte) {
 				continue
 			}
 			n.ids = append(n.ids, st.ID)
+			if st.Predicate.By.Decider == receipts.ByAnswer {
+				n.calls = append(n.calls, st.Predicate.By.Answer)
+			}
+		}
+	case n.file == journal.FileAnswers:
+		for _, l := range splitLines(b) {
+			n.ids = append(n.ids, answer.ID(l))
 		}
 	case n.file == journal.FileQuestions:
 		for _, l := range splitLines(b) {
@@ -158,12 +168,14 @@ func (r *recorder) Create(path string, b []byte) error {
 func (r *recorder) Remove(path string) error { return journal.OS.Remove(path) }
 
 // inOrder checks that every held file and every questions.jsonl line was written before the
-// receipt it names, in an earlier write, and that each names a receipt written later.
+// receipt it names, in an earlier write, and that each names a receipt written later; and that every
+// answers.jsonl line was written before the first receipt whose by.answer names its call, the
+// closing it decided.
 func (r *recorder) inOrder(t *testing.T) {
 	t.Helper()
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	receipt := map[string]int{}
+	receipt, closing := map[string]int{}, map[string]int{}
 	for i, n := range r.writes {
 		if n.file != journal.FileReceipts {
 			continue
@@ -173,6 +185,27 @@ func (r *recorder) inOrder(t *testing.T) {
 				receipt[id] = i
 			}
 		}
+		for _, id := range n.calls {
+			if _, seen := closing[id]; !seen {
+				closing[id] = i
+			}
+		}
+	}
+	calls := 0
+	for i, n := range r.writes {
+		if n.file != journal.FileAnswers {
+			continue
+		}
+		for _, id := range n.ids {
+			at, ok := closing[id]
+			if !ok || at <= i {
+				t.Fatalf("write %d, of %s for %s, is not before its closing's (%d, %v)", i, n.file, id, at, ok)
+			}
+			calls++
+		}
+	}
+	if calls == 0 {
+		t.Fatal("no answers.jsonl line written")
 	}
 	held, asked := 0, 0
 	for i, n := range r.writes {

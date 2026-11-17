@@ -40,8 +40,8 @@ The reserved ids, and why each is reserved:
   1. *Parties sign locally.* Every declaration, binding, envelope and answer call is signed by its own actor's key; the mediator signs only receipts. Held by the founding table, the door's table and section 6's table, and by `call-signing` and `keys-on-disk`.
   2. *No global state in the core.* The core takes the time, salts and keys as parameters and reads nothing of the world. Held by `core-no-world` and `inputs-as-parameters`.
   3. *One tool per call.* A door call does one operation, and an answer is one signed call. Held by review, and by the door's check order (`door-check-order`).
-  4. *Verify never needs a body.* Validity and conformance read receipts, the founding set and answer calls, none of which holds a body or a salt; only the check of one delivery reads its own. Held by verify-1's table and `core/conform`'s tests.
-  5. *No judge changes the terms.* A judge decides only where both sides' terms would ask and both granted it, never at release and never on a part the mediator formed. Held by composition-7 and `one-decision-module`.
+  4. *Verify never needs a body.* Validity and conformance read receipts, the founding set and answer calls, none of which holds a body or a salt; only the check of one delivery reads its own. Held by `core/conform`'s tests, which drop every body and salt and find the result unchanged.
+  5. *No judge changes the terms.* A judge decides only where both sides' terms would ask and both granted it, never at release and never on a part the mediator formed. Held by `one-decision-module`, by composition's judge tests and by the mediator's test that a release is never judged.
 - **Scope.** Placket ends where a signed call is made: what the edges do with a part, a release or a decision is theirs.
 
 ## Changing the protocol
