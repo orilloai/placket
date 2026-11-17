@@ -44,6 +44,15 @@ const (
 	LineNoKeptValue     = "no part this key kept holds this value at this path"
 )
 
+// The labels of the lines version prints, each also its member under --json (docs/release.md).
+const (
+	LabelVersion    = "version"
+	LabelCommit     = "commit"
+	LabelCommitTime = "commitTime"
+	LabelGo         = "go"
+	LabelModule     = "module"
+)
+
 // The claim lines, word for word, one per kind of receipt; every one is followed by Scope
 // (claims-stop-at-crossing).
 const (

@@ -1427,6 +1427,7 @@ A command that is refused, or fails, has the members of its refusal beside what 
 | `log` | `log`, the object the command prints without `--json`, which carries the claim and the scope line. `--json` with `--format csv` is the command's error `format` |
 | `reconcile` | `removed`, `unrecorded` and `missing`, as the command prints them without `--json` |
 | `released` | On a match, `receiptId` and `receipt`, those of the receipt the file, or the kept part, matched; `kind`, the part's kind; `verified`, `false`; `claim`, the claim line, the value's with `--at`; `notClaimed`, the scope line. With no match, `exit` alone. With `--every`, in place of `receiptId`, `receipt` and `kind`, `matches`, the list of every match in the order the key fetched them, each `receiptId`, `kind`, `at`, the receipt's time, `from`, the receipt's sender, and `re` when the part has one; on a match `verified`, `claim` and `notClaimed` beside it |
+| `version` | `version`, the binary's version as its build stamped it, or `(devel)` when the build stamped none; `commit` and `commitTime`, the commit the binary was built from and that commit's time, when the build carries them; `go`, the Go release that built it, as Go spells it, such as `go1.27.4`; `module`, an object of the decision module's `version` and `hash`, the module `card --default` names |
 
 ### commands-1 One object on standard output
 

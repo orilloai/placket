@@ -190,7 +190,7 @@ func (r *run) putModule(set []byte) {
 	checks := []json.RawMessage{}
 	r.put(memberOperator, s.Mediator.Operator)
 	r.put("runs", s.Mediator.Runs)
-	r.put("module", s.Card.Kernel)
+	r.put(LabelModule, s.Card.Kernel)
 	r.put("checks", append(checks, s.Card.Checks...))
 }
 
@@ -216,7 +216,7 @@ func moduleLines(set []byte) []string {
 	}
 	_ = json.Unmarshal(set, &s)
 	out := []string{"operator " + s.Mediator.Operator + " runs " + s.Mediator.Runs,
-		"module " + s.Card.Kernel.Version + " " + s.Card.Kernel.Hash}
+		LabelModule + " " + s.Card.Kernel.Version + " " + s.Card.Kernel.Hash}
 	if l := otherModule(kernel(s.Card.Kernel)); l != "" {
 		out = append(out, l)
 	}

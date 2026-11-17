@@ -107,6 +107,7 @@ var commandFlags = []commandRow{
 		"binding":     {input, "each binding goes into the one set", nil}}},
 	{words: []string{"card"}, flags: map[string]flagUse{
 		"json": jsonFlag, "default": {input, "which one card it prints", nil}}},
+	{words: []string{"version"}, flags: map[string]flagUse{"json": jsonFlag}},
 	{words: []string{"window"}, flags: map[string]flagUse{
 		"json": jsonFlag, "key": {input, "the one mediator key it runs under", nil},
 		"founding": {input, "the one founding set it runs", nil},
