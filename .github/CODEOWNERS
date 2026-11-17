@@ -1,0 +1,3 @@
+# The maintainer approves every pull request; the swarm merges once that approval is in and the checks are green.
+# The main ruleset requires a code owner's review, given after the last push.
+* @jlindenger
