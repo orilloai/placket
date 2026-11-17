@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/orilloai/placket/adapters/journal"
+	"github.com/orilloai/placket/adapters/local"
 )
 
 // TestReadReceiptsReadsOnlyARegularFile hands ReadReceipts a journal whose receipts.jsonl is a FIFO,
@@ -35,17 +36,18 @@ func TestReadReceiptsReadsOnlyARegularFile(t *testing.T) {
 	}
 }
 
-// TestReadReceiptsCapsEachLine reads a receipts.jsonl whose second line is one byte past 4 MiB:
-// code journal at line 2. A line of 4 MiB exactly is read, and the file as a whole has no cap.
+// TestReadReceiptsCapsEachLine reads a receipts.jsonl whose second line is one byte past
+// local.MaxReply, 4 MiB: code journal at line 2. A line of MaxReply exactly is read, so the cap
+// follows the most a window replies with, and the file as a whole has no cap.
 func TestReadReceiptsCapsEachLine(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
-	full := bytes.Repeat([]byte("a"), 4<<20)
+	full := bytes.Repeat([]byte("a"), local.MaxReply)
 	b := append(append(append([]byte(nil), full...), '\n'), full...)
 	if err := os.WriteFile(filepath.Join(dir, journal.FileReceipts), append(b, '\n'), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if l, err := journal.ReadReceipts(dir, &bytes.Buffer{}); err != nil || len(l) != 2 || len(l[1]) != 4<<20 {
+	if l, err := journal.ReadReceipts(dir, &bytes.Buffer{}); err != nil || len(l) != 2 || len(l[1]) != local.MaxReply || local.MaxReply != 4<<20 {
 		t.Fatalf("two lines of 4 MiB: got %d lines, %v", len(l), err)
 	}
 	if err := os.WriteFile(filepath.Join(dir, journal.FileReceipts), append(append(b, 'a'), '\n'), 0o600); err != nil {

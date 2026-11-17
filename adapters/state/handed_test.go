@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/orilloai/placket/adapters/local"
 	"github.com/orilloai/placket/adapters/state"
 )
 
@@ -67,7 +68,8 @@ func TestStateErrorsQuoteNothing(t *testing.T) {
 
 // TestStateReadsOnlyRegularFiles reads a state directory whose kept.jsonl is a FIFO, and one whose
 // actor file is: each is refused with code state, without waiting on the FIFO, and a kept.jsonl line
-// longer than 4 MiB is refused too, while one just under it is read.
+// longer than local.MaxReply, 4 MiB, is refused too, while one of MaxReply is read, so the cap
+// follows the most a window replies with.
 func TestStateReadsOnlyRegularFiles(t *testing.T) {
 	t.Parallel()
 	path := filepath.Join(t.TempDir(), "s")
@@ -96,11 +98,11 @@ func TestStateReadsOnlyRegularFiles(t *testing.T) {
 	}
 	long := filepath.Join(t.TempDir(), "s")
 	d = open(t, long, &bytes.Buffer{})
-	under := bytes.Repeat([]byte("a"), 4<<20)
+	under := bytes.Repeat([]byte("a"), local.MaxReply)
 	if err := os.WriteFile(filepath.Join(long, state.FileKept), append(under, '\n'), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if kept, err := d.Kept(); err != nil || len(kept) != 1 || len(kept[0]) != 4<<20 {
+	if kept, err := d.Kept(); err != nil || len(kept) != 1 || len(kept[0]) != local.MaxReply || local.MaxReply != 4<<20 {
 		t.Fatalf("a line of 4 MiB: got %d lines, %v", len(kept), err)
 	}
 	if err := os.WriteFile(filepath.Join(long, state.FileKept), append(under, 'a', '\n'), 0o600); err != nil {
@@ -150,4 +152,24 @@ func unblock(path string) (stop func()) {
 		}
 	}()
 	return func() { close(done); <-ended }
+}
+
+// TestStateReadsAnActorFileOfAtMost4KiB reads a state directory whose actor file is one line of
+// 4 KiB, then one of 4 KiB and a byte: the first is read, the second refused with code state.
+func TestStateReadsAnActorFileOfAtMost4KiB(t *testing.T) {
+	t.Parallel()
+	path := t.TempDir()
+	line := append(bytes.Repeat([]byte("a"), 4<<10-1), '\n')
+	if err := os.WriteFile(filepath.Join(path, state.FileActor), line, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if d, err := state.Read(path); err != nil || len(d.Actor()) != 4<<10-1 {
+		t.Fatalf("an actor file of 4 KiB: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(path, state.FileActor), append([]byte("a"), line...), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := state.Read(path); err == nil || err.Error() != "state: state" {
+		t.Fatalf("an actor file of 4 KiB and a byte: got %v", err)
+	}
 }
