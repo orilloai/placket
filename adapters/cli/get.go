@@ -105,7 +105,7 @@ func (s *session) fetch(keep bool) (*delivery, []byte, int) {
 	}
 	var d delivery
 	if !strict.Decode(rep.Delivery, &d) || !s.about(d) {
-		return nil, nil, s.r.tool("reply")
+		return nil, nil, s.r.tool(codeReply)
 	}
 	if err := s.dir.AddDelivered(d.Receipt); err != nil {
 		return nil, nil, s.r.failed(err)

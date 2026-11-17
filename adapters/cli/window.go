@@ -69,9 +69,9 @@ func windowCommand(r *run, args []string) int {
 func (r *run) event(e local.Event, operator string) {
 	switch e.Kind {
 	case local.EventStarted:
-		how := "reloaded"
+		how := wordReloaded
 		if e.Founded {
-			how = "founded"
+			how = wordFounded
 		}
 		fmt.Fprintln(r.stderr, "accord "+e.Accord+" "+how)
 		fmt.Fprintln(r.stderr, "card "+e.Card)
@@ -95,7 +95,7 @@ func (r *run) event(e local.Event, operator string) {
 	case e.Error != "":
 		fmt.Fprintln(r.stderr, op+" "+LineError+" "+string(e.Error))
 	case e.Fetched != "":
-		fmt.Fprintln(r.stderr, op+" fetched "+e.Fetched)
+		fmt.Fprintln(r.stderr, op+" "+wordFetched+" "+e.Fetched)
 	case len(e.Outcomes) == 0:
 		fmt.Fprintln(r.stderr, op)
 	}

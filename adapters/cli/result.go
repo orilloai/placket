@@ -54,7 +54,7 @@ func (s *session) closing(question string, wait bool) int {
 	}
 	st, err := receipts.Decode(rep.Outcome.Receipt)
 	if err != nil {
-		return s.r.tool("reply")
+		return s.r.tool(codeReply)
 	}
 	w := export.Closing(st.Predicate, st.Subject)
 	text := w + " " + rep.Outcome.ReceiptID

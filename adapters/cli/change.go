@@ -31,6 +31,9 @@ func changeCommand(r *run, args []string) int {
 		return code
 	}
 	defer s.dir.Unlock()
+	if !utf8.ValidString(*text) {
+		return r.tool(codeText)
+	}
 	version := *text
 	if *file != "" {
 		b, err := os.ReadFile(*file)

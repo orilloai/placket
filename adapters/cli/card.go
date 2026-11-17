@@ -90,5 +90,6 @@ func otherModule(k kernel) string {
 	if k.Version == composition.KernelVersion && k.Hash == composition.KernelHash() {
 		return ""
 	}
-	return fmt.Sprintf(ModuleOther, k.Version, k.Hash, composition.KernelVersion, composition.KernelHash())
+	// The kernel is read from a card nobody has checked yet, so each of its fields is escaped.
+	return fmt.Sprintf(ModuleOther, field(k.Version), field(k.Hash), composition.KernelVersion, composition.KernelHash())
 }

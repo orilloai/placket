@@ -2,6 +2,7 @@ package cli
 
 import (
 	"fmt"
+	"unicode/utf8"
 
 	"github.com/orilloai/placket/adapters/local"
 	"github.com/orilloai/placket/core/composition"
@@ -24,7 +25,7 @@ func (s *session) resolve(question string, action mediator.Action, answer string
 		return nil, code
 	}
 	if rep.Outcome == nil {
-		return nil, s.r.tool("reply")
+		return nil, s.r.tool(codeReply)
 	}
 	s.r.put(memberQuestion, question)
 	s.r.outcome(rep.Outcome, false, memberOutcome)
@@ -56,7 +57,7 @@ func (s *session) comment(rep *local.Reply, question, text string) int {
 	s.r.put(memberCrossed, false)
 	to, ok := asker(rep)
 	if !ok {
-		return s.r.tool("reply")
+		return s.r.tool(codeReply)
 	}
 	out, code := s.send(to, "comment", body{form: "text", value: text}, question, "", true)
 	if out == nil {
@@ -103,6 +104,9 @@ func answerCommand(r *run, args []string) int {
 		return code
 	}
 	defer s.dir.Unlock()
+	if !utf8.ValidString(*text) {
+		return r.tool(codeText)
+	}
 	rep, code := s.resolve(question, mediator.Accepted, *text)
 	if rep == nil {
 		return code

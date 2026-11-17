@@ -28,7 +28,7 @@ const (
 	memberRelease    = "release"
 	memberQuestion   = "question"
 	memberClosing    = "closing"
-	memberFetched    = "fetched"
+	memberFetched    = wordFetched
 	memberAnswer     = "answer"
 	memberDeliveries = "deliveries"
 	memberDelivery   = "delivery"

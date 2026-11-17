@@ -66,7 +66,8 @@ func oneAccord(st []receipts.Statement) (string, int) {
 // set is given, the counts of verdicts, questions and releases, the claim and the scope line. The
 // receipts must all be of one Accord and card, or it is tool error verify, accord or card, at the
 // first that differs. A founding set is tool error founding unless it founds the receipts' Accord
-// and its mediator is M. With a founding set it also names each member, in actor-reference order: a
+// and its mediator is M; with no receipts there is no Accord to compare, and the set is checked
+// alone, as founding checks it. With a founding set it also names each member, in actor-reference order: a
 // line `member <actor> roles <r1,r2> principal <principal>` after the module's lines, and members in
 // the object (commands-4). A card whose module is not this build's is named after the module line,
 // and still verifies (docs/adr/0012-the-kernel-hash.md).
@@ -114,7 +115,8 @@ func verifyCommand(r *run, args []string) int {
 		}
 		// The set must be the journal's Accord and name the key the receipts were verified under.
 		a, err := setup.Found(set, at)
-		if err != nil || a.ID() != accord || a.Mediator() != *med {
+		// A journal with no receipts has no Accord to compare: the set is checked alone.
+		if err != nil || (len(st) > 0 && a.ID() != accord) || a.Mediator() != *med {
 			return r.tool(codeFound)
 		}
 		module = moduleLines(set)
@@ -146,7 +148,7 @@ func verifyCommand(r *run, args []string) int {
 			}
 		}
 	}
-	fmt.Fprintf(r.stderr, "verified %d receipts\n", len(st))
+	fmt.Fprintf(r.stderr, lineVerified+"\n", len(st))
 	fmt.Fprintln(r.stderr, "mediator "+*med+" accord "+accord+" card "+card)
 	if module == nil {
 		fmt.Fprintln(r.stderr, LineNoModule)
@@ -155,8 +157,8 @@ func verifyCommand(r *run, args []string) int {
 		fmt.Fprintln(r.stderr, l)
 	}
 	fmt.Fprintf(r.stderr, "%s %d %s %d %s %d\n", WordPass, n[string(composition.Pass)], WordBlock, n[string(composition.Block)], WordAsk, n[string(composition.Escalate)])
-	fmt.Fprintf(r.stderr, "questions closed %d open %d\n", closed, n[string(composition.Escalate)]-closed)
-	fmt.Fprintf(r.stderr, "releases %d blocked releases %d\n", released, blocked)
+	fmt.Fprintf(r.stderr, lineQuestions+"\n", closed, n[string(composition.Escalate)]-closed)
+	fmt.Fprintf(r.stderr, lineReleases+"\n", released, blocked)
 	fmt.Fprintln(r.stderr, ClaimVerified)
 	fmt.Fprintln(r.stderr, Scope)
 	for name, v := range map[string]any{
