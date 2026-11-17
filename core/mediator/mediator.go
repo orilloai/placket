@@ -22,6 +22,7 @@ import (
 
 	"github.com/orilloai/placket/core/canonical"
 	"github.com/orilloai/placket/core/composition"
+	"github.com/orilloai/placket/core/internal/crossing"
 	"github.com/orilloai/placket/core/internal/shape"
 	"github.com/orilloai/placket/core/receipts"
 	"github.com/orilloai/placket/core/setup"
@@ -38,7 +39,7 @@ const (
 )
 
 // MinSaltBytes is the shortest salt a part may have, in bytes (crossing-2).
-const MinSaltBytes = 16
+const MinSaltBytes = crossing.MinSaltBytes
 
 // RejectionCode is a code a caller's operation is rejected with: what the caller did wrong, spelled
 // as the door's check tables spell it (section 4).
@@ -70,9 +71,11 @@ const (
 // changes nothing (crossing-7). It carries nothing of the input.
 type Rejection struct{ Code RejectionCode }
 
+// Error returns the package and the code, and nothing of the input.
 func (r *Rejection) Error() string { return "mediator: rejected: " + string(r.Code) }
 
-// ErrorCode says what the caller's program did wrong, or that the mediator failed.
+// ErrorCode says what the caller's program did wrong, or that the mediator failed
+// (rejection-vs-error, record 0006).
 type ErrorCode string
 
 // The codes of Error. None is a code of the protocol (record 0006, record 0008).
@@ -108,6 +111,7 @@ type Error struct {
 	Err   error
 }
 
+// Error returns the package, the code and the index, and nothing of the input.
 func (e *Error) Error() string {
 	if e.Index < 0 {
 		return "mediator: " + string(e.Code)
@@ -125,7 +129,8 @@ func failure(code ErrorCode) *Error { return &Error{Code: code, Index: -1} }
 // no set is wrong for that, so it is not a founding code (setup-contract-7).
 var ErrOtherMediator = errors.New("mediator: the set names another mediator")
 
-// An Outcome is a receipt the mediator wrote: its verdict, reason, id and bytes.
+// An Outcome is a receipt the mediator wrote: its verdict, reason, id and bytes (receipt-1,
+// record 0006).
 type Outcome struct {
 	Verdict   string
 	Reason    string
@@ -163,7 +168,7 @@ type Mediator struct {
 	accord     *setup.Accord
 	key        signing.Key
 	receipts   [][]byte
-	statements []receipts.Statement
+	statements []receipts.Verified
 	chains     map[[2]string]link
 	highest    map[string]int64
 	queues     map[string][]queued
@@ -218,7 +223,8 @@ func (m *Mediator) Card() string {
 	return m.accord.Card()
 }
 
-// Receipts returns every receipt the mediator wrote, in order, as copies.
+// Receipts returns every receipt the mediator wrote, in order, as copies (results-are-copies,
+// record 0006).
 func (m *Mediator) Receipts() [][]byte {
 	out := make([][]byte, len(m.receipts))
 	for i, r := range m.receipts {
@@ -299,17 +305,18 @@ func (m *Mediator) Give(caller string, message, envelope []byte, at string) (Out
 		Verdict:  string(d.Verdict), Reason: d.Reason,
 	}
 	subject := receipts.Subject{Name: g.kind, Digest: g.digest}
-	receipt, id, err := receipts.Build(subject, pred, m.key)
+	receipt, verified, err := receipts.Build(subject, pred, m.key)
 	if err != nil {
 		return Outcome{}, failure(CodeInternal)
 	}
+	id := verified.Statement().ID
 	next.id = id
 	pred.Mediator = m.key.Reference()
 	var delivery []byte
 	var held *question
 	switch d.Verdict {
 	case composition.Pass:
-		if delivery = deliver(g.delivery, receipt, id); delivery == nil {
+		if delivery = crossing.Deliver(g.delivery, receipt, id); delivery == nil {
 			return Outcome{}, failure(CodeInternal)
 		}
 	case composition.Escalate:
@@ -322,7 +329,7 @@ func (m *Mediator) Give(caller string, message, envelope []byte, at string) (Out
 
 	// Every receipt and delivery is built; only now does the state change.
 	m.receipts = append(m.receipts, receipt)
-	m.statements = append(m.statements, receipts.Statement{ID: id, Subject: subject, Predicate: pred})
+	m.statements = append(m.statements, verified)
 	m.chains[pair] = next
 	m.highest[caller] = g.seq
 	if delivery != nil {
@@ -332,20 +339,6 @@ func (m *Mediator) Give(caller string, message, envelope []byte, at string) (Out
 		m.questions = append(m.questions, held)
 	}
 	return Outcome{Verdict: string(d.Verdict), Reason: d.Reason, ReceiptID: id, Receipt: append([]byte(nil), receipt...)}, nil
-}
-
-// deliver writes a delivery (crossing-3): the receipt that passed the part and its id, and the
-// part's members as it crossed.
-func deliver(part map[string]any, receipt []byte, id string) []byte {
-	r, _, err := shape.Decode(receipt)
-	if err != nil {
-		return nil
-	}
-	o := shape.Object{"receiptId": id, "receipt": r}
-	for k, v := range part {
-		o[k] = v
-	}
-	return shape.Encode(o)
 }
 
 // admit runs the door's rows over a give, in order (section 4), and returns what they read, or the
@@ -441,7 +434,7 @@ func (m *Mediator) admit(caller string, message, envelope []byte) (give, Rejecti
 		return g, OneBody
 	}
 	bodyName, bodies := "", 0
-	for _, b := range []string{"text", "raw", "data", "url"} {
+	for _, b := range append(append([]string(nil), crossing.Forms...), "url") {
 		if _, has := part[b]; has {
 			bodyName = b
 			bodies++
@@ -450,30 +443,13 @@ func (m *Mediator) admit(caller string, message, envelope []byte) (give, Rejecti
 	if bodies != 1 || !shape.Only(part, bodyName, "", "metadata") {
 		return g, OneBody
 	}
-	var body []byte
-	switch bodyName {
-	case "text":
-		s, ok := part["text"].(string)
-		if !ok {
-			return g, OneBody
-		}
-		body = []byte(s)
-	case "raw":
-		s, ok := part["raw"].(string)
-		if !ok {
-			return g, OneBody
-		}
-		if body, ok = shape.Base64(s); !ok {
-			return g, OneBody
-		}
-	case "data":
-		if part["data"] == nil {
-			return g, OneBody
-		}
-		body = shape.Encode(part["data"])
-	case "url":
+	if bodyName == "url" {
 		// Row 11: a url body is not a body of this version, whatever its value.
 		return g, URLUnsupported
+	}
+	body, ok := crossing.Body(bodyName, part[bodyName])
+	if !ok {
+		return g, OneBody
 	}
 	// Row 12: the part's metadata.
 	pm, ok := part["metadata"].(shape.Object)
@@ -488,15 +464,11 @@ func (m *Mediator) admit(caller string, message, envelope []byte) (give, Rejecti
 	if !ok || !shape.Label(kind) {
 		return g, PartMetadata
 	}
-	saltHex, ok := pmx["salt"].(string)
-	if !ok || len(saltHex) < 2*MinSaltBytes || !shape.LowerHex(saltHex) {
+	salt, ok := crossing.Salt(pmx["salt"])
+	if !ok {
 		return g, PartMetadata
 	}
-	salt := make([]byte, len(saltHex)/2)
-	for i := range salt {
-		n, _ := strconv.ParseUint(saltHex[2*i:2*i+2], 16, 8)
-		salt[i] = byte(n)
-	}
+	saltHex, _ := pmx["salt"].(string)
 	g.kind = kind
 	g.digest = receipts.Digest(salt, body)
 	g.delivery = map[string]any{"messageId": messageID, "kind": kind, "salt": saltHex, bodyName: part[bodyName]}

@@ -2,53 +2,31 @@ package mediator_test
 
 import (
 	"bytes"
-	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
-	"os"
 	"strings"
 	"testing"
 
 	"github.com/orilloai/placket/core/canonical"
+	ptesting "github.com/orilloai/placket/core/internal/testing"
+	"github.com/orilloai/placket/core/internal/testing/seeds"
 	"github.com/orilloai/placket/core/mediator"
 	"github.com/orilloai/placket/core/receipts"
 	"github.com/orilloai/placket/core/setup"
 	"github.com/orilloai/placket/core/signing"
 )
 
-func key(t testing.TB, name string) signing.Key {
-	t.Helper()
-	seed := sha256.Sum256([]byte("placket vectors: key " + name))
-	k, err := signing.NewKey(seed[:])
-	if err != nil {
-		t.Fatal(err)
-	}
-	return k
-}
-
 // askAndLog is the ask-and-log founding set of vectors/founding/.
 func askAndLog(t testing.TB) ([]byte, string) {
 	t.Helper()
-	b, err := os.ReadFile("../../vectors/founding/ask-and-log.json")
-	if err != nil {
-		t.Fatal(err)
-	}
-	var v struct {
-		InputHex  string `json:"inputHex"`
-		FoundedAt string `json:"foundedAt"`
-	}
-	if err := json.Unmarshal(b, &v); err != nil {
-		t.Fatal(err)
-	}
-	set, _ := hex.DecodeString(v.InputHex)
-	return set, v.FoundedAt
+	return ptesting.Founding(t, "ask-and-log")
 }
 
 func found(t testing.TB) *mediator.Mediator {
 	t.Helper()
 	set, at := askAndLog(t)
-	m, err := mediator.Found(set, key(t, "mediator"), at)
+	m, err := mediator.Found(set, ptesting.Key(t, "mediator"), at)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -102,7 +80,7 @@ func rejected(err error, code mediator.RejectionCode) bool {
 func TestTwoMediatorsOneRecord(t *testing.T) {
 	t.Parallel()
 	a, b := found(t), found(t)
-	p, ap, d := key(t, "proposer"), key(t, "applier"), key(t, "decider")
+	p, ap, d := ptesting.Key(t, "proposer"), ptesting.Key(t, "applier"), ptesting.Key(t, "decider")
 	type give struct {
 		at     string
 		from   signing.Key
@@ -150,7 +128,7 @@ func TestTwoMediatorsOneRecord(t *testing.T) {
 			t.Fatalf("receipt %d differs", i)
 		}
 	}
-	if _, err := receipts.Verify(key(t, "mediator").Reference(), ra); err != nil {
+	if _, err := receipts.Verify(ptesting.Key(t, "mediator").Reference(), ra); err != nil {
 		t.Fatalf("the receipts do not verify: %v", err)
 	}
 	for _, k := range []signing.Key{p, ap, d} {
@@ -175,11 +153,11 @@ func TestTwoMediatorsOneRecord(t *testing.T) {
 func TestAStrangersBytesAreNotRead(t *testing.T) {
 	t.Parallel()
 	m := found(t)
-	_, err := m.Give(key(t, "stranger").Reference(), []byte("not json {"), []byte{0xff}, "2026-11-12T09:00:00Z")
+	_, err := m.Give(ptesting.Key(t, "stranger").Reference(), []byte("not json {"), []byte{0xff}, "2026-11-12T09:00:00Z")
 	if !rejected(err, mediator.NotAMember) || err.Error() != "mediator: rejected: not-a-member" {
 		t.Fatalf("got %v", err)
 	}
-	if _, err := m.Get(key(t, "stranger").Reference()); !rejected(err, mediator.NotAMember) {
+	if _, err := m.Get(ptesting.Key(t, "stranger").Reference()); !rejected(err, mediator.NotAMember) {
 		t.Fatalf("a stranger's fetch: %v", err)
 	}
 	if len(m.Receipts()) != 0 {
@@ -193,7 +171,7 @@ func TestAStrangersBytesAreNotRead(t *testing.T) {
 func TestARejectedGiveChangesNothing(t *testing.T) {
 	t.Parallel()
 	m := found(t)
-	p, ap := key(t, "proposer"), key(t, "applier")
+	p, ap := ptesting.Key(t, "proposer"), ptesting.Key(t, "applier")
 	bad := message(t, m.Accord(), "bad", ap.Reference(), "note", "Two parts.", func(x map[string]any) {
 		x["parts"] = append(x["parts"].([]any), x["parts"].([]any)[0])
 	})
@@ -211,7 +189,7 @@ func TestARejectedGiveChangesNothing(t *testing.T) {
 	if err != nil || out.Verdict != "pass" {
 		t.Fatalf("got %+v, %v", out, err)
 	}
-	st, err := receipts.Verify(key(t, "mediator").Reference(), m.Receipts())
+	st, err := verifyAll(ptesting.Key(t, "mediator").Reference(), m.Receipts())
 	if err != nil || len(st) != 1 || st[0].Predicate.Envelope.Seq != 1 || st[0].Predicate.Seq != 1 || st[0].Predicate.Prev != "" {
 		t.Fatalf("got %+v, %v", st, err)
 	}
@@ -223,7 +201,7 @@ func TestARejectedGiveChangesNothing(t *testing.T) {
 func TestTheSenderIsTheCaller(t *testing.T) {
 	t.Parallel()
 	m := found(t)
-	p, ap := key(t, "proposer"), key(t, "applier")
+	p, ap := ptesting.Key(t, "proposer"), ptesting.Key(t, "applier")
 	for _, from := range []string{p.Reference(), ap.Reference(), "anyone"} {
 		msg := message(t, m.Accord(), "from", ap.Reference(), "note", "A note.", func(x map[string]any) {
 			x["metadata"].(map[string]any)[extension].(map[string]any)["from"] = from
@@ -246,7 +224,7 @@ func TestTheSenderIsTheCaller(t *testing.T) {
 func TestReadsAreCopies(t *testing.T) {
 	t.Parallel()
 	m := found(t)
-	p, ap := key(t, "proposer"), key(t, "applier")
+	p, ap := ptesting.Key(t, "proposer"), ptesting.Key(t, "applier")
 	note := message(t, m.Accord(), "n", ap.Reference(), "note", "A note.", nil)
 	out, err := m.Give(p.Reference(), note, envelope(t, 1, note, p), "2026-11-12T09:00:00Z")
 	if err != nil {
@@ -277,16 +255,16 @@ func TestReadsAreCopies(t *testing.T) {
 func TestFoundOnlyItsOwnSets(t *testing.T) {
 	t.Parallel()
 	set, at := askAndLog(t)
-	if _, err := mediator.Found(set, key(t, "other-mediator"), at); !errors.Is(err, mediator.ErrOtherMediator) {
+	if _, err := mediator.Found(set, ptesting.Key(t, "other-mediator"), at); !errors.Is(err, mediator.ErrOtherMediator) {
 		t.Fatalf("got %v", err)
 	}
-	_, err := mediator.Found(set[1:], key(t, "mediator"), at)
+	_, err := mediator.Found(set[1:], ptesting.Key(t, "mediator"), at)
 	var se *setup.Error
 	if !errors.As(err, &se) || se.Code != setup.NotCanonical {
 		t.Fatalf("got %v", err)
 	}
 	m := found(t)
-	if _, err := m.Give(key(t, "proposer").Reference(), nil, nil, "2026-11-12 09:00:00"); err == nil || err.Error() != "mediator: at" {
+	if _, err := m.Give(ptesting.Key(t, "proposer").Reference(), nil, nil, "2026-11-12 09:00:00"); err == nil || err.Error() != "mediator: at" {
 		t.Fatalf("a time off the timestamp rule: %v", err)
 	}
 }
@@ -298,7 +276,7 @@ func TestErrorTextQuotesNoInput(t *testing.T) {
 	t.Parallel()
 	const secret = "s3cr3t-body-salt-seed-key-payload"
 	m := found(t)
-	p, ap := key(t, "proposer"), key(t, "applier")
+	p, ap := ptesting.Key(t, "proposer"), ptesting.Key(t, "applier")
 	plant := func(f func(x map[string]any)) func(x map[string]any) {
 		return func(x map[string]any) {
 			x["messageId"] = secret
@@ -315,7 +293,7 @@ func TestErrorTextQuotesNoInput(t *testing.T) {
 		env    func(msg []byte) []byte
 		raw    []byte
 	}{
-		{mediator.NotAMember, key(t, "stranger"), nil, nil, nil},
+		{mediator.NotAMember, ptesting.Key(t, "stranger"), nil, nil, nil},
 		{mediator.EnvelopeSignature, p, nil, func(msg []byte) []byte { return envelope(t, 1, msg, ap) }, nil},
 		{mediator.NotCanonical, p, nil, nil, []byte(`{"messageId":"` + secret + `","messageId":1}`)},
 		{mediator.EnvelopeHash, p, nil, func(msg []byte) []byte { return envelope(t, 1, []byte("{}"), p) }, nil},
@@ -350,14 +328,17 @@ func TestErrorTextQuotesNoInput(t *testing.T) {
 // never panics; a rejection writes nothing, and every receipt written verifies.
 func FuzzGive(f *testing.F) {
 	m0 := found(f)
-	p, ap := key(f, "proposer"), key(f, "applier")
+	p, ap := ptesting.Key(f, "proposer"), ptesting.Key(f, "applier")
 	note := message(f, m0.Accord(), "n", ap.Reference(), "note", "A note.", nil)
 	prop := message(f, m0.Accord(), "q", ap.Reference(), "proposal", "A proposal.", nil)
 	f.Add(note, envelope(f, 2, note, p), p.Reference(), "2026-11-12T09:01:00Z")
 	f.Add(prop, envelope(f, 5, prop, p), p.Reference(), "2026-11-12T09:01:00Z")
 	f.Add(note, envelope(f, 1, note, p), ap.Reference(), "2026-11-12T09:01:00Z")
 	f.Add([]byte(`{}`), []byte(`{"seq":1}`), "", "")
-	med := key(f, "mediator").Reference()
+	med := ptesting.Key(f, "mediator").Reference()
+	for _, in := range seeds.Inputs(f, "crossing", "message") {
+		f.Add(in, envelope(f, 2, note, p), p.Reference(), "2026-11-12T09:01:00Z")
+	}
 	f.Fuzz(func(t *testing.T, message, envelope []byte, caller, at string) {
 		m := found(t)
 		first := note
@@ -383,11 +364,27 @@ func FuzzFound(f *testing.F) {
 	set, at := askAndLog(f)
 	f.Add(set, at)
 	f.Add([]byte(`{}`), at)
-	k := key(f, "mediator")
+	for _, in := range seeds.Inputs(f, "founding") {
+		f.Add(in, at)
+	}
+	k := ptesting.Key(f, "mediator")
 	f.Fuzz(func(t *testing.T, set []byte, at string) {
 		m, err := mediator.Found(set, k, at)
 		if err == nil && (len(m.Receipts()) != 0 || len(m.Pending()) != 0 || m.Accord() == "") {
 			t.Fatal("a mediator founded with state")
 		}
 	})
+}
+
+// verifyAll verifies list under mediator and returns the statements, for tests that read them.
+func verifyAll(mediator string, list [][]byte) ([]receipts.Statement, error) {
+	verified, err := receipts.Verify(mediator, list)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]receipts.Statement, len(verified))
+	for i, v := range verified {
+		out[i] = v.Statement()
+	}
+	return out, nil
 }

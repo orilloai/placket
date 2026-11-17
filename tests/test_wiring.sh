@@ -74,7 +74,8 @@ moved=spec/schema/testdata/$schema/accepted/${example##*/}
 i=0; while [ "$i" -lt 151 ]; do echo x; i=$((i + 1)); done >>AGENTS.md
 # no-hidden-text: a bidi control character in a Markdown file.
 printf 'An \342\200\256 override\n' >docs/hidden.md
-# machine-rules-in-ci: secrets left out of ci's prerequisites.
+# machine-rules-in-ci: secrets left out of ci's prerequisites; the fixture's workflow also uses an
+# action by its tag.
 awk '/^ci:/ && !/=/ { on = 1 } on { line = $0; gsub(/ secrets( |$)/, " ", line); print line; if ($0 !~ /\\$/) on = 0; next } { print }' Makefile >Makefile.new
 mv Makefile.new Makefile
 set +e
@@ -91,8 +92,9 @@ constants-once adapters/wiring/uri.go core/wiring/uri.go
 product-words-once core/wiring/words.go
 claims-stop-at-crossing adapters/wiring/say.go
 main-is-thin cmd/placket/main.go
+recipes-core-only recipes/wiring/up.go
 root-module go.mod
-machine-rules-in-ci Makefile
+machine-rules-in-ci Makefile .github/workflows/wiring.yml
 ci-stays-fast scripts/clear.sh
 no-hidden-text docs/hidden.md
 agents-md-short AGENTS.md'

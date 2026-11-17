@@ -8,13 +8,15 @@ import (
 	"testing"
 
 	"github.com/orilloai/placket/core/canonical"
+	ptesting "github.com/orilloai/placket/core/internal/testing"
+	"github.com/orilloai/placket/core/internal/testing/seeds"
 	"github.com/orilloai/placket/core/receipts"
 )
 
 // receiptSeeds are receipt bytes of each form a reader meets: a real receipt, one edited, one of
 // another statement type, and bytes that are no receipt.
 func receiptSeeds(f *testing.F) [][]byte {
-	list, _ := chain(f, key(f, "mediator"), 2)
+	list, _ := chain(f, ptesting.Key(f, "mediator"), 2)
 	return [][]byte{
 		list[0], list[1],
 		[]byte(`{"payloadType":"application/vnd.in-toto+json","payload":"e30=","signatures":[]}`),
@@ -30,6 +32,9 @@ func receiptSeeds(f *testing.F) [][]byte {
 func FuzzDecode(f *testing.F) {
 	for _, r := range receiptSeeds(f) {
 		f.Add(r)
+	}
+	for _, in := range seeds.Inputs(f, "receipts") {
+		f.Add(in)
 	}
 	f.Fuzz(func(t *testing.T, receipt []byte) {
 		st, err := receipts.Decode(receipt)
@@ -54,12 +59,15 @@ func FuzzDecode(f *testing.F) {
 // envelope, under any mediator, Accord and card. It never panics; a refusal is an Error, and a report
 // names only parties that kept a record.
 func FuzzReconcile(f *testing.F) {
-	med := key(f, "mediator")
+	med := ptesting.Key(f, "mediator")
 	list, _ := chain(f, med, 2)
-	party := key(f, "applier").Reference()
+	party := ptesting.Key(f, "applier").Reference()
 	f.Add(med.Reference(), accord, card, list[1], list[1], party, int64(2), mhash)
 	f.Add(med.Reference(), accord, card, list[1], list[0], party, int64(1), mhash)
 	f.Add("mediator", "", "", []byte(`{}`), []byte("\xff"), "", int64(-1), "")
+	for _, in := range seeds.Inputs(f, "receipts") {
+		f.Add(med.Reference(), accord, card, in, in, party, int64(2), mhash)
+	}
 	f.Fuzz(func(t *testing.T, mediator, acc, crd string, presented, kept []byte, actor string, seq int64, hash string) {
 		report, err := receipts.Reconcile(mediator, acc, crd, [][]byte{list[0], presented},
 			[]receipts.Kept{{Actor: actor, Delivered: [][]byte{kept}, Envelopes: []receipts.Envelope{{Seq: seq, Hash: hash}}}})
@@ -90,6 +98,9 @@ func FuzzDigest(f *testing.F) {
 	f.Add([]byte{}, []byte{})
 	f.Add([]byte("ab"), []byte("c"))
 	f.Add([]byte("a"), []byte("bc"))
+	for _, in := range seeds.Inputs(f, "crossing") {
+		f.Add([]byte("salt-of-sixteen!"), in)
+	}
 	f.Fuzz(func(t *testing.T, salt, body []byte) {
 		sum := sha256.Sum256(append(append([]byte(nil), salt...), body...))
 		if got := receipts.Digest(salt, body); got != hex.EncodeToString(sum[:]) {

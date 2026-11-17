@@ -19,7 +19,8 @@ import (
 	"github.com/orilloai/placket/core/signing"
 )
 
-// Code is a founding refusal code, spelled as the check table of section 3 spells it.
+// Code is a founding refusal code, spelled as the check table of section 3 spells it
+// (setup-contract-1 to setup-contract-10, record 0005).
 type Code string
 
 // The founding codes, in the order of the check table (section 3).
@@ -50,9 +51,11 @@ const (
 // CodeAt is not a founding code: the founding time its caller gave does not keep the timestamp rule.
 const CodeAt Code = "at"
 
-// Error is a refused founding: the code of the first row that failed. It carries nothing of the set.
+// Error is a refused founding: the code of the first row that failed. It carries nothing of the set
+// (record 0005).
 type Error struct{ Code Code }
 
+// Error returns the package and the code, and nothing of the set.
 func (e *Error) Error() string { return "setup: " + string(e.Code) }
 
 // Spec is the card's spec: the version of this protocol (setup-contract-4).
@@ -85,13 +88,16 @@ type Term struct {
 // A Check is a check a term names (setup-contract-1).
 type Check struct{ Name, Corpus string }
 
-// A Rule is a maybe term's resolve: the role labels of who answers, and the timeout in seconds.
+// A Rule is a maybe term's resolve: the role labels of who answers, and the timeout in seconds
+// (setup-contract-1, maybe-1).
 type Rule struct {
 	To      []string
 	Timeout int64
 }
 
-// An Accord is a founded founding set.
+// An Accord is a founded founding set (setup-contract-5, record 0005). Its
+// read methods take a nil *Accord as an Accord with no members and no terms, and return zero values,
+// so a caller handed none fails closed and never panics (core-no-panic).
 type Accord struct {
 	id, card, mediator string
 	members            []string
@@ -101,34 +107,70 @@ type Accord struct {
 }
 
 // ID returns the Accord id: the typed hash of the set's canonical bytes (setup-contract-5).
-func (a *Accord) ID() string { return a.id }
+func (a *Accord) ID() string {
+	if a == nil {
+		return ""
+	}
+	return a.id
+}
 
 // Card returns the card hash: the typed hash of the card's canonical bytes (setup-contract-4).
-func (a *Accord) Card() string { return a.card }
+func (a *Accord) Card() string {
+	if a == nil {
+		return ""
+	}
+	return a.card
+}
 
 // Mediator returns the reference of the mediator the set names, its mediator.actor
 // (setup-contract-7).
-func (a *Accord) Mediator() string { return a.mediator }
+func (a *Accord) Mediator() string {
+	if a == nil {
+		return ""
+	}
+	return a.mediator
+}
 
 // Members returns the actors with a declaration in the set, in actor-reference order
 // (setup-contract-6, setup-contract-10).
-func (a *Accord) Members() []string { return append([]string(nil), a.members...) }
+func (a *Accord) Members() []string {
+	if a == nil {
+		return nil
+	}
+	return append([]string(nil), a.members...)
+}
 
 // Member reports whether actor has a declaration in the set (setup-contract-6).
 func (a *Accord) Member(actor string) bool {
+	if a == nil {
+		return false
+	}
 	_, ok := a.terms[actor]
 	return ok
 }
 
 // Roles returns the roles actor's binding gives it, in the binding's order (setup-contract-2).
-func (a *Accord) Roles(actor string) []string { return append([]string(nil), a.roles[actor]...) }
+func (a *Accord) Roles(actor string) []string {
+	if a == nil {
+		return nil
+	}
+	return append([]string(nil), a.roles[actor]...)
+}
 
 // Principal returns the reference of the principal that signed actor's binding, or "" when actor is
 // not a member (setup-contract-2).
-func (a *Accord) Principal(actor string) string { return a.principals[actor] }
+func (a *Accord) Principal(actor string) string {
+	if a == nil {
+		return ""
+	}
+	return a.principals[actor]
+}
 
 // Terms returns actor's terms, in its declaration's order (setup-contract-1).
 func (a *Accord) Terms(actor string) []Term {
+	if a == nil {
+		return nil
+	}
 	var out []Term
 	for _, t := range a.terms[actor] {
 		c := t

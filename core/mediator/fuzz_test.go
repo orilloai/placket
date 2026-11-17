@@ -4,6 +4,8 @@ import (
 	"errors"
 	"testing"
 
+	ptesting "github.com/orilloai/placket/core/internal/testing"
+	"github.com/orilloai/placket/core/internal/testing/seeds"
 	"github.com/orilloai/placket/core/mediator"
 )
 
@@ -11,12 +13,15 @@ import (
 // panics; a caller who is not a member is rejected with not-a-member and changes nothing, and a
 // member's fetch takes at most the one delivery, once.
 func FuzzGet(f *testing.F) {
-	p, ap := key(f, "proposer"), key(f, "applier")
+	p, ap := ptesting.Key(f, "proposer"), ptesting.Key(f, "applier")
 	f.Add(ap.Reference())
 	f.Add(p.Reference())
-	f.Add(key(f, "mediator").Reference())
+	f.Add(ptesting.Key(f, "mediator").Reference())
 	f.Add("ed25519:")
 	f.Add("")
+	for _, s := range seeds.Values(f, "founding", "actor", "principal", "mediator") {
+		f.Add(s)
+	}
 	f.Fuzz(func(t *testing.T, caller string) {
 		m := found(t)
 		note := message(t, m.Accord(), "n", ap.Reference(), "note", "A note.", nil)

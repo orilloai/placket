@@ -6,6 +6,7 @@ import (
 	"reflect"
 	"testing"
 
+	ptesting "github.com/orilloai/placket/core/internal/testing"
 	"github.com/orilloai/placket/core/mediator"
 	"github.com/orilloai/placket/core/receipts"
 )
@@ -17,7 +18,7 @@ var salt16 = []byte("an answer's salt")
 // ask the decider about, and returns the question's id.
 func ask(t testing.TB, m *mediator.Mediator, seq int64, id, at string) string {
 	t.Helper()
-	p, ap := key(t, "proposer"), key(t, "applier")
+	p, ap := ptesting.Key(t, "proposer"), ptesting.Key(t, "applier")
 	msg := message(t, m.Accord(), id, ap.Reference(), "proposal", "Proposal "+id+".", nil)
 	out, err := m.Give(p.Reference(), msg, envelope(t, seq, msg, p), at)
 	if err != nil || out.Verdict != "escalate" {
@@ -50,7 +51,7 @@ func unchanged(t *testing.T, m *mediator.Mediator, receiptsBefore [][]byte, pend
 // statement verifies the mediator's receipts and returns the statement of the receipt whose id is id.
 func statement(t *testing.T, m *mediator.Mediator, id string) receipts.Statement {
 	t.Helper()
-	st, err := receipts.Verify(key(t, "mediator").Reference(), m.Receipts())
+	st, err := verifyAll(ptesting.Key(t, "mediator").Reference(), m.Receipts())
 	if err != nil {
 		t.Fatalf("the receipts do not verify: %v", err)
 	}
@@ -70,7 +71,7 @@ func TestAStrangersAnswerIsNotAMember(t *testing.T) {
 	m := found(t)
 	q := ask(t, m, 1, "p-1", "2026-11-12T09:00:00Z")
 	before, pending := m.Receipts(), m.Pending()
-	_, err := m.Resolve(key(t, "stranger").Reference(), q, accept(true), "2026-11-12T09:01:00Z")
+	_, err := m.Resolve(ptesting.Key(t, "stranger").Reference(), q, accept(true), "2026-11-12T09:01:00Z")
 	if !rejected(err, mediator.NotAMember) || err.Error() != "mediator: rejected: not-a-member" {
 		t.Fatalf("got %v", err)
 	}
@@ -84,11 +85,11 @@ func TestTheProposerOnAClosedQuestion(t *testing.T) {
 	t.Parallel()
 	m := found(t)
 	q := ask(t, m, 1, "p-1", "2026-11-12T09:00:00Z")
-	if _, err := m.Resolve(key(t, "decider").Reference(), q, mediator.Resolution{Action: mediator.Declined}, "2026-11-12T09:01:00Z"); err != nil {
+	if _, err := m.Resolve(ptesting.Key(t, "decider").Reference(), q, mediator.Resolution{Action: mediator.Declined}, "2026-11-12T09:01:00Z"); err != nil {
 		t.Fatal(err)
 	}
 	before, pending := m.Receipts(), m.Pending()
-	_, err := m.Resolve(key(t, "proposer").Reference(), q, accept(false), "2026-11-12T09:02:00Z")
+	_, err := m.Resolve(ptesting.Key(t, "proposer").Reference(), q, accept(false), "2026-11-12T09:02:00Z")
 	if !rejected(err, mediator.NoOpenQuestion) || err.Error() != "mediator: rejected: no-open-question" {
 		t.Fatalf("got %v", err)
 	}
@@ -103,7 +104,7 @@ func TestTheProposerIsNotAnAnswerer(t *testing.T) {
 	m := found(t)
 	q := ask(t, m, 1, "p-1", "2026-11-12T09:00:00Z")
 	before, pending := m.Receipts(), m.Pending()
-	_, err := m.Resolve(key(t, "proposer").Reference(), q, accept(true), "2026-11-12T09:01:00Z")
+	_, err := m.Resolve(ptesting.Key(t, "proposer").Reference(), q, accept(true), "2026-11-12T09:01:00Z")
 	if !rejected(err, mediator.NotAnAnswerer) || err.Error() != "mediator: rejected: not-an-answerer" {
 		t.Fatalf("got %v", err)
 	}
@@ -122,7 +123,7 @@ func TestAnAskerWhoHoldsTheRoleAnswers(t *testing.T) {
 	parties[0].roles = []string{"proposer", "decider"}
 	parties[0].terms = append(parties[0].terms, term("want", "give", []string{"proposer"}, []string{"answer"}))
 	m := foundSet(t, buildSet(t, askAndLogRoles, parties...))
-	p := key(t, "proposer")
+	p := ptesting.Key(t, "proposer")
 	q := ask(t, m, 1, "p-1", "2026-11-12T09:00:00Z")
 	if l, ok := m.Answerers(q); !ok || len(l) != 2 {
 		t.Fatalf("answerers %v, %v", l, ok)
@@ -153,7 +154,7 @@ func misuse(t *testing.T, r mediator.Resolution, code mediator.ErrorCode) {
 	m := found(t)
 	q := ask(t, m, 1, "p-1", "2026-11-12T09:00:00Z")
 	before, pending := m.Receipts(), m.Pending()
-	_, err := m.Resolve(key(t, "decider").Reference(), q, r, "2026-11-12T09:01:00Z")
+	_, err := m.Resolve(ptesting.Key(t, "decider").Reference(), q, r, "2026-11-12T09:01:00Z")
 	var rej *mediator.Rejection
 	if errors.As(err, &rej) || !errorCode(err, code) || err.Error() != "mediator: "+string(code) {
 		t.Fatalf("got %v, want the error %s", err, code)
@@ -196,16 +197,16 @@ func TestTheRowsComeBeforeMisuse(t *testing.T) {
 	m := found(t)
 	q := ask(t, m, 1, "p-1", "2026-11-12T09:00:00Z")
 	bad := mediator.Resolution{Action: "approved", Salt: salt16[:1]}
-	if _, err := m.Resolve(key(t, "stranger").Reference(), q, bad, "2026-11-12T09:01:00Z"); !rejected(err, mediator.NotAMember) {
+	if _, err := m.Resolve(ptesting.Key(t, "stranger").Reference(), q, bad, "2026-11-12T09:01:00Z"); !rejected(err, mediator.NotAMember) {
 		t.Fatalf("a stranger: %v", err)
 	}
-	if _, err := m.Resolve(key(t, "proposer").Reference(), q, bad, "2026-11-12T09:01:00Z"); !rejected(err, mediator.NotAnAnswerer) {
+	if _, err := m.Resolve(ptesting.Key(t, "proposer").Reference(), q, bad, "2026-11-12T09:01:00Z"); !rejected(err, mediator.NotAnAnswerer) {
 		t.Fatalf("the proposer: %v", err)
 	}
-	if _, err := m.Resolve(key(t, "decider").Reference(), "sha256:"+q[7:39]+q[7:39], bad, "2026-11-12T09:01:00Z"); !rejected(err, mediator.NoOpenQuestion) {
+	if _, err := m.Resolve(ptesting.Key(t, "decider").Reference(), "sha256:"+q[7:39]+q[7:39], bad, "2026-11-12T09:01:00Z"); !rejected(err, mediator.NoOpenQuestion) {
 		t.Fatalf("another id: %v", err)
 	}
-	if _, err := m.Resolve(key(t, "stranger").Reference(), q, bad, "2026-11-12 09:01:00"); !errorCode(err, mediator.CodeAt) || err.Error() != "mediator: at" {
+	if _, err := m.Resolve(ptesting.Key(t, "stranger").Reference(), q, bad, "2026-11-12 09:01:00"); !errorCode(err, mediator.CodeAt) || err.Error() != "mediator: at" {
 		t.Fatalf("a bad time: %v", err)
 	}
 	if _, err := m.Undeliverable(q, "2026-11-12T09:01:00"); !errorCode(err, mediator.CodeAt) {
@@ -244,7 +245,7 @@ func TestNobodyCanAnswer(t *testing.T) {
 		t.Fatalf("got %+v, %v", out, err)
 	}
 	st := statement(t, m, out.ReceiptID)
-	if st.Predicate.From != key(t, "mediator").Reference() || st.Predicate.To != key(t, "proposer").Reference() ||
+	if st.Predicate.From != ptesting.Key(t, "mediator").Reference() || st.Predicate.To != ptesting.Key(t, "proposer").Reference() ||
 		st.Predicate.Kind != receipts.KindResolution || st.Subject.Name != "proposal" {
 		t.Fatalf("the receipt: %+v", st)
 	}
@@ -271,13 +272,13 @@ func TestADeadlineAtTheLastTime(t *testing.T) {
 		t.Fatalf("got %+v, %v", outs, err)
 	}
 	st := statement(t, m, outs[0].ReceiptID)
-	if st.Predicate.At != "9999-12-31T23:59:59Z" || st.Predicate.From != key(t, "decider").Reference() || st.Predicate.Envelope.Seq != 1 {
+	if st.Predicate.At != "9999-12-31T23:59:59Z" || st.Predicate.From != ptesting.Key(t, "decider").Reference() || st.Predicate.Envelope.Seq != 1 {
 		t.Fatalf("the timeout: %+v", st.Predicate)
 	}
 	if len(m.Pending()) != 0 {
 		t.Fatalf("pending %v", m.Pending())
 	}
-	if _, err := m.Resolve(key(t, "decider").Reference(), q, accept(false), "9999-12-31T23:59:59Z"); !rejected(err, mediator.NoOpenQuestion) {
+	if _, err := m.Resolve(ptesting.Key(t, "decider").Reference(), q, accept(false), "9999-12-31T23:59:59Z"); !rejected(err, mediator.NoOpenQuestion) {
 		t.Fatalf("an answer after the timeout: %v", err)
 	}
 }
@@ -287,7 +288,7 @@ func TestADeadlineAtTheLastTime(t *testing.T) {
 // the proposer.
 func closedQueuesNothing(t *testing.T, m *mediator.Mediator, written []mediator.Outcome, keep string) {
 	t.Helper()
-	if d, err := m.Get(key(t, "applier").Reference()); d != nil || err != nil {
+	if d, err := m.Get(ptesting.Key(t, "applier").Reference()); d != nil || err != nil {
 		t.Fatalf("the receiver's fetch: %s, %v", d, err)
 	}
 	if len(written) == 0 {
@@ -296,7 +297,7 @@ func closedQueuesNothing(t *testing.T, m *mediator.Mediator, written []mediator.
 	for _, o := range written {
 		q, ok := m.Queued(o.ReceiptID)
 		switch {
-		case o.ReceiptID == keep && (!ok || q.To != key(t, "proposer").Reference()):
+		case o.ReceiptID == keep && (!ok || q.To != ptesting.Key(t, "proposer").Reference()):
 			t.Fatalf("the answer is not queued for the proposer: %v", ok)
 		case o.ReceiptID != keep && ok:
 			t.Fatalf("receipt %s queued a delivery for %s", o.ReceiptID, q.To)
@@ -329,7 +330,7 @@ func TestAnUndeliverableQueuesNothing(t *testing.T) {
 		t.Fatal(err)
 	}
 	st := statement(t, m, out.ReceiptID)
-	if st.Predicate.From != key(t, "decider").Reference() {
+	if st.Predicate.From != ptesting.Key(t, "decider").Reference() {
 		t.Fatalf("an undeliverable with an answerer is from %s", st.Predicate.From)
 	}
 	closedQueuesNothing(t, m, []mediator.Outcome{out}, "")
@@ -341,7 +342,7 @@ func TestADeclineQueuesNothing(t *testing.T) {
 	t.Parallel()
 	m := found(t)
 	q := ask(t, m, 1, "p-1", "2026-11-12T09:00:00Z")
-	outs, err := m.Resolve(key(t, "decider").Reference(), q, mediator.Resolution{Action: mediator.Declined, Release: true}, "2026-11-12T09:01:00Z")
+	outs, err := m.Resolve(ptesting.Key(t, "decider").Reference(), q, mediator.Resolution{Action: mediator.Declined, Release: true}, "2026-11-12T09:01:00Z")
 	if err != nil || len(outs) != 1 || outs[0].Reason != receipts.ReasonDeclined {
 		t.Fatalf("got %+v, %v", outs, err)
 	}
@@ -353,7 +354,7 @@ func TestACancelQueuesNothing(t *testing.T) {
 	t.Parallel()
 	m := found(t)
 	q := ask(t, m, 1, "p-1", "2026-11-12T09:00:00Z")
-	outs, err := m.Resolve(key(t, "decider").Reference(), q, mediator.Resolution{Action: mediator.Cancelled}, "2026-11-12T09:01:00Z")
+	outs, err := m.Resolve(ptesting.Key(t, "decider").Reference(), q, mediator.Resolution{Action: mediator.Cancelled}, "2026-11-12T09:01:00Z")
 	if err != nil || len(outs) != 1 || outs[0].Reason != receipts.ReasonCancelled {
 		t.Fatalf("got %+v, %v", outs, err)
 	}
@@ -366,7 +367,7 @@ func TestAnAcceptWithoutReleaseQueuesOnlyTheAnswer(t *testing.T) {
 	t.Parallel()
 	m := found(t)
 	q := ask(t, m, 1, "p-1", "2026-11-12T09:00:00Z")
-	outs, err := m.Resolve(key(t, "decider").Reference(), q, accept(false), "2026-11-12T09:01:00Z")
+	outs, err := m.Resolve(ptesting.Key(t, "decider").Reference(), q, accept(false), "2026-11-12T09:01:00Z")
 	if err != nil || len(outs) != 1 || outs[0].Verdict != "pass" {
 		t.Fatalf("got %+v, %v", outs, err)
 	}
@@ -382,12 +383,12 @@ func TestABlockedAcceptReleasesNothing(t *testing.T) {
 	parties[0].terms = parties[0].terms[:2]
 	m := foundSet(t, buildSet(t, askAndLogRoles, parties...))
 	q := ask(t, m, 1, "p-1", "2026-11-12T09:00:00Z")
-	outs, err := m.Resolve(key(t, "decider").Reference(), q, accept(true), "2026-11-12T09:01:00Z")
+	outs, err := m.Resolve(ptesting.Key(t, "decider").Reference(), q, accept(true), "2026-11-12T09:01:00Z")
 	if err != nil || len(outs) != 1 || outs[0].Verdict != "block" || outs[0].Reason != "no-match" {
 		t.Fatalf("got %+v, %v", outs, err)
 	}
 	closedQueuesNothing(t, m, outs, "")
-	if d, _ := m.Get(key(t, "proposer").Reference()); d != nil {
+	if d, _ := m.Get(ptesting.Key(t, "proposer").Reference()); d != nil {
 		t.Fatalf("the proposer holds %s", d)
 	}
 	if len(m.Receipts()) != 2 {
@@ -409,13 +410,13 @@ func changeReleasedWithin(t *testing.T, receiver string) {
 		}
 	}
 	m := foundSet(t, buildSet(t, askAndLogRoles, parties...))
-	p, to := key(t, "proposer"), key(t, receiver)
+	p, to := ptesting.Key(t, "proposer"), ptesting.Key(t, receiver)
 	msg := message(t, m.Accord(), "p-1", to.Reference(), "proposal", "A proposal.", nil)
 	ask, err := m.Give(p.Reference(), msg, envelope(t, 1, msg, p), "2026-11-12T09:00:00Z")
 	if err != nil || ask.Verdict != "escalate" {
 		t.Fatalf("the ask: %+v, %v", ask, err)
 	}
-	outs, err := m.Resolve(key(t, "decider").Reference(), ask.ReceiptID, change(true), "2026-11-12T09:01:00Z")
+	outs, err := m.Resolve(ptesting.Key(t, "decider").Reference(), ask.ReceiptID, change(true), "2026-11-12T09:01:00Z")
 	if err != nil || len(outs) != 1 || outs[0].Verdict != "pass" {
 		t.Fatalf("got %+v, %v", outs, err)
 	}
@@ -425,7 +426,7 @@ func changeReleasedWithin(t *testing.T, receiver string) {
 	got := map[string]int{}
 	for _, n := range []string{"proposer", "applier", "decider"} {
 		for {
-			d, err := m.Get(key(t, n).Reference())
+			d, err := m.Get(ptesting.Key(t, n).Reference())
 			if err != nil || d == nil {
 				break
 			}
@@ -456,7 +457,7 @@ func TestAChangeReleasedToItsAsker(t *testing.T) {
 func TestTheNewReadsAreCopies(t *testing.T) {
 	t.Parallel()
 	m := found(t)
-	d := key(t, "decider").Reference()
+	d := ptesting.Key(t, "decider").Reference()
 	q := ask(t, m, 1, "p-1", "2026-11-12T09:00:00Z")
 	l, _ := m.Answerers(q)
 	l[0] = "changed"
@@ -475,7 +476,7 @@ func TestTheNewReadsAreCopies(t *testing.T) {
 	}
 	kept := append([]byte(nil), qd.Delivery...)
 	qd.Delivery[0] = 'x'
-	res, ok, err := m.Result(key(t, "proposer").Reference(), q)
+	res, ok, err := m.Result(ptesting.Key(t, "proposer").Reference(), q)
 	if err != nil || !ok || len(res) != 2 {
 		t.Fatalf("Result: %+v, %v, %v", res, ok, err)
 	}
@@ -486,7 +487,7 @@ func TestTheNewReadsAreCopies(t *testing.T) {
 	if again, _ := m.Queued(outs[1].ReceiptID); !bytes.Equal(again.Delivery, kept) {
 		t.Fatal("Queued shares the mediator's queue")
 	}
-	ap := key(t, "applier").Reference()
+	ap := ptesting.Key(t, "applier").Reference()
 	if got, _ := m.Get(ap); !bytes.Equal(got, kept) {
 		t.Fatal("the fetched delivery is not what Queued returned")
 	}

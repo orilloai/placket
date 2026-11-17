@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/orilloai/placket/core/canonical"
+	"github.com/orilloai/placket/core/internal/testing/seeds"
 )
 
 // Each fuzz target below takes any string or bytes. None panics, and each result is checked against a
@@ -32,6 +33,9 @@ func FuzzTimestamp(f *testing.F) {
 	} {
 		f.Add(s)
 	}
+	for _, s := range seeds.Strings(f, "questions") {
+		f.Add(s)
+	}
 	f.Fuzz(func(t *testing.T, s string) {
 		if !Timestamp(s) {
 			return
@@ -46,7 +50,8 @@ func FuzzTimestamp(f *testing.F) {
 }
 
 // FuzzAddSeconds adds any number of seconds to any string. A timestamp plus a number from 0 is a
-// timestamp no earlier, and at most the last time; anything but a timestamp gives no time (maybe-1).
+// timestamp no earlier, and at most the last time; anything but a timestamp, or a negative number,
+// gives no time (maybe-1).
 func FuzzAddSeconds(f *testing.F) {
 	for _, c := range []struct {
 		s string
@@ -59,6 +64,9 @@ func FuzzAddSeconds(f *testing.F) {
 	} {
 		f.Add(c.s, c.n)
 	}
+	for _, s := range seeds.Strings(f, "questions") {
+		f.Add(s, int64(3600))
+	}
 	f.Fuzz(func(t *testing.T, s string, n int64) {
 		out := AddSeconds(s, n)
 		if !Timestamp(s) {
@@ -68,6 +76,9 @@ func FuzzAddSeconds(f *testing.F) {
 			return
 		}
 		if n < 0 {
+			if out != "" {
+				t.Fatalf("AddSeconds(%q, %d) = %q, want no time", s, n, out)
+			}
 			return
 		}
 		if !Timestamp(out) || out < s || out > LastTime {
@@ -80,6 +91,9 @@ func FuzzAddSeconds(f *testing.F) {
 // hyphens, at most 64 characters (setup-contract-1).
 func FuzzLabel(f *testing.F) {
 	for _, s := range []string{"a", "a-b-1", "-a", "a-", "a--b", "A", "a_b", "", strings.Repeat("a", 64), strings.Repeat("a", 65), "\u00e9"} {
+		f.Add(s)
+	}
+	for _, s := range seeds.Strings(f, "founding") {
 		f.Add(s)
 	}
 	f.Fuzz(func(t *testing.T, s string) {
@@ -95,6 +109,9 @@ func FuzzGate(f *testing.F) {
 	for _, s := range []string{"out_you", "out-you", "Out_You", "out__you", "_out", "out_", "a-_b", "", strings.Repeat("a_", 32)} {
 		f.Add(s)
 	}
+	for _, s := range seeds.Strings(f, "founding") {
+		f.Add(s)
+	}
 	f.Fuzz(func(t *testing.T, s string) {
 		if Gate(s) != (len(s) <= 64 && gateForm.MatchString(s)) {
 			t.Fatalf("Gate(%q) = %v", s, Gate(s))
@@ -106,6 +123,9 @@ func FuzzGate(f *testing.F) {
 // (setup-contract-1).
 func FuzzSelector(f *testing.F) {
 	for _, s := range []string{"role:proposer", "role:", "role:A", "Role:a", "role:role:a", "proposer", ""} {
+		f.Add(s)
+	}
+	for _, s := range seeds.Strings(f, "founding") {
 		f.Add(s)
 	}
 	f.Fuzz(func(t *testing.T, s string) {
@@ -125,6 +145,9 @@ func FuzzHash(f *testing.F) {
 	} {
 		f.Add(s)
 	}
+	for _, s := range seeds.Strings(f, "receipts") {
+		f.Add(s)
+	}
 	f.Fuzz(func(t *testing.T, s string) {
 		if Hash(s) != hashForm.MatchString(s) {
 			t.Fatalf("Hash(%q) = %v", s, Hash(s))
@@ -135,6 +158,9 @@ func FuzzHash(f *testing.F) {
 // FuzzLowerHex holds the form of lowercase hex: a non-empty even number of digits 0-9 and a-f.
 func FuzzLowerHex(f *testing.F) {
 	for _, s := range []string{"00", "0a", "0A", "abc", "", "zz", "0123456789abcdef"} {
+		f.Add(s)
+	}
+	for _, s := range seeds.Strings(f, "crossing") {
 		f.Add(s)
 	}
 	f.Fuzz(func(t *testing.T, s string) {
@@ -148,6 +174,9 @@ func FuzzLowerHex(f *testing.F) {
 // the encoding of any bytes decodes to them.
 func FuzzBase64(f *testing.F) {
 	for _, s := range []string{"YQ==", "YR==", "YQ", "YQ=", "Y Q==", "YQ==\n", "", "////", "-_-_", "YWJj"} {
+		f.Add(s)
+	}
+	for _, s := range seeds.Strings(f, "receipts") {
 		f.Add(s)
 	}
 	f.Fuzz(func(t *testing.T, s string) {
@@ -170,6 +199,9 @@ func FuzzDecode(f *testing.F) {
 		"{\"<&\u2028\":\"\U0001F600\"}", `9007199254740992`,
 	} {
 		f.Add([]byte(s))
+	}
+	for _, s := range seeds.Inputs(f, "canonical") {
+		f.Add(s)
 	}
 	f.Fuzz(func(t *testing.T, in []byte) {
 		v, c, err := Decode(in)

@@ -44,6 +44,7 @@ import (
 	"strings"
 	"syscall"
 
+	"github.com/orilloai/placket/adapters/internal/lines"
 	"github.com/orilloai/placket/adapters/internal/strict"
 	"github.com/orilloai/placket/core/canonical"
 	"github.com/orilloai/placket/core/mediator"
@@ -438,37 +439,31 @@ func (j *Journal) Read() (*Record, error) {
 		return nil, err
 	}
 
-	// Which questions the receipts name, and which they leave open, by the one reader of questions.
-	// A receipt that does not decode leaves both unknown: Reload refuses the list before it reads an
-	// open entry.
+	// Which questions the receipts name, and which they leave open, by the one reader of questions,
+	// read only from receipts that verify under the mediator's reference (verified-by-type). A list
+	// that does not verify leaves both unknown, and every entry as it is: Reload refuses the list
+	// before it reads an open entry.
 	ids := map[string]bool{}
 	open := map[string]bool{}
-	known := true
-	var st []receipts.Statement
-	for _, line := range r.Receipts {
-		s, err := receipts.Decode(line)
-		if err != nil {
-			known = false
-			break
-		}
-		ids[s.ID] = true
-		st = append(st, s)
+	verified, err := receipts.Verify(r.Mediator, r.Receipts)
+	var places []receipts.Place
+	if err == nil {
+		places, err = receipts.Releases(verified)
 	}
+	known := err == nil
 	if known {
-		if places, err := receipts.Releases(st); err == nil {
-			closed := map[int]bool{}
-			for _, p := range places {
-				if p.Role == receipts.RoleClosing {
-					closed[p.Question] = true
-				}
+		closed := map[int]bool{}
+		for _, p := range places {
+			if p.Role == receipts.RoleClosing {
+				closed[p.Question] = true
 			}
-			for i, p := range places {
-				if p.Role == receipts.RoleQuestion && !closed[i] {
-					open[st[i].ID] = true
-				}
+		}
+		for i, v := range verified {
+			id := v.Statement().ID
+			ids[id] = true
+			if places[i].Role == receipts.RoleQuestion && !closed[i] {
+				open[id] = true
 			}
-		} else {
-			known = false
 		}
 	}
 
@@ -621,23 +616,29 @@ func (j *Journal) TakeHeld(receiptID string) ([]byte, error) {
 // ReadReceipts reads the receipts of the journal directory dir, one per whole line of
 // receipts.jsonl, in file order, as verify, reconcile and log read them. It takes no lock and
 // writes nothing. A directory with no receipts.jsonl is no journal: CodeJournal, naming the file,
-// since every window writes one when it founds. A last line with no line feed is left out, with one
-// line on stderr saying the file was cut there.
+// since every window writes one when it founds, and so is one that is not a regular file, where
+// errors.Is also finds lines.ErrNotRegular. A line longer than maxLine is CodeJournal at that line.
+// A last line with no line feed is left out, with one line on stderr saying the file was cut there.
 func ReadReceipts(dir string, stderr io.Writer) ([][]byte, error) {
-	b, err := os.ReadFile(filepath.Join(dir, FileReceipts))
+	f, err := lines.Read(filepath.Join(dir, FileReceipts), maxLine)
+	if errors.Is(err, lines.ErrNotRegular) {
+		return nil, lines.NotRegular(&Error{Code: CodeJournal, File: FileReceipts})
+	}
 	if err != nil {
 		return nil, &Error{Code: CodeJournal, File: FileReceipts}
 	}
-	out := [][]byte{}
-	for {
-		i := bytes.IndexByte(b, '\n')
-		if i < 0 {
-			if len(b) > 0 {
-				fmt.Fprintf(stderr, "journal: %s line %d has no line feed; the file was cut there, and the line is left out\n", FileReceipts, len(out)+1)
-			}
-			return out, nil
-		}
-		out = append(out, b[:i:i])
-		b = b[i+1:]
+	if f.Long > 0 {
+		return nil, &Error{Code: CodeJournal, File: FileReceipts, Line: f.Long}
 	}
+	if f.Cut {
+		fmt.Fprintf(stderr, "journal: %s line %d has no line feed; the file was cut there, and the line is left out\n", FileReceipts, len(f.Lines)+1)
+	}
+	if f.Lines == nil {
+		return [][]byte{}, nil
+	}
+	return f.Lines, nil
 }
+
+// maxLine is the longest line ReadReceipts reads: local.MaxReply, the most a window replies with,
+// which holds any receipt a window writes.
+const maxLine = 4 << 20

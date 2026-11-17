@@ -105,8 +105,8 @@ if [ -n "$missing" ]; then
 else
 	echo "ok   the demo's ten steps print what each step says"
 fi
-if [ "$(grep -c '^verifier: sha256:' "$out")" -ne 4 ]; then
-	echo "FAIL the log has $(grep -c '^verifier: sha256:' "$out") rows, not 4"
+if [ "$(grep -Ec '^verifier: sha256:[0-9a-f]{64},' "$out")" -ne 4 ]; then
+	echo "FAIL the log has $(grep -Ec '^verifier: sha256:[0-9a-f]{64},' "$out") rows, not 4"
 	failed=1
 fi
 

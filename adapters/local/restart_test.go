@@ -211,7 +211,7 @@ func TestARestartChangesNoReceipt(t *testing.T) {
 	if !bytes.Equal(a, b) || len(a) == 0 {
 		t.Fatalf("the receipts differ:\n%s\n--\n%s", a, b)
 	}
-	st, err := receipts.Verify(key(t, "mediator").Reference(), splitLines(b))
+	st, err := verifyAll(key(t, "mediator").Reference(), splitLines(b))
 	if err != nil || len(st) != 9 {
 		t.Fatalf("%d receipts, %v", len(st), err)
 	}
@@ -287,8 +287,13 @@ func TestAJournalWriteThatFails(t *testing.T) {
 		}
 		_ = os.Chmod(w.journal, 0o700)
 		_ = os.Chmod(filepath.Join(w.journal, journal.FileReceipts), 0o600)
+		held, err := os.ReadDir(filepath.Join(w.journal, journal.DirHeld))
+		if err != nil || len(held) != 1 {
+			t.Fatalf("%s: held/ holds %v, %v", how, held, err)
+		}
 		win = start(t, w.window(t))
-		if !strings.Contains(win.stderr.String(), "a delivery whose receipt was never journaled") {
+		want := "journal: held/" + held[0].Name() + " holds a delivery whose receipt was never journaled; it never crossed, and is removed\n"
+		if win.stderr.String() != want {
 			t.Fatalf("%s: stderr %q", how, win.stderr.String())
 		}
 		if r := w.give(t, "proposer", "applier", "n-1", "note", "A note."); r.Outcome == nil || r.Outcome.Verdict != "pass" {
@@ -321,7 +326,7 @@ func TestAJournalWriteThatFails(t *testing.T) {
 	w.disk = nil
 	win = start(t, w.window(t))
 	win.stop(t)
-	st, err := receipts.Verify(key(t, "mediator").Reference(), splitLines(w.receipts(t)))
+	st, err := verifyAll(key(t, "mediator").Reference(), splitLines(w.receipts(t)))
 	if err != nil || len(st) != 2 || st[1].Predicate.Reason != receipts.ReasonTimeout {
 		t.Fatalf("after the idle tick failed: %d receipts, %v", len(st), err)
 	}
@@ -338,3 +343,16 @@ func (a *armed) Append(path string, b []byte) error {
 }
 func (a *armed) Create(path string, b []byte) error { return journal.OS.Create(path, b) }
 func (a *armed) Remove(path string) error           { return journal.OS.Remove(path) }
+
+// verifyAll verifies list under mediator and returns the statements, for tests that read them.
+func verifyAll(mediator string, list [][]byte) ([]receipts.Statement, error) {
+	verified, err := receipts.Verify(mediator, list)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]receipts.Statement, len(verified))
+	for i, v := range verified {
+		out[i] = v.Statement()
+	}
+	return out, nil
+}

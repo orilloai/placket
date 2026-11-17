@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -69,7 +70,8 @@ func TestAnAnswerNeedsItsText(t *testing.T) {
 		t.Fatalf("change: %v", r)
 	}
 	got := a.drain(t, "proposer")
-	if len(got) != 2 || !strings.Contains(got[1].stderr, "kind comment ") || !strings.HasSuffix(got[1].stderr, " re "+q+"\n") || got[1].stdout != "Someone reads it.\n" {
+	comment := regexp.MustCompile(`^delivery ` + receiptID + ` kind comment messageId [0-9a-f-]{36} salt [0-9a-f]{32} re ` + q + `\n$`)
+	if len(got) != 2 || !comment.MatchString(got[1].stderr) || got[1].stdout != "Someone reads it.\n" {
 		t.Fatalf("the proposer fetched %v", got)
 	}
 	r = run(t, env(), a.as("decider", "decline", "--question", q, "--comment", "Too late.")...)

@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/orilloai/placket/adapters/internal/seeds"
 	"github.com/orilloai/placket/core/receipts"
 )
 
@@ -96,6 +97,9 @@ func FuzzReadKept(f *testing.F) {
 	f.Add([]byte(`{"kind":"answer","messageId":"m","receipt":{},"receiptId":"r","salt":"00000000000000000000000000000000","text":"yes","answerCall":{"call":"","sig":""}}`))
 	f.Add([]byte(`{"kind":"k","messageId":"m","raw":"AAE=","receipt":{},"salt":"00000000000000000000000000000000"}`))
 	f.Add([]byte(`{"data":{"a":[1]},"kind":"k","messageId":"m","receipt":{},"salt":"00000000000000000000000000000000"}`))
+	for _, in := range seeds.Inputs(f, "questions", "delivery") {
+		f.Add(in)
+	}
 	f.Fuzz(func(t *testing.T, b []byte) {
 		_, _ = readGiven(b)
 		if p, _, ok := readFetched(b); ok && (p.kind == "" && !bytes.Contains(b, []byte(`"kind"`)) || len(p.salt) < 16) {

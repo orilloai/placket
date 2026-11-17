@@ -30,6 +30,9 @@ trap cleanup EXIT
 trap 'exit 1' INT TERM
 
 step() { echo; echo "== $*"; }
+# pause: a tenth of a second where sleep takes a fraction, which POSIX does not promise, and a
+# second where it does not.
+pause() { sleep 0.1 2>/dev/null || sleep 1; }
 # say WHO TEXT...: a line of what a party did, as the pattern prints it.
 say() {
 	who=$1
@@ -96,7 +99,7 @@ n=0
 until grep -q '^operator ' window.log 2>/dev/null; do
 	n=$((n + 1))
 	[ "$n" -lt 100 ] || { echo "the window did not start"; cat window.log; exit 1; }
-	sleep 0.1
+	pause
 done
 say window "started"
 

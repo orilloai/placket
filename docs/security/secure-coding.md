@@ -24,7 +24,8 @@ Go cannot reliably wipe a secret from memory: the garbage collector may copy a v
 
 ## Keys and state on disk
 
-- A key file is created mode 0600 with `O_EXCL`, so an existing file is never overwritten ([`keys-on-disk`](../rules/adapters.md#keys-on-disk)). The rule also asks for two things today's code does not do yet: an atomic write, so a crash never leaves half a key (the code writes once, syncs, and removes the file when a write fails), and the refusal of a key file another user can read when it is loaded (`docs/security/threat-model.md`, L14).
+- A key file is written atomically and never overwrites one ([`keys-on-disk`](../rules/adapters.md#keys-on-disk)): the seed goes to a temporary file of mode 0600 in the same directory, which is synced and then linked to the key's name, so a crash leaves either no key file or the whole key, and an existing name is refused (`key-exists`). The temporary name is removed and the directory synced.
+- A key file is refused when it is loaded if any of mode 0077 is set or another user owns it (`key-mode`). A symbolic link is followed and the file it reaches is checked; anything but a regular file is refused before it is opened (`key-read`), and at most 4 KiB is read.
 - The journal and state directories placket makes are created mode 0700, and every file the window writes in them mode 0600; a directory that already exists keeps its mode (`docs/security/threat-model.md`, L14). The window sets its socket to mode 0600, and the client checks the socket's owner before it sends.
 - A write the window promises is synced to disk before it replies ([`journal-synced`](../rules/adapters.md#journal-synced)), and the receipts file is never rewritten ([`journal-is-evidence`](../rules/adapters.md#journal-is-evidence)).
 - A path built from input is joined under a directory placket owns and never follows a name that leaves it.
@@ -32,18 +33,19 @@ Go cannot reliably wipe a secret from memory: the garbage collector may copy a v
 ## Untrusted bytes
 
 - Every byte from outside the process is untrusted: a call on the socket, a file a party hands over, a journal being verified.
-- Parsing is strict: a duplicate key, a non-canonical encoding or trailing data is refused, never repaired ([`parse-strict`](../rules/core.md#parse-strict)). The core judges the bytes as they were sent ([`door-passes-bytes`](../rules/adapters.md#door-passes-bytes)).
+- Parsing is strict: a duplicate key, trailing data or any other bytes the canonical form refuses are refused, never repaired ([`parse-strict`](../rules/core.md#parse-strict)). The core judges the bytes as they were sent ([`door-passes-bytes`](../rules/adapters.md#door-passes-bytes)).
 - The door checks a call in a fixed order, size first, and stops at the first failure, before the mediator sees anything ([`door-check-order`](../rules/adapters.md#door-check-order)).
 - Data that passed verification has a type only verification produces; no API hands unverified data on as trusted ([`verified-by-type`](../rules/core.md#verified-by-type)).
 
 ## Size limits
 
 - Every decoder the door runs has a size limit, set before it reads a byte ([`parse-strict`](../rules/core.md#parse-strict)). An `io.Reader` from outside is wrapped in `io.LimitReader`, or read with a bounded buffer, never with `io.ReadAll` alone.
-- The requirement text bounds some sizes and not others; where it is silent, the door's cap is the bound (`docs/security/threat-model.md`, known limits).
+- The requirement text bounds some sizes and not others; where it is silent, the door's cap is the bound (`docs/security/threat-model.md`, known limits). A client reads at most `MaxReply` of a reply.
+- A journal handed to `verify`, `log` or `reconcile`, and a state directory's files, are read only when they are regular files (otherwise tool error `file`), so a FIFO or a device cannot hold a command, and a line at a time, each line capped (`adapters/internal/lines`). A key file is read only when it is a regular file, at most 4 KiB. Every other file named on the command line is read whole with no such check, a known limit (`docs/security/threat-model.md`, L1).
 
 ## Fuzzing
 
-- Every function that parses untrusted input has a fuzz test, seeded from the vectors ([`fuzz-parsers`](../rules/tests.md#fuzz-parsers)). In the core, every exported function that takes bytes or a string has one ([`core-no-panic`](../rules/core.md#core-no-panic)).
+- Every function that parses untrusted input has a fuzz test, seeded from the vectors, or for a door format from its own test cases ([`fuzz-parsers`](../rules/tests.md#fuzz-parsers)). In the core, every exported function that takes bytes or a string has one ([`core-no-panic`](../rules/core.md#core-no-panic)).
 - `make ci` runs each fuzz test on its seed corpus (`fuzz-seeds`). A crash found by a longer run is fixed with its input added to the corpus.
 
 ## Goroutines and the socket
@@ -55,4 +57,4 @@ Go cannot reliably wipe a secret from memory: the garbage collector may copy a v
 
 - Error text is the package and the code, plus an index, an actor or an offset where the requirement gives one; never a body, salt, seed, key, message or payload ([`error-text-no-content`](../rules/errors.md#error-text-no-content)).
 - A refusal returns a code, not a decoder's error, which may quote its input ([`errors-as-codes`](../rules/errors.md#errors-as-codes)).
-- Nothing a tool prints quotes a key or a salt; a body is printed only to the party it was released to.
+- Nothing a tool prints quotes a key. Placket hands a salt only to the party it was released to, or to an answerer of the open question that holds the part; a party may disclose its own salts. A body is printed only to the party it was released to.

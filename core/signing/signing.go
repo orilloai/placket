@@ -30,7 +30,7 @@ const (
 // ReferencePrefix starts every actor reference (signing-1).
 const ReferencePrefix = "ed25519:"
 
-// Code says how a caller misused this package. None is a code of the protocol.
+// Code says how a caller misused this package. None is a code of the protocol (record 0005).
 type Code string
 
 // The codes of Error.
@@ -44,40 +44,54 @@ const (
 	CodeObject Code = "object"
 )
 
-// Error is a misuse of this package by its caller.
+// Error is a misuse of this package by its caller (record 0005).
 type Error struct{ Code Code }
 
+// Error returns the package and the code, and nothing of the input.
 func (e *Error) Error() string { return "signing: " + string(e.Code) }
 
-// A Key is an actor's private key. It prints as a fixed text under every format verb, so no key
-// reaches a log by accident.
+// A Key is an actor's private key (signing-1, signing-2, record 0005). It
+// prints as a fixed text under every format verb, so no key reaches a log by accident. It holds the
+// key behind a function: fmt does not call Format on a value inside another struct's unexported
+// field, and prints a function there as an address under every verb. A pointer to the key would not
+// do: under a verb a pointer does not take, such as %s, fmt prints what the pointer points at.
 type Key struct {
-	private ed25519.PrivateKey
+	private func() ed25519.PrivateKey
 }
 
-// NewKey makes the key whose Ed25519 seed is seed, 32 bytes (RFC 8032).
+// bytes returns the key's private key, or nil for the zero Key.
+func (k Key) bytes() ed25519.PrivateKey {
+	if k.private == nil {
+		return nil
+	}
+	return k.private()
+}
+
+// NewKey makes the key whose Ed25519 seed is seed, 32 bytes (RFC 8032; signing-1, record 0005).
 func NewKey(seed []byte) (Key, error) {
 	if len(seed) != ed25519.SeedSize {
 		return Key{}, &Error{Code: CodeSeed}
 	}
-	return Key{private: ed25519.NewKeyFromSeed(seed)}, nil
+	private := ed25519.NewKeyFromSeed(seed)
+	return Key{private: func() ed25519.PrivateKey { return private }}, nil
 }
 
 // Reference returns the key's actor reference (signing-1). The zero Key has none.
 func (k Key) Reference() string {
-	if len(k.private) != ed25519.PrivateKeySize {
+	private := k.bytes()
+	if len(private) != ed25519.PrivateKeySize {
 		return ""
 	}
-	return ReferencePrefix + hex.EncodeToString(k.private.Public().(ed25519.PublicKey))
+	return ReferencePrefix + hex.EncodeToString(private.Public().(ed25519.PublicKey))
 }
 
-// Format prints the Key as a fixed text, whatever the verb.
+// Format prints the Key as a fixed text, whatever the verb (secrets-never-print, record 0005).
 func (k Key) Format(f fmt.State, _ rune) { _, _ = f.Write([]byte("signing.Key")) }
 
-// GoString prints the Key as a fixed text.
+// GoString prints the Key as a fixed text (secrets-never-print, record 0005).
 func (k Key) GoString() string { return "signing.Key" }
 
-// String prints the Key as a fixed text.
+// String prints the Key as a fixed text (secrets-never-print, record 0005).
 func (k Key) String() string { return "signing.Key" }
 
 // ParseReference reads ref as an actor reference: ed25519: and 64 lowercase hex digits (signing-1).
@@ -149,14 +163,14 @@ func unsigned(object []byte) ([]byte, any, error) {
 // Sign signs object under typeURI with key and returns the signature as 128 lowercase hex digits,
 // the value of the object's sig member (signing-2). A sig member already in the object is ignored.
 func Sign(object []byte, typeURI string, key Key) (string, error) {
-	if len(key.private) != ed25519.PrivateKeySize {
+	if len(key.bytes()) != ed25519.PrivateKeySize {
 		return "", &Error{Code: CodeSeed}
 	}
 	b, err := SigningBytes(object, typeURI)
 	if err != nil {
 		return "", err
 	}
-	return hex.EncodeToString(ed25519.Sign(key.private, b)), nil
+	return hex.EncodeToString(ed25519.Sign(key.bytes(), b)), nil
 }
 
 // Verify reports whether object's sig verifies under typeURI by the actor signer, by the rows of
@@ -187,10 +201,10 @@ func SignPayload(payloadType string, payload []byte, key Key) ([]byte, error) {
 	if placketType(payloadType) {
 		return nil, &Error{Code: CodeTypeURI}
 	}
-	if len(key.private) != ed25519.PrivateKeySize {
+	if len(key.bytes()) != ed25519.PrivateKeySize {
 		return nil, &Error{Code: CodeSeed}
 	}
-	return ed25519.Sign(key.private, PAE(payloadType, payload)), nil
+	return ed25519.Sign(key.bytes(), PAE(payloadType, payload)), nil
 }
 
 // VerifyPayload reports whether sig, 64 bytes, verifies over payload under its payload type by the

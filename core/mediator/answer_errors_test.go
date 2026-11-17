@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	ptesting "github.com/orilloai/placket/core/internal/testing"
 	"github.com/orilloai/placket/core/mediator"
 )
 
@@ -29,8 +30,8 @@ func TestAnswerErrorTextQuotesNoInput(t *testing.T) {
 	seed := sha256.Sum256([]byte("placket vectors: key mediator"))
 	secrets := secretsIn(text, version, body, string(salt), string(seed[:]))
 	m := found(t)
-	p, d := key(t, "proposer"), key(t, "decider")
-	msg := message(t, m.Accord(), "p-1", key(t, "applier").Reference(), "proposal", body, nil)
+	p, d := ptesting.Key(t, "proposer"), ptesting.Key(t, "decider")
+	msg := message(t, m.Accord(), "p-1", ptesting.Key(t, "applier").Reference(), "proposal", body, nil)
 	ask, err := m.Give(p.Reference(), msg, envelope(t, 1, msg, p), "2026-11-12T09:00:00Z")
 	if err != nil {
 		t.Fatal(err)
@@ -43,7 +44,7 @@ func TestAnswerErrorTextQuotesNoInput(t *testing.T) {
 	edited[0][len(edited[0])-10] ^= 1
 	open := []mediator.Open{{Question: q, Deadline: "2026-11-12T10:00:00Z", Roles: []string{"decider"}}}
 	reloadErr := func(l [][]byte, o []mediator.Open, qd []mediator.Queued, at string) error {
-		_, _, err := mediator.Reload(set, foundedAt, key(t, "mediator"), l, o, qd, at)
+		_, _, err := mediator.Reload(set, l, o, qd, foundedAt, ptesting.Key(t, "mediator"), at)
 		return err
 	}
 	first := func(_ []mediator.Outcome, err error) error { return err }
@@ -93,7 +94,7 @@ func TestAnswerErrorTextQuotesNoInput(t *testing.T) {
 func TestAZeroValueMediator(t *testing.T) {
 	t.Parallel()
 	var z mediator.Mediator
-	p := key(t, "proposer").Reference()
+	p := ptesting.Key(t, "proposer").Reference()
 	q := "sha256:" + strings.Repeat("ab", 32)
 	unfounded := func(name string, err error) {
 		t.Helper()
@@ -135,7 +136,7 @@ func TestResolutionAndQueuedNeverPrint(t *testing.T) {
 	const text, body = "the answer that must not print", "the body that must not print"
 	salt := []byte("a salt that must not print")
 	r := mediator.Resolution{Action: mediator.Changed, Answer: text, Salt: salt, Release: true}
-	q := mediator.Queued{To: key(t, "applier").Reference(), Delivery: []byte(`{"text":"` + body + `"}`)}
+	q := mediator.Queued{To: ptesting.Key(t, "applier").Reference(), Delivery: []byte(`{"text":"` + body + `"}`)}
 	secrets := secretsIn(text, body, string(salt))
 	secrets = append(secrets, fmt.Sprint(salt)[1:20])
 	for _, verb := range []string{"%v", "%+v", "%#v", "%s", "%q", "%x", "%X", "%d", "%z"} {

@@ -9,7 +9,8 @@ import (
 	"strings"
 )
 
-// A Vector is one vector file as a handler receives it, after the runner's own checks passed.
+// A Vector is one vector file as a handler receives it, after the runner's own checks passed
+// (conformance-vectors-1, record 0004).
 type Vector struct {
 	// Path is the file's path from the repository root, such as vectors/canonical/duplicate-key.json.
 	Path string
@@ -20,7 +21,7 @@ type Vector struct {
 }
 
 // A Part is one result a handler compared, or could not: a step, a final list, an expected value.
-// It passed when both Failure and Pending are empty.
+// It passed when both Failure and Pending are empty (runner-no-silent-pass, record 0004).
 type Part struct {
 	// Name says which part, such as step-2 or final.
 	Name string
@@ -31,13 +32,15 @@ type Part struct {
 }
 
 // A Handler runs a vector of one operation against the implementation and reports every part it
-// compared, in order. A handler that reports no part fails the vector.
+// compared, in order. A handler that reports no part fails the vector (record 0004).
 type Handler func(Vector) []Part
 
-// Handlers names the handler of each operation. An operation with none fails every vector of it.
+// Handlers names the handler of each operation. An operation with none fails every vector of it
+// (record 0004).
 type Handlers map[string]Handler
 
-// The checks a vector goes through, in order (section 10 of the protocol text).
+// The checks a vector goes through, in order (section 10 of the protocol text; conformance-vectors-10,
+// record 0004).
 const (
 	CheckHeader    = "header"
 	CheckSchema    = "schema"
@@ -46,7 +49,7 @@ const (
 	CheckResults   = "results"
 )
 
-// A Result is what became of one vector.
+// A Result is what became of one vector (record 0004).
 type Result struct {
 	// Path is the vector's path from the repository root.
 	Path string
@@ -58,11 +61,13 @@ type Result struct {
 	Parts int
 }
 
-// Passed reports whether the vector passed. A vector either passes or fails: none is skipped.
+// Passed reports whether the vector passed. A vector either passes or fails: none is skipped
+// (runner-no-silent-pass, record 0004).
 func (r Result) Passed() bool { return r.Check == "" }
 
 // An Open entry of the coverage list is a requirement, or a scenario of one, that no vector covers
-// yet, with the milestone that writes its vector; or one covered in part, with what stays open.
+// yet, with the milestone that writes its vector; or one covered in part, with what stays open
+// (coverage-reported, records 0004 and 0005).
 type Open struct {
 	ID        string
 	Scenario  string // empty for the requirement itself
@@ -71,7 +76,7 @@ type Open struct {
 	Rest string
 }
 
-// A Report is the outcome of a run.
+// A Report is the outcome of a run (record 0004).
 type Report struct {
 	// Results holds every vector found, in path order.
 	Results []Result
@@ -82,7 +87,8 @@ type Report struct {
 	Open []Open
 }
 
-// Passed reports whether the run passed: every vector found passed and nothing else failed.
+// Passed reports whether the run passed: every vector found passed and nothing else failed
+// (runner-no-silent-pass, record 0004).
 func (r Report) Passed() bool {
 	if len(r.Problems) > 0 {
 		return false
@@ -96,7 +102,7 @@ func (r Report) Passed() bool {
 }
 
 // Lines writes the report as lines: each failure, each vector that passed, each open entry, and a
-// count.
+// count (record 0004).
 func (r Report) Lines() []string {
 	var out []string
 	failed := 0
@@ -140,7 +146,8 @@ func plural(n int, noun string) string {
 
 // Run reads the protocol's spec/ directory from spec and the vectors/ directory from vectors, checks
 // vector.json against its own examples, runs every vector with the handlers given, and checks the
-// coverage list. A vector is every .json file under vectors/ but vectors/coverage.json.
+// coverage list. A vector is every .json file under vectors/ but vectors/coverage.json
+// (conformance-vectors-10, record 0004).
 func Run(spec, vectors fs.FS, h Handlers) Report {
 	var r Report
 	schema, problems := loadSchema(spec)
@@ -301,7 +308,12 @@ func runVector(p string, b []byte, schema *node, h Handlers) Result {
 		return fail(CheckInputs, reason)
 	}
 
-	op := o.values["operation"].(string)
+	// The schema holds every vector to a string operation; a schema that did not is a failed part,
+	// never a panic (core-no-panic).
+	op, ok := o.values["operation"].(string)
+	if !ok {
+		return fail(CheckOperation, "no member \"operation\" that is a string, so no part of the vector can run")
+	}
 	run, ok := h[op]
 	if !ok || run == nil {
 		return fail(CheckOperation, "no handler runs the operation "+strconv.Quote(op)+", so no part of the vector can run")

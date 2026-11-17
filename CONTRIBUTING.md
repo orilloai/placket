@@ -39,7 +39,7 @@ The maintainer rules on intent. Anything else is your choice: take the sensible 
 
    A `<test>` is a Go test's name, or a shell test's path such as `tests/test_x.sh`. Add one with `git commit --trailer 'Green-On-Base: TestX: <why>'`, plus `-s` if you are a person signing off (an agent never adds one). A trailer naming a test the change does not touch is refused.
 4. **Then the code**, in small commits.
-5. **Run `make ci`** before you push, with Go 1.27, `jq` and a POSIX shell. It runs every check: the rules of the checker in `tools/guard/`, every module's format, vet, lint, the vulnerability and secret scans, the tests with the race detector, the fuzz seeds, the conformance runner and the shell tests. `make <step>` runs one of them. A refusal starts with the rule's name, names the file and line, and its last line links the rule's heading in `docs/rules/`; `docs/rules/checks.md` says what each step prints. Never run `make ci` from inside a test ([`ci-stays-fast`](docs/rules/changes.md#ci-stays-fast)).
+5. **Run `make ci`** before you push, with Go 1.27, `jq`, a POSIX shell, OpenSSL 3, GNU `basenc` (from coreutils), `perl`, `git` and `tar`. It runs every check: the rules of the checker in `tools/guard/`, every module's format, vet, lint, the vulnerability and secret scans, the tests with the race detector, the fuzz seeds, the conformance runner and the shell tests. `make <step>` runs one of them. A refusal starts with the rule's name, names the file and line, and its last line links the rule's heading in `docs/rules/`; `docs/rules/checks.md` says what each step prints. Never run `make ci` from inside a test ([`ci-stays-fast`](docs/rules/changes.md#ci-stays-fast)).
 
 ## Patterns
 

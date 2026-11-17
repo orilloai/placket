@@ -37,7 +37,10 @@
 //	{"ok":true,"questions":[Q...]}                  questions: Q is {"asker","deadline","form","id",
 //	                                                "kind","message"?,"size"?}; a text part's
 //	                                                message is its text, a data part's its canonical
-//	                                                JSON, and a raw part is shown by its size alone
+//	                                                JSON, and a raw part is shown by its size alone;
+//	                                                the reply fits MaxReply, so past it a text or
+//	                                                data part too is shown by its size, and the
+//	                                                newest questions may be left out
 //	{"ok":true}                                     get with nothing queued; result otherwise
 //	{"ok":false,"rejection":C}                      the mediator's rejection
 //	{"ok":false,"error":C}                          the mediator's error: its caller's misuse

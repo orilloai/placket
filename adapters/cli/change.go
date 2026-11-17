@@ -19,7 +19,8 @@ func init() {
 // the version given as text. With no version, an empty one, or a file that is not UTF-8, it is tool
 // error changed and sends nothing. It prints the outcome of the version returned to the asker, then
 // of the version released; with --keep it keeps the version with the salt the reply carries; with
-// --comment it then gives the asker a comment.
+// --comment it then gives the asker a comment; a comment that is not UTF-8 is tool error comment and
+// sends nothing.
 func changeCommand(r *run, args []string) int {
 	var text, file, comment *string
 	var keep *bool
@@ -31,6 +32,12 @@ func changeCommand(r *run, args []string) int {
 		return code
 	}
 	defer s.dir.Unlock()
+	if !utf8.ValidString(*text) {
+		return r.tool(codeText)
+	}
+	if !utf8.ValidString(*comment) {
+		return r.tool(codeComment)
+	}
 	version := *text
 	if *file != "" {
 		b, err := os.ReadFile(*file)

@@ -3,6 +3,7 @@ package setup_test
 import (
 	"testing"
 
+	"github.com/orilloai/placket/core/internal/testing/seeds"
 	"github.com/orilloai/placket/core/setup"
 )
 
@@ -22,6 +23,9 @@ func FuzzAccordReads(f *testing.F) {
 	f.Add("ed25519:")
 	f.Add("")
 	f.Add("role:proposer")
+	for _, s := range seeds.Strings(f, "founding") {
+		f.Add(s)
+	}
 	f.Fuzz(func(t *testing.T, actor string) {
 		member := false
 		for _, m := range a.Members() {

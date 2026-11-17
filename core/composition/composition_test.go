@@ -1,43 +1,23 @@
 package composition_test
 
 import (
-	"crypto/ed25519"
-	"crypto/sha256"
-	"encoding/hex"
-	"encoding/json"
-	"os"
 	"testing"
 
 	"github.com/orilloai/placket/core/composition"
+	ptesting "github.com/orilloai/placket/core/internal/testing"
+	"github.com/orilloai/placket/core/internal/testing/seeds"
 	"github.com/orilloai/placket/core/setup"
 )
 
 // accord founds a set of the founding vectors.
 func accord(t testing.TB, name string) *setup.Accord {
 	t.Helper()
-	b, err := os.ReadFile("../../vectors/founding/" + name + ".json")
-	if err != nil {
-		t.Fatal(err)
-	}
-	var v struct {
-		InputHex  string `json:"inputHex"`
-		FoundedAt string `json:"foundedAt"`
-	}
-	if err := json.Unmarshal(b, &v); err != nil {
-		t.Fatal(err)
-	}
-	set, _ := hex.DecodeString(v.InputHex)
-	a, err := setup.Found(set, v.FoundedAt)
+	set, foundedAt := ptesting.Founding(t, name)
+	a, err := setup.Found(set, foundedAt)
 	if err != nil {
 		t.Fatal(err)
 	}
 	return a
-}
-
-// ref is the reference of the vectors' key of a name.
-func ref(name string) string {
-	seed := sha256.Sum256([]byte("placket vectors: key " + name))
-	return "ed25519:" + hex.EncodeToString(ed25519.NewKeyFromSeed(seed[:]).Public().(ed25519.PublicKey))
 }
 
 // TestDecide decides each kind of the composition Accord, and of the ask-and-log Accord, by the rows
@@ -45,7 +25,7 @@ func ref(name string) string {
 func TestDecide(t *testing.T) {
 	t.Parallel()
 	compose, ask := accord(t, "compose"), accord(t, "ask-and-log")
-	p, a, d := ref("proposer"), ref("applier"), ref("decider")
+	p, a, d := ptesting.Key(t, "proposer").Reference(), ptesting.Key(t, "applier").Reference(), ptesting.Key(t, "decider").Reference()
 	for _, c := range []struct {
 		accord   *setup.Accord
 		crossing composition.Crossing
@@ -84,9 +64,12 @@ func TestDecide(t *testing.T) {
 // pairs its verdict and reason as receipt-4 says.
 func FuzzDecide(f *testing.F) {
 	compose := accord(f, "compose")
-	f.Add(ref("proposer"), ref("applier"), "memo", false)
-	f.Add(ref("proposer"), ref("proposer"), "brief", true)
+	f.Add(ptesting.Key(f, "proposer").Reference(), ptesting.Key(f, "applier").Reference(), "memo", false)
+	f.Add(ptesting.Key(f, "proposer").Reference(), ptesting.Key(f, "proposer").Reference(), "brief", true)
 	f.Add("", "", "", false)
+	for _, s := range seeds.Strings(f, "founding") {
+		f.Add(ptesting.Key(f, "proposer").Reference(), ptesting.Key(f, "applier").Reference(), s, false)
+	}
 	f.Fuzz(func(t *testing.T, from, to, kind string, formed bool) {
 		d := composition.Decide(compose, composition.Crossing{From: from, To: to, Kind: kind, Formed: formed})
 		switch {

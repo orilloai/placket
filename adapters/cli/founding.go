@@ -29,20 +29,24 @@ func foundingCommand(r *run, args []string) int {
 	if !r.parse(fs, args, "policy", "mediator", "card", "declaration", "binding") {
 		return r.tool(codeUsage)
 	}
+	// The files are read in a fixed order, so the first that cannot be read names its code.
 	set := map[string]any{}
-	for name, path := range map[string]string{"policy": *policy, "mediator": *med, "card": *card} {
-		b, ok := readJSON(path)
+	for _, p := range []struct{ name, path string }{{"policy", *policy}, {"mediator", *med}, {"card", *card}} {
+		b, ok := readJSON(p.path)
 		if !ok {
-			return r.tool(codeFile, name)
+			return r.tool(codeFile, p.name)
 		}
-		set[name] = json.RawMessage(b)
+		set[p.name] = json.RawMessage(b)
 	}
-	for name, paths := range map[string]many{"declarations": decls, "bindings": binds} {
-		list, ok := byActor(paths)
+	for _, p := range []struct {
+		name  string
+		paths many
+	}{{"declarations", decls}, {"bindings", binds}} {
+		list, ok := byActor(p.paths)
 		if !ok {
-			return r.tool(codeFile, name)
+			return r.tool(codeFile, p.name)
 		}
-		set[name] = list
+		set[p.name] = list
 	}
 	b := canonicalJSON(set)
 	a, err := setup.Found(b, local.Stamp(r.env.Now()))

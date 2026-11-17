@@ -8,6 +8,8 @@ import (
 	"testing"
 	"unicode"
 	"unicode/utf8"
+
+	"github.com/orilloai/placket/adapters/internal/seeds"
 )
 
 // FuzzEscape escapes any bytes as a field, as a body and as JSON. It never panics; a field holds
@@ -19,6 +21,9 @@ func FuzzEscape(f *testing.F) {
 	f.Add([]byte(`{"a":"x\u001b","b":["` + "\u0085\u2028\U000e0001\x7f" + `"]}`))
 	f.Add([]byte("plain text, line one\nline two"))
 	f.Add([]byte("1E700"))
+	for _, s := range seeds.Values(f, "crossing", "text", "content") {
+		f.Add([]byte(s))
+	}
 	f.Fuzz(func(t *testing.T, b []byte) {
 		fd := field(string(b))
 		if !utf8.ValidString(fd) || strings.IndexFunc(fd, func(r rune) bool { return !unicode.IsGraphic(r) || r == ' ' }) >= 0 {

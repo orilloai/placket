@@ -9,6 +9,8 @@ import (
 	"strings"
 	"testing"
 
+	ptesting "github.com/orilloai/placket/core/internal/testing"
+	"github.com/orilloai/placket/core/internal/testing/seeds"
 	"github.com/orilloai/placket/core/mediator"
 )
 
@@ -16,7 +18,7 @@ import (
 // 09:00, and returns the question's id.
 func askWith(t testing.TB, m *mediator.Mediator, seq int64, id, name string, value any) string {
 	t.Helper()
-	p, ap := key(t, "proposer"), key(t, "applier")
+	p, ap := ptesting.Key(t, "proposer"), ptesting.Key(t, "applier")
 	msg := message(t, m.Accord(), id, ap.Reference(), "proposal", "", func(o map[string]any) {
 		part := o["parts"].([]any)[0].(map[string]any)
 		delete(part, "text")
@@ -35,8 +37,8 @@ func askWith(t testing.TB, m *mediator.Mediator, seq int64, id, name string, val
 // bytes (maybe-1).
 func TestQuestionReadsAnOpenQuestion(t *testing.T) {
 	t.Parallel()
-	p, ap, d := key(t, "proposer").Reference(), key(t, "applier").Reference(), key(t, "decider").Reference()
-	med := key(t, "mediator").Reference()
+	p, ap, d := ptesting.Key(t, "proposer").Reference(), ptesting.Key(t, "applier").Reference(), ptesting.Key(t, "decider").Reference()
+	med := ptesting.Key(t, "mediator").Reference()
 	m := found(t)
 	text := ask(t, m, 1, "p-1", "2026-11-12T09:00:00Z")
 	raw := askWith(t, m, 2, "p-2", "raw", base64.StdEncoding.EncodeToString([]byte{0x00, 0xff, 0x10}))
@@ -70,8 +72,8 @@ func TestQuestionReadsAnOpenQuestion(t *testing.T) {
 // reference reads nothing once the question is closed: it is no member.
 func TestQuestionRowsInOrder(t *testing.T) {
 	t.Parallel()
-	p, d := key(t, "proposer").Reference(), key(t, "decider").Reference()
-	stranger, med := key(t, "stranger").Reference(), key(t, "mediator").Reference()
+	p, d := ptesting.Key(t, "proposer").Reference(), ptesting.Key(t, "decider").Reference()
+	stranger, med := ptesting.Key(t, "stranger").Reference(), ptesting.Key(t, "mediator").Reference()
 	m := found(t)
 	open := ask(t, m, 1, "p-1", "2026-11-12T09:00:00Z")
 	closed := ask(t, m, 2, "p-2", "2026-11-12T09:00:00Z")
@@ -114,7 +116,7 @@ func TestQuestionRowsInOrder(t *testing.T) {
 // (results-are-copies); and a read writes nothing.
 func TestQuestionIsACopy(t *testing.T) {
 	t.Parallel()
-	d := key(t, "decider").Reference()
+	d := ptesting.Key(t, "decider").Reference()
 	m := found(t)
 	id := ask(t, m, 1, "p-1", "2026-11-12T09:00:00Z")
 	before := m.Receipts()
@@ -137,7 +139,7 @@ func TestQuestionNeverPrints(t *testing.T) {
 	t.Parallel()
 	m := found(t)
 	id := ask(t, m, 1, "p-1", "2026-11-12T09:00:00Z")
-	q, _, _ := m.Question(key(t, "decider").Reference(), id)
+	q, _, _ := m.Question(ptesting.Key(t, "decider").Reference(), id)
 	const part = "Proposal p-1."
 	secrets := []string{part[:8], hex.EncodeToString([]byte(part))[:16], strings.ToUpper(hex.EncodeToString([]byte(part)))[:16],
 		fmt.Sprint([]byte(part[:4]))[1:12]}
@@ -162,11 +164,14 @@ func TestQuestionNeverPrints(t *testing.T) {
 // FuzzQuestion reads any id as any caller. It never panics and never writes.
 func FuzzQuestion(f *testing.F) {
 	m, q := opened(f)
-	f.Add(key(f, "decider").Reference(), q)
-	f.Add(key(f, "mediator").Reference(), q)
-	f.Add(key(f, "proposer").Reference(), q)
-	f.Add(key(f, "stranger").Reference(), string(m.Receipts()[0][:8]))
+	f.Add(ptesting.Key(f, "decider").Reference(), q)
+	f.Add(ptesting.Key(f, "mediator").Reference(), q)
+	f.Add(ptesting.Key(f, "proposer").Reference(), q)
+	f.Add(ptesting.Key(f, "stranger").Reference(), string(m.Receipts()[0][:8]))
 	f.Add("", "")
+	for _, s := range seeds.Values(f, "questions", "question") {
+		f.Add(ptesting.Key(f, "decider").Reference(), s)
+	}
 	f.Fuzz(func(t *testing.T, caller, id string) {
 		m, _ := opened(t)
 		before := len(m.Receipts())

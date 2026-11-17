@@ -1,0 +1,7 @@
+name: wiring
+on: push
+jobs:
+  one:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4

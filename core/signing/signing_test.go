@@ -10,6 +10,8 @@ import (
 	"math/big"
 	"strings"
 	"testing"
+
+	"github.com/orilloai/placket/core/internal/testing/seeds"
 )
 
 func testKey(t testing.TB, name string) Key {
@@ -148,7 +150,7 @@ func TestPayloadSignaturesRefuseTheFourTypeURIs(t *testing.T) {
 			t.Fatalf("SignPayload under %s: %x, %v", uri, sig, err)
 		}
 		// A raw Ed25519 signature over the very pre-authentication encoding an object signature uses.
-		raw := ed25519.Sign(k.private, PAE(uri, envelope))
+		raw := ed25519.Sign(k.bytes(), PAE(uri, envelope))
 		if VerifyPayload(uri, envelope, raw, k.Reference()) {
 			t.Fatalf("VerifyPayload under %s accepted a signature", uri)
 		}
@@ -159,11 +161,11 @@ func TestPayloadSignaturesRefuseTheFourTypeURIs(t *testing.T) {
 	if err != nil || !VerifyPayload(intoto, envelope, sig, k.Reference()) {
 		t.Fatalf("a payload under %s: %v", intoto, err)
 	}
-	if _, err := Sign(envelope, intoto, k); err == nil {
-		t.Fatalf("Sign accepted the payload type %s", intoto)
+	if _, err := Sign(envelope, intoto, k); !isTypeURI(err) {
+		t.Fatalf("Sign under the payload type %s: got %v, want %s", intoto, err, CodeTypeURI)
 	}
-	if _, err := Sign(envelope, TypeRegistration, k); err == nil {
-		t.Fatal("Sign accepted the reserved registration type URI")
+	if _, err := Sign(envelope, TypeRegistration, k); !isTypeURI(err) {
+		t.Fatalf("Sign under the reserved registration type URI: got %v, want %s", err, CodeTypeURI)
 	}
 	obj, _ := Sign(envelope, TypeEnvelope, k)
 	signed := []byte(strings.Replace(string(envelope), `"seq":1`, `"seq":1,"sig":"`+obj+`"`, 1))
@@ -180,7 +182,7 @@ func TestKeyNeverPrints(t *testing.T) {
 	k, _ := NewKey(seed[:])
 	for _, verb := range []string{"%v", "%+v", "%#v", "%s", "%q", "%x", "%X", "%d", "%T", "%z"} {
 		out := fmt.Sprintf(verb, k) + fmt.Sprintf(verb, &k) + fmt.Sprintf(verb, []Key{k})
-		for _, secret := range []string{hex.EncodeToString(seed[:]), hex.EncodeToString(k.private), fmt.Sprintf("%X", seed[:]), string(seed[:8])} {
+		for _, secret := range []string{hex.EncodeToString(seed[:]), hex.EncodeToString(k.bytes()), fmt.Sprintf("%X", seed[:]), string(seed[:8])} {
 			if strings.Contains(out, secret) {
 				t.Fatalf("%s prints the key: %q", verb, out)
 			}
@@ -252,6 +254,11 @@ func FuzzVerify(f *testing.F) {
 	f.Add([]byte(`{"sig":7}`), TypeBinding, "ed25519:"+strings.Repeat("0", 64))
 	f.Add([]byte(`[]`), TypeRegistration, "ecdsa:")
 	f.Add([]byte("\xff"), "", "")
+	for _, in := range seeds.Inputs(f, "signatures") {
+		for _, ty := range seeds.Values(f, "signatures", "typeUri") {
+			f.Add(in, ty, k.Reference())
+		}
+	}
 	f.Fuzz(func(t *testing.T, object []byte, typeURI, ref string) {
 		if Verify(object, typeURI, ref) {
 			if _, err := SigningBytes(object, typeURI); err != nil {
@@ -270,6 +277,9 @@ func FuzzVerifyPayload(f *testing.F) {
 	sig, _ := SignPayload("application/vnd.in-toto+json", []byte("{}"), k)
 	f.Add("application/vnd.in-toto+json", []byte("{}"), sig, k.Reference(), []byte("seed"))
 	f.Add(TypeEnvelope, []byte("{}"), sig[:63], "ed25519:", make([]byte, 32))
+	for _, in := range seeds.Inputs(f, "signatures") {
+		f.Add("application/vnd.in-toto+json", in, sig, k.Reference(), []byte("seed"))
+	}
 	f.Fuzz(func(t *testing.T, payloadType string, payload, sig []byte, ref string, seed []byte) {
 		_ = VerifyPayload(payloadType, payload, sig, ref)
 		_ = PAE(payloadType, payload)
@@ -280,4 +290,10 @@ func FuzzVerifyPayload(f *testing.F) {
 			}
 		}
 	})
+}
+
+// isTypeURI reports whether err is this package's Error with code type-uri.
+func isTypeURI(err error) bool {
+	var e *Error
+	return errors.As(err, &e) && e.Code == CodeTypeURI && err.Error() == "signing: type-uri"
 }

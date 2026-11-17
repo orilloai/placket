@@ -9,6 +9,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/orilloai/placket/adapters/internal/strict"
 	"github.com/orilloai/placket/adapters/journal"
 	"github.com/orilloai/placket/adapters/local"
 	"github.com/orilloai/placket/core/composition"
@@ -22,23 +23,15 @@ func init() {
 
 // predicateOf is the predicate member of a receipt's statement, as the receipt holds it.
 func predicateOf(receipt []byte) []byte {
-	var env struct {
-		Payload string `json:"payload"`
-	}
-	if json.Unmarshal(receipt, &env) != nil {
-		return nil
-	}
-	p, err := base64.StdEncoding.DecodeString(env.Payload)
+	p, err := base64.StdEncoding.DecodeString(memberString(receipt, "payload"))
 	if err != nil {
 		return nil
 	}
-	var st struct {
-		Predicate json.RawMessage `json:"predicate"`
-	}
-	if json.Unmarshal(p, &st) != nil {
+	pr, ok := member(p, "predicate")
+	if !ok {
 		return nil
 	}
-	return canonicalJSON(st.Predicate)
+	return canonicalJSON(pr)
 }
 
 // notVerified prints the verifier's failure, its code and the line of receipts.jsonl it is at.
@@ -73,7 +66,8 @@ func oneAccord(st []receipts.Statement) (string, int) {
 // set is given, the counts of verdicts, questions and releases, the claim and the scope line. The
 // receipts must all be of one Accord and card, or it is tool error verify, accord or card, at the
 // first that differs. A founding set is tool error founding unless it founds the receipts' Accord
-// and its mediator is M. With a founding set it also names each member, in actor-reference order: a
+// and its mediator is M; with no receipts there is no Accord to compare, and the set is founded and
+// its mediator compared with M, nothing else. With a founding set it also names each member, in actor-reference order: a
 // line `member <actor> roles <r1,r2> principal <principal>` after the module's lines, and members in
 // the object (commands-4). A card whose module is not this build's is named after the module line,
 // and still verifies (docs/adr/0012-the-kernel-hash.md).
@@ -88,14 +82,18 @@ func verifyCommand(r *run, args []string) int {
 	if err != nil {
 		return r.failed(err)
 	}
-	st, err := receipts.Verify(*med, list)
+	verified, err := receipts.Verify(*med, list)
 	if err != nil {
 		return r.notVerified(err)
+	}
+	st := make([]receipts.Statement, len(verified))
+	for i, v := range verified {
+		st[i] = v.Statement()
 	}
 	if code, i := oneAccord(st); code != "" {
 		return r.tool(codeVerify, code, journal.FileReceipts, fmt.Sprintf("line %d", i+1))
 	}
-	places, err := receipts.Releases(st)
+	places, err := receipts.Releases(verified)
 	if err != nil {
 		return r.notVerified(err)
 	}
@@ -117,7 +115,8 @@ func verifyCommand(r *run, args []string) int {
 		}
 		// The set must be the journal's Accord and name the key the receipts were verified under.
 		a, err := setup.Found(set, at)
-		if err != nil || a.ID() != accord || a.Mediator() != *med {
+		// A journal with no receipts has no Accord to compare: the set's mediator is still compared.
+		if err != nil || (len(st) > 0 && a.ID() != accord) || a.Mediator() != *med {
 			return r.tool(codeFound)
 		}
 		module = moduleLines(set)
@@ -149,7 +148,7 @@ func verifyCommand(r *run, args []string) int {
 			}
 		}
 	}
-	fmt.Fprintf(r.stderr, "verified %d receipts\n", len(st))
+	fmt.Fprintf(r.stderr, lineVerified+"\n", len(st))
 	fmt.Fprintln(r.stderr, "mediator "+*med+" accord "+accord+" card "+card)
 	if module == nil {
 		fmt.Fprintln(r.stderr, LineNoModule)
@@ -158,8 +157,8 @@ func verifyCommand(r *run, args []string) int {
 		fmt.Fprintln(r.stderr, l)
 	}
 	fmt.Fprintf(r.stderr, "%s %d %s %d %s %d\n", WordPass, n[string(composition.Pass)], WordBlock, n[string(composition.Block)], WordAsk, n[string(composition.Escalate)])
-	fmt.Fprintf(r.stderr, "questions closed %d open %d\n", closed, n[string(composition.Escalate)]-closed)
-	fmt.Fprintf(r.stderr, "releases %d blocked releases %d\n", released, blocked)
+	fmt.Fprintf(r.stderr, lineQuestions+"\n", closed, n[string(composition.Escalate)]-closed)
+	fmt.Fprintf(r.stderr, lineReleases+"\n", released, blocked)
 	fmt.Fprintln(r.stderr, ClaimVerified)
 	fmt.Fprintln(r.stderr, Scope)
 	for name, v := range map[string]any{
@@ -176,51 +175,39 @@ func verifyCommand(r *run, args []string) int {
 // putModule puts the operator and the decision module of a founded set: operator, runs, module and
 // checks.
 func (r *run) putModule(set []byte) {
-	var s struct {
-		Mediator struct {
-			Operator string `json:"operator"`
-			Runs     string `json:"runs"`
-		} `json:"mediator"`
-		Card struct {
-			Kernel json.RawMessage   `json:"kernel"`
-			Checks []json.RawMessage `json:"checks"`
-		} `json:"card"`
-	}
-	_ = json.Unmarshal(set, &s)
 	checks := []json.RawMessage{}
-	r.put(memberOperator, s.Mediator.Operator)
-	r.put("runs", s.Mediator.Runs)
-	r.put(LabelModule, s.Card.Kernel)
-	r.put("checks", append(checks, s.Card.Checks...))
+	if c, ok := member(set, "card", "checks"); ok {
+		var list []json.RawMessage
+		_ = json.Unmarshal(c, &list)
+		checks = append(checks, list...)
+	}
+	k, _ := member(set, "card", "kernel")
+	r.put(memberOperator, memberString(set, "mediator", "operator"))
+	r.put("runs", memberString(set, "mediator", "runs"))
+	r.put(LabelModule, k)
+	r.put("checks", checks)
 }
 
 // moduleLines are the lines that name the operator and the decision module of a founded set, and
 // the line that names the module when it is not this build's (docs/adr/0012-the-kernel-hash.md).
 func moduleLines(set []byte) []string {
-	var s struct {
-		Mediator struct {
-			Operator string `json:"operator"`
-			Runs     string `json:"runs"`
-		} `json:"mediator"`
-		Card struct {
-			Kernel struct {
-				Version string `json:"version"`
-				Hash    string `json:"hash"`
-			} `json:"kernel"`
-			Checks []struct {
-				Name    string `json:"name"`
-				Version string `json:"version"`
-				Hash    string `json:"hash"`
-			} `json:"checks"`
-		} `json:"card"`
-	}
-	_ = json.Unmarshal(set, &s)
-	out := []string{"operator " + s.Mediator.Operator + " runs " + s.Mediator.Runs,
-		LabelModule + " " + s.Card.Kernel.Version + " " + s.Card.Kernel.Hash}
-	if l := otherModule(kernel(s.Card.Kernel)); l != "" {
+	k, _ := kernelOf(cardOf(set))
+	out := []string{"operator " + memberString(set, "mediator", "operator") + " runs " + memberString(set, "mediator", "runs"),
+		LabelModule + " " + k.Version + " " + k.Hash}
+	if l := otherModule(k); l != "" {
 		out = append(out, l)
 	}
-	for _, c := range s.Card.Checks {
+	var checks []json.RawMessage
+	if c, ok := member(set, "card", "checks"); ok {
+		_ = json.Unmarshal(c, &checks)
+	}
+	for _, b := range checks {
+		var c struct {
+			Name    string `json:"name"`
+			Version string `json:"version"`
+			Hash    string `json:"hash"`
+		}
+		_ = strict.Decode(b, &c)
 		out = append(out, "check "+c.Name+" "+c.Version+" "+c.Hash)
 	}
 	return out

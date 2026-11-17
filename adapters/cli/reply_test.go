@@ -154,11 +154,11 @@ func TestTheCommandsReadTheReplyForItsForm(t *testing.T) {
 	}
 	sign := func(s receipts.Subject, p receipts.Predicate) (json.RawMessage, string) {
 		t.Helper()
-		b, id, err := receipts.Build(s, p, mk)
+		b, v, err := receipts.Build(s, p, mk)
 		if err != nil {
 			t.Fatal(err)
 		}
-		return json.RawMessage(b), id
+		return json.RawMessage(b), v.Statement().ID
 	}
 
 	// An answer that passed and whose release blocked: answer exits 1, and result's line says the

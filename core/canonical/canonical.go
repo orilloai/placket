@@ -35,6 +35,7 @@ type Error struct {
 	Offset int
 }
 
+// Error returns the package, the code and the offset, and nothing of the input.
 func (e *Error) Error() string {
 	return "canonical: " + string(e.Code) + " at offset " + strconv.Itoa(e.Offset)
 }

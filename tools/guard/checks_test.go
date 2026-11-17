@@ -9,7 +9,7 @@ import (
 )
 
 // The planted faults of the checks that read the vectors' generators, the format constants, the
-// product words, the claims, the binary's main, the root module and the tools' versions. Each names
+// product words, the claims, the binary's main, the recipes' imports, the root module and the tools' versions. Each names
 // the exact lines its rule prints, in order.
 var checksCases = []tcase{
 	// vectors-independent: a generator under vectors/<group>/ imports no core package its group
@@ -69,6 +69,21 @@ var checksCases = []tcase{
 	{name: "main-40", fixture: "main-40", refuse: []string{"main-is-thin"}, lines: []string{"cmd/placket/main.go:40: main.go has 40 lines"}},
 	{name: "main-39", fixture: "main-39"},
 
+	// recipes-core-only: nothing under recipes/, test files included, imports adapters/ or cmd/, or
+	// writes an import path with an escape; a core import, a longer name that only starts like
+	// adapters, a comment, a string and a file under testdata/ pass. With no recipes/ the check passes
+	// (the clean tree).
+	{name: "recipes-adapters", fixture: "recipes-adapters", refuse: []string{"recipes-core-only"}, lines: []string{
+		`recipes/job/job.go:5: "github.com/orilloai/placket/adapters/local"`,
+		`recipes/job/job.go:6: cli "github.com/orilloai/placket/cmd/placket"`,
+		`recipes/job/job.go:7: _ "github.com/orilloai/placket/adapters"`,
+		`recipes/job/job_test.go:3: import "github.com/orilloai/placket/adapters/state"`,
+	}},
+	{name: "recipes-escaped", fixture: "recipes-escaped", refuse: []string{"recipes-core-only"}, lines: []string{
+		`recipes/job/job.go:3: import _ "github.com/orilloai/placket/\x61dapters/cli"`,
+	}},
+	{name: "recipes-ok", fixture: "recipes-ok"},
+
 	// root-module: a root go.mod requires the core and replaces it with ./core, and is the root
 	// module; no go.work or go.work.sum is committed, one under testdata/ aside. With no root go.mod
 	// the check passes (the clean tree).
@@ -97,6 +112,20 @@ var checksCases = []tcase{
 		"scripts/fetch.sh:3: golang.org/x/tools/cmd/stringer: not an exact version",
 		"scripts/fetch.sh:4: golang.org/x/tools/cmd/stringer@v0.30: not an exact version",
 		"scripts/fetch.sh:7: golang.org/x/vuln/cmd/govulncheck@master: not an exact version",
+	}},
+	// Every action a workflow uses is pinned to 40 lowercase hex: a tag, a short hash, a branch, an
+	// image and upper-case hex are refused, under a quoted key or in a flow mapping too; a commit with
+	// a comment after it, a local action, a comment and a reusable workflow at a commit pass.
+	{name: "action-unpinned", fixture: "action-unpinned", refuse: []string{"machine-rules-in-ci"}, lines: []string{
+		".github/workflows/extra.yml:8: actions/checkout@v4: not pinned to a commit",
+		".github/workflows/extra.yml:10: actions/cache@0c45773: not pinned to a commit",
+		".github/workflows/extra.yml:13: actions/upload-artifact@main: not pinned to a commit",
+		".github/workflows/extra.yml:14: docker://alpine:3.20: not pinned to a commit",
+		".github/workflows/extra.yml:15: Actions/Setup-Go@924AE3A1CDED613372AB5595356FB5720E22BA16: not pinned to a commit",
+		".github/workflows/extra.yml:21: actions/checkout@v4: not pinned to a commit",
+		".github/workflows/extra.yml:22: actions/cache@v4: not pinned to a commit",
+		".github/workflows/extra.yml:23: actions/upload-artifact@v4: not pinned to a commit",
+		".github/workflows/extra.yml:24: actions/setup-go@v5: not pinned to a commit",
 	}},
 }
 

@@ -1,13 +1,13 @@
 package composition_test
 
 import (
-	"encoding/hex"
 	"encoding/json"
 	"os"
 	"testing"
 
 	"github.com/orilloai/placket/core/canonical"
 	"github.com/orilloai/placket/core/composition"
+	ptesting "github.com/orilloai/placket/core/internal/testing"
 	"github.com/orilloai/placket/core/setup"
 )
 
@@ -46,21 +46,7 @@ func TestCard(t *testing.T) {
 	if got := string(composition.Card()); got != want {
 		t.Fatalf("card %s, want %s", got, want)
 	}
-	b, err := os.ReadFile("../../vectors/founding/ask-and-log.json")
-	if err != nil {
-		t.Fatal(err)
-	}
-	var v struct {
-		InputHex  string `json:"inputHex"`
-		FoundedAt string `json:"foundedAt"`
-	}
-	if err := json.Unmarshal(b, &v); err != nil {
-		t.Fatal(err)
-	}
-	in, err := hex.DecodeString(v.InputHex)
-	if err != nil {
-		t.Fatal(err)
-	}
+	in, foundedAt := ptesting.Founding(t, "ask-and-log")
 	var set map[string]json.RawMessage
 	if err := json.Unmarshal(in, &set); err != nil {
 		t.Fatal(err)
@@ -74,7 +60,7 @@ func TestCard(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	a, err := setup.Found(c, v.FoundedAt)
+	a, err := setup.Found(c, foundedAt)
 	if err != nil {
 		t.Fatalf("found: %v", err)
 	}

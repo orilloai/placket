@@ -33,6 +33,7 @@ import (
 	"time"
 
 	"github.com/orilloai/placket/adapters/export"
+	"github.com/orilloai/placket/adapters/internal/lines"
 	"github.com/orilloai/placket/adapters/journal"
 	"github.com/orilloai/placket/adapters/keyfile"
 	"github.com/orilloai/placket/adapters/local"
@@ -69,6 +70,12 @@ const (
 	codeCard    = string(export.CodeCard)
 	codeRand    = "rand"
 	codePath    = "path"
+	// codeReply: the window's reply is not what the call asked for.
+	codeReply = "reply"
+	// codeEnvelope: an envelope could not be signed.
+	codeEnvelope = "envelope"
+	// codeInternal: a failure no other code names.
+	codeInternal = "internal"
 	// detailKept follows error file when a fetched body could not be written and was kept instead.
 	detailKept = "kept"
 	// detailKernel follows error founding when a window's card names another module than this
@@ -166,13 +173,18 @@ func (r *run) tool(code string, detail ...string) int {
 	return ExitTool
 }
 
-// failed prints what an error from a package says, as a tool error.
+// failed prints what an error from a package says, as a tool error. A journal or state file it was
+// handed that is not a regular file is error file, naming the file.
 func (r *run) failed(err error) int {
 	var ke *keyfile.Error
 	var se *state.Error
 	var je *journal.Error
 	var le *local.Error
 	switch {
+	case errors.Is(err, lines.ErrNotRegular) && errors.As(err, &se):
+		return r.tool(codeFile, se.File)
+	case errors.Is(err, lines.ErrNotRegular) && errors.As(err, &je):
+		return r.tool(codeFile, je.File)
 	case errors.As(err, &ke):
 		return r.tool(string(ke.Code))
 	case errors.As(err, &se):
@@ -194,7 +206,7 @@ func (r *run) failed(err error) int {
 	case errors.As(err, &le):
 		return r.tool(string(le.Code))
 	}
-	return r.tool("internal")
+	return r.tool(codeInternal)
 }
 
 // refusal prints a reply that is a refusal, and returns its exit code; ok is false for any other.
@@ -254,6 +266,20 @@ func (r *run) parse(fs *flag.FlagSet, args []string, required ...string) bool {
 	return true
 }
 
+// accordID reports whether s is an Accord id: a typed hash, the prefix and 64 lowercase hex digits.
+func accordID(s string) bool {
+	h, ok := strings.CutPrefix(s, canonical.HashPrefix)
+	if !ok || len(h) != 64 {
+		return false
+	}
+	for i := 0; i < len(h); i++ {
+		if c := h[i]; (c < '0' || c > '9') && (c < 'a' || c > 'f') {
+			return false
+		}
+	}
+	return true
+}
+
 // readJSON reads a file that holds one JSON value, as canonical bytes.
 func readJSON(path string) ([]byte, bool) {
 	b, err := os.ReadFile(path)
@@ -294,9 +320,14 @@ func socketFlags(fs *flag.FlagSet) (key, socket, accord, stateDir *string) {
 		fs.String("accord", "", "the Accord id"), fs.String("state", "", "state directory")
 }
 
-// open reads the key and opens the state directory; it prints the failure and returns its code. A
-// socket path too long is refused first, error socket-path limit N, before anything is read.
+// open reads the key and opens the state directory; it prints the failure and returns its code. An
+// accord that is not an Accord id, a typed hash, is error usage before any path is built from it;
+// then a socket path too long is refused, error socket-path limit N, before anything is read.
 func (r *run) open(keyPath, socket, accord, stateDir string) (*session, int) {
+	if !accordID(accord) {
+		fmt.Fprintln(r.stderr, "usage: placket: --accord is not an Accord id")
+		return nil, r.tool(codeUsage)
+	}
 	if err := local.CheckSocket(socket); err != nil {
 		return nil, r.failed(err)
 	}

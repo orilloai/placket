@@ -22,7 +22,8 @@ func TestAWaitTakesOnlyItsOwnAnswer(t *testing.T) {
 	if r.code != 0 || len(l) != 3 || !strings.HasPrefix(l[1], "accepted sha256:") || !strings.HasPrefix(l[2], "delivery ") || !strings.HasSuffix(l[2], " re "+q) {
 		t.Fatalf("the wait: %v", r)
 	}
-	if last(r.stdout) != "Yes." || !strings.Contains(r.stdout, "\nNot the answer.\n") {
+	// The receipts of the ask and the answer, then the other part as get prints it, then the answer.
+	if out := strings.Split(r.stdout, "\n"); len(out) != 6 || out[3] != "Not the answer." || out[4] != "Yes." || out[5] != "" {
 		t.Fatalf("the wait printed %q", r.stdout)
 	}
 

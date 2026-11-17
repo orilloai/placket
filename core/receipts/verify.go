@@ -4,13 +4,21 @@ import (
 	"sort"
 
 	"github.com/orilloai/placket/core/canonical"
+	"github.com/orilloai/placket/core/composition"
+)
+
+var (
+	pass     = string(composition.Pass)
+	block    = string(composition.Block)
+	escalate = string(composition.Escalate)
 )
 
 // Verify checks a list of receipts, in the order the mediator wrote them, with the mediator's
 // reference alone, by the rows of section 8: the reference once, then each receipt in list order,
 // every row of one before the next (receipt-6). It stops at the first failure and returns its code
-// with the receipt's index. A list that verifies yields its statements; an empty list verifies.
-func Verify(mediator string, list [][]byte) ([]Statement, error) {
+// with the receipt's index. A list that verifies yields its statements as Verified, the type only
+// verification makes (record 0016); an empty list verifies.
+func Verify(mediator string, list [][]byte) ([]Verified, error) {
 	// Row 0.
 	if !isReference(mediator) {
 		return nil, &Error{Code: CodeReference, Index: -1}
@@ -18,13 +26,17 @@ func Verify(mediator string, list [][]byte) ([]Statement, error) {
 	statements, fail := chain(mediator, list)
 	// Rows 1 to 6 hold up to fail; row 7 reads only the receipts up to each one, so a release failure
 	// before fail is the first failure of the list.
-	if _, err := Releases(statements); err != nil {
+	if _, err := releases(statements); err != nil {
 		return nil, err
 	}
 	if fail != nil {
 		return nil, fail
 	}
-	return statements, nil
+	out := make([]Verified, len(statements))
+	for i, s := range statements {
+		out[i] = Verified{s: s}
+	}
+	return out, nil
 }
 
 // chain runs rows 1 to 6 over the list and returns the statements of the receipts before the first
@@ -92,17 +104,27 @@ const (
 )
 
 // A Place is a receipt's place among the questions of its list: its role and, for every role but
-// RoleGive, the index of its question's receipt.
+// RoleGive, the index of its question's receipt (receipt-6, record 0005).
 type Place struct {
 	Role     Role
 	Question int
 }
 
-// Releases reads the questions of a list of statements by receipt-6's rule, the one rule every
-// reader of receipts applies, and returns each receipt's place. A receipt that belongs to a question
-// but has no place in it, and a resolution receipt that belongs to no question, fail release at
-// their index (section 8, row 7).
-func Releases(statements []Statement) ([]Place, error) {
+// Releases reads the questions of a list of verified statements by receipt-6's rule, the one rule
+// every reader of receipts applies, and returns each receipt's place. A receipt that belongs to a
+// question but has no place in it, and a resolution receipt that belongs to no question, fail release
+// at their index (section 8, row 7). It takes Verified alone, so no caller reads the questions of
+// receipts nobody verified (record 0016).
+func Releases(list []Verified) ([]Place, error) {
+	statements := make([]Statement, len(list))
+	for i, v := range list {
+		statements[i] = v.s
+	}
+	return releases(statements)
+}
+
+// releases is Releases over statements, which Verify runs as its row 7 before it has any Verified.
+func releases(statements []Statement) ([]Place, error) {
 	type question struct {
 		closing  int
 		answer   string // NameAnswer or NameChanged when the closing is an answer that passed
@@ -116,7 +138,7 @@ func Releases(statements []Statement) ([]Place, error) {
 	fail := func(i int) ([]Place, error) { return nil, &Error{Code: CodeRelease, Index: i} }
 	for i, s := range statements {
 		p := s.Predicate
-		if p.Kind == KindCrossing && p.Verdict == "escalate" {
+		if p.Kind == KindCrossing && p.Verdict == escalate {
 			latest[p.Envelope] = i
 			questions[i] = &question{closing: -1}
 			places[i] = Place{Role: RoleQuestion, Question: i}
@@ -144,7 +166,7 @@ func Releases(statements []Statement) ([]Place, error) {
 				if s.Subject.Name != NameAnswer && s.Subject.Name != NameChanged {
 					return fail(i)
 				}
-				if p.Verdict == "pass" {
+				if p.Verdict == pass {
 					q.answer, q.by, q.subject = s.Subject.Name, p.From, s.Subject
 				}
 			}
@@ -159,7 +181,7 @@ func Releases(statements []Statement) ([]Place, error) {
 		switch q.answer {
 		case NameAnswer:
 			if p.Kind != KindCrossing || p.From != a.From || p.To != a.To || s.Subject != ask.Subject ||
-				(p.Verdict != "pass" && p.Verdict != "block") {
+				(p.Verdict != pass && p.Verdict != block) {
 				return fail(i)
 			}
 		case NameChanged:
@@ -182,13 +204,14 @@ type Kept struct {
 	Delivered [][]byte
 }
 
-// An Item names a receipt, by its id, in a party's list of a report.
+// An Item names a receipt, by its id, in a party's list of a report (receipt-7, record 0005).
 type Item struct {
 	Actor     string
 	ReceiptID string
 }
 
-// A Missed names a kept envelope, by its seq, that no presented receipt echoes for its party.
+// A Missed names a kept envelope, by its seq, that no presented receipt echoes for its party
+// (receipt-7, record 0005).
 type Missed struct {
 	Actor string
 	Seq   int64
@@ -203,14 +226,25 @@ type Report struct {
 
 // Reconcile compares the presented receipts with what each party kept, by the rows of section 9, and
 // reports what is in one record and not the other (receipt-7). It verifies first and reports only
-// when every row passes.
+// when every row passes. Before any row, it checks that each kept record names its party by an actor
+// reference: one that does not fails kept at the record's index in kept, and its error names no
+// party, so text a caller passed never reaches the error.
 func Reconcile(mediator, accord, card string, presented [][]byte, kept []Kept) (Report, error) {
+	for i, k := range kept {
+		if !isReference(k.Actor) {
+			return Report{}, &Error{Code: CodeKept, Index: i}
+		}
+	}
 	// Row 1.
-	statements, err := Verify(mediator, presented)
+	verified, err := Verify(mediator, presented)
 	if err != nil {
 		return Report{}, err
 	}
-	places, _ := Releases(statements)
+	statements := make([]Statement, len(verified))
+	for i, v := range verified {
+		statements[i] = v.s
+	}
+	places, _ := releases(statements)
 	// Row 2.
 	for i, s := range statements {
 		if s.Predicate.Accord != accord || s.Predicate.Card != card {
@@ -225,7 +259,7 @@ func Reconcile(mediator, accord, card string, presented [][]byte, kept []Kept) (
 		for i, r := range k.Delivered {
 			st, code := one(r, mediator)
 			if code != "" || st.Predicate.Accord != accord || st.Predicate.Card != card ||
-				st.Predicate.Verdict != "pass" || st.Predicate.To != k.Actor {
+				st.Predicate.Verdict != pass || st.Predicate.To != k.Actor {
 				return Report{}, &Error{Code: CodeKept, Index: i, Actor: k.Actor}
 			}
 			delivered[pi] = append(delivered[pi], st.ID)
@@ -263,7 +297,7 @@ func Reconcile(mediator, accord, card string, presented [][]byte, kept []Kept) (
 			have[id] = true
 		}
 		for _, s := range statements {
-			if s.Predicate.Verdict == "pass" && s.Predicate.To == k.Actor && !have[s.ID] {
+			if s.Predicate.Verdict == pass && s.Predicate.To == k.Actor && !have[s.ID] {
 				rep.Unrecorded = append(rep.Unrecorded, Item{Actor: k.Actor, ReceiptID: s.ID})
 			}
 		}

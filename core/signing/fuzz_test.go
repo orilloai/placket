@@ -8,6 +8,8 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+
+	"github.com/orilloai/placket/core/internal/testing/seeds"
 )
 
 // The seeds the fuzz targets below share: references and objects of each form section 2 names, and
@@ -30,6 +32,11 @@ var (
 func FuzzNewKey(f *testing.F) {
 	for _, n := range []int{0, 1, 31, 32, 33, 64} {
 		f.Add(bytes.Repeat([]byte{0x5a}, n))
+	}
+	for _, s := range seeds.Strings(f, "signatures") {
+		if b, err := hex.DecodeString(s); err == nil {
+			f.Add(b)
+		}
 	}
 	f.Fuzz(func(t *testing.T, seed []byte) {
 		k, err := NewKey(seed)
@@ -55,6 +62,9 @@ func FuzzParseReference(f *testing.F) {
 	for _, r := range fuzzRefs {
 		f.Add(r)
 	}
+	for _, r := range seeds.Values(f, "signatures", "reference", "signer", "actor", "principal", "mediator") {
+		f.Add(r)
+	}
 	f.Fuzz(func(t *testing.T, ref string) {
 		public, ok := ParseReference(ref)
 		if !ok {
@@ -77,6 +87,9 @@ func FuzzPAE(f *testing.F) {
 	}
 	f.Add("a b", []byte("1 2 "))
 	f.Add("", []byte{})
+	for _, in := range seeds.Inputs(f, "signatures") {
+		f.Add("application/vnd.in-toto+json", in)
+	}
 	f.Fuzz(func(t *testing.T, payloadType string, payload []byte) {
 		want := "DSSEv1 " + strconv.Itoa(len(payloadType)) + " " + payloadType + " " + strconv.Itoa(len(payload)) + " " + string(payload)
 		if got := PAE(payloadType, payload); string(got) != want {
@@ -91,6 +104,11 @@ func FuzzPAE(f *testing.F) {
 func FuzzSigningBytes(f *testing.F) {
 	for i, o := range fuzzObjects {
 		f.Add([]byte(o), fuzzTypes[i%len(fuzzTypes)])
+	}
+	for _, in := range seeds.Inputs(f, "signatures") {
+		for _, ty := range seeds.Values(f, "signatures", "typeUri") {
+			f.Add(in, ty)
+		}
 	}
 	f.Fuzz(func(t *testing.T, object []byte, typeURI string) {
 		b, err := SigningBytes(object, typeURI)
@@ -118,6 +136,9 @@ func FuzzSign(f *testing.F) {
 		f.Add([]byte(o), fuzzTypes[i%len(fuzzTypes)], seed[:])
 	}
 	f.Add([]byte(`{}`), TypeEnvelope, []byte{1, 2, 3})
+	for _, in := range seeds.Inputs(f, "signatures") {
+		f.Add(in, TypeDeclaration, seed[:])
+	}
 	f.Fuzz(func(t *testing.T, object []byte, typeURI string, seed []byte) {
 		k, _ := NewKey(seed)
 		sig, err := Sign(object, typeURI, k)
@@ -129,7 +150,7 @@ func FuzzSign(f *testing.F) {
 		}
 		raw, _ := hex.DecodeString(sig)
 		sb, _ := SigningBytes(object, typeURI)
-		if len(sig) != 128 || hex.EncodeToString(raw) != sig || !ed25519.Verify(k.private.Public().(ed25519.PublicKey), sb, raw) {
+		if len(sig) != 128 || hex.EncodeToString(raw) != sig || !ed25519.Verify(k.bytes().Public().(ed25519.PublicKey), sb, raw) {
 			t.Fatalf("a signature %q", sig)
 		}
 		u, _, _ := unsigned(object)
@@ -152,6 +173,9 @@ func FuzzSignPayload(f *testing.F) {
 		f.Add(ty, []byte(`{"seq":1}`), seed[:])
 	}
 	f.Add("application/vnd.in-toto+json", []byte{}, []byte{})
+	for _, in := range seeds.Inputs(f, "signatures") {
+		f.Add("application/vnd.in-toto+json", in, seed[:])
+	}
 	f.Fuzz(func(t *testing.T, payloadType string, payload, seed []byte) {
 		k, kerr := NewKey(seed)
 		sig, err := SignPayload(payloadType, payload, k)
@@ -165,7 +189,7 @@ func FuzzSignPayload(f *testing.F) {
 				t.Fatalf("the zero key: %x, %v", sig, err)
 			}
 		default:
-			if err != nil || !ed25519.Verify(k.private.Public().(ed25519.PublicKey), PAE(payloadType, payload), sig) {
+			if err != nil || !ed25519.Verify(k.bytes().Public().(ed25519.PublicKey), PAE(payloadType, payload), sig) {
 				t.Fatalf("a payload signature %x, %v", sig, err)
 			}
 		}

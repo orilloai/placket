@@ -6,8 +6,8 @@ import (
 	"testing"
 
 	"github.com/orilloai/placket/core/canonical"
+	ptesting "github.com/orilloai/placket/core/internal/testing"
 	"github.com/orilloai/placket/core/mediator"
-	"github.com/orilloai/placket/core/receipts"
 	"github.com/orilloai/placket/core/signing"
 )
 
@@ -17,7 +17,7 @@ import (
 // crossing-7).
 func TestDoorRowsOneCheckEach(t *testing.T) {
 	t.Parallel()
-	p, ap := key(t, "proposer"), key(t, "applier")
+	p, ap := ptesting.Key(t, "proposer"), ptesting.Key(t, "applier")
 	ext := func(x map[string]any) map[string]any {
 		return x["metadata"].(map[string]any)[extension].(map[string]any)
 	}
@@ -100,14 +100,14 @@ func envelopeWith(t testing.TB, seq int64, msg []byte, k signing.Key, name, valu
 func TestAChainPerOrderedPair(t *testing.T) {
 	t.Parallel()
 	m := found(t)
-	p, ap, d := key(t, "proposer"), key(t, "applier"), key(t, "decider")
+	p, ap, d := ptesting.Key(t, "proposer"), ptesting.Key(t, "applier"), ptesting.Key(t, "decider")
 	for i, to := range []signing.Key{ap, d, ap} {
 		msg := message(t, m.Accord(), "m-"+string(rune('a'+i)), to.Reference(), "note", "A note.", nil)
 		if _, err := m.Give(p.Reference(), msg, envelope(t, int64(i+1), msg, p), "2026-11-12T09:00:00Z"); err != nil {
 			t.Fatalf("give %d: %v", i, err)
 		}
 	}
-	st, err := receipts.Verify(key(t, "mediator").Reference(), m.Receipts())
+	st, err := verifyAll(ptesting.Key(t, "mediator").Reference(), m.Receipts())
 	if err != nil || len(st) != 3 {
 		t.Fatalf("got %d statements, %v", len(st), err)
 	}

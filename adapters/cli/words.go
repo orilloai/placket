@@ -2,6 +2,7 @@ package cli
 
 import (
 	"github.com/orilloai/placket/adapters/export"
+	"github.com/orilloai/placket/adapters/local"
 	"github.com/orilloai/placket/core/composition"
 	"github.com/orilloai/placket/core/mediator"
 	"github.com/orilloai/placket/core/receipts"
@@ -24,6 +25,20 @@ const (
 	WordUndeliverable = receipts.ReasonUndeliverable
 	WordBlocked       = export.AnswerBlocked
 	WordOpen          = export.AnswerOpen
+)
+
+// The words of reconcile's three lists (receipt-7), each also its member under --json; how a window
+// started; a get that handed out a delivery; and the counts verify prints.
+const (
+	wordRemoved    = "removed"
+	wordUnrecorded = "unrecorded"
+	wordMissing    = "missing"
+	wordFounded    = "founded"
+	wordReloaded   = local.EventReloaded
+	wordFetched    = "fetched"
+	lineVerified   = "verified %d receipts"
+	lineQuestions  = "questions closed %d open %d"
+	lineReleases   = "releases %d blocked releases %d"
 )
 
 // The other lines a person reads.

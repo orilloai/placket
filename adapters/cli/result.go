@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/orilloai/placket/adapters/export"
+	"github.com/orilloai/placket/adapters/internal/strict"
 	"github.com/orilloai/placket/adapters/local"
 	"github.com/orilloai/placket/core/composition"
 	"github.com/orilloai/placket/core/receipts"
@@ -53,7 +54,7 @@ func (s *session) closing(question string, wait bool) int {
 	}
 	st, err := receipts.Decode(rep.Outcome.Receipt)
 	if err != nil {
-		return s.r.tool("reply")
+		return s.r.tool(codeReply)
 	}
 	w := export.Closing(st.Predicate, st.Subject)
 	text := w + " " + rep.Outcome.ReceiptID
@@ -101,11 +102,11 @@ func (s *session) fetchOwn(question, closing string) int {
 		return s.r.failed(err)
 	}
 	for _, l := range kept {
-		var d delivery
-		if json.Unmarshal(l, &d) == nil && own(&d, question, closing) {
-			line(s.r.stdout, s.r.screen(d.bytes()))
+		var k keptDelivery
+		if strict.Decode(l, &k) && own(&k.delivery, question, closing) {
+			line(s.r.stdout, s.r.screen(k.bytes()))
 			s.r.put(memberFetched, true)
-			s.r.put(memberAnswer, deliveryObject(&d, true))
+			s.r.put(memberAnswer, deliveryObject(&k.delivery, true))
 			return 0
 		}
 	}
@@ -148,7 +149,8 @@ func resultCommand(r *run, args []string) int {
 	fs := flags("result")
 	keyPath, socket, accord, stateDir := socketFlags(fs)
 	question := fs.String("question", "", "the question's id")
-	if !r.parse(fs, args, "key", "socket", "accord", "question") {
+	// A question id that is not UTF-8 is refused, never repaired (parse-strict).
+	if !r.parse(fs, args, "key", "socket", "accord", "question") || !allUTF8(*question) {
 		return r.tool(codeUsage)
 	}
 	s, code := r.open(*keyPath, *socket, *accord, *stateDir)

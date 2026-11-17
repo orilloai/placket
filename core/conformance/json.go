@@ -27,8 +27,8 @@ type number string
 // []any and *object.
 //
 // It reads a subset of what the canonical form refuses (canonical-4, canonical-6, canonical-7,
-// canonical-8). The canonical form's other refusals come with its package, which the header check
-// will use once it exists.
+// canonical-8). The header check reads the vector's bytes with the canonical form's own package for
+// the rest.
 func read(b []byte) (any, error) {
 	if !utf8.Valid(b) {
 		at := 0

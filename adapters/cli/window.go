@@ -2,7 +2,6 @@ package cli
 
 import (
 	"bytes"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -47,16 +46,11 @@ func windowCommand(r *run, args []string) int {
 			return r.tool(codeFound, detailKernel)
 		}
 	}
-	var parts struct {
-		Mediator struct {
-			Operator string `json:"operator"`
-		} `json:"mediator"`
-	}
-	_ = json.Unmarshal(set, &parts)
+	operator := memberString(set, "mediator", "operator")
 	err = local.Run(r.env.Context, local.Window{
 		Key: k, Founding: set, Socket: *socket, Journal: *dir, Disk: r.env.Disk,
 		Now: r.env.Now, Rand: r.env.Rand, Stderr: r.stderr, Ready: r.env.Ready,
-		Event: func(e local.Event) { r.event(e, parts.Mediator.Operator) },
+		Event: func(e local.Event) { r.event(e, operator) },
 	})
 	if err == nil {
 		return ExitOK
@@ -75,9 +69,9 @@ func windowCommand(r *run, args []string) int {
 func (r *run) event(e local.Event, operator string) {
 	switch e.Kind {
 	case local.EventStarted:
-		how := "reloaded"
+		how := wordReloaded
 		if e.Founded {
-			how = "founded"
+			how = wordFounded
 		}
 		fmt.Fprintln(r.stderr, "accord "+e.Accord+" "+how)
 		fmt.Fprintln(r.stderr, "card "+e.Card)
@@ -100,8 +94,10 @@ func (r *run) event(e local.Event, operator string) {
 		fmt.Fprintln(r.stderr, op+" "+LineRejected+" "+string(e.Rejection))
 	case e.Error != "":
 		fmt.Fprintln(r.stderr, op+" "+LineError+" "+string(e.Error))
+	case e.Door != "":
+		fmt.Fprintln(r.stderr, op+" "+LineDoor+" "+string(e.Door))
 	case e.Fetched != "":
-		fmt.Fprintln(r.stderr, op+" fetched "+e.Fetched)
+		fmt.Fprintln(r.stderr, op+" "+wordFetched+" "+e.Fetched)
 	case len(e.Outcomes) == 0:
 		fmt.Fprintln(r.stderr, op)
 	}

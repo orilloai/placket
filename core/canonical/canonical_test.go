@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/orilloai/placket/core/canonical"
+	"github.com/orilloai/placket/core/internal/testing/seeds"
 )
 
 // FuzzForm feeds the canonical form any bytes. It never panics; what it accepts is its own canonical
@@ -20,6 +21,9 @@ func FuzzForm(f *testing.F) {
 		strings.Repeat("[", 1001), `-`, `1e`, `1.`, `"\u12"`, `{"a" 1}`,
 	} {
 		f.Add([]byte(s))
+	}
+	for _, in := range seeds.Inputs(f, "canonical") {
+		f.Add(in)
 	}
 	f.Fuzz(func(t *testing.T, in []byte) {
 		out, err := canonical.Form(in)

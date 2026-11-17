@@ -3,7 +3,7 @@ package mediator
 import (
 	"fmt"
 
-	"github.com/orilloai/placket/core/internal/shape"
+	"github.com/orilloai/placket/core/internal/crossing"
 )
 
 // A Question is an open question as the mediator holds it (maybe-1, record 0006): its id, the
@@ -63,21 +63,10 @@ func (m *Mediator) Question(caller, id string) (Question, bool, error) {
 func (q *question) read() Question {
 	out := Question{ID: q.id, Asker: q.asker, Receiver: q.receiver, Kind: q.subject.Name,
 		Deadline: q.deadline, Roles: append([]string(nil), q.roles...)}
-	for _, form := range []string{"text", "raw", "data"} {
-		v, has := q.delivery[form]
-		if !has {
-			continue
-		}
-		out.Form = form
-		switch form {
-		case "text":
-			s, _ := v.(string)
-			out.Part = []byte(s)
-		case "raw":
-			s, _ := v.(string)
-			out.Part, _ = shape.Base64(s)
-		case "data":
-			out.Part = shape.Encode(v)
+	for _, form := range crossing.Forms {
+		if v, has := q.delivery[form]; has {
+			out.Form = form
+			out.Part, _ = crossing.Body(form, v)
 		}
 	}
 	return out

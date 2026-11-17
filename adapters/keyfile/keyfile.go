@@ -12,7 +12,10 @@ import (
 	"io"
 	"io/fs"
 	"os"
+	"path/filepath"
+	"syscall"
 
+	"github.com/orilloai/placket/adapters/internal/lines"
 	"github.com/orilloai/placket/core/signing"
 )
 
@@ -29,6 +32,9 @@ const (
 	CodeExists Code = "key-exists"
 	// CodeWrite: the file could not be written.
 	CodeWrite Code = "key-write"
+	// CodeMode: the key file can be read or written by others (any of mode 0077 is set), or another
+	// user owns it (keys-on-disk).
+	CodeMode Code = "key-mode"
 )
 
 // Error is a key file that could not be read or written. It names the code only.
@@ -61,14 +67,50 @@ func Parse(b []byte) (signing.Key, error) {
 	return k, nil
 }
 
-// Read reads the key file at path.
+// maxFile is the most Read reads of a key file. A key file is 65 bytes; anything longer is refused
+// as CodeKey without reading it all.
+const maxFile = 4 << 10
+
+// getuid is os.Getuid, a variable so a test can show the owner check.
+var getuid = os.Getuid
+
+// Read reads the key file at path. It follows a symbolic link and checks the file it reaches: a file
+// that is not regular is CodeRead, and one whose mode lets others read or write it, or that another
+// user owns, is CodeMode (keys-on-disk). It opens the file as lines.Open does, which checks the path
+// before it opens it, so a FIFO or a device never holds it, and checks the file it opened again, so a
+// swap in between is refused.
 func Read(path string) (signing.Key, error) {
-	b, err := os.ReadFile(path)
+	f, err := lines.Open(path)
 	if err != nil {
 		return signing.Key{}, &Error{Code: CodeRead}
 	}
+	defer func() { _ = f.Close() }()
+	opened, err := f.Stat()
+	if err != nil {
+		return signing.Key{}, &Error{Code: CodeRead}
+	}
+	if err := private(opened); err != nil {
+		return signing.Key{}, err
+	}
+	b, err := io.ReadAll(io.LimitReader(f, maxFile))
 	defer clear(b)
+	if err != nil {
+		return signing.Key{}, &Error{Code: CodeRead}
+	}
 	return Parse(b)
+}
+
+// private refuses a file that is not regular (CodeRead), that others may read or write, or that
+// another user owns (CodeMode).
+func private(fi fs.FileInfo) error {
+	if !fi.Mode().IsRegular() {
+		return &Error{Code: CodeRead}
+	}
+	st, ok := fi.Sys().(*syscall.Stat_t)
+	if fi.Mode().Perm()&0o077 != 0 || !ok || int64(st.Uid) != int64(getuid()) {
+		return &Error{Code: CodeMode}
+	}
+	return nil
 }
 
 // Reference returns the actor reference of the key in the file at path (signing-1).
@@ -81,7 +123,7 @@ func Reference(path string) (string, error) {
 }
 
 // New writes a new key file at path, mode 0600, from 32 bytes of rand, and returns the key. An
-// existing file is never overwritten.
+// existing file is never overwritten (CodeExists), and a write that fails leaves no file (CodeWrite).
 func New(path string, rand io.Reader) (signing.Key, error) {
 	seed := make([]byte, seedBytes)
 	defer clear(seed)
@@ -96,26 +138,60 @@ func New(path string, rand io.Reader) (signing.Key, error) {
 	defer clear(line)
 	hex.Encode(line, seed)
 	line[2*seedBytes] = '\n'
-	f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600)
-	if err != nil {
-		if errors.Is(err, fs.ErrExist) {
-			return signing.Key{}, &Error{Code: CodeExists}
-		}
-		return signing.Key{}, &Error{Code: CodeWrite}
+	if err := write(path, line); err != nil {
+		return signing.Key{}, err
 	}
+	return k, nil
+}
+
+// write puts line in a new file at path, atomically: it writes a temporary file of mode 0600 in the
+// same directory, syncs it, links it to path, removes the temporary name and syncs the directory. A
+// crash leaves either no file at path or the whole key, and the link never replaces an existing file.
+func write(path string, line []byte) error {
+	dir := filepath.Dir(path)
+	f, err := os.CreateTemp(dir, ".key-*")
+	if err != nil {
+		return &Error{Code: CodeWrite}
+	}
+	tmp := f.Name()
+	defer func() { _ = os.Remove(tmp) }()
 	if _, err := f.Write(line); err != nil {
 		_ = f.Close()
-		_ = os.Remove(path)
-		return signing.Key{}, &Error{Code: CodeWrite}
+		return &Error{Code: CodeWrite}
 	}
 	if err := f.Sync(); err != nil {
 		_ = f.Close()
-		_ = os.Remove(path)
-		return signing.Key{}, &Error{Code: CodeWrite}
+		return &Error{Code: CodeWrite}
 	}
 	if err := f.Close(); err != nil {
-		_ = os.Remove(path)
-		return signing.Key{}, &Error{Code: CodeWrite}
+		return &Error{Code: CodeWrite}
 	}
-	return k, nil
+	if err := os.Link(tmp, path); err != nil {
+		if errors.Is(err, fs.ErrExist) {
+			return &Error{Code: CodeExists}
+		}
+		return &Error{Code: CodeWrite}
+	}
+	if err := os.Remove(tmp); err != nil {
+		_ = os.Remove(path)
+		return &Error{Code: CodeWrite}
+	}
+	if err := syncDir(dir); err != nil {
+		_ = os.Remove(path)
+		return &Error{Code: CodeWrite}
+	}
+	return nil
+}
+
+// syncDir syncs the directory dir, so the new name in it survives a crash.
+func syncDir(dir string) error {
+	d, err := os.Open(dir)
+	if err != nil {
+		return err
+	}
+	if err := d.Sync(); err != nil {
+		_ = d.Close()
+		return err
+	}
+	return d.Close()
 }

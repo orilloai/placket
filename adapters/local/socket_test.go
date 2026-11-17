@@ -100,10 +100,11 @@ func TestTheClientCallsOnlyASocket(t *testing.T) {
 	}
 	p := st.Predicate
 	p.Accord = "sha256:" + strings.Repeat("0", 64)
-	b, id, err := receipts.Build(st.Subject, p, key(t, "mediator"))
+	b, v, err := receipts.Build(st.Subject, p, key(t, "mediator"))
 	if err != nil {
 		t.Fatal(err)
 	}
+	id := v.Statement().ID
 	fake := filepath.Join(shortDir(t), "f")
 	l, err := net.Listen("unix", fake)
 	if err != nil {

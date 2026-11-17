@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"errors"
 	"fmt"
 	"strconv"
 
@@ -48,6 +49,12 @@ func reconcileCommand(r *run, args []string) int {
 	}
 	rep, err := receipts.Reconcile(*med, *accord, *card, list, ks)
 	if err != nil {
+		// A state directory whose actor file holds no actor reference: the error names the --kept
+		// it came from, in order, and its actor file, never what the file holds.
+		var re *receipts.Error
+		if errors.As(err, &re) && re.Code == receipts.CodeKept && re.Actor == "" {
+			return r.tool(codeVerify, string(re.Code), "--kept", strconv.Itoa(re.Index+1), state.FileActor)
+		}
 		return r.notVerified(err)
 	}
 	items := func(l []receipts.Item) []map[string]string {
@@ -63,19 +70,19 @@ func reconcileCommand(r *run, args []string) int {
 	}
 	// An actor is read from a state directory's actor file, which whoever handed the directory over
 	// wrote: on its way to a terminal it is escaped, as any field and any JSON of another's is.
-	lists := map[string]any{"removed": items(rep.Removed), "unrecorded": items(rep.Unrecorded), "missing": missing}
+	lists := map[string]any{wordRemoved: items(rep.Removed), wordUnrecorded: items(rep.Unrecorded), wordMissing: missing}
 	line(r.stdout, r.screenJSON(canonicalJSON(lists)))
 	for name, v := range lists {
 		r.put(name, v)
 	}
 	for _, i := range rep.Removed {
-		fmt.Fprintln(r.stderr, "removed "+field(i.Actor)+" "+field(i.ReceiptID))
+		fmt.Fprintln(r.stderr, wordRemoved+" "+field(i.Actor)+" "+field(i.ReceiptID))
 	}
 	for _, i := range rep.Unrecorded {
-		fmt.Fprintln(r.stderr, "unrecorded "+field(i.Actor)+" "+field(i.ReceiptID))
+		fmt.Fprintln(r.stderr, wordUnrecorded+" "+field(i.Actor)+" "+field(i.ReceiptID))
 	}
 	for _, m := range rep.Missing {
-		fmt.Fprintln(r.stderr, "missing "+field(m.Actor)+" seq "+strconv.FormatInt(m.Seq, 10))
+		fmt.Fprintln(r.stderr, wordMissing+" "+field(m.Actor)+" seq "+strconv.FormatInt(m.Seq, 10))
 	}
 	if len(rep.Removed)+len(rep.Unrecorded)+len(rep.Missing) == 0 {
 		fmt.Fprintln(r.stderr, LineNothing)

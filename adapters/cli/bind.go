@@ -30,6 +30,10 @@ func bindCommand(r *run, args []string) int {
 	if !r.parse(fs, args, "key", "actor", "mediator", "until", "role", "policy") {
 		return r.tool(codeUsage)
 	}
+	// A flag that is not UTF-8 is refused, never repaired into another value (parse-strict).
+	if !allUTF8(append([]string{*actor, *med}, roles...)...) {
+		return r.tool(codeUsage)
+	}
 	if t, err := time.Parse(time.RFC3339, *until); err != nil || local.Stamp(t) != *until {
 		return r.tool(codeUntil)
 	}
@@ -48,7 +52,7 @@ func bindCommand(r *run, args []string) int {
 	b := map[string]any{"actor": *actor, "principal": k.Reference(), "roles": []string(roles), "policy": policyHash, "mediator": *med, "until": *until}
 	sig, err := signing.Sign(canonicalJSON(b), signing.TypeBinding, k)
 	if err != nil {
-		return r.tool(codeUsage)
+		return r.tool(codeInternal)
 	}
 	b["sig"] = sig
 	signed := canonicalJSON(b)

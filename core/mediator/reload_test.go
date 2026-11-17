@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/orilloai/placket/core/canonical"
+	ptesting "github.com/orilloai/placket/core/internal/testing"
 	"github.com/orilloai/placket/core/mediator"
 	"github.com/orilloai/placket/core/receipts"
 	"github.com/orilloai/placket/core/setup"
@@ -18,7 +19,7 @@ import (
 // give gives a part of kind from one named party to another at seq and at, and returns its outcome.
 func give(t testing.TB, m *mediator.Mediator, from, to string, seq int64, id, kind, at string) mediator.Outcome {
 	t.Helper()
-	f, r := key(t, from), key(t, to)
+	f, r := ptesting.Key(t, from), ptesting.Key(t, to)
 	msg := message(t, m.Accord(), id, r.Reference(), kind, "Part "+id+".", nil)
 	out, err := m.Give(f.Reference(), msg, envelope(t, seq, msg, f), at)
 	if err != nil {
@@ -58,10 +59,10 @@ func record(t *testing.T) before {
 	t.Helper()
 	var b before
 	b.m = found(t)
-	d := key(t, "decider").Reference()
+	d := ptesting.Key(t, "decider").Reference()
 	give(t, b.m, "proposer", "applier", 1, "n-1", "note", "2026-11-12T08:30:00Z")
 	give(t, b.m, "decider", "proposer", 1, "a-1", "answer", "2026-11-12T08:40:00Z")
-	if got, _ := b.m.Get(key(t, "applier").Reference()); got == nil {
+	if got, _ := b.m.Get(ptesting.Key(t, "applier").Reference()); got == nil {
 		t.Fatal("the note was not queued")
 	}
 	var err error
@@ -91,7 +92,7 @@ func reload(t *testing.T, b before, at string) (*mediator.Mediator, []mediator.O
 	for i, j := 0, len(q)-1; i < j; i, j = i+1, j-1 {
 		q[i], q[j] = q[j], q[i]
 	}
-	r, outs, err := mediator.Reload(set, foundedAt, key(t, "mediator"), b.m.Receipts(), b.open, q, at)
+	r, outs, err := mediator.Reload(set, b.m.Receipts(), b.open, q, foundedAt, ptesting.Key(t, "mediator"), at)
 	if err != nil {
 		t.Fatalf("Reload: %v", err)
 	}
@@ -107,7 +108,7 @@ func reload(t *testing.T, b before, at string) (*mediator.Mediator, []mediator.O
 func TestReloadCarriesOn(t *testing.T) {
 	t.Parallel()
 	b := record(t)
-	p, ap, d := key(t, "proposer").Reference(), key(t, "applier").Reference(), key(t, "decider").Reference()
+	p, ap, d := ptesting.Key(t, "proposer").Reference(), ptesting.Key(t, "applier").Reference(), ptesting.Key(t, "decider").Reference()
 	list := b.m.Receipts()
 	r, outs := reload(t, b, "2026-11-12T11:00:00Z")
 
@@ -178,23 +179,23 @@ func TestReloadCarriesOn(t *testing.T) {
 	if got, ok, err := r.Result(ap, b.accepted); got != nil || ok || err != nil {
 		t.Fatalf("Result to another member: %+v, %v, %v", got, ok, err)
 	}
-	if _, _, err := r.Result(key(t, "stranger").Reference(), b.accepted); !rejected(err, mediator.NotAMember) {
+	if _, _, err := r.Result(ptesting.Key(t, "stranger").Reference(), b.accepted); !rejected(err, mediator.NotAMember) {
 		t.Fatalf("Result to a stranger: %v", err)
 	}
 
 	// Every sender's sequence and every chain carry on.
 	last := map[[2]string]receipts.Statement{}
-	st, err := receipts.Verify(key(t, "mediator").Reference(), r.Receipts())
+	st, err := verifyAll(ptesting.Key(t, "mediator").Reference(), r.Receipts())
 	if err != nil {
 		t.Fatal(err)
 	}
 	for _, s := range st {
 		last[[2]string{s.Predicate.From, s.Predicate.To}] = s
 	}
-	if _, err := r.Give(p, msgFor(t, r, "n-5", ap), envelope(t, 5, msgFor(t, r, "n-5", ap), key(t, "proposer")), "2026-11-12T11:02:00Z"); !rejected(err, mediator.EnvelopeSequence) {
+	if _, err := r.Give(p, msgFor(t, r, "n-5", ap), envelope(t, 5, msgFor(t, r, "n-5", ap), ptesting.Key(t, "proposer")), "2026-11-12T11:02:00Z"); !rejected(err, mediator.EnvelopeSequence) {
 		t.Fatalf("the proposer's last envelope again: %v", err)
 	}
-	if _, err := r.Give(d, msgFor(t, r, "a-2", p), envelope(t, 1, msgFor(t, r, "a-2", p), key(t, "decider")), "2026-11-12T11:02:00Z"); !rejected(err, mediator.EnvelopeSequence) {
+	if _, err := r.Give(d, msgFor(t, r, "a-2", p), envelope(t, 1, msgFor(t, r, "a-2", p), ptesting.Key(t, "decider")), "2026-11-12T11:02:00Z"); !rejected(err, mediator.EnvelopeSequence) {
 		t.Fatalf("the decider's last envelope again: %v", err)
 	}
 	for _, c := range []struct {
@@ -203,13 +204,13 @@ func TestReloadCarriesOn(t *testing.T) {
 		kind     string
 	}{{"proposer", "applier", 6, "note"}, {"decider", "proposer", 2, "answer"}} {
 		out := give(t, r, c.from, c.to, c.seq, c.kind+"-next", c.kind, "2026-11-12T11:03:00Z")
-		prev := last[[2]string{key(t, c.from).Reference(), key(t, c.to).Reference()}]
+		prev := last[[2]string{ptesting.Key(t, c.from).Reference(), ptesting.Key(t, c.to).Reference()}]
 		got := statement(t, r, out.ReceiptID)
 		if out.Verdict != "pass" || got.Predicate.Seq != prev.Predicate.Seq+1 || got.Predicate.Prev != prev.ID || got.Predicate.Envelope.Seq != c.seq {
 			t.Fatalf("the next give from %s to %s: %+v after %+v", c.from, c.to, got.Predicate, prev.Predicate)
 		}
 	}
-	if _, err := receipts.Verify(key(t, "mediator").Reference(), r.Receipts()); err != nil {
+	if _, err := receipts.Verify(ptesting.Key(t, "mediator").Reference(), r.Receipts()); err != nil {
 		t.Fatalf("the whole list does not verify: %v", err)
 	}
 }
@@ -223,7 +224,7 @@ func msgFor(t testing.TB, m *mediator.Mediator, id, to string) []byte {
 // mediator's key, so that only what the test changes is wrong with it.
 func built(t *testing.T, list [][]byte, subject receipts.Subject, p receipts.Predicate) []byte {
 	t.Helper()
-	st, err := receipts.Verify(key(t, "mediator").Reference(), list)
+	st, err := verifyAll(ptesting.Key(t, "mediator").Reference(), list)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -233,7 +234,7 @@ func built(t *testing.T, list [][]byte, subject receipts.Subject, p receipts.Pre
 			p.Seq, p.Prev = s.Predicate.Seq+1, s.ID
 		}
 	}
-	r, _, err := receipts.Build(subject, p, key(t, "mediator"))
+	r, _, err := receipts.Build(subject, p, ptesting.Key(t, "mediator"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -270,7 +271,7 @@ func TestReloadRefusesEachFault(t *testing.T) {
 	t.Parallel()
 	b := record(t)
 	set, foundedAt := askAndLog(t)
-	med := key(t, "mediator")
+	med := ptesting.Key(t, "mediator")
 	list, queued := b.m.Receipts(), queuedOf(b.m)
 	ask := statement(t, b.m, b.first)
 	other := buildSet(t, askAndLogRoles, askAndLogParties(60)...)
@@ -282,7 +283,7 @@ func TestReloadRefusesEachFault(t *testing.T) {
 	var released mediator.Queued
 	var rest []mediator.Queued
 	for _, q := range queued {
-		if q.To == key(t, "applier").Reference() {
+		if q.To == ptesting.Key(t, "applier").Reference() {
 			released = q
 		} else {
 			rest = append(rest, q)
@@ -292,7 +293,7 @@ func TestReloadRefusesEachFault(t *testing.T) {
 		t.Fatalf("the applier holds no one delivery: %d of %d", len(queued)-len(rest), len(queued))
 	}
 	queued = append(rest, released)
-	otherMediator := key(t, "other-mediator")
+	otherMediator := ptesting.Key(t, "other-mediator")
 	cases := []struct {
 		name   string
 		set    []byte
@@ -326,7 +327,7 @@ func TestReloadRefusesEachFault(t *testing.T) {
 				To: ask.Predicate.To, At: "2026-11-12T10:50:00Z", Envelope: ask.Predicate.Envelope, Verdict: "pass", Reason: "ok"})),
 			code: mediator.CodeJournal, index: len(list), inner: receipts.CodeRelease},
 		{name: "a delivery for a party the receipt queued nothing for", queued: append(append([]mediator.Queued(nil), queued[:len(queued)-1]...),
-			mediator.Queued{To: key(t, "proposer").Reference(), Delivery: released.Delivery}), code: mediator.CodeHeld, index: len(queued) - 1},
+			mediator.Queued{To: ptesting.Key(t, "proposer").Reference(), Delivery: released.Delivery}), code: mediator.CodeHeld, index: len(queued) - 1},
 		{name: "a delivery of a receipt that queued nothing", queued: append(append([]mediator.Queued(nil), queued[:len(queued)-1]...),
 			mediator.Queued{To: released.To, Delivery: withMembers(t, released.Delivery, map[string]any{
 				"receiptId": b.accepted, "receipt": json.RawMessage(list[2])})}), code: mediator.CodeHeld, index: len(queued) - 1},
@@ -334,6 +335,9 @@ func TestReloadRefusesEachFault(t *testing.T) {
 			mediator.Queued{To: released.To, Delivery: withMembers(t, released.Delivery, map[string]any{
 				"receipt": json.RawMessage(list[0])})}), code: mediator.CodeHeld, index: len(queued) - 1},
 		{name: "a delivery given twice", queued: append(append([]mediator.Queued(nil), queued...), released), code: mediator.CodeHeld, index: len(queued)},
+		{name: "a delivery of another kind than its receipt names", queued: append(append([]mediator.Queued(nil), queued[:len(queued)-1]...),
+			mediator.Queued{To: released.To, Delivery: withMembers(t, released.Delivery, map[string]any{"kind": "another"})}),
+			code: mediator.CodeHeld, index: len(queued) - 1},
 		{name: "a delivery whose body misses its digest", queued: append(append([]mediator.Queued(nil), queued[:len(queued)-1]...),
 			mediator.Queued{To: released.To, Delivery: withText(t, released.Delivery, "Another body.")}), code: mediator.CodeHeld, index: len(queued) - 1},
 		{name: "a delivery not in canonical form", queued: []mediator.Queued{{To: released.To, Delivery: append([]byte(" "), released.Delivery...)}},
@@ -365,7 +369,7 @@ func TestReloadRefusesEachFault(t *testing.T) {
 		if c.at != "" {
 			at = c.at
 		}
-		r, outs, err := mediator.Reload(s, foundedAt, k, l, o, q, at)
+		r, outs, err := mediator.Reload(s, l, o, q, foundedAt, k, at)
 		if r != nil || outs != nil {
 			t.Fatalf("%s: a mediator was returned", c.name)
 		}
@@ -401,15 +405,15 @@ func TestReloadDecidesNothingAgain(t *testing.T) {
 	q := ask(t, m, 1, "p-1", "2026-11-12T09:00:00Z")
 	set, foundedAt := askAndLog(t)
 	open := []mediator.Open{{Question: q, Deadline: "2026-11-12T09:30:00Z", Roles: []string{"applier", "auditor"}}}
-	r, outs, err := mediator.Reload(set, foundedAt, key(t, "mediator"), m.Receipts(), open, nil, "2026-11-12T09:45:00Z")
+	r, outs, err := mediator.Reload(set, m.Receipts(), open, nil, foundedAt, ptesting.Key(t, "mediator"), "2026-11-12T09:45:00Z")
 	if err != nil || len(outs) != 1 || outs[0].Reason != receipts.ReasonTimeout {
 		t.Fatalf("got %+v, %v", outs, err)
 	}
 	st := statement(t, r, outs[0].ReceiptID)
-	if st.Predicate.At != "2026-11-12T09:30:00Z" || st.Predicate.From != key(t, "applier").Reference() {
+	if st.Predicate.At != "2026-11-12T09:30:00Z" || st.Predicate.From != ptesting.Key(t, "applier").Reference() {
 		t.Fatalf("the timeout: %+v", st.Predicate)
 	}
-	r, outs, err = mediator.Reload(set, foundedAt, key(t, "mediator"), m.Receipts(), open, nil, "2026-11-12T09:30:00Z")
+	r, outs, err = mediator.Reload(set, m.Receipts(), open, nil, foundedAt, ptesting.Key(t, "mediator"), "2026-11-12T09:30:00Z")
 	if err != nil || len(outs) != 1 || outs[0].Reason != receipts.ReasonTimeout {
 		t.Fatalf("a reload at the deadline: %+v, %v", outs, err)
 	}
@@ -417,11 +421,11 @@ func TestReloadDecidesNothingAgain(t *testing.T) {
 		t.Fatalf("the timeout at the deadline: %+v", st.Predicate)
 	}
 	open[0].Roles = []string{"auditor"}
-	r, outs, err = mediator.Reload(set, foundedAt, key(t, "mediator"), m.Receipts(), open, nil, "2026-11-12T09:15:00Z")
+	r, outs, err = mediator.Reload(set, m.Receipts(), open, nil, foundedAt, ptesting.Key(t, "mediator"), "2026-11-12T09:15:00Z")
 	if err != nil || len(outs) != 1 || outs[0].Reason != receipts.ReasonUndeliverable {
 		t.Fatalf("got %+v, %v", outs, err)
 	}
-	if st := statement(t, r, outs[0].ReceiptID); st.Predicate.At != "2026-11-12T09:15:00Z" || st.Predicate.From != key(t, "mediator").Reference() {
+	if st := statement(t, r, outs[0].ReceiptID); st.Predicate.At != "2026-11-12T09:15:00Z" || st.Predicate.From != ptesting.Key(t, "mediator").Reference() {
 		t.Fatalf("the undeliverable: %+v", st.Predicate)
 	}
 }
@@ -436,7 +440,7 @@ func TestTwoMediatorsOneRecordThroughAReload(t *testing.T) {
 		r, outs := reload(t, b, "2026-11-12T11:00:00Z")
 		give(t, r, "proposer", "applier", 6, "n-6", "note", "2026-11-12T11:01:00Z")
 		q := ask(t, r, 7, "p-7", "2026-11-12T11:02:00Z")
-		if _, err := r.Resolve(key(t, "decider").Reference(), q, change(true), "2026-11-12T11:03:00Z"); err != nil {
+		if _, err := r.Resolve(ptesting.Key(t, "decider").Reference(), q, change(true), "2026-11-12T11:03:00Z"); err != nil {
 			t.Fatal(err)
 		}
 		ask(t, r, 8, "p-8", "2026-11-12T11:04:00Z")
@@ -452,8 +456,8 @@ func TestTwoMediatorsOneRecordThroughAReload(t *testing.T) {
 	}
 	for _, n := range []string{"proposer", "applier", "decider"} {
 		for {
-			da, _ := ma.Get(key(t, n).Reference())
-			db, _ := mb.Get(key(t, n).Reference())
+			da, _ := ma.Get(ptesting.Key(t, n).Reference())
+			db, _ := mb.Get(ptesting.Key(t, n).Reference())
 			if !bytes.Equal(da, db) {
 				t.Fatalf("%s's deliveries differ", n)
 			}
@@ -462,7 +466,7 @@ func TestTwoMediatorsOneRecordThroughAReload(t *testing.T) {
 			}
 		}
 	}
-	if _, err := receipts.Verify(key(t, "mediator").Reference(), ra); err != nil {
+	if _, err := receipts.Verify(ptesting.Key(t, "mediator").Reference(), ra); err != nil {
 		t.Fatal(err)
 	}
 }

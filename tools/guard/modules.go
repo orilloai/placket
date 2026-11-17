@@ -19,6 +19,28 @@ func mainIsThin(t *tree) []finding {
 	return nil
 }
 
+var recipeUpwardRE = regexp.MustCompile(`^github\.com/orilloai/placket/(adapters|cmd)(/.*)?$`)
+
+// recipes-core-only: no Go file under recipes/, test files included and testdata/ aside, imports a
+// path under adapters/ or cmd/, and no import path there is written with an escape. With no recipes/
+// the check passes. A symbolic link is not followed; no-hidden-text refuses a tracked one.
+func recipesCoreOnly(t *tree) []finding {
+	if !t.isDir("recipes") {
+		return nil
+	}
+	files := t.files("recipes", []string{"testdata"}, func(rel string) bool { return strings.HasSuffix(rel, ".go") })
+	return eachFile(t, files, func(rel string, g *goFile) []finding {
+		var out []finding
+		for _, s := range g.f.Imports {
+			p, ok := importPath(s)
+			if !ok || recipeUpwardRE.MatchString(p) {
+				out = append(out, g.at(rel, s.Path.Pos()))
+			}
+		}
+		return out
+	})
+}
+
 const coreModule = "github.com/orilloai/placket/core"
 
 var (

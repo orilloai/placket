@@ -34,6 +34,14 @@ func (r *run) readBody(text, file, as string, textSet bool) (body, int) {
 		return body{}, r.tool(codeBody)
 	}
 	if textSet {
+		// --as names how a file is read; text given on the command line is only text.
+		if as != "text" {
+			return body{}, r.tool(codeUsage)
+		}
+		// Text that is not UTF-8 is refused, never repaired (parse-strict).
+		if !utf8.ValidString(text) {
+			return body{}, r.tool(codeText)
+		}
 		return body{form: "text", value: text}, 0
 	}
 	b, err := os.ReadFile(file)
@@ -56,6 +64,16 @@ func (r *run) readBody(text, file, as string, textSet bool) (body, int) {
 		return body{form: "data", value: json.RawMessage(c)}, 0
 	}
 	return body{}, r.tool(codeUsage)
+}
+
+// allUTF8 reports whether every string is UTF-8.
+func allUTF8(list ...string) bool {
+	for _, s := range list {
+		if !utf8.ValidString(s) {
+			return false
+		}
+	}
+	return true
 }
 
 // uuid is a fresh lowercase UUID version 4.
@@ -113,7 +131,7 @@ func (s *session) send(to, kind string, b body, re, topic string, keep bool) (*m
 	env := canonicalJSON(map[string]any{"seq": seq, "hash": hash})
 	sig, err := signing.Sign(env, signing.TypeEnvelope, s.key)
 	if err != nil {
-		return nil, s.r.tool("envelope")
+		return nil, s.r.tool(codeEnvelope)
 	}
 	env = canonicalJSON(map[string]any{"seq": seq, "hash": hash, "sig": sig})
 	if err := s.dir.AddEnvelope(seq, hash); err != nil {
@@ -131,7 +149,7 @@ func (s *session) send(to, kind string, b body, re, topic string, keep bool) (*m
 		return nil, code
 	}
 	if rep.Outcome == nil {
-		return nil, s.r.tool("reply")
+		return nil, s.r.tool(codeReply)
 	}
 	if err := s.dir.SetSeq(seq); err != nil {
 		return nil, s.r.failed(err)
@@ -155,7 +173,8 @@ func giveCommand(r *run, args []string) int {
 	text, file, as := fs.String("text", "", "text"), fs.String("file", "", "file"), fs.String("as", "text", "text, raw or data")
 	re, topic := fs.String("re", "", "re"), fs.String("topic", "", "topic")
 	keep, wait := fs.Bool("keep", false, "keep the part"), fs.Bool("wait", false, "wait for the answer")
-	if !r.parse(fs, args, "key", "socket", "accord", "to", "kind") {
+	// A receiver, kind, re or topic that is not UTF-8 is refused, never repaired (parse-strict).
+	if !r.parse(fs, args, "key", "socket", "accord", "to", "kind") || !allUTF8(*to, *kind, *re, *topic) {
 		return r.tool(codeUsage)
 	}
 	textSet := false

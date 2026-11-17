@@ -17,6 +17,7 @@ import (
 	"strconv"
 
 	"github.com/orilloai/placket/core/canonical"
+	"github.com/orilloai/placket/core/composition"
 	"github.com/orilloai/placket/core/internal/shape"
 	"github.com/orilloai/placket/core/signing"
 )
@@ -48,7 +49,8 @@ const (
 	NameChanged = "changed-version"
 )
 
-// Code is a code of the verifier (section 8) or of reconciliation (section 9), or a misuse of Build.
+// Code is a code of the verifier (receipt-6) or of reconciliation (receipt-7), or a misuse of Build
+// (record 0005).
 type Code string
 
 // The codes, in the order of the two tables.
@@ -69,13 +71,16 @@ const (
 )
 
 // Error is a failed verification or reconciliation: its code, the index of the receipt it failed at,
-// and for kept the party's reference. Index is -1 for reference and for a misuse of Build.
+// and for kept the party's reference. Index is -1 for reference and for a misuse of Build
+// (receipt-6, receipt-7, record 0005).
 type Error struct {
 	Code  Code
 	Index int
 	Actor string
 }
 
+// Error returns the package, the code, and the index and the party's reference where they are
+// given, and nothing of the input.
 func (e *Error) Error() string {
 	s := "receipts: " + string(e.Code)
 	if e.Index >= 0 {
@@ -121,8 +126,20 @@ type Statement struct {
 	Predicate Predicate
 }
 
+// Verified is a receipt's statement that passed Verify, or one this package built and signed. Only
+// this package makes one that holds a statement, so a caller holding a Verified holds a statement
+// that was checked (verified-by-type, record 0016). The zero Verified, which any package can write,
+// holds no statement: its Statement is the zero Statement, with no id.
+type Verified struct {
+	s Statement
+}
+
+// Statement returns a copy of the verified statement (record 0016).
+func (v Verified) Statement() Statement { return v.s }
+
 // Digest returns the salted digest of a part: the lowercase hex SHA-256 of its salt's bytes followed
-// by its body's bytes (crossing-3).
+// by its body's bytes (crossing-3). The salt comes first, in the order of crossing-3's formula: an
+// exception to the data-first order of inputs-as-parameters, recorded in record 0016.
 func Digest(salt, body []byte) string {
 	h := sha256.New()
 	h.Write(salt)
@@ -144,9 +161,10 @@ func (p Predicate) value() shape.Object {
 }
 
 // Build writes the receipt of subject and predicate, signed by the mediator's key, and returns it and
-// its id (receipt-1). The predicate's mediator is the key's reference, whatever it held. A statement
-// the verifier's row 4 would refuse is not written.
-func Build(subject Subject, predicate Predicate, key signing.Key) ([]byte, string, error) {
+// its statement, whose ID is the receipt's id (receipt-1, record 0016). The
+// predicate's mediator is the key's reference, whatever it held. A statement the verifier's row 4
+// would refuse is not written.
+func Build(subject Subject, predicate Predicate, key signing.Key) ([]byte, Verified, error) {
 	predicate.Mediator = key.Reference()
 	statement := shape.Encode(shape.Object{
 		"_type":         StatementType,
@@ -156,18 +174,18 @@ func Build(subject Subject, predicate Predicate, key signing.Key) ([]byte, strin
 	})
 	r, ok := readStatement(statement)
 	if _, placed := r.placed(); !ok || !placed {
-		return nil, "", &Error{Code: CodeStatement, Index: -1}
+		return nil, Verified{}, &Error{Code: CodeStatement, Index: -1}
 	}
 	sig, err := signing.SignPayload(PayloadType, statement, key)
 	if err != nil {
-		return nil, "", &Error{Code: CodeStatement, Index: -1}
+		return nil, Verified{}, &Error{Code: CodeStatement, Index: -1}
 	}
 	receipt := shape.Encode(shape.Object{
 		"payloadType": PayloadType,
 		"payload":     base64.StdEncoding.EncodeToString(statement),
 		"signatures":  []any{shape.Object{"keyid": predicate.Mediator, "sig": base64.StdEncoding.EncodeToString(sig)}},
 	})
-	return receipt, typedHash(statement), nil
+	return receipt, Verified{s: r.Statement}, nil
 }
 
 func typedHash(canonicalBytes []byte) string {
@@ -357,19 +375,20 @@ func pairs(kind, verdict, reason string) bool {
 		return false
 	}
 	resolutionOnly := reason == ReasonDeclined || reason == ReasonCancelled || reason == ReasonTimeout || reason == ReasonUndeliverable
-	if !resolutionOnly && reason != "ok" && reason != "no-match" && reason != "maybe" && !checkReason(reason) {
+	if !resolutionOnly && reason != composition.ReasonOK && reason != composition.ReasonNoMatch &&
+		reason != composition.ReasonMaybe && !checkReason(reason) {
 		return false
 	}
 	if kind == KindCrossing && resolutionOnly {
 		return false
 	}
-	switch verdict {
-	case "pass":
-		return reason == "ok"
-	case "escalate":
-		return kind == KindCrossing && reason == "maybe"
-	case "block":
-		return reason != "ok"
+	switch composition.Verdict(verdict) {
+	case composition.Pass:
+		return reason == composition.ReasonOK
+	case composition.Escalate:
+		return kind == KindCrossing && reason == composition.ReasonMaybe
+	case composition.Block:
+		return reason != composition.ReasonOK
 	}
 	return false
 }
@@ -394,6 +413,10 @@ func cutPrefix(s, p string) (string, bool) {
 // mediator that is not an actor reference is refused with mediator, and a seq or prev of the wrong
 // form with chain, so nothing of an unverified receipt reaches its reader unread. Whatever presents
 // what it returns must say that the receipt was not verified.
+//
+// It reads neither the payload type nor the envelope's other members (rows 2 and 3), so its code
+// can differ from the verifier's for one receipt: a wrong payload type with a payload that is not
+// base64 is the verifier's payload-type and Decode's signature.
 func Decode(receipt []byte) (Statement, error) {
 	v, _, err := shape.Decode(receipt)
 	if err != nil {

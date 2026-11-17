@@ -24,7 +24,7 @@ Checked by: the reviewer.
 
 Why: code in `main` is code no test reaches.
 
-Checked by: `make ci` checks its length, step `main-is-thin`.
+Checked by: `make ci` checks its length, step `main-is-thin`; the reviewer checks that it holds nothing a test could want.
 
 ## `call-signing`
 
@@ -112,7 +112,7 @@ The words the tool prints for outcomes and every claim line are constants define
 
 Why: one place to read and review every word a person sees.
 
-Checked by: `make ci`, step `product-words-once`.
+Checked by: `make ci`, step `product-words-once`, refuses a file built into the core that spells `ask` or `released` as a string; the reviewer checks that every word is defined once.
 
 ## `claims-stop-at-crossing`
 

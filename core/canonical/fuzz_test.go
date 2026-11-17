@@ -7,6 +7,7 @@ import (
 	"unicode/utf16"
 
 	"github.com/orilloai/placket/core/canonical"
+	"github.com/orilloai/placket/core/internal/testing/seeds"
 )
 
 // FuzzTypedHash hashes any bytes. It never panics; it refuses exactly what the canonical form
@@ -15,6 +16,9 @@ import (
 func FuzzTypedHash(f *testing.F) {
 	for _, s := range []string{``, `{}`, `{ "b": 1, "a": [ true ] }`, `{"a":1,"a":2}`, `1.5`, "\xff", `"\ud800"`} {
 		f.Add([]byte(s))
+	}
+	for _, in := range seeds.Inputs(f, "canonical") {
+		f.Add(in)
 	}
 	f.Fuzz(func(t *testing.T, in []byte) {
 		h, err := canonical.TypedHash(in)
@@ -39,6 +43,9 @@ func FuzzLess(f *testing.F) {
 		{"a", "b"}, {"", "a"}, {"a", "a"}, {"￿", "😀"}, {"😀", ""}, {"\xff", "a"}, {"ab", "a"}, {"B", "a"},
 	} {
 		f.Add(p[0], p[1])
+	}
+	for _, s := range seeds.Strings(f, "founding") {
+		f.Add(s, "ed25519:")
 	}
 	f.Fuzz(func(t *testing.T, a, b string) {
 		ab, ba := canonical.Less(a, b), canonical.Less(b, a)

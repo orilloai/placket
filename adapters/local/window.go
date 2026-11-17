@@ -3,6 +3,7 @@ package local
 import (
 	"bufio"
 	"context"
+	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -10,6 +11,8 @@ import (
 	"io/fs"
 	"net"
 	"os"
+	"path/filepath"
+	"sync"
 	"syscall"
 	"time"
 
@@ -93,11 +96,14 @@ type request struct {
 }
 
 // Run runs a window until ctx is done, then returns nil having written nothing more. A socket path
-// too long is CodeSocketPath before anything else is done. Otherwise it opens the journal and takes
+// too long is CodeSocketPath before anything else is done; so is, when it listens, a path within 3
+// bytes of MaxSocketPath whose last element has fewer than 4 bytes (privateBound). Otherwise it opens the journal and takes
 // its lock; founds the Accord at the current second on an empty journal or reloads the journal's, journaling the closings of what a stop left open; removes a stale socket
 // file; and only then listens. Every call is handled by one goroutine, which owns the mediator. A
 // journal write that fails ends Run with that error, and the call it was for gets no reply
-// (journal-synced).
+// (journal-synced); so does a failure of the mediator outside a call's refusal, when it ticks, reads
+// a question it just asked or closes one nobody can answer. An accept that fails for a reason that
+// does not pass ends Run with CodeSocket. Run returns only once every goroutine it started has ended.
 func Run(ctx context.Context, cfg Window) error {
 	if err := CheckSocket(cfg.Socket); err != nil {
 		return err
@@ -125,7 +131,7 @@ func Run(ctx context.Context, cfg Window) error {
 	if err != nil {
 		return err
 	}
-	l, err := listen(cfg.Socket)
+	l, err := listen(cfg.Socket, nil)
 	if err != nil {
 		return err
 	}
@@ -158,7 +164,7 @@ func (w *window) start() (bool, error) {
 	if id, err := canonical.TypedHash(w.cfg.Founding); err != nil || id != rec.Accord || rec.Mediator != w.cfg.Key.Reference() {
 		return false, &journal.Error{Code: journal.CodeJournal, File: journal.FileAccord, Line: 1, Core: "accord"}
 	}
-	m, outs, err := mediator.Reload(w.cfg.Founding, rec.FoundedAt, w.cfg.Key, rec.Receipts, rec.Open, rec.Queued, at)
+	m, outs, err := mediator.Reload(w.cfg.Founding, rec.Receipts, rec.Open, rec.Queued, rec.FoundedAt, w.cfg.Key, at)
 	if err != nil {
 		return false, reloadError(err, rec)
 	}
@@ -220,8 +226,13 @@ func receiptsOf(outs []mediator.Outcome) [][]byte {
 // listen removes a stale socket file at path and listens there, mode 0600. A socket file is stale
 // when connecting to it is refused: one that something answers on, or that cannot be tried, is left
 // to its owner, and so is a path that holds anything but a socket. The listener never removes the
-// file: a window stopped in any way leaves it, and the next start removes it.
-func listen(path string) (*net.UnixListener, error) {
+// file: a window stopped in any way leaves it, and the next start removes it. beforeLink, when not
+// nil, is called with the bound socket's path before the socket is linked to path.
+//
+// The socket is bound at a path no longer than path itself whenever path's last element has at least
+// 4 bytes (privateBound), so every such path CheckSocket takes can be bound. When the bound path is
+// longer than MaxSocketPath, listen is CodeSocketPath.
+func listen(path string, beforeLink func(bound string)) (*net.UnixListener, error) {
 	if fi, err := os.Lstat(path); err == nil {
 		if fi.Mode()&fs.ModeSocket == 0 {
 			return nil, &Error{Code: CodeSocket}
@@ -237,34 +248,131 @@ func listen(path string) (*net.UnixListener, error) {
 			return nil, &Error{Code: CodeSocket}
 		}
 	}
-	l, err := net.ListenUnix("unix", &net.UnixAddr{Name: path, Net: "unix"})
+	// The socket is bound in a directory of mode 0700 that this window has just made beside the path,
+	// set to mode 0600, and only then linked to the path. So no other user can connect to it before
+	// its mode is set, on any system, and no process-wide umask is changed. A link, unlike a rename,
+	// never replaces a socket another window bound at the path meanwhile. A window killed before it
+	// removes the directory leaves it beside the path, holding a socket nothing answers on.
+	dir, bound, err := privateBound(path)
+	if err != nil {
+		return nil, err
+	}
+	defer os.RemoveAll(dir)
+	l, err := net.ListenUnix("unix", &net.UnixAddr{Name: bound, Net: "unix"})
 	if err != nil {
 		return nil, &Error{Code: CodeSocket}
 	}
 	l.SetUnlinkOnClose(false)
-	if err := os.Chmod(path, 0o600); err != nil {
+	if err := os.Chmod(bound, 0o600); err != nil {
+		_ = l.Close()
+		return nil, &Error{Code: CodeSocket}
+	}
+	if beforeLink != nil {
+		beforeLink(bound)
+	}
+	if err := os.Link(bound, path); err != nil {
 		_ = l.Close()
 		return nil, &Error{Code: CodeSocket}
 	}
 	return l, nil
 }
 
+// privateBound makes a directory of mode 0700 beside path and returns it with the path to bind the
+// socket at inside it, <dir>/.<random>/s. The random part has 3 bytes fewer than path's last
+// element, at least 1 and at most 26, so the bound path is exactly as long as path when that element
+// has 4 to 29 bytes, shorter when it has more, and longer by at most 3 bytes when it has fewer. A
+// bound path longer than MaxSocketPath is CodeSocketPath, before anything is made. A name already
+// taken is tried again with another.
+func privateBound(path string) (dir, bound string, err error) {
+	n := min(max(len(filepath.Base(path))-3, 1), 26)
+	for range 10000 {
+		dir = filepath.Join(filepath.Dir(path), "."+rand.Text()[:n])
+		if len(dir)+len("/s") > MaxSocketPath {
+			return "", "", &Error{Code: CodeSocketPath}
+		}
+		err := os.Mkdir(dir, 0o700)
+		if err == nil {
+			return dir, filepath.Join(dir, "s"), nil
+		}
+		if !errors.Is(err, fs.ErrExist) {
+			break
+		}
+	}
+	return "", "", &Error{Code: CodeSocket}
+}
+
 // serve accepts connections, each read on a goroutine of its own, and handles every call on this
-// one, which owns the mediator.
+// one, which owns the mediator. It owns every goroutine it starts (goroutines-owned): when it returns,
+// it has closed the listener, cut every open connection short and waited for each goroutine to end.
+// An accept that fails for want of a file descriptor, or times out, is tried again after a pause that
+// doubles from minAcceptPause to maxAcceptPause; any other failure ends serve with CodeSocket.
 func (w *window) serve(ctx context.Context, l *net.UnixListener) error {
 	reqs := make(chan request)
 	done := make(chan struct{})
+	acceptErr := make(chan error, 1)
+	var (
+		wg     sync.WaitGroup
+		mu     sync.Mutex
+		conns  = map[net.Conn]struct{}{}
+		closed bool
+	)
 	defer func() {
 		close(done)
 		_ = l.Close()
+		mu.Lock()
+		closed = true
+		for c := range conns {
+			_ = c.SetDeadline(time.Now())
+		}
+		mu.Unlock()
+		wg.Wait()
 	}()
+	wg.Add(1)
 	go func() {
+		defer wg.Done()
+		var pause time.Duration
 		for {
 			c, err := l.Accept()
 			if err != nil {
+				select {
+				case <-done:
+					return
+				default:
+				}
+				if !temporary(err) {
+					acceptErr <- &Error{Code: CodeSocket}
+					return
+				}
+				pause = min(max(2*pause, minAcceptPause), maxAcceptPause)
+				t := time.NewTimer(pause)
+				select {
+				case <-t.C:
+					continue
+				case <-done:
+					t.Stop()
+					return
+				}
+			}
+			pause = 0
+			// The deadline is set before the connection is registered, so the shutdown's deadline of
+			// now, set to every registered connection, is never overwritten by a later one.
+			_ = c.SetDeadline(time.Now().Add(readTimeout))
+			mu.Lock()
+			if closed {
+				mu.Unlock()
+				_ = c.Close()
 				return
 			}
-			go read(c, reqs, done)
+			conns[c] = struct{}{}
+			wg.Add(1)
+			mu.Unlock()
+			go func() {
+				defer wg.Done()
+				read(c, reqs, done)
+				mu.Lock()
+				delete(conns, c)
+				mu.Unlock()
+			}()
 		}
 	}()
 	tick := time.NewTicker(w.cfg.Idle)
@@ -273,6 +381,8 @@ func (w *window) serve(ctx context.Context, l *net.UnixListener) error {
 		select {
 		case <-ctx.Done():
 			return nil
+		case err := <-acceptErr:
+			return err
 		case <-tick.C:
 			if err := w.tick(Stamp(w.cfg.Now()), EventTick); err != nil {
 				return err
@@ -287,10 +397,26 @@ func (w *window) serve(ctx context.Context, l *net.UnixListener) error {
 	}
 }
 
-// read reads one call from c, hands it to the window, and writes the reply, if one comes.
+// The pauses between tries of an accept that failed for a while.
+const (
+	minAcceptPause = 10 * time.Millisecond
+	maxAcceptPause = time.Second
+)
+
+// temporary reports whether an accept's failure may pass: the process or the system is out of file
+// descriptors, or the accept timed out.
+func temporary(err error) bool {
+	var ne net.Error
+	return errors.Is(err, syscall.EMFILE) || errors.Is(err, syscall.ENFILE) || (errors.As(err, &ne) && ne.Timeout())
+}
+
+// readTimeout is how long a connection may take to send its call and read its reply.
+const readTimeout = 30 * time.Second
+
+// read reads one call from c, hands it to the window, and writes the reply, if one comes. Its
+// deadline is set before it starts.
 func read(c net.Conn, reqs chan<- request, done <-chan struct{}) {
 	defer c.Close()
-	_ = c.SetDeadline(time.Now().Add(30 * time.Second))
 	br := bufio.NewReaderSize(c, 64<<10)
 	var line []byte
 	tooLarge := false
@@ -322,10 +448,14 @@ func read(c net.Conn, reqs chan<- request, done <-chan struct{}) {
 	}
 }
 
-// tick passes the time to at and journals what it closed.
+// tick passes the time to at and journals what it closed. The mediator failing to is a failure of
+// the core, which ends the window as a failed journal write does.
 func (w *window) tick(at, kind string) error {
 	outs, err := w.m.Tick(at)
-	if err != nil || len(outs) == 0 {
+	if err != nil {
+		return err
+	}
+	if len(outs) == 0 {
 		return nil
 	}
 	if err := w.j.AddReceipts(receiptsOf(outs)); err != nil {
@@ -395,8 +525,8 @@ func refused(err error, ev *Event) []byte {
 		ev.Error = me.Code
 		return refusal(byError, string(me.Code))
 	}
-	ev.Error = mediator.CodeInternal
-	return refusal(byError, string(mediator.CodeInternal))
+	ev.Door = Internal
+	return refusal(byDoor, string(Internal))
 }
 
 func (w *window) op(c Call, at string, ev *Event) ([]byte, error) {
@@ -427,7 +557,10 @@ func (w *window) give(c Call, at string, ev *Event) ([]byte, error) {
 			}
 		}
 	case string(composition.Escalate):
-		q, ok, _ := w.m.Question(w.cfg.Key.Reference(), out.ReceiptID)
+		q, ok, err := w.m.Question(w.cfg.Key.Reference(), out.ReceiptID)
+		if err != nil {
+			return nil, err
+		}
 		if ok {
 			if err := w.j.AddQuestion(mediator.Open{Question: q.ID, Deadline: q.Deadline, Roles: q.Roles}); err != nil {
 				return nil, err
@@ -441,12 +574,13 @@ func (w *window) give(c Call, at string, ev *Event) ([]byte, error) {
 	if out.Verdict == string(composition.Escalate) {
 		if l, ok := w.m.Answerers(out.ReceiptID); ok && len(l) == 0 {
 			u, err := w.m.Undeliverable(out.ReceiptID, at)
-			if err == nil {
-				if err := w.j.AddReceipts([][]byte{u.Receipt}); err != nil {
-					return nil, err
-				}
-				ev.Outcomes = append(ev.Outcomes, u)
+			if err != nil {
+				return nil, err
 			}
+			if err := w.j.AddReceipts([][]byte{u.Receipt}); err != nil {
+				return nil, err
+			}
+			ev.Outcomes = append(ev.Outcomes, u)
 		}
 	}
 	return encodeReply(wireReply{Outcome: wire(out)}), nil
@@ -497,17 +631,73 @@ func (w *window) questions(c Call, ev *Event) []byte {
 		case !ok:
 			continue
 		}
-		a := wireAsked{ID: &q.ID, Asker: &q.Asker, Kind: &q.Kind, Deadline: &q.Deadline, Form: &q.Form}
-		if q.Form == "raw" {
-			n := len(q.Part)
-			a.Size = &n
-		} else {
+		n := len(q.Part)
+		a := wireAsked{ID: &q.ID, Asker: &q.Asker, Kind: &q.Kind, Deadline: &q.Deadline, Form: &q.Form, Size: &n}
+		if q.Form != "raw" {
 			s := string(q.Part)
 			a.Message = &s
 		}
 		list = append(list, a)
 	}
-	return encodeReply(wireReply{Questions: &list})
+	return questionsReply(list, ev)
+}
+
+// questionsReply encodes the questions reply in at most MaxReply bytes, so a client reads every
+// reply the window sends, however many questions are open and however large their parts. Each
+// question in list carries its part's Size, and a text or data question its Message too. First
+// every question is counted by its size alone; a question that would take the reply past MaxReply
+// even so is left out, with every one after it, until earlier questions close. Then, oldest first,
+// a text or data question keeps its message while the reply still fits, and is otherwise shown by
+// its size alone, as a raw part always is.
+func questionsReply(list []wireAsked, ev *Event) []byte {
+	empty := []wireAsked{}
+	used := len(encodeReply(wireReply{Questions: &empty}))
+	for i := range list {
+		a := list[i]
+		a.Message = nil
+		n := encodedLen(a)
+		if i > 0 {
+			n++ // the comma before it
+		}
+		if used+n > MaxReply {
+			list = list[:i]
+			break
+		}
+		used += n
+	}
+	for i := range list {
+		if list[i].Message == nil {
+			continue
+		}
+		bare := list[i]
+		bare.Message = nil
+		grow := encodedLen(list[i]) - encodedLen(bare)
+		if used+grow > MaxReply {
+			list[i].Message = nil
+			continue
+		}
+		used += grow
+		list[i].Size = nil
+	}
+	b := encodeReply(wireReply{Questions: &list})
+	if len(b) > MaxReply {
+		ev.Door = Internal
+		return refusal(byDoor, string(Internal))
+	}
+	return b
+}
+
+// encodedLen is the length of a question's canonical bytes in a reply.
+func encodedLen(a wireAsked) int {
+	b, err := json.Marshal(a)
+	if err != nil {
+		return MaxReply + 1
+	}
+	c, err := canonical.Form(b)
+	if err != nil {
+		return MaxReply + 1
+	}
+	return len(c)
 }
 
 func (w *window) resolve(c Call, at string, ev *Event) ([]byte, error) {
@@ -516,8 +706,8 @@ func (w *window) resolve(c Call, at string, ev *Event) ([]byte, error) {
 	if r.Action == mediator.Accepted || r.Action == mediator.Changed {
 		salt = make([]byte, mediator.MinSaltBytes)
 		if _, err := io.ReadFull(w.cfg.Rand, salt); err != nil {
-			ev.Error = mediator.CodeInternal
-			return refusal(byError, string(mediator.CodeInternal)), nil
+			ev.Door = Internal
+			return refusal(byDoor, string(Internal)), nil
 		}
 		r.Salt, r.Release = salt, true
 	}

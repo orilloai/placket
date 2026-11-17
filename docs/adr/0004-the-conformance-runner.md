@@ -25,3 +25,7 @@ Three things had to be decided: where the runner lives, how it reads JSON Schema
 - The schema reader is code to maintain. A new keyword in a schema fails `make ci` until the runner reads it, which is a cost paid on purpose: the alternative is a runner that passes over a rule it does not know.
 - A handler can still compare too little. The protocol's comparison rules (conformance-vectors-5) are the handler's to keep, and a reviewer reads each handler against them; the runner only guarantees that what a handler did not run is never a pass.
 - The runner is in the core's module but is not a protocol capability, so it adds nothing to the core's exported surface a verifier of receipts needs.
+
+## Addendum, 2026-11-17: the runner's report and the error rules
+
+The runner returns a report, not an `*Error`, and its lines may quote a vector, such as a member name repeated in one of its objects. A vector is public test data, and the report is read by the person running it, so this is what the report is for. The error rules (`docs/rules/errors.md`: `one-error-type`, `errors-as-codes`, `error-text-no-content`) cover the errors placket's packages return, and the runner's report text is outside them. A failure of the runner itself, such as a vector that cannot be read, is still a line of the report, never a panic (`core-no-panic`).

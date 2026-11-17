@@ -47,6 +47,17 @@ const (
 	Replayed     DoorCode = "replayed"
 )
 
+// Internal is the door's code for a failure of the door itself, after a call passed its checks: the
+// salt source failed, a reply could not be encoded, or an error came back that is neither a
+// mediator.Rejection nor a mediator.Error. It is never the mediator's internal code
+// (rejection-vs-error; docs/adr/0017-the-doors-own-code.md).
+const Internal DoorCode = "door-internal"
+
+// MaxReply is the most bytes of a reply, before its line feed, a client reads. It is enough for one
+// delivery, whose body came in a call under MaxCall, with its receipt and answer call beside it
+// (docs/adr/0017-the-doors-own-code.md).
+const MaxReply = 4 * MaxCall
+
 // A Call is a call as the door read it: its members, its canonical bytes and its signature as
 // received.
 type Call struct {
@@ -252,6 +263,16 @@ func AnswerCall(c Call) []byte {
 type SignedAnswer struct {
 	Accord, Question, Action, Answer string
 }
+
+// Format prints the SignedAnswer as a fixed text, whatever the verb: its answer is a body
+// (secrets-never-print).
+func (SignedAnswer) Format(f fmt.State, _ rune) { _, _ = f.Write([]byte("local.SignedAnswer")) }
+
+// GoString is the fixed text, for %#v.
+func (SignedAnswer) GoString() string { return "local.SignedAnswer" }
+
+// String is the fixed text.
+func (SignedAnswer) String() string { return "local.SignedAnswer" }
 
 // VerifyAnswerCall checks an answer call kept beside a delivery: its form, its signature under the
 // answerer's key, and that it is a resolve call that accepts or changes with an answer. It returns
