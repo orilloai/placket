@@ -246,25 +246,35 @@ func hidden(r rune) string {
 	return ""
 }
 
-// no-hidden-text: no file of the tree outside .git/ and testdata/, tracked or not, holds a bidi
-// control character, a variation selector or an invisible character, and none is a symbolic link,
-// which could lead a reader to a file this check does not read, and none holds a NUL byte. Every file
-// is read character by character, a byte that is not valid UTF-8 skipped, so one stray byte does not
-// hide the rest of the file. Each line holding one is named once, with each
-// such character in turn.
+// no-hidden-text: no file git tracks outside .git/ and testdata/ holds a bidi control character, a
+// variation selector or an invisible character, none is a symbolic link, which could lead a reader to a
+// file this check does not read, and none holds a NUL byte: a tracked file there is text. A file git
+// does not track, ignored or not, is not read, so a binary built in a checkout, or an editor's scratch
+// file, passes a local run as it would pass a clean checkout. Where the root is not the top of a git
+// work tree, or git cannot list its files, every file is read. Every file is read character by
+// character, a byte that is not valid UTF-8 skipped, so one stray byte does not hide the rest of the
+// file. Each line holding one is named once, with each such character in turn; the first line that
+// holds a NUL byte is named for it alone, and the file is read no further, so a binary file gives one
+// line.
 func noHiddenText(t *tree) []finding {
 	var fs []finding
+	tracked, ok := t.tracked()
+	read := func(rel string) bool { return !ok || tracked[rel] }
 	for _, e := range t.walk(".", func(_, name string) bool { return name == ".git" || name == "testdata" }) {
-		if e.link {
+		if e.link && read(e.path) {
 			fs = append(fs, finding{file: e.path, text: "a symbolic link"})
 		}
 	}
-	for _, rel := range t.files(".", []string{".git", "testdata"}, nil) {
+	for _, rel := range t.files(".", []string{".git", "testdata"}, read) {
 		b, ok := t.read(rel)
 		if !ok || !hasHidden(b) {
 			continue
 		}
 		for i, l := range splitLines(string(b)) {
+			if strings.IndexByte(l, 0) >= 0 {
+				fs = append(fs, finding{file: rel, line: i + 1, text: "holds U+0000 (NUL), so it is not text; the rest of the file is not read"})
+				break
+			}
 			var found []string
 			for _, r := range runes([]byte(l)) {
 				if c := hidden(r); c != "" {

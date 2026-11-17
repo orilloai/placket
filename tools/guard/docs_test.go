@@ -2,8 +2,10 @@ package main
 
 import (
 	"io/fs"
+	"os/exec"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"testing"
@@ -217,12 +219,14 @@ func agentsCases(t *testing.T) []tcase {
 			write(t, dir, ".github/workflows/w.yml", "# docs/rules/core.md#gone-yml\n")
 			write(t, dir, ".github/w.yaml", "# docs/rules/core.md#gone-yaml\n")
 			write(t, dir, "scripts/s.sh", "# docs/rules/core.md#gone-sh\n")
+			write(t, dir, "scripts/s.mk", "# docs/rules/core.md#gone-mk\n")
 		}, refuse: []string{"agents-md-short"}, lines: []string{
 			".github/w.yaml:1: docs/rules/core.md#gone-yaml is no heading",
 			".github/workflows/w.yml:1: docs/rules/core.md#gone-yml is no heading",
 			"docs/notes.md:3: docs/rules/core.md#no-such-rule is no heading",
 			"docs/notes.md:4: docs/rules/gone.md#core-no-world: no such file",
 			"docs/rules/tests.md:" + n(testsLines+2) + ": names G-12; a rule is named by its public name",
+			"scripts/s.mk:1: docs/rules/core.md#gone-mk is no heading",
 			"scripts/s.sh:1: docs/rules/core.md#gone-sh is no heading",
 		}},
 		// A link to a heading that is not a rule's resolves too.
@@ -245,7 +249,7 @@ func TestAgentsMDShort(t *testing.T) { runCases(t, agentsCases(t)) }
 var hiddenCases = []tcase{
 	{name: "hidden-text", fixture: "hidden-text", refuse: []string{"no-hidden-text"}, lines: []string{
 		"core/h/h.go:3: holds U+202E (bidi control), U+202C (bidi control)",
-		"docs/blob.bin:1: holds U+0000 (NUL), U+202E (bidi control), U+0000 (NUL)",
+		"docs/blob.bin:1: holds U+0000 (NUL), so it is not text; the rest of the file is not read",
 		"docs/hidden.md:3: holds U+200B (invisible)",
 		"docs/hidden.md:5: holds U+2066 (bidi control), U+2069 (bidi control), U+FEFF (invisible)",
 		"docs/hidden.md:6: holds U+E0041 (invisible)",
@@ -265,12 +269,14 @@ var hiddenCases = []tcase{
 		"docs/vs.md:1: holds U+FE0F (variation selector), U+E0100 (variation selector)",
 		"docs/vs.md:2: holds U+FFF9 (invisible), U+1D173 (invisible)",
 	}},
-	// A NUL byte far into a text file is refused, and so is what the file holds around it.
+	// A NUL byte far into a file is refused, and so is what the file holds before it. The file is
+	// then not text, and nothing after its first NUL is named, so a binary gives one line, however
+	// many NUL bytes and hidden characters follow.
 	{name: "hidden-nul-late", setup: func(t *testing.T, dir string) {
-		write(t, dir, "docs/late.md", "\U000e0068\U000e0069\n"+strings.Repeat("x", 8100)+"\x00\n")
+		write(t, dir, "docs/late.md", "\U000e0068\U000e0069\n"+strings.Repeat("x", 8100)+"\x00\u202e\n\x00\n\u200b\n")
 	}, refuse: []string{"no-hidden-text"}, lines: []string{
 		"docs/late.md:1: holds U+E0068 (invisible), U+E0069 (invisible)",
-		"docs/late.md:2: holds U+0000 (NUL)",
+		"docs/late.md:2: holds U+0000 (NUL), so it is not text; the rest of the file is not read",
 	}},
 	// The invisible characters outside category Cf are refused too.
 	{name: "hidden-fillers", setup: func(t *testing.T, dir string) {
@@ -291,3 +297,58 @@ var hiddenCases = []tcase{
 }
 
 func TestNoHiddenText(t *testing.T) { runCases(t, hiddenCases) }
+
+// no-hidden-text reads only the files git tracks, where the root is the top of a git work tree: a
+// tracked file holding a hidden character or a NUL byte, and a tracked symbolic link, are refused,
+// while an untracked file, ignored or not, passes whatever it holds, as a binary built in a checkout
+// or an editor's scratch file would. Where the root is not the top of a work tree, every file is read.
+func TestNoHiddenTextReadsTrackedFiles(t *testing.T) {
+	dir := t.TempDir()
+	git := func(args ...string) {
+		t.Helper()
+		if out, err := exec.Command("git", append([]string{"-C", dir}, args...)...).CombinedOutput(); err != nil {
+			t.Fatalf("git %s: %v\n%s", strings.Join(args, " "), err, out)
+		}
+	}
+	git("init", "-q")
+	write(t, dir, ".gitignore", "/placket\n")
+	write(t, dir, "docs/a.md", "plain\n\u202e here\n")
+	write(t, dir, "docs/blob.bin", "\x00\x01\u202e\x00\n\x00\n")
+	symlink(t, dir, "a.md", "docs/link.md")
+	git("add", ".gitignore", "docs/a.md", "docs/blob.bin", "docs/link.md")
+	write(t, dir, ".DS_Store", "\x00\x00\u202e\x00")
+	write(t, dir, "placket", "\x7fELF\x00\x00\u2066")
+	write(t, dir, "docs/.a.md.swp", "b0VIM\x00\u200b")
+	write(t, dir, "docs/new.md", "\u202e\n")
+	symlink(t, dir, "a.md", "docs/alias.md")
+
+	place := func(fs []finding) string {
+		var got []string
+		for _, f := range fs {
+			got = append(got, f.place()+": "+f.text)
+		}
+		sort.Strings(got)
+		return strings.Join(got, "\n")
+	}
+	want := strings.Join([]string{
+		"docs/a.md:2: holds U+202E (bidi control)",
+		"docs/blob.bin:1: holds U+0000 (NUL), so it is not text; the rest of the file is not read",
+		"docs/link.md: a symbolic link",
+	}, "\n")
+	if got := place(noHiddenText(newTree(dir))); got != want {
+		t.Fatalf("in a work tree; want:\n%s\ngot:\n%s", want, got)
+	}
+
+	// Rooted below the top of the work tree, the check reads every file.
+	wantAll := strings.Join([]string{
+		".a.md.swp:1: holds U+0000 (NUL), so it is not text; the rest of the file is not read",
+		"a.md:2: holds U+202E (bidi control)",
+		"alias.md: a symbolic link",
+		"blob.bin:1: holds U+0000 (NUL), so it is not text; the rest of the file is not read",
+		"link.md: a symbolic link",
+		"new.md:1: holds U+202E (bidi control)",
+	}, "\n")
+	if got := place(noHiddenText(newTree(filepath.Join(dir, "docs")))); got != wantAll {
+		t.Fatalf("below the top of a work tree; want:\n%s\ngot:\n%s", wantAll, got)
+	}
+}

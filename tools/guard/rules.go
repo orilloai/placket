@@ -57,7 +57,7 @@ func init() {
 		{name: "root-module", doc: "modules.md", why: "the root module requires the core and replaces it with ./core, and no go.work is committed", check: rootModule},
 		{name: "machine-rules-in-ci", doc: "changes.md", why: "every tool make ci runs is pinned to an exact version, and make ci runs every check and step", check: machineRulesInCI},
 		{name: "ci-stays-fast", doc: "changes.md", why: "no test or script clears PLACKET_IN_CI, the marker that stops a make ci inside make ci", check: ciStaysFast},
-		{name: "no-hidden-text", doc: "changes.md", why: "no file outside testdata/ holds a bidi control character or an invisible one, or is a symbolic link", check: noHiddenText},
+		{name: "no-hidden-text", doc: "changes.md", why: "no tracked file outside testdata/ holds a bidi control character, an invisible one or a NUL byte, or is a symbolic link", check: noHiddenText},
 		{name: "agents-md-short", doc: "changes.md", why: "AGENTS.md stays within 150 lines and 10 KiB, every public name has exactly one heading in docs/rules/ and a line in its index, and every link to a rule's heading resolves", check: agentsMDShort},
 	}
 }

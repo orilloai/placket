@@ -3,7 +3,7 @@
 # own, that each target runs the rule it is named for and no other, and that every step prints its
 # time. The rules themselves are proved by the checker's Go tests.
 #
-# In one copy of the repository, without its tests/test_*.sh, it plants one fault for each rule at
+# In one copy of the repository's tracked files, without its tests/test_*.sh, it plants one fault for each rule at
 # once, lays the fixture tests/testdata/wiring/ for those a file can hold, and runs
 # `make -k guard <every rule> modules` once. Each rule must print a refusal naming its own fault and
 # nothing else, then its closing "refused:" line and its time; modules must still list the core (the
@@ -28,11 +28,21 @@ bad() {
 }
 
 mkdir "$repo"
-for f in "$root"/* "$root"/.[!.]*; do
-	[ -e "$f" ] || continue
-	[ "${f##*/}" = .git ] && continue
-	cp -R "$f" "$repo/"
-done
+# The copy holds the files git tracks, as a clean checkout does, so a file only the writer's checkout
+# holds, such as a binary built there, plays no part. Outside a work tree, it holds every file.
+if [ "$(git -C "$root" rev-parse --show-toplevel 2>/dev/null)" = "$(cd "$root" && pwd -P)" ]; then
+	git -C "$root" -c core.quotePath=false ls-files --cached | (
+		cd "$root" && while IFS= read -r f; do
+			if [ -e "$f" ] || [ -L "$f" ]; then printf '%s\n' "$f"; fi
+		done | tar -cf - -T -
+	) | tar -C "$repo" -xf -
+else
+	for f in "$root"/* "$root"/.[!.]*; do
+		[ -e "$f" ] || continue
+		[ "${f##*/}" = .git ] && continue
+		cp -R "$f" "$repo/"
+	done
+fi
 rm -f "$repo"/tests/test_*.sh
 cp -R "$root/tests/testdata/wiring/." "$repo/"
 

@@ -60,11 +60,11 @@ Checked by: `make ci`, step `ci-stays-fast`: the `Makefile` refuses the nested r
 
 ## `no-hidden-text`
 
-No text file outside `testdata/`, tracked or not, holds a bidi control character, invisible Unicode or a NUL byte, and no file there is a symbolic link.
+No tracked text file outside `testdata/` holds a bidi control character or invisible Unicode, and no tracked file there is a symbolic link or holds a NUL byte, so a tracked binary file outside `testdata/` is refused.
 
 Why: such a character makes what a reviewer reads differ from what the compiler, the shell or an agent reads, and a link can lead a reader to a file the check does not read.
 
-Checked by: `make ci`, step `no-hidden-text`. It reads untracked files too, so a scratch file left in a checkout is refused by a local run.
+Checked by: `make ci`, step `no-hidden-text`. It reads only the files git tracks, so a binary built in a checkout, or an editor's scratch file, passes a local run as it passes a clean checkout.
 
 ## `agents-md-short`
 

@@ -43,13 +43,16 @@ func copyRepo(t *testing.T) string {
 }
 
 // copyTree copies the tree at src, without .git and the fixtures of the tests, into a new directory.
-// .git is left out whether it is a directory or, in a worktree or a submodule, a file. Each file is a
+// .git is left out whether it is a directory or, in a worktree or a submodule, a file. Where src is
+// the top of a git work tree, only the files git tracks are copied, so a file the writer's checkout
+// holds and git does not, such as a binary built there, is no part of a case. Each file is a
 // hard link to the source's where the file system allows it, so the copy is quick; the helpers that
 // change the copy replace a file and never write into it, so the source never changes.
 func copyTree(t *testing.T, src string) string {
 	t.Helper()
 	dst := t.TempDir()
 	skip := map[string]bool{".git": true, "tests/testdata": true, "tools/guard/testdata": true}
+	tracked, ok := newTree(src).tracked()
 	err := filepath.WalkDir(src, func(p string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
@@ -60,6 +63,9 @@ func copyTree(t *testing.T, src string) string {
 			if d.IsDir() {
 				return filepath.SkipDir
 			}
+			return nil
+		}
+		if ok && !d.IsDir() && !tracked[filepath.ToSlash(rel)] {
 			return nil
 		}
 		to := filepath.Join(dst, rel)
