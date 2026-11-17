@@ -1,5 +1,7 @@
 // Package seeds reads the vectors for the seeds of the adapters' fuzz tests (fuzz-parsers), as the
-// core's own helper does for the core, which the adapters cannot import. Only tests import it.
+// core's own helper does for the core, which the adapters cannot import. Only tests import it. Past
+// this comment it is core/internal/testing/seeds/seeds.go byte for byte, which a test checks: a fix
+// to one is made to both.
 package seeds
 
 import (

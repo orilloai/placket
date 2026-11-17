@@ -1,6 +1,7 @@
 // Package seeds reads the vectors for the seeds of fuzz tests (fuzz-parsers). It imports nothing of
 // the core, so the tests of every core package, the packages ptesting imports included, can use it.
-// Only tests import it.
+// Only tests import it. Past this comment it is adapters/internal/seeds/seeds.go byte for byte,
+// which that package's test checks: a fix to one is made to both.
 package seeds
 
 import (
