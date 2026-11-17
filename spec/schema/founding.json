@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://placket.dev/schema/0.1/founding.json",
   "title": "Founding set",
-  "description": "Everything an Accord is founded from; its typed hash is the Accord id (setup-contract-5). The order of declarations and bindings, by actor reference, is a rule of the text (setup-contract-10) that a schema cannot state.",
+  "description": "Everything an Accord is founded from; its typed hash is the Accord id (setup-contract-5). The order of declarations and bindings, by actor reference, is a rule of the text (setup-contract-10) that a schema cannot state, and so are that no two policy entries name one principal and that every binding's policy is the typed hash of this set's policy (setup-contract-3).",
   "type": "object",
   "properties": {
     "policy": {
@@ -16,11 +16,30 @@
           }
         },
         "principals": {
+          "description": "One entry per principal: the principal and the roles it may grant (setup-contract-2, setup-contract-9). That no two entries name one principal is a rule of the text that a schema cannot state.",
           "type": "array",
           "minItems": 1,
           "uniqueItems": true,
           "items": {
-            "$ref": "reference.json"
+            "type": "object",
+            "properties": {
+              "principal": {
+                "$ref": "reference.json"
+              },
+              "roles": {
+                "type": "array",
+                "minItems": 1,
+                "uniqueItems": true,
+                "items": {
+                  "$ref": "term.json#/$defs/label"
+                }
+              }
+            },
+            "required": [
+              "principal",
+              "roles"
+            ],
+            "additionalProperties": false
           }
         }
       },

@@ -61,20 +61,20 @@
     "scenarios": {"a selector that is not a role": {"vectors": ["founding/selector-not-a-role"]}, "a maybe without its rule": {"vectors": ["founding/maybe-without-resolve"]}, "a term that names a check": {"vectors": ["founding/term-names-a-check"]}, "a declaration edited after signing": {"vectors": ["founding/declaration-edited"]}}
   },
   "setup-contract-2": {
-    "vectors": ["founding/one-binding-two-roles", "founding/binding-expires-at-founding", "founding/until-second-60", "founding/until-hour-24", "founding/until-day-not-in-calendar"],
-    "scenarios": {"one binding, two roles": {"vectors": ["founding/one-binding-two-roles"]}, "a binding that expires at the founding time": {"vectors": ["founding/binding-expires-at-founding"]}, "a time the timestamp rule refuses in until": {"vectors": ["founding/until-second-60", "founding/until-hour-24", "founding/until-day-not-in-calendar"]}}
+    "vectors": ["founding/one-binding-two-roles", "founding/binding-expires-at-founding", "founding/until-second-60", "founding/until-hour-24", "founding/until-day-not-in-calendar", "founding/two-principals"],
+    "scenarios": {"two principals": {"vectors": ["founding/two-principals"], "tests": ["core/setup:TestEachPartyItsOwnPrincipal"]}, "one principal behind every party": {"vectors": ["founding/ask-and-log", "founding/compose", "founding/one-binding-two-roles"], "tests": ["core/setup:TestOnePrincipalForEveryParty"]}, "one binding, two roles": {"vectors": ["founding/one-binding-two-roles"]}, "a binding that expires at the founding time": {"vectors": ["founding/binding-expires-at-founding"]}, "a time the timestamp rule refuses in until": {"vectors": ["founding/until-second-60", "founding/until-hour-24", "founding/until-day-not-in-calendar"]}}
   },
   "setup-contract-3": {
-    "vectors": ["founding/binding-unlisted-principal", "founding/binding-other-mediator", "founding/binding-without-declaration", "founding/declaration-without-binding"],
-    "scenarios": {"a binding by an unlisted principal": {"vectors": ["founding/binding-unlisted-principal"]}, "a binding for another mediator": {"vectors": ["founding/binding-other-mediator"]}, "a binding with no declaration": {"vectors": ["founding/binding-without-declaration"]}}
+    "vectors": ["founding/binding-unlisted-principal", "founding/binding-other-mediator", "founding/binding-without-declaration", "founding/declaration-without-binding", "founding/binding-role-not-granted", "founding/binding-other-policy"],
+    "scenarios": {"a binding by an unlisted principal": {"vectors": ["founding/binding-unlisted-principal"]}, "a binding that gives a role its principal may not grant": {"vectors": ["founding/binding-role-not-granted"]}, "a binding signed for another policy": {"vectors": ["founding/binding-other-policy"]}, "a binding for another mediator": {"vectors": ["founding/binding-other-mediator"]}, "a binding with no declaration": {"vectors": ["founding/binding-without-declaration"]}}
   },
   "setup-contract-4": {
     "vectors": ["founding/card-loads-a-check", "founding/card-unlisted-member"],
     "scenarios": {"a card that loads a check": {"vectors": ["founding/card-loads-a-check"]}, "a member the card does not list": {"vectors": ["founding/card-unlisted-member"]}}
   },
   "setup-contract-5": {
-    "vectors": ["founding/ask-and-log", "founding/ask-and-log-later", "founding/policy-role-nobody-holds", "founding/compose", "founding/policy-without-roles", "founding/own-no", "founding/long-wait", "founding/unanswered", "founding/answer-under-maybe"],
-    "scenarios": {"the same set twice": {"vectors": ["founding/ask-and-log", "founding/ask-and-log-later"]}, "a policy role nobody holds": {"vectors": ["founding/policy-role-nobody-holds"]}}
+    "vectors": ["founding/ask-and-log", "founding/ask-and-log-later", "founding/policy-role-nobody-holds", "founding/compose", "founding/policy-without-roles", "founding/own-no", "founding/long-wait", "founding/unanswered", "founding/answer-under-maybe", "founding/a-role-held-not-required"],
+    "scenarios": {"the same set twice": {"vectors": ["founding/ask-and-log", "founding/ask-and-log-later"]}, "a role held that the policy does not require": {"vectors": ["founding/a-role-held-not-required"]}, "a policy role nobody holds": {"vectors": ["founding/policy-role-nobody-holds"]}}
   },
   "setup-contract-6": {
     "vectors": ["crossing/a-stranger", "crossing/the-mediators-own-key"],
@@ -85,12 +85,12 @@
     "scenarios": {"a class other than process": {"vectors": ["founding/runs-container"]}, "the operator changes the id": {"vectors": ["founding/ask-and-log", "founding/operator-changes-the-id"]}}
   },
   "setup-contract-8": {
-    "vectors": ["founding/two-defects-in-one-declaration", "founding/defects-in-two-declarations", "founding/unlisted-principal-and-expired", "founding/bad-binding-signature-and-other-mediator", "founding/bad-declaration-signature-and-term", "founding/shape-and-two-bindings-one-actor", "founding/two-bindings-one-actor-and-an-actor", "founding/maybe-without-resolve-and-a-bad-term", "founding/a-check-and-maybe-without-resolve", "founding/a-check-and-no-binding", "founding/a-bad-term-and-no-binding", "founding/unlisted-principal-and-bad-signature", "founding/other-mediator-and-expired", "founding/expired-and-a-binding-without-declaration", "founding/a-binding-without-declaration-and-a-role-nobody-holds"],
-    "scenarios": {"two defects in one declaration": {"vectors": ["founding/two-defects-in-one-declaration"]}, "defects in two declarations": {"vectors": ["founding/defects-in-two-declarations"]}}
+    "vectors": ["founding/two-defects-in-one-declaration", "founding/defects-in-two-declarations", "founding/unlisted-principal-and-expired", "founding/bad-binding-signature-and-other-mediator", "founding/bad-declaration-signature-and-term", "founding/shape-and-two-bindings-one-actor", "founding/two-bindings-one-actor-and-an-actor", "founding/maybe-without-resolve-and-a-bad-term", "founding/a-check-and-maybe-without-resolve", "founding/a-check-and-no-binding", "founding/a-bad-term-and-no-binding", "founding/unlisted-principal-and-bad-signature", "founding/other-mediator-and-expired", "founding/expired-and-a-binding-without-declaration", "founding/a-binding-without-declaration-and-a-role-nobody-holds", "founding/ungranted-role-and-other-mediator", "founding/ungranted-role-and-other-policy"],
+    "scenarios": {"two defects in one declaration": {"vectors": ["founding/two-defects-in-one-declaration"]}, "defects in two declarations": {"vectors": ["founding/defects-in-two-declarations"]}, "a role its principal may not grant and another mediator": {"vectors": ["founding/ungranted-role-and-other-mediator"]}, "a role its principal may not grant and another policy": {"vectors": ["founding/ungranted-role-and-other-policy"]}}
   },
   "setup-contract-9": {
-    "vectors": ["founding/repeated-member", "founding/actor-a-number", "founding/actor-not-a-reference", "founding/term-missing-dir"],
-    "scenarios": {"a repeated member name": {"vectors": ["founding/repeated-member"]}, "an actor of the wrong type": {"vectors": ["founding/actor-a-number", "founding/actor-not-a-reference"]}, "a term with a missing member": {"vectors": ["founding/term-missing-dir"]}}
+    "vectors": ["founding/repeated-member", "founding/actor-a-number", "founding/actor-not-a-reference", "founding/term-missing-dir", "founding/principals-empty", "founding/entry-roles-empty", "founding/entry-roles-repeated", "founding/entry-role-not-a-label", "founding/entry-principal-not-a-reference", "founding/two-entries-one-principal", "founding/entry-unlisted-member", "founding/binding-without-policy", "founding/binding-policy-not-a-hash", "founding/two-entries-one-role"],
+    "scenarios": {"a repeated member name": {"vectors": ["founding/repeated-member"]}, "an actor of the wrong type": {"vectors": ["founding/actor-a-number", "founding/actor-not-a-reference"]}, "a policy entry or a binding of the wrong shape": {"vectors": ["founding/principals-empty", "founding/entry-roles-empty", "founding/entry-roles-repeated", "founding/entry-role-not-a-label", "founding/entry-principal-not-a-reference", "founding/two-entries-one-principal", "founding/entry-unlisted-member", "founding/binding-without-policy", "founding/binding-policy-not-a-hash"]}, "a term with a missing member": {"vectors": ["founding/term-missing-dir"]}}
   },
   "setup-contract-10": {
     "vectors": ["founding/declarations-out-of-order", "founding/two-bindings-one-actor"],
@@ -282,12 +282,12 @@
     "scenarios": {"an ask left open": {"tests": ["adapters/cli:TestJSONAnAskLeftOpen"]}, "waits that end with an accept and a change": {"tests": ["adapters/cli:TestJSONWaitsThatEndWithAnAcceptAndAChange"]}, "a decline and its comment": {"tests": ["adapters/cli:TestJSONADeclineAndItsComment"]}}
   },
   "commands-3": {
-    "tests": ["adapters/cli:TestJSONAFounding", "adapters/cli:TestJSONAWindowStops", "adapters/cli:TestJSONAnEmptyQueueAndADelivery", "adapters/cli:TestJSONEveryDeliveryAtOnce", "adapters/cli:TestJSONEveryDeliveryAtOnceIntoADirectory"],
-    "scenarios": {"a founding": {"tests": ["adapters/cli:TestJSONAFounding"]}, "an empty queue and a delivery": {"tests": ["adapters/cli:TestJSONAnEmptyQueueAndADelivery"]}, "every delivery at once": {"tests": ["adapters/cli:TestJSONEveryDeliveryAtOnce"]}, "every delivery at once into a directory": {"tests": ["adapters/cli:TestJSONEveryDeliveryAtOnceIntoADirectory"]}, "a window stops": {"tests": ["adapters/cli:TestJSONAWindowStops"]}}
+    "tests": ["adapters/cli:TestJSONAFounding", "adapters/cli:TestJSONAWindowStops", "adapters/cli:TestJSONAnEmptyQueueAndADelivery", "adapters/cli:TestJSONEveryDeliveryAtOnce", "adapters/cli:TestJSONEveryDeliveryAtOnceIntoADirectory", "adapters/cli:TestBindForAPolicy"],
+    "scenarios": {"a founding": {"tests": ["adapters/cli:TestJSONAFounding"]}, "a binding for a policy": {"tests": ["adapters/cli:TestBindForAPolicy"]}, "an empty queue and a delivery": {"tests": ["adapters/cli:TestJSONAnEmptyQueueAndADelivery"]}, "every delivery at once": {"tests": ["adapters/cli:TestJSONEveryDeliveryAtOnce"]}, "every delivery at once into a directory": {"tests": ["adapters/cli:TestJSONEveryDeliveryAtOnceIntoADirectory"]}, "a window stops": {"tests": ["adapters/cli:TestJSONAWindowStops"]}}
   },
   "commands-4": {
-    "tests": ["adapters/cli:TestJSONAShownReceiptAndAVerifiedJournal", "adapters/cli:TestJSONTheLogAndReconciliation"],
-    "scenarios": {"a shown receipt and a verified journal": {"tests": ["adapters/cli:TestJSONAShownReceiptAndAVerifiedJournal"]}, "the log and reconciliation": {"tests": ["adapters/cli:TestJSONTheLogAndReconciliation"]}}
+    "tests": ["adapters/cli:TestJSONAShownReceiptAndAVerifiedJournal", "adapters/cli:TestJSONTheLogAndReconciliation", "adapters/cli:TestVerifyNamesWhoStandsBehindEachMember"],
+    "scenarios": {"a shown receipt and a verified journal": {"tests": ["adapters/cli:TestJSONAShownReceiptAndAVerifiedJournal"]}, "who stands behind each member": {"tests": ["adapters/cli:TestVerifyNamesWhoStandsBehindEachMember"]}, "the log and reconciliation": {"tests": ["adapters/cli:TestJSONTheLogAndReconciliation"]}}
   },
   "commands-5": {
     "tests": ["adapters/cli:TestReleasedAFileAndOneByteChanged", "adapters/cli:TestReleasedAProposalReleasedAfterAnAccept", "adapters/cli:TestReleasedNeverABlockOrAnotherKeysPart"],

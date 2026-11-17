@@ -1,10 +1,11 @@
 // Package setup founds an Accord from a founding set, or refuses the set with the first code of
 // founding's check table, and holds what the founded Accord says: its id and card hash, its members,
-// the roles their bindings give them, and their terms.
+// the roles their bindings give them, the principals that signed those bindings, and their terms.
 //
 // It implements setup-contract-1 to setup-contract-10: declarations and terms (setup-contract-1),
 // bindings and roles (setup-contract-2, setup-contract-3), the card (setup-contract-4), the Accord id
-// (setup-contract-5), membership (setup-contract-6), the mediator and its operator
+// (setup-contract-5), a principal per party and the roles the policy lets it grant
+// (setup-contract-2, setup-contract-3, setup-contract-9), membership (setup-contract-6), the mediator and its operator
 // (setup-contract-7), the refusal order (setup-contract-8), the shape of a set (setup-contract-9) and
 // the order of its lists (setup-contract-10).
 package setup
@@ -34,10 +35,16 @@ const (
 	BindingMissing       Code = "binding-missing"
 	BindingPrincipal     Code = "binding-principal"
 	BindingSignature     Code = "binding-signature"
-	BindingMediator      Code = "binding-mediator"
-	BindingExpired       Code = "binding-expired"
-	DeclarationMissing   Code = "declaration-missing"
-	RoleMissing          Code = "role-missing"
+	// BindingRole: a binding gives a role its principal's policy entry does not list
+	// (setup-contract-3).
+	BindingRole Code = "binding-role"
+	// BindingPolicy: a binding names the typed hash of a policy other than the set's
+	// (setup-contract-3).
+	BindingPolicy      Code = "binding-policy"
+	BindingMediator    Code = "binding-mediator"
+	BindingExpired     Code = "binding-expired"
+	DeclarationMissing Code = "declaration-missing"
+	RoleMissing        Code = "role-missing"
 )
 
 // CodeAt is not a founding code: the founding time its caller gave does not keep the timestamp rule.
@@ -89,6 +96,7 @@ type Accord struct {
 	id, card, mediator string
 	members            []string
 	roles              map[string][]string
+	principals         map[string]string
 	terms              map[string][]Term
 }
 
@@ -115,6 +123,10 @@ func (a *Accord) Member(actor string) bool {
 // Roles returns the roles actor's binding gives it, in the binding's order (setup-contract-2).
 func (a *Accord) Roles(actor string) []string { return append([]string(nil), a.roles[actor]...) }
 
+// Principal returns the reference of the principal that signed actor's binding, or "" when actor is
+// not a member (setup-contract-2).
+func (a *Accord) Principal(actor string) string { return a.principals[actor] }
+
 // Terms returns actor's terms, in its declaration's order (setup-contract-1).
 func (a *Accord) Terms(actor string) []Term {
 	var out []Term
@@ -133,9 +145,9 @@ func (a *Accord) Terms(actor string) []Term {
 }
 
 type binding struct {
-	actor, principal, mediator, until string
-	roles                             []string
-	bytes                             []byte
+	actor, principal, policy, mediator, until string
+	roles                                     []string
+	bytes                                     []byte
 }
 
 type declaration struct {
@@ -163,10 +175,12 @@ func Found(set []byte, at string) (*Accord, error) {
 	if !ok || !shape.Only(top, "policy", "mediator", "card", "declarations", "bindings") {
 		return fail(InvalidShape)
 	}
-	principals, roles, ok := policy(top["policy"])
+	grants, roles, ok := policy(top["policy"])
 	if !ok {
 		return fail(InvalidShape)
 	}
+	ps := sha256.Sum256(shape.Encode(top["policy"]))
+	policyHash := canonical.HashPrefix + hex.EncodeToString(ps[:])
 	mediator, ok := mediatorOf(top["mediator"])
 	if !ok || !card(top["card"]) {
 		return fail(InvalidShape)
@@ -190,8 +204,8 @@ func Found(set []byte, at string) (*Accord, error) {
 		byActor[b.actor] = b
 	}
 
-	a := &Accord{mediator: mediator, roles: map[string][]string{}, terms: map[string][]Term{}}
-	// Rows 4 to 13, each declaration's in actor-reference order.
+	a := &Accord{mediator: mediator, roles: map[string][]string{}, principals: map[string]string{}, terms: map[string][]Term{}}
+	// Rows 4 to 15, each declaration's in actor-reference order.
 	for _, d := range decls {
 		actor, ok := d.actor.(string)
 		if _, isRef := signing.ParseReference(actor); !ok || !isRef {
@@ -220,11 +234,20 @@ func Found(set []byte, at string) (*Accord, error) {
 		if !ok {
 			return fail(BindingMissing)
 		}
-		if !principals[b.principal] {
+		grant, ok := grants[b.principal]
+		if !ok {
 			return fail(BindingPrincipal)
 		}
 		if !signing.Verify(b.bytes, signing.TypeBinding, b.principal) {
 			return fail(BindingSignature)
+		}
+		for _, r := range b.roles {
+			if !grant[r] {
+				return fail(BindingRole)
+			}
+		}
+		if b.policy != policyHash {
+			return fail(BindingPolicy)
 		}
 		if b.mediator != mediator {
 			return fail(BindingMediator)
@@ -235,14 +258,15 @@ func Found(set []byte, at string) (*Accord, error) {
 		a.members = append(a.members, actor)
 		a.terms[actor] = ts
 		a.roles[actor] = b.roles
+		a.principals[actor] = b.principal
 	}
-	// Row 14: a binding with no declaration.
+	// Row 16: a binding with no declaration.
 	for _, b := range binds {
 		if !a.Member(b.actor) {
 			return fail(DeclarationMissing)
 		}
 	}
-	// Row 15: every policy role held by a declaring actor.
+	// Row 17: every policy role held by a declaring actor.
 	for _, r := range roles {
 		held := false
 		for _, m := range a.members {
@@ -276,14 +300,10 @@ func reference(v any) (string, bool) {
 	return s, ok
 }
 
-func isReference(s string) bool {
-	_, ok := signing.ParseReference(s)
-	return ok
-}
-
 // policy reads the policy: exactly roles, distinct labels, and principals, a non-empty list of
-// distinct actor references (setup-contract-9).
-func policy(v any) (map[string]bool, []string, bool) {
+// entries, each exactly a principal, an actor reference no other entry names, and roles, a non-empty
+// list of distinct labels (setup-contract-9). It returns the roles each principal may grant.
+func policy(v any) (map[string]map[string]bool, []string, bool) {
 	o, ok := v.(shape.Object)
 	if !ok || !shape.Only(o, "roles", "principals") {
 		return nil, nil, false
@@ -294,15 +314,30 @@ func policy(v any) (map[string]bool, []string, bool) {
 	} else if roles, ok = shape.Strings(o["roles"], shape.Label); !ok {
 		return nil, nil, false
 	}
-	ps, ok := shape.Strings(o["principals"], isReference)
-	if !ok {
+	l, ok := o["principals"].([]any)
+	if !ok || len(l) == 0 {
 		return nil, nil, false
 	}
-	set := map[string]bool{}
-	for _, p := range ps {
-		set[p] = true
+	grants := map[string]map[string]bool{}
+	for _, x := range l {
+		e, ok := x.(shape.Object)
+		if !ok || !shape.Only(e, "principal", "roles") {
+			return nil, nil, false
+		}
+		p, ok := reference(e["principal"])
+		if _, seen := grants[p]; !ok || seen {
+			return nil, nil, false
+		}
+		rs, ok := shape.Strings(e["roles"], shape.Label)
+		if !ok {
+			return nil, nil, false
+		}
+		grants[p] = map[string]bool{}
+		for _, r := range rs {
+			grants[p][r] = true
+		}
 	}
-	return set, roles, true
+	return grants, roles, true
 }
 
 // mediatorOf reads the mediator: exactly actor and operator, actor references, and runs, process
@@ -417,7 +452,7 @@ func bindings(v any) ([]binding, bool) {
 	var out []binding
 	for i, x := range l {
 		o, ok := x.(shape.Object)
-		if !ok || !shape.Only(o, "actor", "principal", "roles", "mediator", "until", "sig") {
+		if !ok || !shape.Only(o, "actor", "principal", "roles", "policy", "mediator", "until", "sig") {
 			return nil, false
 		}
 		var b binding
@@ -425,6 +460,9 @@ func bindings(v any) ([]binding, bool) {
 			return nil, false
 		}
 		if b.principal, ok = reference(o["principal"]); !ok {
+			return nil, false
+		}
+		if b.policy, ok = o["policy"].(string); !ok || !shape.Hash(b.policy) {
 			return nil, false
 		}
 		if b.mediator, ok = reference(o["mediator"]); !ok {

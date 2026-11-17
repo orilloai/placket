@@ -99,6 +99,7 @@ The runner prints every open entry and every entry with a `rest` on each run, an
 A change to a frozen format, the vector format included, carries a note here and in its row of `spec/frozen-formats.md`, in the same change (`format-change-noted`).
 
 - 0.1, before release: the register gains the answer call, the door's signed call that accepts or changes an answer, which parties keep beside the delivery it came with (`spec/frozen-formats.md`). No vector holds one, and no vector changes.
+- 0.1, before release: a principal per party (`spec/frozen-formats.md`). A founding set's policy lists each principal with the roles it may grant, and each binding names the typed hash of the policy it was signed for; founding gains `binding-role` and `binding-policy`, and the vector format's list of founding codes gains them too. Every group was written again: every founding set, binding and Accord id changed, and so did every scenario vector's receipts, ids and hashes that follow from them. No code, verdict, reason or step of a scenario changed.
 
 The vector format is at version 0.1 as written. The coverage list is this directory's own record, not a frozen format; its `tests` and `rest` members were added with the first vectors.
 

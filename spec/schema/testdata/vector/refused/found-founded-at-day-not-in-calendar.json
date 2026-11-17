@@ -1,13 +1,15 @@
 {
-  "vector": "founding/ask-and-log-founds",
-  "spec": "0.1",
-  "tests": "The ask-and-log set founds to its typed hash.",
-  "operation": "found",
+  "expect": {
+    "accord": "sha256:26f6de282cb5b5b3f9e4d93046306b95974e796572c6aee9e10aec0652567189",
+    "card": "sha256:1aeeb6d581d8d29e1298145764d3df8d4c343ce775f3bc42af57cb205bbfaf6f"
+  },
+  "foundedAt": "2026-09-31T08:00:00Z",
   "input": {
     "bindings": [
       {
         "actor": "ed25519:810950cac0d0a30abe5ced6fdf42b93bb3da913b29d142a20ef043ca9691cd31",
         "mediator": "ed25519:22cdf8245c3ce6fb391597095e59b2eb3e3cdfda6ab4b606cc3acd9d2d40ed77",
+        "policy": "sha256:70bc0590530f596165c5055c148f9ca76866100bea17f8f3e028c0119dc3b55a",
         "principal": "ed25519:534b70c488c3bdeb57b19682f11c7d18cdb43087760a253b4fb0cb8f6d251b99",
         "roles": [
           "applier"
@@ -18,6 +20,7 @@
       {
         "actor": "ed25519:bd1f151e8df833afd6d6758375655dfdf2099acc4bc9100b0f292937773b3b0a",
         "mediator": "ed25519:22cdf8245c3ce6fb391597095e59b2eb3e3cdfda6ab4b606cc3acd9d2d40ed77",
+        "policy": "sha256:70bc0590530f596165c5055c148f9ca76866100bea17f8f3e028c0119dc3b55a",
         "principal": "ed25519:534b70c488c3bdeb57b19682f11c7d18cdb43087760a253b4fb0cb8f6d251b99",
         "roles": [
           "proposer"
@@ -28,6 +31,7 @@
       {
         "actor": "ed25519:f6d4d58bc4586df0ad896a617867d6e12e2ec318bf26edd23a1f18de99039f41",
         "mediator": "ed25519:22cdf8245c3ce6fb391597095e59b2eb3e3cdfda6ab4b606cc3acd9d2d40ed77",
+        "policy": "sha256:70bc0590530f596165c5055c148f9ca76866100bea17f8f3e028c0119dc3b55a",
         "principal": "ed25519:534b70c488c3bdeb57b19682f11c7d18cdb43087760a253b4fb0cb8f6d251b99",
         "roles": [
           "decider"
@@ -154,7 +158,14 @@
     },
     "policy": {
       "principals": [
-        "ed25519:534b70c488c3bdeb57b19682f11c7d18cdb43087760a253b4fb0cb8f6d251b99"
+        {
+          "principal": "ed25519:534b70c488c3bdeb57b19682f11c7d18cdb43087760a253b4fb0cb8f6d251b99",
+          "roles": [
+            "applier",
+            "decider",
+            "proposer"
+          ]
+        }
       ],
       "roles": [
         "applier",
@@ -163,9 +174,8 @@
       ]
     }
   },
-  "foundedAt": "2026-09-31T08:00:00Z",
-  "expect": {
-    "accord": "sha256:26f6de282cb5b5b3f9e4d93046306b95974e796572c6aee9e10aec0652567189",
-    "card": "sha256:1aeeb6d581d8d29e1298145764d3df8d4c343ce775f3bc42af57cb205bbfaf6f"
-  }
+  "operation": "found",
+  "spec": "0.1",
+  "tests": "The ask-and-log set founds to its typed hash.",
+  "vector": "founding/ask-and-log-founds"
 }
