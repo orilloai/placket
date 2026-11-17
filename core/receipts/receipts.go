@@ -127,8 +127,9 @@ type Statement struct {
 }
 
 // Verified is a receipt's statement that passed Verify, or one this package built and signed. Only
-// this package makes one, so a caller holding a Verified holds a statement that was checked
-// (verified-by-type, record 0016).
+// this package makes one that holds a statement, so a caller holding a Verified holds a statement
+// that was checked (verified-by-type, record 0016). The zero Verified, which any package can write,
+// holds no statement: its Statement is the zero Statement, with no id.
 type Verified struct {
 	s Statement
 }
