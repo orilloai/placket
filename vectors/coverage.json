@@ -53,8 +53,8 @@
   },
   "signing-4": {
     "vectors": ["signatures/receipt-verifies", "signatures/receipt-placket-payload-type", "signatures/a-binding-under-the-old-domain"],
-    "tests": ["core/signing:TestPayloadSignaturesRefuseTheFourTypeURIs"],
-    "scenarios": {"a placket URI as a payload type": {"tests": ["core/signing:TestPayloadSignaturesRefuseTheFourTypeURIs"]}}
+    "tests": ["core/signing:TestPayloadSignaturesRefuseTheThreeTypeURIs"],
+    "scenarios": {"a placket URI as a payload type": {"tests": ["core/signing:TestPayloadSignaturesRefuseTheThreeTypeURIs"]}}
   },
   "setup-contract-1": {
     "vectors": ["founding/selector-not-a-role", "founding/maybe-without-resolve", "founding/term-names-a-check", "founding/declaration-edited", "founding/resolve-on-a-want"],

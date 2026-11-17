@@ -37,7 +37,21 @@ func TestDoorRowsOneCheckEach(t *testing.T) {
 		{"an empty messageId", func(x map[string]any) { x["messageId"] = "" }, false, mediator.ExtensionMissing},
 		{"two extensions entries", func(x map[string]any) { x["extensions"] = []any{extension, extension} }, false, mediator.ExtensionMissing},
 		{"another extension too", func(x map[string]any) { x["extensions"] = []any{extension, "https://example.com/x"} }, false, mediator.ExtensionMissing},
-		{"another extension URI", func(x map[string]any) { x["extensions"] = []any{"https://placket.dev/crossing/0.2"} }, false, mediator.ExtensionMissing},
+		{"another extension URI", func(x map[string]any) { x["extensions"] = []any{"https://placket.tech/crossing/0.2"} }, false, mediator.ExtensionMissing},
+		{"the extension URI on another host", func(x map[string]any) {
+			const old = "https://placket.dev/crossing/0.1"
+			x["extensions"] = []any{old}
+			for _, meta := range []map[string]any{x["metadata"].(map[string]any), part(x)["metadata"].(map[string]any)} {
+				meta[old] = meta[extension]
+				delete(meta, extension)
+			}
+		}, false, mediator.ExtensionMissing},
+		{"the agent's role", func(x map[string]any) { x["role"] = mediator.RoleAgent }, false, mediator.ExtensionMissing},
+		{"another role", func(x map[string]any) { x["role"] = "ROLE_UNSPECIFIED" }, false, mediator.ExtensionMissing},
+		{"a salt of 16 bytes", func(x map[string]any) { partExt(x)["salt"] = strings.Repeat("ab", 16) }, false, mediator.PartMetadata},
+		{"a salt of 31 bytes", func(x map[string]any) { partExt(x)["salt"] = strings.Repeat("ab", 31) }, false, mediator.PartMetadata},
+		{"a salt of 33 bytes", func(x map[string]any) { partExt(x)["salt"] = strings.Repeat("ab", 33) }, false, mediator.PartMetadata},
+		{"a salt of 32 bytes", func(x map[string]any) { partExt(x)["salt"] = strings.Repeat("ab", 32) }, false, ""},
 		{"no extensions entry", func(x map[string]any) { x["extensions"] = []any{} }, false, mediator.ExtensionMissing},
 		{"a re of 63 hex digits", func(x map[string]any) { ext(x)["re"] = "sha256:" + hash64[:63] }, false, mediator.ExtensionMissing},
 		{"a re in uppercase hex", func(x map[string]any) { ext(x)["re"] = "sha256:" + strings.ToUpper(hash64) }, false, mediator.ExtensionMissing},

@@ -33,15 +33,15 @@ func written(t *testing.T, m *mediator.Mediator, before int, err error) {
 func FuzzResolve(f *testing.F) {
 	_, q := opened(f)
 	d, p := ptesting.Key(f, "decider").Reference(), ptesting.Key(f, "proposer").Reference()
-	f.Add(d, q, "accepted", "accepted", []byte("an answer's salt"), true, "2026-11-12T09:01:00Z")
-	f.Add(d, q, "changed", "A version.", []byte("an answer's salt"), true, "2026-11-12T09:01:00Z")
-	f.Add(d, q, "changed", "", []byte("an answer's salt"), false, "2026-11-12T09:01:00Z")
+	f.Add(d, q, "accepted", "accepted", []byte("an answer's salt of thirty-two b"), true, "2026-11-12T09:01:00Z")
+	f.Add(d, q, "changed", "A version.", []byte("an answer's salt of thirty-two b"), true, "2026-11-12T09:01:00Z")
+	f.Add(d, q, "changed", "", []byte("an answer's salt of thirty-two b"), false, "2026-11-12T09:01:00Z")
 	f.Add(d, q, "declined", "", []byte(nil), true, "2026-11-12T09:01:00Z")
 	f.Add(d, q, "cancelled", "x", []byte("short"), false, "2026-11-12T10:00:00Z")
-	f.Add(p, q, "accepted", "accepted", []byte("an answer's salt"), false, "2026-11-12T09:01:00Z")
+	f.Add(p, q, "accepted", "accepted", []byte("an answer's salt of thirty-two b"), false, "2026-11-12T09:01:00Z")
 	f.Add("", "", "", "", []byte(nil), false, "")
 	for _, s := range seeds.Values(f, "questions", "content") {
-		f.Add(d, q, "changed", s, []byte("an answer's salt"), true, "2026-11-12T09:01:00Z")
+		f.Add(d, q, "changed", s, []byte("an answer's salt of thirty-two b"), true, "2026-11-12T09:01:00Z")
 	}
 	f.Fuzz(func(t *testing.T, caller, questionID, action, answer string, salt []byte, release bool, at string) {
 		m, _ := opened(t)

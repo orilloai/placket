@@ -2,6 +2,7 @@ package mediator_test
 
 import (
 	"bytes"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"reflect"
@@ -468,5 +469,48 @@ func TestTwoMediatorsOneRecordThroughAReload(t *testing.T) {
 	}
 	if _, err := receipts.Verify(ptesting.Key(t, "mediator").Reference(), ra); err != nil {
 		t.Fatal(err)
+	}
+}
+
+// TestReloadRefusesASaltOfAnotherLength gives Reload a delivery whose salt is 16 bytes, carried by a
+// pass receipt the mediator signed over that salt and its body, so that only the salt's length is
+// wrong: Reload returns no mediator and the error held at its index (record 0008, crossing-2). The
+// same delivery under a salt of SaltBytes reloads.
+func TestReloadRefusesASaltOfAnotherLength(t *testing.T) {
+	t.Parallel()
+	b := record(t)
+	set, foundedAt := askAndLog(t)
+	list, queued := b.m.Receipts(), queuedOf(b.m)
+	p, ap := ptesting.Key(t, "proposer").Reference(), ptesting.Key(t, "applier").Reference()
+	ask := statement(t, b.m, b.first)
+	const body = "A part with its own salt."
+	for _, c := range []struct {
+		n    int
+		want bool
+	}{{16, false}, {33, false}, {mediator.SaltBytes, true}} {
+		salt := bytes.Repeat([]byte{5}, c.n)
+		r := built(t, list, receipts.Subject{Name: "note", Digest: receipts.Digest(salt, []byte(body))},
+			receipts.Predicate{Accord: ask.Predicate.Accord, Card: ask.Predicate.Card, Kind: receipts.KindCrossing, From: p, To: ap,
+				At: "2026-11-12T10:50:00Z", Envelope: receipts.Envelope{Sender: p, Seq: 6, Hash: "sha256:" + strings.Repeat("cd", 32)},
+				Verdict: "pass", Reason: "ok"})
+		st, err := receipts.Decode(r)
+		if err != nil {
+			t.Fatal(err)
+		}
+		raw, _ := json.Marshal(map[string]any{"receiptId": st.ID, "receipt": json.RawMessage(r),
+			"messageId": "own-salt", "kind": "note", "salt": hex.EncodeToString(salt), "text": body})
+		d, err := canonical.Form(raw)
+		if err != nil {
+			t.Fatal(err)
+		}
+		q := append(append([]mediator.Queued(nil), queued...), mediator.Queued{To: ap, Delivery: d})
+		m, _, err := mediator.Reload(set, append(append([][]byte(nil), list...), r), b.open, q, foundedAt, ptesting.Key(t, "mediator"), "2026-11-12T11:00:00Z")
+		var e *mediator.Error
+		switch {
+		case c.want && (err != nil || m == nil):
+			t.Fatalf("a salt of %d bytes: %v", c.n, err)
+		case !c.want && (m != nil || !errors.As(err, &e) || e.Code != mediator.CodeHeld || e.Index != len(queued)):
+			t.Fatalf("a salt of %d bytes: got %v, want held at %d", c.n, err, len(queued))
+		}
 	}
 }

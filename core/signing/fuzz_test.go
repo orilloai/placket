@@ -24,7 +24,7 @@ var (
 		`{"actor":"x","terms":[]}`, `{"sig":"00","seq":1}`, ` { "b" : 1 , "a" : [ ] } `, `[]`, `"x"`,
 		`{"a":1,"a":2}`, `{"a":1.5}`, "\xff", ``, `{"\ud800":1}`,
 	}
-	fuzzTypes = []string{TypeDeclaration, TypeBinding, TypeEnvelope, TypeRegistration, "application/vnd.in-toto+json", "", "\x00"}
+	fuzzTypes = []string{TypeDeclaration, TypeBinding, TypeEnvelope, "application/vnd.in-toto+json", "", "\x00"}
 )
 
 // FuzzNewKey makes a key of any seed. It never panics; a seed of 32 bytes makes the key RFC 8032
@@ -180,7 +180,7 @@ func FuzzSignPayload(f *testing.F) {
 		k, kerr := NewKey(seed)
 		sig, err := SignPayload(payloadType, payload, k)
 		switch {
-		case placketType(payloadType):
+		case objectType(payloadType):
 			if e, ok := err.(*Error); !ok || e.Code != CodeTypeURI || sig != nil {
 				t.Fatalf("under %q: %x, %v", payloadType, sig, err)
 			}

@@ -1,6 +1,6 @@
 // Package crossing builds and checks the mediator's deliveries, and reads a part's body and salt,
 // for crossing-2 and crossing-3: the body's bytes are the UTF-8 of text, the decoded bytes of raw or
-// the canonical bytes of data; the salt is at least 16 bytes in lowercase hex; and a delivery holds
+// the canonical bytes of data; the salt is exactly 32 bytes in lowercase hex; and a delivery holds
 // the receipt that passed a part and its id, and the part as it crossed. The mediator calls it and
 // keeps only state (mediator-no-logic). It is written once, so the mediator reads a part's body the
 // same way when it admits a give, when it shows a question and when it restores a delivery
@@ -17,8 +17,8 @@ import (
 	"github.com/orilloai/placket/core/receipts"
 )
 
-// MinSaltBytes is the shortest salt a part may have, in bytes (crossing-2).
-const MinSaltBytes = 16
+// SaltBytes is the length of every salt, in bytes (crossing-2, crossing-3).
+const SaltBytes = 32
 
 // Forms are the members a body may be given as in this version, in the order they are read
 // (crossing-2). A url body is not a body of this version.
@@ -50,11 +50,11 @@ func Body(form string, v any) ([]byte, bool) {
 	return nil, false
 }
 
-// Salt returns the bytes of a salt written as s: at least MinSaltBytes, in lowercase hex
+// Salt returns the bytes of a salt written as s: exactly SaltBytes, in lowercase hex
 // (crossing-2). It reports false for any other value.
 func Salt(v any) ([]byte, bool) {
 	s, ok := v.(string)
-	if !ok || len(s) < 2*MinSaltBytes || !shape.LowerHex(s) {
+	if !ok || len(s) != 2*SaltBytes || !shape.LowerHex(s) {
 		return nil, false
 	}
 	b, err := hex.DecodeString(s)

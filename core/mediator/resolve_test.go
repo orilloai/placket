@@ -11,8 +11,8 @@ import (
 	"github.com/orilloai/placket/core/receipts"
 )
 
-// salt16 is a salt of 16 bytes for an answer.
-var salt16 = []byte("an answer's salt")
+// answerSalt is a salt of SaltBytes for an answer.
+var answerSalt = saltOf("an answer's salt")
 
 // ask gives a proposal from the proposer to the applier at seq and at, which the ask-and-log terms
 // ask the decider about, and returns the question's id.
@@ -28,11 +28,11 @@ func ask(t testing.TB, m *mediator.Mediator, seq int64, id, at string) string {
 }
 
 func accept(release bool) mediator.Resolution {
-	return mediator.Resolution{Action: mediator.Accepted, Answer: "accepted", Salt: salt16, Release: release}
+	return mediator.Resolution{Action: mediator.Accepted, Answer: "accepted", Salt: answerSalt, Release: release}
 }
 
 func change(release bool) mediator.Resolution {
-	return mediator.Resolution{Action: mediator.Changed, Answer: "Rename total to amount_due.", Salt: salt16, Release: release}
+	return mediator.Resolution{Action: mediator.Changed, Answer: "Rename total to amount_due.", Salt: answerSalt, Release: release}
 }
 
 func errorCode(err error, code mediator.ErrorCode) bool {
@@ -166,27 +166,52 @@ func misuse(t *testing.T, r mediator.Resolution, code mediator.ErrorCode) {
 // error salt.
 func TestAShortSaltIsMisuse(t *testing.T) {
 	t.Parallel()
-	short := salt16[:15]
+	short := answerSalt[:15]
 	misuse(t, mediator.Resolution{Action: mediator.Accepted, Answer: "accepted", Salt: short}, mediator.CodeSalt)
 	misuse(t, mediator.Resolution{Action: mediator.Changed, Answer: "A version.", Salt: short, Release: true}, mediator.CodeSalt)
 	misuse(t, mediator.Resolution{Action: mediator.Accepted, Answer: "accepted"}, mediator.CodeSalt)
+}
+
+// TestASaltOfAnotherLengthIsMisuse answers with salts of 16, 31 and 33 bytes: an accept and a change
+// are each refused with the error salt, write nothing and leave the question open. A salt of exactly
+// SaltBytes closes it (section 6, maybe-8, maybe-9).
+func TestASaltOfAnotherLengthIsMisuse(t *testing.T) {
+	t.Parallel()
+	for _, n := range []int{16, 31, 33} {
+		salt := bytes.Repeat([]byte{7}, n)
+		misuse(t, mediator.Resolution{Action: mediator.Accepted, Answer: "accepted", Salt: salt}, mediator.CodeSalt)
+		misuse(t, mediator.Resolution{Action: mediator.Changed, Answer: "A version.", Salt: salt, Release: true}, mediator.CodeSalt)
+	}
+	for _, r := range []mediator.Resolution{accept(false), change(false)} {
+		m := found(t)
+		q := ask(t, m, 1, "p-1", "2026-11-12T09:00:00Z")
+		if len(r.Salt) != 32 {
+			t.Fatalf("the answer's salt is %d bytes", len(r.Salt))
+		}
+		if outs, err := m.Resolve(ptesting.Key(t, "decider").Reference(), q, r, "2026-11-12T09:01:00Z"); err != nil || len(outs) != 1 {
+			t.Fatalf("a %s with a salt of 32 bytes: %+v, %v", r.Action, outs, err)
+		}
+		if len(m.Pending()) != 0 {
+			t.Fatalf("a %s with a salt of 32 bytes left the question open", r.Action)
+		}
+	}
 }
 
 // TestAnEmptyChange is maybe-9's scenario: a change with an empty version is the caller's misuse,
 // the error answer; nothing is written and the question stays open.
 func TestAnEmptyChange(t *testing.T) {
 	t.Parallel()
-	misuse(t, mediator.Resolution{Action: mediator.Changed, Salt: salt16}, mediator.CodeAnswer)
-	misuse(t, mediator.Resolution{Action: mediator.Changed, Salt: salt16, Release: true}, mediator.CodeAnswer)
+	misuse(t, mediator.Resolution{Action: mediator.Changed, Salt: answerSalt}, mediator.CodeAnswer)
+	misuse(t, mediator.Resolution{Action: mediator.Changed, Salt: answerSalt, Release: true}, mediator.CodeAnswer)
 }
 
 // TestAnUnknownActionIsMisuse answers with an action that is not one of the four, before its salt
 // is read: the error action.
 func TestAnUnknownActionIsMisuse(t *testing.T) {
 	t.Parallel()
-	misuse(t, mediator.Resolution{Action: "approved", Answer: "yes", Salt: salt16}, mediator.CodeAction)
+	misuse(t, mediator.Resolution{Action: "approved", Answer: "yes", Salt: answerSalt}, mediator.CodeAction)
 	misuse(t, mediator.Resolution{Action: "undeliverable"}, mediator.CodeAction)
-	misuse(t, mediator.Resolution{Action: "Accepted", Answer: "yes", Salt: salt16[:3]}, mediator.CodeAction)
+	misuse(t, mediator.Resolution{Action: "Accepted", Answer: "yes", Salt: answerSalt[:3]}, mediator.CodeAction)
 	misuse(t, mediator.Resolution{}, mediator.CodeAction)
 }
 
@@ -196,7 +221,7 @@ func TestTheRowsComeBeforeMisuse(t *testing.T) {
 	t.Parallel()
 	m := found(t)
 	q := ask(t, m, 1, "p-1", "2026-11-12T09:00:00Z")
-	bad := mediator.Resolution{Action: "approved", Salt: salt16[:1]}
+	bad := mediator.Resolution{Action: "approved", Salt: answerSalt[:1]}
 	if _, err := m.Resolve(ptesting.Key(t, "stranger").Reference(), q, bad, "2026-11-12T09:01:00Z"); !rejected(err, mediator.NotAMember) {
 		t.Fatalf("a stranger: %v", err)
 	}

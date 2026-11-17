@@ -38,7 +38,7 @@ func TestSigningBytesOfAnObjectAreCanonical(t *testing.T) {
 	t.Parallel()
 	object := []byte("{ \"\uff61\": [3, true], \"\U0001F600\": \"<&\u2028\", \"<&\u2028\": 1, \"sig\": \"00\" }")
 	canonical := "{\"<&\xe2\x80\xa8\":1,\"\xf0\x9f\x98\x80\":\"<&\xe2\x80\xa8\",\"\xef\xbd\xa1\":[3,true]}"
-	want := []byte("DSSEv1 35 " + TypeDeclaration + " 41 " + canonical)
+	want := []byte("DSSEv1 36 " + TypeDeclaration + " 41 " + canonical)
 	got, err := SigningBytes(object, TypeDeclaration)
 	if err != nil || !bytes.Equal(got, want) {
 		t.Fatalf("got %q, %v; want %q", got, err, want)
