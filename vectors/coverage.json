@@ -73,7 +73,7 @@
     "scenarios": {"a card that loads a check": {"vectors": ["founding/card-loads-a-check"]}, "a member the card does not list": {"vectors": ["founding/card-unlisted-member"]}, "a card of another spec": {"vectors": ["founding/a-card-of-another-spec"]}, "a judge the card names twice": {"vectors": ["founding/card-judge-name-twice"], "tests": ["core/setup:TestCardJudgeNameTwice"]}}
   },
   "setup-contract-5": {
-    "vectors": ["founding/ask-and-log", "founding/ask-and-log-later", "founding/policy-role-nobody-holds", "founding/compose", "founding/policy-without-roles", "founding/own-no", "founding/long-wait", "founding/unanswered", "founding/answer-under-maybe", "founding/a-role-held-not-required"],
+    "vectors": ["founding/ask-and-log", "founding/ask-and-log-later", "founding/policy-role-nobody-holds", "founding/compose", "founding/policy-without-roles", "founding/own-no", "founding/long-wait", "founding/unanswered", "founding/answer-under-maybe", "founding/two-waits", "founding/a-role-held-not-required"],
     "scenarios": {"the same set twice": {"vectors": ["founding/ask-and-log", "founding/ask-and-log-later"]}, "a role held that the policy does not require": {"vectors": ["founding/a-role-held-not-required"]}, "a policy role nobody holds": {"vectors": ["founding/policy-role-nobody-holds"]}}
   },
   "setup-contract-6": {
@@ -344,5 +344,25 @@
   "log-2": {
     "tests": ["adapters/cli:TestLogAllEveryCrossingInJournalOrder", "adapters/cli:TestLogAllJoinsByDigestAndByEnvelope", "adapters/export:TestAllColumns"],
     "scenarios": {"every crossing in journal order": {"tests": ["adapters/cli:TestLogAllEveryCrossingInJournalOrder"]}, "content by digest and by envelope, never by time": {"tests": ["adapters/cli:TestLogAllJoinsByDigestAndByEnvelope"]}}
+  },
+  "close-1": {
+    "vectors": ["close/three-questions-one-past-its-deadline", "close/a-close-cut-short-verifies"],
+    "tests": ["core/mediator:TestCloseClosesOpenQuestionsFirst", "core/mediator:TestCloseAfterTornClose"],
+    "scenarios": {"three questions, one past its deadline": {"vectors": ["close/three-questions-one-past-its-deadline"], "tests": ["core/mediator:TestCloseClosesOpenQuestionsFirst"]}, "a close cut short": {"tests": ["core/mediator:TestCloseAfterTornClose"]}}
+  },
+  "close-2": {
+    "vectors": ["close/every-chain-and-every-delivery-not-fetched", "close/an-accord-with-no-receipts", "close/three-questions-one-past-its-deadline"],
+    "tests": ["core/receipts:TestBuildCloseStatement", "core/mediator:TestCloseListsChainsAndUnfetched"],
+    "scenarios": {"the anatomy of a close": {"tests": ["core/receipts:TestBuildCloseStatement"]}, "every chain and every delivery not fetched": {"vectors": ["close/every-chain-and-every-delivery-not-fetched"], "tests": ["core/mediator:TestCloseListsChainsAndUnfetched"]}}
+  },
+  "close-3": {
+    "vectors": ["close/a-give-and-an-answer-after-the-close", "close/fetches-after-the-close"],
+    "tests": ["core/mediator:TestClosedRefusesGiveAndResolve", "core/mediator:TestReloadOfClosedRecordWritesNothing"],
+    "scenarios": {"a give and an answer after the close": {"vectors": ["close/a-give-and-an-answer-after-the-close"], "tests": ["core/mediator:TestClosedRefusesGiveAndResolve"]}, "fetches after the close": {"vectors": ["close/fetches-after-the-close"], "tests": ["core/mediator:TestClosedGetHandsOutThenClose"]}, "a restart on a closed record": {"tests": ["core/mediator:TestReloadOfClosedRecordWritesNothing"]}}
+  },
+  "close-4": {
+    "vectors": ["close/a-closed-list-verifies", "close/a-receipt-after-the-close", "close/a-second-close", "close/a-seq-that-is-not-its-chains-last", "close/a-chain-left-out", "close/a-chain-the-list-does-not-hold", "close/chains-out-of-pair-order", "close/an-unfetched-that-queued-nothing", "close/an-unfetched-to-another-member", "close/an-unfetched-named-twice", "close/an-at-other-than-its-closings", "close/a-closed-closing-followed-by-a-give", "conform/close-a-closed-closing-conforms", "conform/close-a-closing-at-its-deadline", "conform/close-a-close-of-another-accord"],
+    "tests": ["core/receipts:TestVerifyAfterClose", "core/receipts:TestVerifyCloseMismatch", "core/receipts:TestVerifySubsetWithClose", "core/conform:TestClosedClosingConforms"],
+    "scenarios": {"a receipt after the close": {"vectors": ["close/a-receipt-after-the-close", "close/a-second-close"], "tests": ["core/receipts:TestVerifyAfterClose"]}, "a close that does not match its list": {"vectors": ["close/a-seq-that-is-not-its-chains-last", "close/a-chain-left-out", "close/a-chain-the-list-does-not-hold", "close/chains-out-of-pair-order", "close/an-unfetched-that-queued-nothing", "close/an-unfetched-to-another-member", "close/an-unfetched-named-twice", "close/an-at-other-than-its-closings", "close/a-closed-closing-followed-by-a-give"], "tests": ["core/receipts:TestVerifyCloseMismatch"]}, "complete against the close": {"vectors": ["close/a-closed-list-verifies"], "tests": ["core/receipts:TestVerifySubsetWithClose", "adapters/cli:TestVerifyCompleteLine"]}, "a successor that pins the close": {"tests": ["adapters/cli:TestVerifySupersededBy"]}}
   }
 }

@@ -213,6 +213,8 @@ const (
 	PayloadType     = "application/vnd.in-toto+json"
 	StatementType   = "https://in-toto.io/Statement/v1"
 	PredicateType   = Root + "receipt/" + Spec
+	// ClosePredicateType is the predicate type of a close receipt (close-2).
+	ClosePredicateType = Root + "close/" + Spec
 )
 
 // Unsigned returns o without its sig member.

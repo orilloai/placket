@@ -12,13 +12,15 @@ import (
 	"github.com/orilloai/placket/core/composition"
 	"github.com/orilloai/placket/core/mediator"
 	vreceipts "github.com/orilloai/placket/core/receipts"
+	"github.com/orilloai/placket/core/signing"
 )
 
 func init() { registered["scenario"] = runScenario }
 
 // runScenario founds one mediator and applies the steps in order, comparing each step's outcome,
 // then the final receipts, deliveries and open questions, and verifies the final receipts under the
-// mediator's reference (conformance-vectors-3).
+// mediator's reference (conformance-vectors-3). A close step closes the Accord and the steps after
+// it run on the closed mediator.
 func runScenario(v Vector) []Part {
 	m, _ := membersOf(v.Bytes)
 	keys, ok := keysOf(m)
@@ -74,6 +76,10 @@ func runScenario(v Vector) []Part {
 				got = jsonOf(map[string]any{"error": err.Error()})
 			case d == nil:
 				got = []byte(`{"none":true}`)
+				// Once the Accord is closed, a fetch that finds nothing queued returns the close (close-3).
+				if c, ok := med.Closed(); ok {
+					got = jsonOf(map[string]any{"close": closeOf(c)})
+				}
 			default:
 				got = append(append([]byte(`{"delivery":`), d...), '}')
 			}
@@ -94,6 +100,12 @@ func runScenario(v Vector) []Part {
 					list = append(list, json.RawMessage(outcome(o, nil)))
 				}
 				got = jsonOf(map[string]any{"receipts": list})
+			}
+			parts = append(parts, compare(name, got, s["expect"]))
+		case "close":
+			closed, got := closeStep(med, set, key, m.str("foundedAt"), s.str("at"))
+			if closed != nil {
+				med = closed
 			}
 			parts = append(parts, compare(name, got, s["expect"]))
 		default:
@@ -145,6 +157,43 @@ func runScenario(v Vector) []Part {
 		parts = append(parts, Part{Name: "final.verified"})
 	}
 	return parts
+}
+
+// closeStep runs a close step (conformance-vectors-3, close-1): it closes the Accord from the record
+// the running mediator holds, as a journal would keep it: every receipt in order, each open question
+// with its deadline and roles as the mediator's own reference reads them, and each delivery not yet
+// fetched, in the order of the receipts that queued it. It returns the closed mediator, or nil, and
+// the closings' outcomes and the close receipt as a vector states them, or the error.
+func closeStep(med *mediator.Mediator, set []byte, key signing.Key, foundedAt, at string) (*mediator.Mediator, []byte) {
+	list := med.Receipts()
+	var open []mediator.Open
+	for _, id := range med.Pending() {
+		q, ok, err := med.Question(key.Reference(), id)
+		if err != nil || !ok {
+			return nil, jsonOf(map[string]any{"error": "the open question " + id + " does not read"})
+		}
+		open = append(open, mediator.Open{Question: q.ID, Deadline: q.Deadline, Roles: q.Roles})
+	}
+	var deliveries []mediator.Queued
+	for _, r := range list {
+		if q, ok := med.Queued(receiptID(r)); ok {
+			deliveries = append(deliveries, q)
+		}
+	}
+	closed, outs, c, err := mediator.Close(set, list, open, deliveries, foundedAt, key, at)
+	if err != nil {
+		return nil, outcome(mediator.Outcome{}, err)
+	}
+	receipts := []any{}
+	for _, o := range outs {
+		receipts = append(receipts, json.RawMessage(outcome(o, nil)))
+	}
+	return closed, jsonOf(map[string]any{"receipts": receipts, "close": closeOf(c)})
+}
+
+// closeOf writes a close receipt and its id as a vector states it (close-2).
+func closeOf(c mediator.Closed) map[string]any {
+	return map[string]any{"receiptId": c.ID, "receipt": json.RawMessage(c.Receipt)}
 }
 
 // outcome writes a receipt's outcome, or a rejection, as a vector states it.
@@ -238,11 +287,13 @@ func pairing(s members) string {
 	return ""
 }
 
-// receiptID reads a receipt's id without verifying it.
+// receiptID reads a receipt's id without verifying it, a close receipt's included (close-2).
 func receiptID(r []byte) string {
-	s, err := vreceipts.Decode(r)
-	if err != nil {
-		return ""
+	if s, err := vreceipts.Decode(r); err == nil {
+		return s.ID
 	}
-	return s.ID
+	if c, err := vreceipts.DecodeClose(r); err == nil {
+		return c.ID
+	}
+	return ""
 }
