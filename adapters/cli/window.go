@@ -94,6 +94,8 @@ func (r *run) event(e local.Event, operator string) {
 		fmt.Fprintln(r.stderr, op+" "+LineRejected+" "+string(e.Rejection))
 	case e.Error != "":
 		fmt.Fprintln(r.stderr, op+" "+LineError+" "+string(e.Error))
+	case e.Door != "":
+		fmt.Fprintln(r.stderr, op+" "+LineDoor+" "+string(e.Door))
 	case e.Fetched != "":
 		fmt.Fprintln(r.stderr, op+" "+wordFetched+" "+e.Fetched)
 	case len(e.Outcomes) == 0:
