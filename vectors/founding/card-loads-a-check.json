@@ -8,31 +8,34 @@
       {
         "actor": "ed25519:375dea8c4519dbae84fc9eb513e97eb4b693968ef37d52ac10da7b79250c6a22",
         "mediator": "ed25519:84254f9d593b0f7811b18c00b656a70fe1a9595ed353c73286ea83d300226ed3",
+        "policy": "sha256:9be7866811163fb218273cc74fffb0b0ec6d5fa57ed79dd2bd2b599e9da56550",
         "principal": "ed25519:7953e3ee4311c21f4990662dbe506689868533db6fb93a77351351e8d6119574",
         "roles": [
           "decider"
         ],
-        "sig": "5a1324b8d219b11017d61cb89d2bef3a5f7b58602679419d2a14e804beb1aacb6d2b303e468a936bb2f0fd62f67b6dfd8acc695839dd7456bb62e87e1862830f",
+        "sig": "1033a979f6884fbea987be8044b90a286e22b397005c5d84829d0b1ed78def26540dea9755f4018fc188c37ccf8b1eb09fd601baae46ce3d2fbb8e2856526808",
         "until": "2027-11-12T00:00:00Z"
       },
       {
         "actor": "ed25519:7cf35b36b9d57c62b9f3d5be2eb4d39147afa1b7625cd0032443523254df3bea",
         "mediator": "ed25519:84254f9d593b0f7811b18c00b656a70fe1a9595ed353c73286ea83d300226ed3",
+        "policy": "sha256:9be7866811163fb218273cc74fffb0b0ec6d5fa57ed79dd2bd2b599e9da56550",
         "principal": "ed25519:7953e3ee4311c21f4990662dbe506689868533db6fb93a77351351e8d6119574",
         "roles": [
           "proposer"
         ],
-        "sig": "f8fca8535231bec534f63dd94a5f9148c5ecbb34b8067691e1dd9ebc56559bed9a0f00a129e5a44c23f5fa441e60d51c23a0a32209b46635f54844295798b706",
+        "sig": "ca0af443f35dafb99510fb4765905a8b46b17dba00f900ef4b13b5f0ac188241a43cacf765f30cb6ef31bf2758131733e98c69c1a102beca2ec62f36c3ae7204",
         "until": "2027-11-12T00:00:00Z"
       },
       {
         "actor": "ed25519:a80586279ba17c5360b029018bf025be0169fdb02087e77301774c99eed92117",
         "mediator": "ed25519:84254f9d593b0f7811b18c00b656a70fe1a9595ed353c73286ea83d300226ed3",
+        "policy": "sha256:9be7866811163fb218273cc74fffb0b0ec6d5fa57ed79dd2bd2b599e9da56550",
         "principal": "ed25519:7953e3ee4311c21f4990662dbe506689868533db6fb93a77351351e8d6119574",
         "roles": [
           "applier"
         ],
-        "sig": "59b40e37b4e9f574d968ce6e17584a87a4fcf36e400c6b6b57a61088459a43f615fde22dbe5c5e59c4301a5f815010d7fe635c701e9339be15c792adad484004",
+        "sig": "7e58eb490b4e969502b33f083581ee8f6bc9d75560e6019f1e16395d0dbd1048de4da5f3aec20d39bad108d3e1bddfe8e2d187bceb3ca70341e3a65816e2c809",
         "until": "2027-11-12T00:00:00Z"
       }
     ],
@@ -160,7 +163,14 @@
     },
     "policy": {
       "principals": [
-        "ed25519:7953e3ee4311c21f4990662dbe506689868533db6fb93a77351351e8d6119574"
+        {
+          "principal": "ed25519:7953e3ee4311c21f4990662dbe506689868533db6fb93a77351351e8d6119574",
+          "roles": [
+            "proposer",
+            "applier",
+            "decider"
+          ]
+        }
       ],
       "roles": [
         "proposer",

@@ -77,6 +77,9 @@ want='^== 1\.
 ^verifier: verified 13 receipts$
 ^verifier: operator ed25519:[0-9a-f]{64} runs process$
 ^verifier: module 0\.1\.0 sha256:
+^verifier: member ed25519:[0-9a-f]{64} roles (proposer|applier|decider) principal ed25519:[0-9a-f]{64}$
+^verifier: member ed25519:[0-9a-f]{64} roles (proposer|applier|decider) principal ed25519:[0-9a-f]{64}$
+^verifier: member ed25519:[0-9a-f]{64} roles (proposer|applier|decider) principal ed25519:[0-9a-f]{64}$
 ^verifier: pass 6 block 3 ask 4$
 ^verifier: questions closed 4 open 0$
 ^verifier: releases 2 blocked releases 0$
@@ -110,6 +113,15 @@ fi
 demo=$root/scripts/demo
 if "$tmp/run/placket" verify --mediator "$(cat "$demo/mediator.ref")" --receipts "$demo/journal" --founding "$demo/founding.json" >"$tmp/verify" 2>&1; then
 	echo "ok   the committed demo journal verifies"
+	# One principal stands behind all three members: three member lines, one principal among them.
+	if [ "$(grep -cE '^member ed25519:[0-9a-f]{64} roles (proposer|applier|decider) principal ed25519:[0-9a-f]{64}$' "$tmp/verify")" -eq 3 ] &&
+		[ "$(awk '$1 == "member" { print $6 }' "$tmp/verify" | sort -u | wc -l)" -eq 1 ]; then
+		echo "ok   the committed demo journal's members have one principal"
+	else
+		echo "FAIL the committed demo journal's members are not three under one principal"
+		sed 's/^/    | /' "$tmp/verify"
+		failed=1
+	fi
 else
 	echo "FAIL the committed demo journal does not verify"
 	sed 's/^/    | /' "$tmp/verify"

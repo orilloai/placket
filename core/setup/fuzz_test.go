@@ -6,8 +6,9 @@ import (
 	"github.com/orilloai/placket/core/setup"
 )
 
-// FuzzAccordReads reads any actor's membership, roles and terms in the ask-and-log Accord. It never
-// panics; an actor who is not a member has no role and no term, and a member has both.
+// FuzzAccordReads reads any actor's membership, roles, principal and terms in the ask-and-log Accord.
+// It never panics; an actor who is not a member has no role, no principal and no term, and a member
+// has all three.
 func FuzzAccordReads(f *testing.F) {
 	v := vectors(f)["ask-and-log"]
 	a, err := setup.Found(v.set(), v.FoundedAt)
@@ -26,9 +27,9 @@ func FuzzAccordReads(f *testing.F) {
 		for _, m := range a.Members() {
 			member = member || m == actor
 		}
-		roles, terms := a.Roles(actor), a.Terms(actor)
-		if a.Member(actor) != member || member != (len(roles) > 0) || member != (len(terms) > 0) {
-			t.Fatalf("%q: member %v, %d roles, %d terms", actor, a.Member(actor), len(roles), len(terms))
+		roles, terms, principal := a.Roles(actor), a.Terms(actor), a.Principal(actor)
+		if a.Member(actor) != member || member != (len(roles) > 0) || member != (len(terms) > 0) || member != (principal != "") {
+			t.Fatalf("%q: member %v, %d roles, %d terms, principal %q", actor, a.Member(actor), len(roles), len(terms), principal)
 		}
 	})
 }

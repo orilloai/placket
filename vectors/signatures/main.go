@@ -42,7 +42,7 @@ func declaration() kit.Obj {
 func binding(t string) kit.Obj {
 	b := kit.Obj{
 		"actor": kit.Proposer.Ref, "principal": kit.Principal.Ref, "roles": []any{"proposer"},
-		"mediator": kit.Mediator.Ref, "until": kit.Until,
+		"policy": kit.HashOf(kit.AskAndLog().Policy()), "mediator": kit.Mediator.Ref, "until": kit.Until,
 	}
 	return kit.Signed(b, t, kit.Principal)
 }

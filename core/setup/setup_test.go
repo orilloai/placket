@@ -80,8 +80,8 @@ func TestErrorTextQuotesNoInput(t *testing.T) {
 	if err == nil || err.Error() != "setup: at" {
 		t.Fatalf("a founding time that breaks the timestamp rule: %v", err)
 	}
-	if len(codes) != 15 {
-		t.Fatalf("the vectors trigger %d of the 15 founding codes", len(codes))
+	if len(codes) != 17 {
+		t.Fatalf("the vectors trigger %d of the 17 founding codes", len(codes))
 	}
 }
 

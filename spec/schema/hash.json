@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://placket.dev/schema/0.1/hash.json",
   "title": "Typed hash",
-  "description": "sha256: and the SHA-256 of a value's canonical bytes in lowercase hex (canonical-3). Accord ids, card hashes, message hashes and receipt ids are typed hashes.",
+  "description": "sha256: and the SHA-256 of a value's canonical bytes in lowercase hex (canonical-3). Accord ids, card hashes, message hashes, receipt ids and the policy a binding names are typed hashes.",
   "type": "string",
   "pattern": "^sha256:[0-9a-f]{64}$"
 }

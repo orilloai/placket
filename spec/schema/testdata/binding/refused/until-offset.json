@@ -1,6 +1,7 @@
 {
   "actor": "ed25519:810950cac0d0a30abe5ced6fdf42b93bb3da913b29d142a20ef043ca9691cd31",
   "mediator": "ed25519:22cdf8245c3ce6fb391597095e59b2eb3e3cdfda6ab4b606cc3acd9d2d40ed77",
+  "policy": "sha256:9be7866811163fb218273cc74fffb0b0ec6d5fa57ed79dd2bd2b599e9da56550",
   "principal": "ed25519:534b70c488c3bdeb57b19682f11c7d18cdb43087760a253b4fb0cb8f6d251b99",
   "roles": [
     "applier"

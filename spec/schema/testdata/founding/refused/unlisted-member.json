@@ -3,6 +3,7 @@
     {
       "actor": "ed25519:810950cac0d0a30abe5ced6fdf42b93bb3da913b29d142a20ef043ca9691cd31",
       "mediator": "ed25519:22cdf8245c3ce6fb391597095e59b2eb3e3cdfda6ab4b606cc3acd9d2d40ed77",
+      "policy": "sha256:70bc0590530f596165c5055c148f9ca76866100bea17f8f3e028c0119dc3b55a",
       "principal": "ed25519:534b70c488c3bdeb57b19682f11c7d18cdb43087760a253b4fb0cb8f6d251b99",
       "roles": [
         "applier"
@@ -13,6 +14,7 @@
     {
       "actor": "ed25519:bd1f151e8df833afd6d6758375655dfdf2099acc4bc9100b0f292937773b3b0a",
       "mediator": "ed25519:22cdf8245c3ce6fb391597095e59b2eb3e3cdfda6ab4b606cc3acd9d2d40ed77",
+      "policy": "sha256:70bc0590530f596165c5055c148f9ca76866100bea17f8f3e028c0119dc3b55a",
       "principal": "ed25519:534b70c488c3bdeb57b19682f11c7d18cdb43087760a253b4fb0cb8f6d251b99",
       "roles": [
         "proposer"
@@ -23,6 +25,7 @@
     {
       "actor": "ed25519:f6d4d58bc4586df0ad896a617867d6e12e2ec318bf26edd23a1f18de99039f41",
       "mediator": "ed25519:22cdf8245c3ce6fb391597095e59b2eb3e3cdfda6ab4b606cc3acd9d2d40ed77",
+      "policy": "sha256:70bc0590530f596165c5055c148f9ca76866100bea17f8f3e028c0119dc3b55a",
       "principal": "ed25519:534b70c488c3bdeb57b19682f11c7d18cdb43087760a253b4fb0cb8f6d251b99",
       "roles": [
         "decider"
@@ -147,15 +150,22 @@
     "operator": "ed25519:1d3ad8a548b300920ee217ac79ad61a527a0d388f28f6deb76828cca2d3d13d0",
     "runs": "process"
   },
+  "models": [],
   "policy": {
     "principals": [
-      "ed25519:534b70c488c3bdeb57b19682f11c7d18cdb43087760a253b4fb0cb8f6d251b99"
+      {
+        "principal": "ed25519:534b70c488c3bdeb57b19682f11c7d18cdb43087760a253b4fb0cb8f6d251b99",
+        "roles": [
+          "applier",
+          "decider",
+          "proposer"
+        ]
+      }
     ],
     "roles": [
       "applier",
       "decider",
       "proposer"
     ]
-  },
-  "models": []
+  }
 }

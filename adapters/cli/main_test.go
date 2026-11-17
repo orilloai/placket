@@ -116,16 +116,37 @@ const peerTerms = `{"terms":[{"stance":"want","dir":"give","with":["role:peer"],
 
 // newAccord makes an Accord of the parties, each holding the role of its own name, or peer for a
 // party with no terms of its own; mediator, operator and principal keys besides. A party's terms
-// are the worked example's or those of the comment tests (commentTerms).
+// are the worked example's or those of the comment tests (commentTerms). One principal stands behind
+// every party.
 func newAccord(t testing.TB, parties ...string) *accord {
 	t.Helper()
+	return newAccordBy(t, nil, parties...)
+}
+
+// newAccordBy makes an Accord as newAccord does, but the binding of each party named in by is signed
+// by the principal by names, and the policy has one entry per principal, which may grant the roles
+// of the parties it binds. A party by does not name is bound by principal.
+func newAccordBy(t testing.TB, by map[string]string, parties ...string) *accord {
+	t.Helper()
+	principalOf := func(p string) string {
+		if pr, ok := by[p]; ok {
+			return pr
+		}
+		return "principal"
+	}
 	d, err := os.MkdirTemp("/tmp", "plk")
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = os.RemoveAll(d) })
 	a := &accord{dir: d, refs: map[string]string{}}
-	for _, k := range append([]string{"mediator", "operator", "principal", "stranger"}, parties...) {
+	names := []string{"mediator", "operator", "principal", "stranger"}
+	for _, p := range parties {
+		if pr := principalOf(p); !contains(names, pr) {
+			names = append(names, pr)
+		}
+	}
+	for _, k := range append(names, parties...) {
 		a.refs[k] = strings.TrimSpace(must(t, "key", "new", "--out", a.key(k)).stdout)
 	}
 	write := func(name, s string) string {
@@ -135,9 +156,9 @@ func newAccord(t testing.TB, parties ...string) *accord {
 		}
 		return p
 	}
-	var roles []string
-	args := []string{"founding"}
-	for _, p := range parties {
+	var roles, principals []string
+	grants := map[string][]string{}
+	termsOf := func(p string) (string, string) {
 		terms, role := sixTerms[p], p
 		if more, ok := commentTerms[p]; ok {
 			terms = more
@@ -145,16 +166,36 @@ func newAccord(t testing.TB, parties ...string) *accord {
 		if terms == "" {
 			terms, role = peerTerms, "peer"
 		}
+		return terms, role
+	}
+	for _, p := range parties {
+		_, role := termsOf(p)
 		if !contains(roles, role) {
 			roles = append(roles, role)
 		}
+		pr := principalOf(p)
+		if !contains(principals, pr) {
+			principals = append(principals, pr)
+		}
+		if !contains(grants[pr], role) {
+			grants[pr] = append(grants[pr], role)
+		}
+	}
+	var entries []any
+	for _, pr := range principals {
+		entries = append(entries, map[string]any{"principal": a.refs[pr], "roles": grants[pr]})
+	}
+	pb, _ := json.Marshal(map[string]any{"roles": roles, "principals": entries})
+	policy := write("policy.json", string(pb))
+	args := []string{"founding"}
+	for _, p := range parties {
+		terms, role := termsOf(p)
 		decl := must(t, "declare", "--key", a.key(p), "--terms", write(p+".terms", terms)).stdout
-		bind := must(t, "bind", "--key", a.key("principal"), "--actor", a.refs[p], "--role", role, "--mediator", a.refs["mediator"], "--until", "2099-01-01T00:00:00Z").stdout
+		bind := must(t, "bind", "--key", a.key(principalOf(p)), "--actor", a.refs[p], "--role", role, "--mediator", a.refs["mediator"], "--until", "2099-01-01T00:00:00Z", "--policy", policy).stdout
 		args = append(args, "--declaration", write(p+".declaration", decl), "--binding", write(p+".binding", bind))
 	}
-	rb, _ := json.Marshal(roles)
 	args = append(args,
-		"--policy", write("policy.json", `{"roles":`+string(rb)+`,"principals":["`+a.refs["principal"]+`"]}`),
+		"--policy", policy,
 		"--mediator", write("mediator.json", `{"actor":"`+a.refs["mediator"]+`","operator":"`+a.refs["operator"]+`","runs":"process"}`),
 		"--card", write("card.json", must(t, "card", "--default").stdout))
 	r := must(t, args...)
