@@ -17,7 +17,7 @@
             ]
           },
           "receiptId": "sha256:81a7aea85d587fd98eb3b08c1e4153e2ce9684ec95a4cdbe0b55f56ba2e55642",
-          "salt": "01e3b0c44298fc1c149afbf4c8996fb9",
+          "salt": "01e3b0c44298fc1c149afbf4c8996fb9951406cb7282039fc0a3b2fab32604e5",
           "text": "accepted"
         }
       ]
@@ -271,11 +271,11 @@
       },
       "message": {
         "extensions": [
-          "https://placket.dev/crossing/0.1"
+          "https://placket.tech/crossing/0.1"
         ],
         "messageId": "6f1c2a4e-8d3b-4f7a-9c21-0b5e7d9a3f10",
         "metadata": {
-          "https://placket.dev/crossing/0.1": {
+          "https://placket.tech/crossing/0.1": {
             "accord": "sha256:26f6de282cb5b5b3f9e4d93046306b95974e796572c6aee9e10aec0652567189",
             "to": "ed25519:810950cac0d0a30abe5ced6fdf42b93bb3da913b29d142a20ef043ca9691cd31",
             "topic": "invoices"
@@ -284,15 +284,15 @@
         "parts": [
           {
             "metadata": {
-              "https://placket.dev/crossing/0.1": {
+              "https://placket.tech/crossing/0.1": {
                 "kind": "proposal",
-                "salt": "e3b0c44298fc1c149afbf4c8996fb924"
+                "salt": "e3b0c44298fc1c149afbf4c8996fb9242646036bb22781536be710245c8cbb04"
               }
             },
             "text": "Rename the field total to amount in invoices."
           }
         ],
-        "role": "ROLE_AGENT"
+        "role": "ROLE_USER"
       },
       "op": "give"
     },
@@ -340,7 +340,7 @@
       "op": "resolve",
       "question": "sha256:b6499fa4068d3595115eee30fd1ab3622c6000804991f643ff2d7303e9a7a528",
       "release": true,
-      "salt": "01e3b0c44298fc1c149afbf4c8996fb9"
+      "salt": "01e3b0c44298fc1c149afbf4c8996fb9951406cb7282039fc0a3b2fab32604e5"
     },
     {
       "as": "applier",
@@ -359,7 +359,7 @@
             ]
           },
           "receiptId": "sha256:fba1bd9e86a76f8c4dc52ce7fee190479689d65574b674ea5645a63f06fd3402",
-          "salt": "e3b0c44298fc1c149afbf4c8996fb924",
+          "salt": "e3b0c44298fc1c149afbf4c8996fb9242646036bb22781536be710245c8cbb04",
           "text": "Rename the field total to amount in invoices."
         }
       },

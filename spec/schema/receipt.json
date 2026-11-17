@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://placket.dev/schema/0.1/receipt.json",
+  "$id": "https://placket.tech/schema/0.1/receipt.json",
   "title": "Receipt",
   "description": "A DSSE envelope (DSSE 1.0) whose payload is the canonical bytes of a receipt statement in standard base64, signed once, by the mediator, under the payload type application/vnd.in-toto+json (receipt-1). The statement inside is described by statement.json; a schema cannot decode base64.",
   "type": "object",

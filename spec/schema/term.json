@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://placket.dev/schema/0.1/term.json",
+  "$id": "https://placket.tech/schema/0.1/term.json",
   "title": "Term",
   "description": "One side of what may cross (setup-contract-1, composition-1): a stance, a direction, the roles of the other side, the kinds it selects, and for a maybe the rule that resolves it. checks is a reserved slot: a v1 card loads no check, so founding refuses any term that names one (setup-contract-1).",
   "type": "object",

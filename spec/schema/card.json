@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://placket.dev/schema/0.1/card.json",
+  "$id": "https://placket.tech/schema/0.1/card.json",
   "title": "Card",
   "description": "What can change a verdict under an Accord, hashed into every receipt (setup-contract-4): the protocol version, the decision module's kernel, and two reserved lists. judges is read for shape only. checks names the checks the module loads; it is empty in v1.",
   "type": "object",

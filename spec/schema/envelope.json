@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://placket.dev/schema/0.1/envelope.json",
+  "$id": "https://placket.tech/schema/0.1/envelope.json",
   "title": "Envelope",
-  "description": "The sender's signed claim to one submission (crossing-4): its sequence number in this Accord and the typed hash of the message's canonical bytes, signed by the sender under https://placket.dev/envelope/0.1.",
+  "description": "The sender's signed claim to one submission (crossing-4): its sequence number in this Accord and the typed hash of the message's canonical bytes, signed by the sender under https://placket.tech/envelope/0.1.",
   "type": "object",
   "properties": {
     "seq": {

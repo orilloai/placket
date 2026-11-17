@@ -17,7 +17,7 @@
     "to": "ed25519:810950cac0d0a30abe5ced6fdf42b93bb3da913b29d142a20ef043ca9691cd31",
     "verdict": "escalate"
   },
-  "predicateType": "https://placket.dev/receipt/0.2",
+  "predicateType": "https://placket.tech/receipt/0.2",
   "subject": [
     {
       "digest": {

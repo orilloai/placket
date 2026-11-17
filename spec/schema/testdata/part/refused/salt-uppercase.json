@@ -1,8 +1,8 @@
 {
   "metadata": {
-    "https://placket.dev/crossing/0.1": {
+    "https://placket.tech/crossing/0.1": {
       "kind": "proposal",
-      "salt": "ABABABABABABABABABABABABABABABAB"
+      "salt": "ABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABAB"
     }
   },
   "text": "Rename the field total to amount in invoices."

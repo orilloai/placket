@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://placket.dev/schema/0.1/part.json",
+  "$id": "https://placket.tech/schema/0.1/part.json",
   "title": "Part",
-  "description": "The one part of a crossing message (crossing-2): exactly one body, as text, as raw bytes in standard base64, or as a JSON value, and under the crossing extension its kind and its salt of at least 16 bytes in lowercase hex. A url body counts as the one body, so a part with url and another body has two, and a part whose one body is url is refused by a rule of its own, since url is not a body of this version (crossing-2).",
+  "description": "The one part of a crossing message (crossing-2): exactly one body, as text, as raw bytes in standard base64, or as a JSON value, and under the crossing extension its kind and its salt of exactly 32 bytes in lowercase hex, 64 digits. A url body counts as the one body, so a part with url and another body has two, and a part whose one body is url is refused by a rule of its own, since url is not a body of this version (crossing-2).",
   "type": "object",
   "properties": {
     "text": {
@@ -22,7 +22,7 @@
     "metadata": {
       "type": "object",
       "properties": {
-        "https://placket.dev/crossing/0.1": {
+        "https://placket.tech/crossing/0.1": {
           "type": "object",
           "properties": {
             "kind": {
@@ -40,7 +40,7 @@
         }
       },
       "required": [
-        "https://placket.dev/crossing/0.1"
+        "https://placket.tech/crossing/0.1"
       ],
       "additionalProperties": false
     }
@@ -84,7 +84,7 @@
     },
     "salt": {
       "type": "string",
-      "pattern": "^(?:[0-9a-f]{2}){16,}$"
+      "pattern": "^[0-9a-f]{64}$"
     }
   }
 }
