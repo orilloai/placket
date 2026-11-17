@@ -13,4 +13,4 @@ Placket's core: the Go module `github.com/orilloai/placket/core`. It has no depe
 | `conformance` | The conformance runner, which runs every vector under `vectors/` through the packages above. |
 | `internal/shape` | The format rules the packages share, such as the timestamp rule. |
 
-`docs/adr/0005-the-core-packages.md` lists every name the packages export, `docs/adr/0006-the-mediator-package.md` says what the mediator holds, and `docs/adr/0008-reload.md` how it is rebuilt after a stop. See `docs/adr/0002-core-boundaries.md` for why the core is built this way, `docs/adr/0004-the-conformance-runner.md` for the runner, and `AGENTS.md` for the rules `make ci` checks here.
+`docs/adr/0005-the-core-packages.md` lists every name the packages export, `docs/adr/0006-the-mediator-package.md` says what the mediator holds, and `docs/adr/0008-reload.md` how it is rebuilt after a stop. See `docs/adr/0002-core-boundaries.md` for why the core is built this way, `docs/adr/0004-the-conformance-runner.md` for the runner, and `docs/rules/` for the rules `make ci` checks here.

@@ -26,7 +26,7 @@ This file is the entry point for anyone who builds or reviews placket, agents fi
 - `tests/`: the shell tests `make ci` runs, `tests/test_*.sh`, with fixtures under `tests/testdata/`.
 - `tools/guard/`: the checker behind the checks of `make ci` that read the tree. Changed only in a rules change.
 - `tools/redgreen/`: the `red-green-tests` check. Changed only in a rules change; GitHub runs `main`'s copy.
-- `scripts/`: scripts run by hand, such as the demo.
+- `scripts/`: scripts run by hand or by a workflow, such as the demo, each with its test in `tests/`.
 - `.github/`: workflows, templates and code owners. Workflows are the maintainer's alone.
 - `review/` (none yet): the review passes, the maintainer's to change.
 - `out/`: a builder's notes for the next round of a change; removed before it merges.

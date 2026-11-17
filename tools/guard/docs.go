@@ -225,11 +225,14 @@ func agentsMDShort(t *tree) []finding {
 
 // hidden names the class of a character no reader sees as it is, or "" for any other: a bidi control,
 // which reorders the text around it; a variation selector, which changes how the character before it
-// shows and can carry data unseen; or an invisible character, which shows as nothing: every format
+// shows and can carry data unseen; a NUL byte, which makes some tools take a whole text file for
+// binary and show none of it; or an invisible character, which shows as nothing: every format
 // character (Unicode's category Cf), tag characters included, and the fillers and marks that show as
 // nothing though they are not of that category.
 func hidden(r rune) string {
 	switch {
+	case r == 0:
+		return "NUL"
 	case r == 0x061C, r == 0x200E, r == 0x200F, r >= 0x202A && r <= 0x202E, r >= 0x2066 && r <= 0x2069:
 		return "bidi control"
 	case r >= 0xFE00 && r <= 0xFE0F, r >= 0xE0100 && r <= 0xE01EF:
@@ -245,9 +248,9 @@ func hidden(r rune) string {
 
 // no-hidden-text: no file of the tree outside .git/ and testdata/, tracked or not, holds a bidi
 // control character, a variation selector or an invisible character, and none is a symbolic link,
-// which could lead a reader to a file this check does not read. A file holding a NUL byte is binary
-// and not read; any other is read character by character, a byte that is not valid UTF-8 skipped, so
-// one stray byte does not hide the rest of the file. Each line holding one is named once, with each
+// which could lead a reader to a file this check does not read, and none holds a NUL byte. Every file
+// is read character by character, a byte that is not valid UTF-8 skipped, so one stray byte does not
+// hide the rest of the file. Each line holding one is named once, with each
 // such character in turn.
 func noHiddenText(t *tree) []finding {
 	var fs []finding
@@ -258,7 +261,7 @@ func noHiddenText(t *tree) []finding {
 	}
 	for _, rel := range t.files(".", []string{".git", "testdata"}, nil) {
 		b, ok := t.read(rel)
-		if !ok || bytes.IndexByte(b, 0) >= 0 || !hasHidden(b) {
+		if !ok || !hasHidden(b) {
 			continue
 		}
 		for i, l := range splitLines(string(b)) {

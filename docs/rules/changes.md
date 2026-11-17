@@ -60,7 +60,7 @@ Checked by: `make ci`, step `ci-stays-fast`: the `Makefile` refuses the nested r
 
 ## `no-hidden-text`
 
-No text file outside `testdata/`, tracked or not, holds a bidi control character or invisible Unicode, and no file there is a symbolic link.
+No text file outside `testdata/`, tracked or not, holds a bidi control character, invisible Unicode or a NUL byte, and no file there is a symbolic link.
 
 Why: such a character makes what a reviewer reads differ from what the compiler, the shell or an agent reads, and a link can lead a reader to a file the check does not read.
 

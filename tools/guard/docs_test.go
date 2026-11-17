@@ -214,10 +214,16 @@ func agentsCases(t *testing.T) []tcase {
 		{name: "broken-links", setup: func(t *testing.T, dir string) {
 			write(t, dir, "docs/notes.md", "# Notes\n\nSee docs/rules/core.md#no-such-rule.\nAnd [this](../docs/rules/gone.md#core-no-world).\n")
 			appendTo(t, dir, "docs/rules/tests.md", "\nOnce G-12.\n")
+			write(t, dir, ".github/workflows/w.yml", "# docs/rules/core.md#gone-yml\n")
+			write(t, dir, ".github/w.yaml", "# docs/rules/core.md#gone-yaml\n")
+			write(t, dir, "scripts/s.sh", "# docs/rules/core.md#gone-sh\n")
 		}, refuse: []string{"agents-md-short"}, lines: []string{
+			".github/w.yaml:1: docs/rules/core.md#gone-yaml is no heading",
+			".github/workflows/w.yml:1: docs/rules/core.md#gone-yml is no heading",
 			"docs/notes.md:3: docs/rules/core.md#no-such-rule is no heading",
 			"docs/notes.md:4: docs/rules/gone.md#core-no-world: no such file",
 			"docs/rules/tests.md:" + n(testsLines+2) + ": names G-12; a rule is named by its public name",
+			"scripts/s.sh:1: docs/rules/core.md#gone-sh is no heading",
 		}},
 		// A link to a heading that is not a rule's resolves too.
 		{name: "link-to-section", setup: func(t *testing.T, dir string) {
@@ -234,10 +240,12 @@ func TestAgentsMDShort(t *testing.T) { runCases(t, agentsCases(t)) }
 
 // no-hidden-text: a bidi control character or an invisible one in a text file outside testdata/ is
 // refused at its line, each named by its code point, a Go file and a Markdown file alike. Other
-// characters outside ASCII, a fixture under testdata/ and a binary file pass.
+// characters outside ASCII and a fixture under testdata/ pass. A NUL byte is refused wherever it is
+// in a file, and the rest of the file is still read.
 var hiddenCases = []tcase{
 	{name: "hidden-text", fixture: "hidden-text", refuse: []string{"no-hidden-text"}, lines: []string{
 		"core/h/h.go:3: holds U+202E (bidi control), U+202C (bidi control)",
+		"docs/blob.bin:1: holds U+0000 (NUL), U+202E (bidi control), U+0000 (NUL)",
 		"docs/hidden.md:3: holds U+200B (invisible)",
 		"docs/hidden.md:5: holds U+2066 (bidi control), U+2069 (bidi control), U+FEFF (invisible)",
 		"docs/hidden.md:6: holds U+E0041 (invisible)",
@@ -256,6 +264,24 @@ var hiddenCases = []tcase{
 	}, refuse: []string{"no-hidden-text"}, lines: []string{
 		"docs/vs.md:1: holds U+FE0F (variation selector), U+E0100 (variation selector)",
 		"docs/vs.md:2: holds U+FFF9 (invisible), U+1D173 (invisible)",
+	}},
+	// A NUL byte far into a text file is refused, and so is what the file holds around it.
+	{name: "hidden-nul-late", setup: func(t *testing.T, dir string) {
+		write(t, dir, "docs/late.md", "\U000e0068\U000e0069\n"+strings.Repeat("x", 8100)+"\x00\n")
+	}, refuse: []string{"no-hidden-text"}, lines: []string{
+		"docs/late.md:1: holds U+E0068 (invisible), U+E0069 (invisible)",
+		"docs/late.md:2: holds U+0000 (NUL)",
+	}},
+	// The invisible characters outside category Cf are refused too.
+	{name: "hidden-fillers", setup: func(t *testing.T, dir string) {
+		write(t, dir, "docs/fill.md", "a\u034fb\u115f\u1160\u17b4\u17b5\u3164\uffa0\n")
+	}, refuse: []string{"no-hidden-text"}, lines: []string{
+		"docs/fill.md:1: holds U+034F (invisible), U+115F (invisible), U+1160 (invisible), U+17B4 (invisible), U+17B5 (invisible), U+3164 (invisible), U+FFA0 (invisible)",
+	}},
+	// A symbolic link under testdata/ passes.
+	{name: "hidden-link-in-testdata", setup: func(t *testing.T, dir string) {
+		write(t, dir, "docs/testdata/note.md", "plain\n")
+		symlink(t, dir, "note.md", "docs/testdata/alias.md")
 	}},
 	// A symbolic link outside testdata/ is refused, whatever it leads to: here, a file under testdata/.
 	{name: "hidden-link", setup: func(t *testing.T, dir string) {
