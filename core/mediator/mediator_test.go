@@ -5,7 +5,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
-	"os"
 	"strings"
 	"testing"
 
@@ -20,19 +19,7 @@ import (
 // askAndLog is the ask-and-log founding set of vectors/founding/.
 func askAndLog(t testing.TB) ([]byte, string) {
 	t.Helper()
-	b, err := os.ReadFile("../../vectors/founding/ask-and-log.json")
-	if err != nil {
-		t.Fatal(err)
-	}
-	var v struct {
-		InputHex  string `json:"inputHex"`
-		FoundedAt string `json:"foundedAt"`
-	}
-	if err := json.Unmarshal(b, &v); err != nil {
-		t.Fatal(err)
-	}
-	set, _ := hex.DecodeString(v.InputHex)
-	return set, v.FoundedAt
+	return ptesting.Founding(t, "ask-and-log")
 }
 
 func found(t testing.TB) *mediator.Mediator {

@@ -2,9 +2,7 @@ package composition_test
 
 import (
 	"bytes"
-	"encoding/hex"
 	"encoding/json"
-	"os"
 	"testing"
 
 	"github.com/orilloai/placket/core/canonical"
@@ -18,18 +16,7 @@ import (
 // signed again by its actor.
 func withTerms(t *testing.T, added map[string][]map[string]any) *setup.Accord {
 	t.Helper()
-	b, err := os.ReadFile("../../vectors/founding/ask-and-log.json")
-	if err != nil {
-		t.Fatal(err)
-	}
-	var v struct {
-		InputHex  string `json:"inputHex"`
-		FoundedAt string `json:"foundedAt"`
-	}
-	if err := json.Unmarshal(b, &v); err != nil {
-		t.Fatal(err)
-	}
-	raw, _ := hex.DecodeString(v.InputHex)
+	raw, foundedAt := ptesting.Founding(t, "ask-and-log")
 	d := json.NewDecoder(bytes.NewReader(raw))
 	d.UseNumber()
 	var set map[string]any
@@ -64,7 +51,7 @@ func withTerms(t *testing.T, added map[string][]map[string]any) *setup.Accord {
 	if err != nil {
 		t.Fatal(err)
 	}
-	a, err := setup.Found(c, v.FoundedAt)
+	a, err := setup.Found(c, foundedAt)
 	if err != nil {
 		t.Fatal(err)
 	}

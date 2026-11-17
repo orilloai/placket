@@ -1,9 +1,6 @@
 package composition_test
 
 import (
-	"encoding/hex"
-	"encoding/json"
-	"os"
 	"testing"
 
 	"github.com/orilloai/placket/core/composition"
@@ -14,19 +11,8 @@ import (
 // accord founds a set of the founding vectors.
 func accord(t testing.TB, name string) *setup.Accord {
 	t.Helper()
-	b, err := os.ReadFile("../../vectors/founding/" + name + ".json")
-	if err != nil {
-		t.Fatal(err)
-	}
-	var v struct {
-		InputHex  string `json:"inputHex"`
-		FoundedAt string `json:"foundedAt"`
-	}
-	if err := json.Unmarshal(b, &v); err != nil {
-		t.Fatal(err)
-	}
-	set, _ := hex.DecodeString(v.InputHex)
-	a, err := setup.Found(set, v.FoundedAt)
+	set, foundedAt := ptesting.Founding(t, name)
+	a, err := setup.Found(set, foundedAt)
 	if err != nil {
 		t.Fatal(err)
 	}
