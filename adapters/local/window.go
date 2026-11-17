@@ -10,6 +10,7 @@ import (
 	"io/fs"
 	"net"
 	"os"
+	"sync"
 	"syscall"
 	"time"
 
@@ -97,7 +98,9 @@ type request struct {
 // its lock; founds the Accord at the current second on an empty journal or reloads the journal's, journaling the closings of what a stop left open; removes a stale socket
 // file; and only then listens. Every call is handled by one goroutine, which owns the mediator. A
 // journal write that fails ends Run with that error, and the call it was for gets no reply
-// (journal-synced).
+// (journal-synced); so does a failure of the mediator outside a call's refusal, when it ticks, reads
+// a question it just asked or closes one nobody can answer. An accept that fails for a reason that
+// does not pass ends Run with CodeSocket. Run returns only once every goroutine it started has ended.
 func Run(ctx context.Context, cfg Window) error {
 	if err := CheckSocket(cfg.Socket); err != nil {
 		return err
@@ -237,10 +240,18 @@ func listen(path string) (*net.UnixListener, error) {
 			return nil, &Error{Code: CodeSocket}
 		}
 	}
-	l, err := net.ListenUnix("unix", &net.UnixAddr{Name: path, Net: "unix"})
+	// The socket's mode is set to 0600 before it is bound, so on Linux the file is made mode 0600 and
+	// no other user can connect between the bind and the chmod below. A umask would do the same, but
+	// it is the whole process's and would reach every file another goroutine makes meanwhile. Where
+	// the system ignores the mode of an unbound socket, the chmod below sets it.
+	lc := net.ListenConfig{Control: func(_, _ string, c syscall.RawConn) error {
+		return c.Control(func(fd uintptr) { _ = syscall.Fchmod(int(fd), 0o600) })
+	}}
+	nl, err := lc.Listen(context.Background(), "unix", path)
 	if err != nil {
 		return nil, &Error{Code: CodeSocket}
 	}
+	l := nl.(*net.UnixListener)
 	l.SetUnlinkOnClose(false)
 	if err := os.Chmod(path, 0o600); err != nil {
 		_ = l.Close()
@@ -250,21 +261,74 @@ func listen(path string) (*net.UnixListener, error) {
 }
 
 // serve accepts connections, each read on a goroutine of its own, and handles every call on this
-// one, which owns the mediator.
+// one, which owns the mediator. It owns every goroutine it starts (goroutines-owned): when it returns,
+// it has closed the listener, cut every open connection short and waited for each goroutine to end.
+// An accept that fails for want of a file descriptor, or times out, is tried again after a pause that
+// doubles from minAcceptPause to maxAcceptPause; any other failure ends serve with CodeSocket.
 func (w *window) serve(ctx context.Context, l *net.UnixListener) error {
 	reqs := make(chan request)
 	done := make(chan struct{})
+	acceptErr := make(chan error, 1)
+	var (
+		wg     sync.WaitGroup
+		mu     sync.Mutex
+		conns  = map[net.Conn]struct{}{}
+		closed bool
+	)
 	defer func() {
 		close(done)
 		_ = l.Close()
+		mu.Lock()
+		closed = true
+		for c := range conns {
+			_ = c.SetDeadline(time.Now())
+		}
+		mu.Unlock()
+		wg.Wait()
 	}()
+	wg.Add(1)
 	go func() {
+		defer wg.Done()
+		var pause time.Duration
 		for {
 			c, err := l.Accept()
 			if err != nil {
+				select {
+				case <-done:
+					return
+				default:
+				}
+				if !temporary(err) {
+					acceptErr <- &Error{Code: CodeSocket}
+					return
+				}
+				pause = min(max(2*pause, minAcceptPause), maxAcceptPause)
+				t := time.NewTimer(pause)
+				select {
+				case <-t.C:
+					continue
+				case <-done:
+					t.Stop()
+					return
+				}
+			}
+			pause = 0
+			mu.Lock()
+			if closed {
+				mu.Unlock()
+				_ = c.Close()
 				return
 			}
-			go read(c, reqs, done)
+			conns[c] = struct{}{}
+			wg.Add(1)
+			mu.Unlock()
+			go func() {
+				defer wg.Done()
+				read(c, reqs, done)
+				mu.Lock()
+				delete(conns, c)
+				mu.Unlock()
+			}()
 		}
 	}()
 	tick := time.NewTicker(w.cfg.Idle)
@@ -273,6 +337,8 @@ func (w *window) serve(ctx context.Context, l *net.UnixListener) error {
 		select {
 		case <-ctx.Done():
 			return nil
+		case err := <-acceptErr:
+			return err
 		case <-tick.C:
 			if err := w.tick(Stamp(w.cfg.Now()), EventTick); err != nil {
 				return err
@@ -285,6 +351,19 @@ func (w *window) serve(ctx context.Context, l *net.UnixListener) error {
 			r.reply <- reply
 		}
 	}
+}
+
+// The pauses between tries of an accept that failed for a while.
+const (
+	minAcceptPause = 10 * time.Millisecond
+	maxAcceptPause = time.Second
+)
+
+// temporary reports whether an accept's failure may pass: the process or the system is out of file
+// descriptors, or the accept timed out.
+func temporary(err error) bool {
+	var ne net.Error
+	return errors.Is(err, syscall.EMFILE) || errors.Is(err, syscall.ENFILE) || (errors.As(err, &ne) && ne.Timeout())
 }
 
 // read reads one call from c, hands it to the window, and writes the reply, if one comes.
@@ -322,10 +401,14 @@ func read(c net.Conn, reqs chan<- request, done <-chan struct{}) {
 	}
 }
 
-// tick passes the time to at and journals what it closed.
+// tick passes the time to at and journals what it closed. The mediator failing to is a failure of
+// the core, which ends the window as a failed journal write does.
 func (w *window) tick(at, kind string) error {
 	outs, err := w.m.Tick(at)
-	if err != nil || len(outs) == 0 {
+	if err != nil {
+		return err
+	}
+	if len(outs) == 0 {
 		return nil
 	}
 	if err := w.j.AddReceipts(receiptsOf(outs)); err != nil {
@@ -395,8 +478,8 @@ func refused(err error, ev *Event) []byte {
 		ev.Error = me.Code
 		return refusal(byError, string(me.Code))
 	}
-	ev.Error = mediator.CodeInternal
-	return refusal(byError, string(mediator.CodeInternal))
+	ev.Door = Internal
+	return refusal(byDoor, string(Internal))
 }
 
 func (w *window) op(c Call, at string, ev *Event) ([]byte, error) {
@@ -427,7 +510,10 @@ func (w *window) give(c Call, at string, ev *Event) ([]byte, error) {
 			}
 		}
 	case string(composition.Escalate):
-		q, ok, _ := w.m.Question(w.cfg.Key.Reference(), out.ReceiptID)
+		q, ok, err := w.m.Question(w.cfg.Key.Reference(), out.ReceiptID)
+		if err != nil {
+			return nil, err
+		}
 		if ok {
 			if err := w.j.AddQuestion(mediator.Open{Question: q.ID, Deadline: q.Deadline, Roles: q.Roles}); err != nil {
 				return nil, err
@@ -441,12 +527,13 @@ func (w *window) give(c Call, at string, ev *Event) ([]byte, error) {
 	if out.Verdict == string(composition.Escalate) {
 		if l, ok := w.m.Answerers(out.ReceiptID); ok && len(l) == 0 {
 			u, err := w.m.Undeliverable(out.ReceiptID, at)
-			if err == nil {
-				if err := w.j.AddReceipts([][]byte{u.Receipt}); err != nil {
-					return nil, err
-				}
-				ev.Outcomes = append(ev.Outcomes, u)
+			if err != nil {
+				return nil, err
 			}
+			if err := w.j.AddReceipts([][]byte{u.Receipt}); err != nil {
+				return nil, err
+			}
+			ev.Outcomes = append(ev.Outcomes, u)
 		}
 	}
 	return encodeReply(wireReply{Outcome: wire(out)}), nil
@@ -516,8 +603,8 @@ func (w *window) resolve(c Call, at string, ev *Event) ([]byte, error) {
 	if r.Action == mediator.Accepted || r.Action == mediator.Changed {
 		salt = make([]byte, mediator.MinSaltBytes)
 		if _, err := io.ReadFull(w.cfg.Rand, salt); err != nil {
-			ev.Error = mediator.CodeInternal
-			return refusal(byError, string(mediator.CodeInternal)), nil
+			ev.Door = Internal
+			return refusal(byDoor, string(Internal)), nil
 		}
 		r.Salt, r.Release = salt, true
 	}

@@ -119,6 +119,9 @@ func wire(o mediator.Outcome) *wireOutcome {
 	return &wireOutcome{Reason: &o.Reason, Receipt: o.Receipt, ReceiptID: &o.ReceiptID, Verdict: &o.Verdict}
 }
 
+// internalReply is the reply when a reply cannot be encoded: a failure of the door itself.
+const internalReply = `{"door":"` + string(Internal) + `","ok":false}`
+
 // encodeReply writes a reply's canonical bytes.
 func encodeReply(w wireReply) []byte {
 	t := true
@@ -127,11 +130,11 @@ func encodeReply(w wireReply) []byte {
 	}
 	b, err := json.Marshal(w)
 	if err != nil {
-		return []byte(`{"error":"internal","ok":false}`)
+		return []byte(internalReply)
 	}
 	c, err := canonical.Form(b)
 	if err != nil {
-		return []byte(`{"error":"internal","ok":false}`)
+		return []byte(internalReply)
 	}
 	return c
 }
@@ -312,8 +315,9 @@ func (c *Client) Call(op string, args map[string]any) (Reply, error) {
 }
 
 // Send sends the bytes of one call, as given, and reads the reply. A socket path too long is
-// CodeSocketPath, and one that is not a socket of this user's is CodeSocket; nothing is sent. A reply whose outcome or release has a
-// receipt under another Accord than the client's is CodeReply.
+// CodeSocketPath, and one that is not a socket of this user's is CodeSocket; nothing is sent. A reply
+// longer than MaxReply is CodeReply, read no further, and so is a reply whose outcome or release has
+// a receipt under another Accord than the client's.
 func (c *Client) Send(line []byte) (Reply, error) {
 	timeout := c.Timeout
 	if timeout == 0 {
@@ -338,8 +342,11 @@ func (c *Client) Send(line []byte) (Reply, error) {
 	if _, err := conn.Write(append(append([]byte(nil), line...), '\n')); err != nil {
 		return Reply{}, &Error{Code: CodeSocket}
 	}
-	b, err := bufio.NewReaderSize(conn, 64<<10).ReadBytes('\n')
-	if err != nil {
+	b, err := bufio.NewReaderSize(io.LimitReader(conn, MaxReply+1), 64<<10).ReadBytes('\n')
+	switch {
+	case len(b) > MaxReply && err != nil:
+		return Reply{}, &Error{Code: CodeReply}
+	case err != nil:
 		return Reply{}, &Error{Code: CodeSocket}
 	}
 	r, ok := ParseReply(bytes.TrimSuffix(b, []byte{'\n'}))

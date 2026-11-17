@@ -44,6 +44,7 @@ import (
 	"strings"
 	"syscall"
 
+	"github.com/orilloai/placket/adapters/internal/lines"
 	"github.com/orilloai/placket/adapters/internal/strict"
 	"github.com/orilloai/placket/core/canonical"
 	"github.com/orilloai/placket/core/mediator"
@@ -615,23 +616,26 @@ func (j *Journal) TakeHeld(receiptID string) ([]byte, error) {
 // ReadReceipts reads the receipts of the journal directory dir, one per whole line of
 // receipts.jsonl, in file order, as verify, reconcile and log read them. It takes no lock and
 // writes nothing. A directory with no receipts.jsonl is no journal: CodeJournal, naming the file,
-// since every window writes one when it founds. A last line with no line feed is left out, with one
+// since every window writes one when it founds, and so is one that is not a regular file. A line
+// longer than maxLine is CodeJournal at that line. A last line with no line feed is left out, with one
 // line on stderr saying the file was cut there.
 func ReadReceipts(dir string, stderr io.Writer) ([][]byte, error) {
-	b, err := os.ReadFile(filepath.Join(dir, FileReceipts))
+	f, err := lines.Read(filepath.Join(dir, FileReceipts), maxLine)
 	if err != nil {
 		return nil, &Error{Code: CodeJournal, File: FileReceipts}
 	}
-	out := [][]byte{}
-	for {
-		i := bytes.IndexByte(b, '\n')
-		if i < 0 {
-			if len(b) > 0 {
-				fmt.Fprintf(stderr, "journal: %s line %d has no line feed; the file was cut there, and the line is left out\n", FileReceipts, len(out)+1)
-			}
-			return out, nil
-		}
-		out = append(out, b[:i:i])
-		b = b[i+1:]
+	if f.Long > 0 {
+		return nil, &Error{Code: CodeJournal, File: FileReceipts, Line: f.Long}
 	}
+	if f.Cut {
+		fmt.Fprintf(stderr, "journal: %s line %d has no line feed; the file was cut there, and the line is left out\n", FileReceipts, len(f.Lines)+1)
+	}
+	if f.Lines == nil {
+		return [][]byte{}, nil
+	}
+	return f.Lines, nil
 }
+
+// maxLine is the longest line ReadReceipts reads: local.MaxReply, the most a window replies with,
+// which holds any receipt a window writes.
+const maxLine = 4 << 20

@@ -35,6 +35,7 @@ import (
 	"strings"
 	"syscall"
 
+	"github.com/orilloai/placket/adapters/internal/lines"
 	"github.com/orilloai/placket/adapters/internal/strict"
 	"github.com/orilloai/placket/core/canonical"
 	"github.com/orilloai/placket/core/receipts"
@@ -51,18 +52,15 @@ const (
 	CodeActor Code = "state-actor"
 )
 
-// Error is a state directory that could not be used: its code, and the file at fault.
+// Error is a state directory that could not be used: its code, and the file at fault. Its text is
+// the package and the code alone; File, which may be a path, is for the caller to print.
 type Error struct {
 	Code Code
 	File string
 }
 
-func (e *Error) Error() string {
-	if e.File == "" {
-		return "state: " + string(e.Code)
-	}
-	return "state: " + string(e.Code) + ": " + e.File
-}
+// Error returns "state: " and the code.
+func (e *Error) Error() string { return "state: " + string(e.Code) }
 
 // The files of a state directory.
 const (
@@ -125,7 +123,7 @@ func Open(path, actor string, stderr io.Writer) (*Dir, error) {
 	if err := flock(f); err != nil {
 		return nil, &Error{Code: CodeState, File: FileLock}
 	}
-	b, err := os.ReadFile(d.file(FileActor))
+	b, err := readSmall(d.file(FileActor))
 	switch {
 	case errors.Is(err, fs.ErrNotExist):
 		if err := writeFile(d.file(FileActor), []byte(actor+"\n")); err != nil {
@@ -142,7 +140,7 @@ func Open(path, actor string, stderr io.Writer) (*Dir, error) {
 // Read opens the state directory at path to read it, as whatever actor its actor file names. It
 // writes nothing.
 func Read(path string) (*Dir, error) {
-	b, err := os.ReadFile(filepath.Join(path, FileActor))
+	b, err := readSmall(filepath.Join(path, FileActor))
 	if err != nil || len(b) < 2 || b[len(b)-1] != '\n' || bytes.ContainsAny(b[:len(b)-1], "\n\r") {
 		return nil, &Error{Code: CodeState, File: FileActor}
 	}
@@ -228,7 +226,7 @@ func (d *Dir) repair(name string) error {
 
 // Seq returns the last envelope seq the mediator took from this actor, 0 when none.
 func (d *Dir) Seq() (int64, error) {
-	b, err := os.ReadFile(d.file(FileSeq))
+	b, err := readSmall(d.file(FileSeq))
 	if errors.Is(err, fs.ErrNotExist) {
 		return 0, nil
 	}
@@ -398,6 +396,15 @@ type Salt struct {
 	Salt      string `json:"salt"`
 }
 
+// Format prints the Salt as a fixed text, whatever the verb: it holds a salt (secrets-never-print).
+func (Salt) Format(f fmt.State, _ rune) { _, _ = f.Write([]byte("state.Salt")) }
+
+// GoString is the fixed text, for %#v.
+func (Salt) GoString() string { return "state.Salt" }
+
+// String is the fixed text.
+func (Salt) String() string { return "state.Salt" }
+
 // AddSalt records the salt of a delivery the actor fetched, after its receipt.
 func (d *Dir) AddSalt(receiptID, salt string) error {
 	b, _ := json.Marshal(Salt{ReceiptID: receiptID, Salt: salt})
@@ -456,14 +463,34 @@ func (d *Dir) appendLine(name string, line []byte) error {
 // lines returns the file's whole lines, leaving out an unterminated last one; a missing file has
 // none.
 func (d *Dir) lines(name string) ([][]byte, error) {
-	b, err := os.ReadFile(d.file(name))
+	f, err := lines.Read(d.file(name), maxLine)
 	if errors.Is(err, fs.ErrNotExist) {
 		return [][]byte{}, nil
 	}
-	if err != nil {
+	if err != nil || f.Long > 0 {
 		return nil, &Error{Code: CodeState, File: name}
 	}
-	return Lines(b), nil
+	if f.Lines == nil {
+		return [][]byte{}, nil
+	}
+	return f.Lines, nil
+}
+
+// maxLine is the longest line of a state directory's file that is read: local.MaxReply, the most a
+// window replies with, which holds any delivery and its answer call.
+const maxLine = 4 << 20
+
+// maxSmall is the most read of the actor and seq files, each one short line.
+const maxSmall = 4 << 10
+
+// readSmall reads the actor or seq file at path, which must be a regular file of at most maxSmall
+// bytes.
+func readSmall(path string) ([]byte, error) {
+	b, ok, err := lines.ReadAll(path, maxSmall)
+	if err == nil && !ok {
+		err = lines.ErrNotRegular
+	}
+	return b, err
 }
 
 // Lines splits b into its whole lines, without their line feeds, leaving out an unterminated last

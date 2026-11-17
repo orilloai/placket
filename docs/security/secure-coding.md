@@ -40,7 +40,8 @@ Go cannot reliably wipe a secret from memory: the garbage collector may copy a v
 ## Size limits
 
 - Every decoder the door runs has a size limit, set before it reads a byte ([`parse-strict`](../rules/core.md#parse-strict)). An `io.Reader` from outside is wrapped in `io.LimitReader`, or read with a bounded buffer, never with `io.ReadAll` alone.
-- The requirement text bounds some sizes and not others; where it is silent, the door's cap is the bound (`docs/security/threat-model.md`, known limits).
+- The requirement text bounds some sizes and not others; where it is silent, the door's cap is the bound (`docs/security/threat-model.md`, known limits). A client reads at most `MaxReply` of a reply.
+- A file placket is handed, rather than writes, is read only when it is a regular file, so a FIFO or a device cannot hold a command, and a file of lines is read a line at a time, each line capped (`adapters/internal/lines`).
 
 ## Fuzzing
 
