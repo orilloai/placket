@@ -5,7 +5,8 @@
 //
 // It is written from the protocol text with the Go standard library alone, and imports no package of
 // the core: a vector's bytes must not come from the code the vector tests (vectors-independent in
-// AGENTS.md). Codes, offsets and verdicts are never computed here; each generator writes them by hand.
+// docs/rules/tests.md). Codes, offsets and verdicts are never computed here; each generator writes
+// them by hand.
 package kit
 
 import (

@@ -97,7 +97,7 @@ envelope of ed25519:6fc3684d1a30c35becfdd109529bde13b14f2c566db2e19210e98c842ebe
 
 The repository's layout and rules come first:
 
-- `AGENTS.md`: where everything goes, and the rules the code keeps, by name.
+- `AGENTS.md`: where everything goes, and which rules to read before you change a part; `docs/rules/` holds every rule, by name.
 - `CONTRIBUTING.md`: how a change is made and reviewed.
 - `spec/`: the protocol placket runs, operation by operation, and the formats it signs. `spec/README.md` says where to start.
 - `vectors/`: the conformance vectors and their coverage list. `vectors/README.md` says how a vector is written and checked.
@@ -105,3 +105,15 @@ The repository's layout and rules come first:
 - `core/`: the Go core, which touches nothing of the world; `adapters/` and `cmd/placket/`: the door, the journal, the files each party keeps, the log and the command line.
 
 `make ci` runs every check.
+
+## Contributing
+
+Contributions are welcome, however they are made, with a person who answers for them. `CONTRIBUTING.md` says how.
+
+## Security
+
+Report a vulnerability privately, as `SECURITY.md` says. `docs/security/threat-model.md` says what placket protects and what it does not.
+
+## Licence
+
+Apache License 2.0, for the code and the requirement text: see `LICENSE`.

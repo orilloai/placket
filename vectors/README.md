@@ -34,7 +34,7 @@ The `signatures` group holds, beside `sign` and `verify-signature` vectors, `ver
 
 ## How a vector is written and checked
 
-A vector's expected result never comes from the code it tests (`vectors-independent` in `AGENTS.md`).
+A vector's expected result never comes from the code it tests (`vectors-independent` in `docs/rules/tests.md`).
 
 - **Codes, offsets and verdicts are written by hand** from the protocol's check tables and requirement text, in each generator's tables. The vector's `tests` line says what it tests, and opens with the requirement ids it covers.
 - **Bytes, hashes and signatures are computed by the group's generator**, with the Go standard library and the kit. No generator imports any package of the core: the generators' module requires nothing, and a test of the kit (`TestGeneratorsImportNoCore`) reads the imports of every Go file here.
