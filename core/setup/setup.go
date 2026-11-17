@@ -179,7 +179,13 @@ func Found(set []byte, at string) (*Accord, error) {
 	if !ok {
 		return fail(InvalidShape)
 	}
-	ps := sha256.Sum256(shape.Encode(top["policy"]))
+	// The one check that ties a binding to its policy fails closed: a policy that does not encode
+	// refuses the set rather than hashing to the hash of nothing.
+	policyBytes := shape.Encode(top["policy"])
+	if policyBytes == nil {
+		return fail(InvalidShape)
+	}
+	ps := sha256.Sum256(policyBytes)
 	policyHash := canonical.HashPrefix + hex.EncodeToString(ps[:])
 	mediator, ok := mediatorOf(top["mediator"])
 	if !ok || !card(top["card"]) {

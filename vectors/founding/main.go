@@ -185,6 +185,17 @@ func main() {
 		kit.Binding(firstTwo, firstBy, kit.OtherMediator, kit.HashOf(twoSet["policy"]), kit.Until, ungrantedRole))
 	roleAndPolicy := replace(twoPrincipals().Build(), "bindings", firstTwo,
 		kit.Binding(firstTwo, firstBy, kit.Mediator, kit.HashOf(base()["policy"]), kit.Until, ungrantedRole))
+	// The proposer's binding gives decider, which its principal may not grant, and its signature is
+	// the proposer's good binding's, so the signature fails first.
+	badSigRole := kit.Binding(kit.Proposer, kit.Principal, kit.Mediator, kit.HashOf(twoSet["policy"]), kit.Until, "proposer", "decider")
+	badSigRole["sig"] = kit.Binding(kit.Proposer, kit.Principal, kit.Mediator, kit.HashOf(twoSet["policy"]), kit.Until, "proposer", "applier")["sig"]
+	badSigRole = replace(twoPrincipals().Build(), "bindings", kit.Proposer, badSigRole)
+	// The proposer's binding, by the policy's principal, is signed for the policy with no roles and
+	// names another mediator; then the same binding expired at founding in place of the mediator.
+	policyAndMediator := replace(base(), "bindings", kit.Proposer,
+		kit.Binding(kit.Proposer, kit.Principal, kit.OtherMediator, kit.HashOf(noRoles["policy"]), kit.Until, "proposer"))
+	policyAndExpired := replace(base(), "bindings", kit.Proposer,
+		kit.Binding(kit.Proposer, kit.Principal, kit.Mediator, kit.HashOf(noRoles["policy"]), at, "proposer"))
 
 	// Defects of shape in the policy's entries and in a binding, the bindings signed again after each
 	// change to the policy, so only the shape is wrong.
@@ -354,6 +365,9 @@ func main() {
 		refused("binding-other-policy", "setup-contract-3: a binding signed for the hash of another policy is binding-policy", otherPolicy, "binding-policy"),
 		refused("ungranted-role-and-other-mediator", "setup-contract-8: the first declaration's binding gives a role its principal may not grant and names another mediator, and the role comes first", roleAndMediator, "binding-role"),
 		refused("ungranted-role-and-other-policy", "setup-contract-8: a binding that gives a role its principal may not grant and names another policy's hash is binding-role, which comes first", roleAndPolicy, "binding-role"),
+		refused("bad-binding-signature-and-ungranted-role", "setup-contract-8: a binding's bad signature comes before a role its principal may not grant", badSigRole, "binding-signature"),
+		refused("other-policy-and-other-mediator", "setup-contract-8: a binding signed for another policy's hash is binding-policy, which comes before the other mediator it names", policyAndMediator, "binding-policy"),
+		refused("other-policy-and-expired", "setup-contract-8: a binding signed for another policy's hash is binding-policy, which comes before its expiry", policyAndExpired, "binding-policy"),
 		refused("principals-empty", "setup-contract-9: a policy whose principals is empty is invalid-shape", noPrincipals, "invalid-shape"),
 		refused("entry-roles-empty", "setup-contract-9: a policy entry whose roles is empty is invalid-shape", emptyRoles, "invalid-shape"),
 		refused("entry-roles-repeated", "setup-contract-9: a policy entry whose roles repeats a label is invalid-shape", repeatedRole, "invalid-shape"),
