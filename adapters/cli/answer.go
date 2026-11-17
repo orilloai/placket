@@ -82,7 +82,8 @@ func answerFlags(r *run, name string, args []string, more func(fs *flagSet)) (*s
 	if more != nil {
 		more(fs)
 	}
-	if !r.parse(fs, args, "key", "socket", "accord", "question") {
+	// A question id that is not UTF-8 is refused, never repaired (parse-strict).
+	if !r.parse(fs, args, "key", "socket", "accord", "question") || !allUTF8(*question) {
 		return nil, "", r.tool(codeUsage)
 	}
 	s, code := r.open(*keyPath, *socket, *accord, *stateDir)

@@ -84,6 +84,36 @@ func TestCommentsAndHeadersThatAreNotUTF8AreRefused(t *testing.T) {
 	must(t, a.as("decider", "decline", "--question", q, "--comment", "Not now.")...)
 }
 
+// TestAQuestionIdThatIsNotUTF8IsRefused answers, changes, declines, cancels and asks the result of
+// a question whose id holds a byte that is not UTF-8: each is tool error usage, exit 3, and sends
+// nothing, so the open question stays open (parse-strict).
+func TestAQuestionIdThatIsNotUTF8IsRefused(t *testing.T) {
+	t.Parallel()
+	a := newAccord(t, "proposer", "applier", "decider")
+	a.start(t)
+	q := a.openOne(t, "Rename total.")
+	before := string(a.receipts(t))
+	for _, c := range []struct {
+		who  string
+		args []string
+	}{
+		{"decider", []string{"answer", "--text", "Yes."}},
+		{"decider", []string{"change", "--text", "Rename sum."}},
+		{"decider", []string{"decline"}},
+		{"proposer", []string{"cancel"}},
+		{"proposer", []string{"result"}},
+	} {
+		r := run(t, env(), a.as(c.who, append(c.args, "--question", q+notUTF8)...)...)
+		if r.code != 3 || r.stdout != "" || r.stderr != "error usage\n" {
+			t.Fatalf("%s: %v", c.args[0], r)
+		}
+	}
+	if string(a.receipts(t)) != before {
+		t.Fatal("a question id that is not UTF-8 sent a call")
+	}
+	must(t, a.as("decider", "answer", "--question", q)...)
+}
+
 // TestBindRefusesFlagsThatAreNotUTF8 binds with an actor, a role or a mediator holding a byte that
 // is not UTF-8: each is tool error usage and prints no binding.
 func TestBindRefusesFlagsThatAreNotUTF8(t *testing.T) {

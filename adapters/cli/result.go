@@ -149,7 +149,8 @@ func resultCommand(r *run, args []string) int {
 	fs := flags("result")
 	keyPath, socket, accord, stateDir := socketFlags(fs)
 	question := fs.String("question", "", "the question's id")
-	if !r.parse(fs, args, "key", "socket", "accord", "question") {
+	// A question id that is not UTF-8 is refused, never repaired (parse-strict).
+	if !r.parse(fs, args, "key", "socket", "accord", "question") || !allUTF8(*question) {
 		return r.tool(codeUsage)
 	}
 	s, code := r.open(*keyPath, *socket, *accord, *stateDir)
