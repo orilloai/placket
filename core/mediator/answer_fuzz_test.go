@@ -132,7 +132,7 @@ func FuzzReload(f *testing.F) {
 		}
 		qd := append([]mediator.Queued(nil), queued...)
 		qd[0] = mediator.Queued{To: to, Delivery: delivery}
-		r, outs, err := mediator.Reload(founding, foundedAt, med, l, []mediator.Open{{Question: question, Deadline: deadline, Roles: []string{role}}}, qd, reloadAt)
+		r, outs, err := mediator.Reload(founding, l, []mediator.Open{{Question: question, Deadline: deadline, Roles: []string{role}}}, qd, foundedAt, med, reloadAt)
 		if err != nil {
 			if r != nil || outs != nil {
 				t.Fatal("a refused reload returned a mediator")

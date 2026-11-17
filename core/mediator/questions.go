@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/orilloai/placket/core/composition"
+	"github.com/orilloai/placket/core/internal/crossing"
 	"github.com/orilloai/placket/core/internal/shape"
 	"github.com/orilloai/placket/core/receipts"
 )
@@ -88,7 +89,7 @@ func (b *batch) write(subject receipts.Subject, p receipts.Predicate) ([]byte, s
 
 // queue queues for to the part, as its delivery carries it with the receipt that passed it.
 func (b *batch) queue(to string, part map[string]any, receipt []byte, id string) error {
-	d := deliver(part, receipt, id)
+	d := crossing.Deliver(part, receipt, id)
 	if d == nil {
 		return failure(CodeInternal)
 	}

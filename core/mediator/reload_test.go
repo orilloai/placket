@@ -91,7 +91,7 @@ func reload(t *testing.T, b before, at string) (*mediator.Mediator, []mediator.O
 	for i, j := 0, len(q)-1; i < j; i, j = i+1, j-1 {
 		q[i], q[j] = q[j], q[i]
 	}
-	r, outs, err := mediator.Reload(set, foundedAt, key(t, "mediator"), b.m.Receipts(), b.open, q, at)
+	r, outs, err := mediator.Reload(set, b.m.Receipts(), b.open, q, foundedAt, key(t, "mediator"), at)
 	if err != nil {
 		t.Fatalf("Reload: %v", err)
 	}
@@ -365,7 +365,7 @@ func TestReloadRefusesEachFault(t *testing.T) {
 		if c.at != "" {
 			at = c.at
 		}
-		r, outs, err := mediator.Reload(s, foundedAt, k, l, o, q, at)
+		r, outs, err := mediator.Reload(s, l, o, q, foundedAt, k, at)
 		if r != nil || outs != nil {
 			t.Fatalf("%s: a mediator was returned", c.name)
 		}
@@ -401,7 +401,7 @@ func TestReloadDecidesNothingAgain(t *testing.T) {
 	q := ask(t, m, 1, "p-1", "2026-11-12T09:00:00Z")
 	set, foundedAt := askAndLog(t)
 	open := []mediator.Open{{Question: q, Deadline: "2026-11-12T09:30:00Z", Roles: []string{"applier", "auditor"}}}
-	r, outs, err := mediator.Reload(set, foundedAt, key(t, "mediator"), m.Receipts(), open, nil, "2026-11-12T09:45:00Z")
+	r, outs, err := mediator.Reload(set, m.Receipts(), open, nil, foundedAt, key(t, "mediator"), "2026-11-12T09:45:00Z")
 	if err != nil || len(outs) != 1 || outs[0].Reason != receipts.ReasonTimeout {
 		t.Fatalf("got %+v, %v", outs, err)
 	}
@@ -409,7 +409,7 @@ func TestReloadDecidesNothingAgain(t *testing.T) {
 	if st.Predicate.At != "2026-11-12T09:30:00Z" || st.Predicate.From != key(t, "applier").Reference() {
 		t.Fatalf("the timeout: %+v", st.Predicate)
 	}
-	r, outs, err = mediator.Reload(set, foundedAt, key(t, "mediator"), m.Receipts(), open, nil, "2026-11-12T09:30:00Z")
+	r, outs, err = mediator.Reload(set, m.Receipts(), open, nil, foundedAt, key(t, "mediator"), "2026-11-12T09:30:00Z")
 	if err != nil || len(outs) != 1 || outs[0].Reason != receipts.ReasonTimeout {
 		t.Fatalf("a reload at the deadline: %+v, %v", outs, err)
 	}
@@ -417,7 +417,7 @@ func TestReloadDecidesNothingAgain(t *testing.T) {
 		t.Fatalf("the timeout at the deadline: %+v", st.Predicate)
 	}
 	open[0].Roles = []string{"auditor"}
-	r, outs, err = mediator.Reload(set, foundedAt, key(t, "mediator"), m.Receipts(), open, nil, "2026-11-12T09:15:00Z")
+	r, outs, err = mediator.Reload(set, m.Receipts(), open, nil, foundedAt, key(t, "mediator"), "2026-11-12T09:15:00Z")
 	if err != nil || len(outs) != 1 || outs[0].Reason != receipts.ReasonUndeliverable {
 		t.Fatalf("got %+v, %v", outs, err)
 	}

@@ -43,7 +43,7 @@ func TestAnswerErrorTextQuotesNoInput(t *testing.T) {
 	edited[0][len(edited[0])-10] ^= 1
 	open := []mediator.Open{{Question: q, Deadline: "2026-11-12T10:00:00Z", Roles: []string{"decider"}}}
 	reloadErr := func(l [][]byte, o []mediator.Open, qd []mediator.Queued, at string) error {
-		_, _, err := mediator.Reload(set, foundedAt, key(t, "mediator"), l, o, qd, at)
+		_, _, err := mediator.Reload(set, l, o, qd, foundedAt, key(t, "mediator"), at)
 		return err
 	}
 	first := func(_ []mediator.Outcome, err error) error { return err }

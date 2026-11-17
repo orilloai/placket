@@ -1,13 +1,10 @@
 package mediator
 
 import (
-	"bytes"
-	"encoding/hex"
 	"errors"
 	"sort"
 
-	"github.com/orilloai/placket/core/canonical"
-	"github.com/orilloai/placket/core/composition"
+	"github.com/orilloai/placket/core/internal/crossing"
 	"github.com/orilloai/placket/core/internal/shape"
 	"github.com/orilloai/placket/core/receipts"
 	"github.com/orilloai/placket/core/signing"
@@ -21,10 +18,11 @@ type Open struct {
 	Roles    []string
 }
 
-// Reload makes a mediator again from the record a journal keeps (record 0008): the founding set and the time
-// it was founded at, the mediator's key, every receipt in the order written, each open question's
-// deadline and roles, and each delivery not yet fetched, in deliveries; and it closes every open question at the
-// reload time at. It checks, in order, and returns no mediator and the first fault: at, by the
+// Reload makes a mediator again from the record a journal keeps (record 0008): the founding set,
+// every receipt in the order written, each open question's deadline and roles, each delivery not
+// yet fetched, in deliveries, the time the set was founded at and the mediator's key; and it closes
+// every open question at the reload time at. Its data come first, then the times and the key
+// (inputs-as-parameters, record 0019). It checks, in order, and returns no mediator and the first fault: at, by the
 // timestamp rule (at); the set, as Found founds it (founding's *Error, or ErrOtherMediator); the
 // receipts, by receipts.Verify (journal, at the failing receipt, the verifier's error inside); each
 // receipt's Accord and card (journal, with its index); each open entry's deadline (at) and question,
@@ -39,7 +37,7 @@ type Open struct {
 // (maybe-4), from the first member holding one of the entry's roles, or the mediator. It decides
 // nothing again: no crossing is put to composition (one-decision-module), and the closings' outcomes
 // are returned in order.
-func Reload(founding []byte, foundedAt string, key signing.Key, list [][]byte, open []Open, deliveries []Queued, at string) (*Mediator, []Outcome, error) {
+func Reload(founding []byte, list [][]byte, open []Open, deliveries []Queued, foundedAt string, key signing.Key, at string) (*Mediator, []Outcome, error) {
 	if !shape.Timestamp(at) {
 		return nil, nil, failure(CodeAt)
 	}
@@ -114,7 +112,7 @@ func Reload(founding []byte, foundedAt string, key signing.Key, list [][]byte, o
 	var back []restored
 	seen := map[int]bool{}
 	for i, q := range deliveries {
-		ri, ok := held(st, list, byID, q)
+		ri, ok := crossing.Held(st, list, byID, q.To, q.Delivery)
 		if !ok || seen[ri] {
 			return nil, nil, &Error{Code: CodeHeld, Index: i}
 		}
@@ -154,82 +152,4 @@ func Reload(founding []byte, foundedAt string, key signing.Key, list [][]byte, o
 	}
 	m.commit(b)
 	return m, b.outs, nil
-}
-
-// held reads a delivery given back to Reload and returns the index of the receipt that queued it: a
-// delivery in canonical form with exactly a delivery's members (crossing-3), whose receipt is one of
-// the list, a pass addressed to the delivery's party, carried as that receipt's bytes, and whose kind,
-// salt and body are the receipt's subject. It reads the receipts it is given; it decides nothing.
-func held(st []receipts.Statement, list [][]byte, byID map[string]int, q Queued) (int, bool) {
-	v, c, err := shape.Decode(q.Delivery)
-	if err != nil || !bytes.Equal(c, q.Delivery) {
-		return -1, false
-	}
-	o, ok := v.(shape.Object)
-	if !ok {
-		return -1, false
-	}
-	bodyName, bodies := "", 0
-	for _, n := range []string{"text", "raw", "data"} {
-		if _, has := o[n]; has {
-			bodyName = n
-			bodies++
-		}
-	}
-	if bodies != 1 || !shape.Only(o, "receiptId", "receipt", "messageId", "kind", "salt", bodyName, "", "re") {
-		return -1, false
-	}
-	id, _ := o["receiptId"].(string)
-	ri, ok := byID[id]
-	if !ok {
-		return -1, false
-	}
-	s := st[ri]
-	if s.Predicate.Verdict != string(composition.Pass) || s.Predicate.To != q.To {
-		return -1, false
-	}
-	kept, err := canonical.Form(list[ri])
-	if err != nil || !bytes.Equal(shape.Encode(o["receipt"]), kept) {
-		return -1, false
-	}
-	messageID, ok := o["messageId"].(string)
-	if !ok || messageID == "" || o["kind"] != any(s.Subject.Name) {
-		return -1, false
-	}
-	if re, has := o["re"]; has {
-		if r, ok := re.(string); !ok || !shape.Hash(r) {
-			return -1, false
-		}
-	}
-	saltHex, ok := o["salt"].(string)
-	if !ok || len(saltHex) < 2*MinSaltBytes || !shape.LowerHex(saltHex) {
-		return -1, false
-	}
-	salt, err := hex.DecodeString(saltHex)
-	if err != nil {
-		return -1, false
-	}
-	var body []byte
-	switch bodyName {
-	case "text":
-		t, ok := o["text"].(string)
-		if !ok {
-			return -1, false
-		}
-		body = []byte(t)
-	case "raw":
-		t, _ := o["raw"].(string)
-		if body, ok = shape.Base64(t); !ok {
-			return -1, false
-		}
-	case "data":
-		if o["data"] == nil {
-			return -1, false
-		}
-		body = shape.Encode(o["data"])
-	}
-	if receipts.Digest(salt, body) != s.Subject.Digest {
-		return -1, false
-	}
-	return ri, true
 }

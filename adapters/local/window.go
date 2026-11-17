@@ -158,7 +158,7 @@ func (w *window) start() (bool, error) {
 	if id, err := canonical.TypedHash(w.cfg.Founding); err != nil || id != rec.Accord || rec.Mediator != w.cfg.Key.Reference() {
 		return false, &journal.Error{Code: journal.CodeJournal, File: journal.FileAccord, Line: 1, Core: "accord"}
 	}
-	m, outs, err := mediator.Reload(w.cfg.Founding, rec.FoundedAt, w.cfg.Key, rec.Receipts, rec.Open, rec.Queued, at)
+	m, outs, err := mediator.Reload(w.cfg.Founding, rec.Receipts, rec.Open, rec.Queued, rec.FoundedAt, w.cfg.Key, at)
 	if err != nil {
 		return false, reloadError(err, rec)
 	}
