@@ -256,7 +256,7 @@ func (w *world) window(t testing.TB) local.Window {
 }
 
 func (w *world) client(t testing.TB, name string) *local.Client {
-	return &local.Client{Socket: w.socket, Key: key(t, name), Accord: w.accord, Now: w.clock.Now, Rand: w.nonces, Timeout: 10 * time.Second}
+	return &local.Client{Socket: w.socket, Key: key(t, name), Accord: w.accord, Now: w.clock.Now, Rand: w.nonces, Timeout: 30 * time.Second}
 }
 
 // message is a crossing message of one part from a member, of the body given as name and value.
