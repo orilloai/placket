@@ -15,6 +15,7 @@ package setup
 import (
 	"crypto/sha256"
 	"encoding/hex"
+	"sort"
 
 	"github.com/orilloai/placket/core/canonical"
 	"github.com/orilloai/placket/core/internal/shape"
@@ -187,6 +188,43 @@ func (a *Accord) CardJudges() []CardJudge {
 		return nil
 	}
 	return append([]CardJudge(nil), a.judges...)
+}
+
+// JudgeKinds returns the kinds of every term, of any member, whose resolve lists the judge named
+// name, sorted and each once (setup-contract-1, docs/adr/0023-judges.md). Only a maybe term has a
+// resolve, so it compares no stance and decides nothing: it is a superset of the kinds that can
+// reach the judge, since both sides must agree (composition-7), and the window prints it at start.
+func (a *Accord) JudgeKinds(name string) []string {
+	if a == nil {
+		return nil
+	}
+	seen := map[string]bool{}
+	var out []string
+	for _, m := range a.members {
+		for _, t := range a.terms[m] {
+			if t.Resolve == nil || !listsJudge(t.Resolve.Judges, name) {
+				continue
+			}
+			for _, k := range t.Kinds {
+				if !seen[k] {
+					seen[k] = true
+					out = append(out, k)
+				}
+			}
+		}
+	}
+	sort.Strings(out)
+	return out
+}
+
+// listsJudge reports whether a resolve's judges list one named name.
+func listsJudge(judges []Judge, name string) bool {
+	for _, j := range judges {
+		if j.Name == name {
+			return true
+		}
+	}
+	return false
 }
 
 // Supersedes returns the earlier Accord the policy supersedes, by its id and the id of its close

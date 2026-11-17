@@ -15,8 +15,9 @@
 // envelope), receipt-5 (the chain of each pair) and receipt-10 (the same inputs at the same times
 // write the same receipts), and close-1 to close-3 (closing the Accord: its open questions closed,
 // the close receipt written last, and a closed Accord that takes no give or answer). Decision record
-// 0006 says what it holds and why, record 0008 how a reload rebuilds it, and record 0022 how a close
-// ends it.
+// 0006 says what it holds and why, record 0008 how a reload rebuilds it, record 0022 how a close
+// ends it, and record 0023 the read of which judges a give would reach (composition-7); it runs
+// no judge itself.
 package mediator
 
 import (
