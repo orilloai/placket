@@ -32,7 +32,7 @@ A recipe uses only the core's exported names, never an adapter.
 
 Why: a recipe is one job built on the protocol, and must work against any door.
 
-Checked by: the reviewer.
+Checked by: `make ci`, step `recipes-core-only`, which refuses a file under `recipes/` that imports anything under `adapters/` or `cmd/`.
 
 ## `packages-by-adr`
 

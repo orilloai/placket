@@ -21,12 +21,12 @@
 # literal names: machine-rules-in-ci refuses a ci that leaves out a rule of the checker or a step.
 .DEFAULT_GOAL := ci
 CHECKS = core-no-deps core-imports core-no-world core-no-panic specs-name-behaviour schemas-hold \
-	vectors-independent constants-once product-words-once claims-stop-at-crossing main-is-thin root-module \
+	vectors-independent constants-once product-words-once claims-stop-at-crossing main-is-thin recipes-core-only root-module \
 	machine-rules-in-ci ci-stays-fast no-hidden-text agents-md-short
 TOOLCHAIN = vet lint vulnerabilities secrets race fuzz-seeds coverage-reported
 .PHONY: ci build guard $(CHECKS) modules $(TOOLCHAIN) tests runner-no-silent-pass scripts
 ci: build guard core-no-deps core-imports core-no-world core-no-panic specs-name-behaviour schemas-hold \
-	vectors-independent constants-once product-words-once claims-stop-at-crossing main-is-thin root-module \
+	vectors-independent constants-once product-words-once claims-stop-at-crossing main-is-thin recipes-core-only root-module \
 	machine-rules-in-ci ci-stays-fast no-hidden-text agents-md-short modules vet lint vulnerabilities secrets tests race fuzz-seeds \
 	coverage-reported runner-no-silent-pass scripts
 
@@ -140,7 +140,7 @@ secrets: build
 	@$(START) set -e; r=$$(mktemp); trap 'rm -f "$$r"' EXIT; \
 		if go run $(GITLEAKS) dir --no-banner --redact --log-level error --report-format json --report-path "$$r" . ; then echo "$@: ok"; exit 0; fi; \
 		if [ -s "$$r" ]; then jq -r '.[] | "$@: \(.File | sub("^[.]/"; "")):\(.StartLine): \(.RuleID)"' "$$r"; fi; \
-		echo "$@: refused: no secret is committed (docs/rules/changes.md#machine-rules-in-ci)"; exit 1 $(END)
+		echo "$@: refused: no secret is committed (docs/rules/checks.md#secrets)"; exit 1 $(END)
 
 # tests: one test run per module with packages, with the race detector and coverage, which also runs
 # every fuzz test on its seed corpus (the f.Add seeds and testdata/fuzz/), as go test does without

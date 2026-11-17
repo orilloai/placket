@@ -29,7 +29,8 @@ func coreBase(t *tree) ([]finding, bool) {
 }
 
 // coreGo lists the Go files under core/: with all, every one, test files and testdata included;
-// without it, the files built into the core, no _test.go file and nothing under testdata/.
+// without it, the files built into the core, no _test.go file, nothing under testdata/ and nothing
+// under core/internal/testing/, the test helpers only tests import.
 func coreGo(t *tree, all bool) []string {
 	if t.isLink("core") {
 		return nil
@@ -38,7 +39,7 @@ func coreGo(t *tree, all bool) []string {
 		if !strings.HasSuffix(rel, ".go") {
 			return false
 		}
-		return all || (!isTestGo(rel) && !inTestdata(rel))
+		return all || (!isTestGo(rel) && !inTestdata(rel) && !inTestHelpers(rel))
 	})
 }
 
@@ -247,6 +248,13 @@ func builtinCalls(rel string, g *goFile, declared map[string]bool, names ...stri
 	return out
 }
 
+// testHelpers is the import path of the core's test helpers, which may read the world because only
+// tests import them; a file built into the core that imports them is refused by core-no-world.
+const testHelpers = "github.com/orilloai/placket/core/internal/testing"
+
+// inTestHelpers reports whether a path under core/ is one of the test helpers.
+func inTestHelpers(rel string) bool { return strings.HasPrefix(rel, "core/internal/testing/") }
+
 // core-no-world: no file built into the core reads the clock, draws randomness, reads the environment,
 // opens a file, touches the network, reaches the process, its files or its memory, logs or prints; it
 // imports no "C" and no path written with an escape; and core/ holds no source file that is not Go
@@ -278,7 +286,7 @@ func coreNoWorld(t *tree) []finding {
 		clock, printer := map[string]bool{}, map[string]bool{}
 		for _, s := range g.f.Imports {
 			p, ok := importPath(s)
-			if !ok || p == "C" || worldPkgRE.MatchString(p) {
+			if !ok || p == "C" || worldPkgRE.MatchString(p) || p == testHelpers || strings.HasPrefix(p, testHelpers+"/") {
 				out = append(out, g.at(rel, s.Path.Pos()))
 				continue
 			}

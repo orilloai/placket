@@ -83,6 +83,10 @@ var coreCases = []tcase{
 
 	// The same names in a _test.go file, or only in // or /* */ comments, pass.
 	{name: "world-in-test", fixture: "world-in-test"},
+	// The test helpers under core/internal/testing/ may read the world; a file built into the core
+	// may not import them.
+	{name: "world-in-test-helpers", fixture: "world-in-test-helpers"},
+	{name: "imports-test-helpers", fixture: "imports-test-helpers", refuse: []string{"core-no-world"}, at: []string{"core/x/x.go:4"}},
 	{name: "comments-only", fixture: "comments-only"},
 	{name: "block-comments-only", fixture: "block-comments-only"},
 

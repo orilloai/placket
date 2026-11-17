@@ -196,7 +196,7 @@ func refusalLines(name string, lines []string) []string {
 // ruleDocs is the topic file of docs/rules/ that holds each rule's heading, which its closing
 // "refused:" line links.
 var ruleDocs = map[string]string{
-	"core-no-deps": "modules.md", "core-imports": "modules.md", "root-module": "modules.md",
+	"core-no-deps": "modules.md", "core-imports": "modules.md", "root-module": "modules.md", "recipes-core-only": "modules.md",
 	"core-no-world": "core.md", "core-no-panic": "core.md", "specs-name-behaviour": "core.md", "constants-once": "core.md",
 	"schemas-hold": "tests.md", "vectors-independent": "tests.md",
 	"product-words-once": "adapters.md", "claims-stop-at-crossing": "adapters.md", "main-is-thin": "adapters.md",

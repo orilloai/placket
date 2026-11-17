@@ -1,0 +1,17 @@
+name: extra
+on: push
+jobs:
+  one:
+    runs-on: ubuntu-latest
+    steps:
+      # - uses: actions/checkout@v4, in a comment, is not read.
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
+      - uses: "actions/cache@0c45773"
+      - name: local
+        uses: ./.github/actions/local
+      - uses: actions/upload-artifact@main
+      - uses: docker://alpine:3.20
+      - uses: Actions/Setup-Go@924AE3A1CDED613372AB5595356FB5720E22BA16
+  two:
+    uses: orilloai/placket/.github/workflows/reuse.yml@11bd71901bbe5b1630ceea73d27597364c9af683

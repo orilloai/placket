@@ -15,6 +15,10 @@ var (
 	toolVarRE  = regexp.MustCompile(`^[$][({]([A-Za-z_][A-Za-z0-9_]*)[)}]$`)
 	exactVerRE = regexp.MustCompile(`^[^@ ]+@v[0-9]+[.][0-9]+[.][0-9]+(-[0-9A-Za-z.-]+)?([+][0-9A-Za-z.-]+)?$`)
 	ciRuleRE   = regexp.MustCompile(`^ci[ \t]*:`)
+	// usesRE is a step's or a job's uses: in a workflow, with its value.
+	usesRE = regexp.MustCompile(`^[ \t]*(-[ \t]+)?uses[ \t]*:[ \t]*(.*)$`)
+	// pinnedRE is an action named at a commit: <owner>/<repo>[/<path>]@<40 lowercase hex>.
+	pinnedRE = regexp.MustCompile(`^[^@ ]+@[0-9a-f]{40}$`)
 )
 
 // machine-rules-in-ci has two halves.
@@ -25,6 +29,10 @@ var (
 // written alone as the package, $(NAME) or ${NAME}, is read from its assignment in the same file.
 // Anything else, @latest, a branch, a partial version or no version at all, is refused. Text after a
 // "#" that starts a word is a comment and is not read.
+//
+// Every action a workflow uses is pinned to a commit: each uses: in .github/workflows/ names
+// <action>@<40 lowercase hex>, or a local action under ./. A tag, a branch, a short hash or no version
+// is refused. Text after a "#" that starts a word is a comment and is not read.
 //
 // And make ci runs every check and step: the root Makefile's ci target names, as literal targets,
 // every rule of the checker's rule table, every toolchain step, modules, guard, tests,
@@ -38,7 +46,16 @@ func machineRulesInCI(t *tree) []finding {
 	}) {
 		b, _ := t.read(rel)
 		vars := map[string]string{}
+		workflow := strings.HasPrefix(rel, ".github/workflows/")
 		for i, raw := range splitLines(string(b)) {
+			if workflow && strings.Contains(raw, "uses") {
+				if m := usesRE.FindStringSubmatch(shellCommentRE.ReplaceAllString(raw, "")); m != nil {
+					action := strings.Trim(strings.TrimSpace(m[2]), `"'`)
+					if !strings.HasPrefix(action, "./") && !pinnedRE.MatchString(action) {
+						fs = append(fs, finding{file: rel, line: i + 1, text: action + ": not pinned to a commit"})
+					}
+				}
+			}
 			if !strings.Contains(raw, "=") && !strings.Contains(raw, "go") {
 				continue
 			}

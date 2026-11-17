@@ -4,7 +4,7 @@ The rules for code under `core/`: what it may reach, how its packages are shaped
 
 ## `core-no-world`
 
-No non-test file in `core/` reads the clock (`time.Now`, and `time.Since`, `Until`, `After`, `AfterFunc`, `Tick`, `NewTimer`, `NewTicker` and `Sleep`, which wait on it or measure against it), draws randomness (`crypto/rand`, `math/rand`), reads the environment (`os.Getenv`), opens a file (`os.Open`), touches the network (`net` and below), reaches the process, its files or its memory (`os`, `syscall`, `io/ioutil`, `runtime`, `unsafe`, and the packages below them), logs (`log` and below) or prints (`fmt.Print*`, `print`, `println`). The core is Go alone: no cgo (`import "C"`), and no assembly, C, C++ or other non-Go source file anywhere in `core/` outside `testdata/`, since those reach the world where no check of Go can see. The core takes the time, salts and keys as parameters.
+No non-test file in `core/` reads the clock (`time.Now`, and `time.Since`, `Until`, `After`, `AfterFunc`, `Tick`, `NewTimer`, `NewTicker` and `Sleep`, which wait on it or measure against it), draws randomness (`crypto/rand`, `math/rand`), reads the environment (`os.Getenv`), opens a file (`os.Open`), touches the network (`net` and below), reaches the process, its files or its memory (`os`, `syscall`, `io/ioutil`, `runtime`, `unsafe`, and the packages below them), logs (`log` and below) or prints (`fmt.Print*`, `print`, `println`). The core is Go alone: no cgo (`import "C"`), and no assembly, C, C++ or other non-Go source file anywhere in `core/` outside `testdata/`, since those reach the world where no check of Go can see. The core takes the time, salts and keys as parameters. The test helpers under `core/internal/testing/` count as test files, since only tests import them: they may read the vectors from disk, and a file built into the core that imports them is refused.
 
 Why: output that depends on when or where it ran cannot be pinned by a vector.
 
@@ -40,7 +40,7 @@ The requirement text names behaviour, never Go identifiers; the code names requi
 
 Why: the text outlives any one implementation.
 
-Checked by: `make ci`, step `specs-name-behaviour`.
+Checked by: `make ci`, step `specs-name-behaviour`, reads the requirement text and refuses a line that names Go code; the reviewer checks that the code names requirement ids in its comments.
 
 ## `bytes-at-boundaries`
 
@@ -88,7 +88,7 @@ An exported constant that is part of a format (a type URI, a minimum length, a p
 
 Why: a retyped constant is a second format waiting to drift.
 
-Checked by: `make ci`, step `constants-once`.
+Checked by: `make ci`, step `constants-once`, for the string literals that hold `placket.dev/` or `vnd.placket`; the reviewer, for every other format constant, such as a minimum length or a word another package already exports.
 
 ## `parse-strict`
 

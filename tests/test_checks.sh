@@ -105,7 +105,7 @@ step lint-unused lint 'lint: ./core: refused' 'l/l.go:4:6: func unused is unused
 # The token is put together here, so that this file holds no secret for the scan to find.
 a=Zx9Qm2Lr7Tb4 b=Wk8Np3Vc6Hy1 c=Jd5Fs0Ga2Ue
 setup="mkdir -p core/s && printf 'package s\n\n// A token left in by mistake.\nconst token = \"%s\"\n' 'gh''p_$a$b$c' >core/s/s.go"
-step "" secrets 'secrets: core/s/s.go:4: ' 'secrets: refused: '
+step "" secrets 'secrets: core/s/s.go:4: ' 'secrets: refused: no secret is committed (docs/rules/checks.md#secrets)'
 
 # race, fuzz-seeds and coverage-reported read one shared test run. race refuses any failure of it: a
 # data race, a plain failing test, a failing seed. fuzz-seeds also refuses a failing seed and names

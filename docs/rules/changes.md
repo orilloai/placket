@@ -48,7 +48,7 @@ Every rule a machine can check is checked by `make ci`, the one entry point, and
 
 Why: a rule that only a reviewer enforces is enforced only when the reviewer remembers.
 
-Checked by: `make ci`, step `machine-rules-in-ci`, checks that every tool it runs is pinned to an exact version, and that its `ci` target names every rule of the checker and every step.
+Checked by: `make ci`, step `machine-rules-in-ci`, checks that every tool it fetches with `go run` or `go install` is pinned to an exact version, that every action a workflow uses is pinned to a commit, and that its `ci` target names every rule of the checker and every step. The tools the shell tests take from the system, such as `jq`, `perl` and `openssl`, are not pinned; the reviewer reads the rest.
 
 ## `ci-stays-fast`
 
