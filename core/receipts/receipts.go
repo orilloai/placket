@@ -45,6 +45,10 @@ const (
 	ReasonUndeliverable = "undeliverable"
 )
 
+// ReasonClosed is the reason of a question's closing that a close wrote, a resolution reason only
+// (receipt-4, close-1).
+const ReasonClosed = "closed"
+
 // The subject names of an answer and of a changed version (maybe-8, maybe-9).
 const (
 	NameAnswer  = "answer"
@@ -65,8 +69,12 @@ const (
 	CodeMediator      Code = "mediator"
 	CodeChain         Code = "chain"
 	CodeRelease       Code = "release"
-	CodePresented     Code = "presented"
-	CodeKept          Code = "kept"
+	// CodeClose and CodeAfterClose are rows 8 and 9 (close-4): a close that does not match the list
+	// before it, or a closed closing out of its place; and a receipt after a close.
+	CodeClose      Code = "close"
+	CodeAfterClose Code = "after-close"
+	CodePresented  Code = "presented"
+	CodeKept       Code = "kept"
 	// CodeStatement is not a code of the protocol: Build was given a statement no verifier would
 	// accept.
 	CodeStatement Code = "statement"
@@ -120,14 +128,16 @@ const (
 	ByMediator Decider = "mediator"
 )
 
-// Event is what made the mediator decide (receipt-11): a question's deadline passed (maybe-5), or
-// nobody could be reached to answer it (maybe-4). The list is closed.
+// Event is what made the mediator decide (receipt-11): a question's deadline passed (maybe-5),
+// nobody could be reached to answer it (maybe-4), or the Accord was closed (close-1). The list is
+// closed.
 type Event string
 
 // The events of a mediator's decision (receipt-11).
 const (
 	EventDeadline      Event = "deadline"
 	EventUndeliverable Event = "undeliverable"
+	EventClose         Event = "close"
 )
 
 // By is a predicate's decider (receipt-11): its Decider, and exactly the field that Decider names,
@@ -155,7 +165,7 @@ func (b By) value() any {
 }
 
 // readBy reads a predicate's by for form (receipt-11): "terms"; or an object of exactly one member,
-// judge with a label, answer with a typed hash, or mediator with deadline or undeliverable.
+// judge with a label, answer with a typed hash, or mediator with deadline, undeliverable or close.
 func readBy(v any) (By, bool) {
 	if s, ok := v.(string); ok {
 		return By{Decider: ByTerms}, s == string(ByTerms)
@@ -176,7 +186,7 @@ func readBy(v any) (By, bool) {
 			return By{Decider: ByAnswer, Answer: s}, shape.Hash(s)
 		case ByMediator:
 			e := Event(s)
-			return By{Decider: ByMediator, Event: e}, e == EventDeadline || e == EventUndeliverable
+			return By{Decider: ByMediator, Event: e}, e == EventDeadline || e == EventUndeliverable || e == EventClose
 		}
 	}
 	return By{}, false
@@ -203,16 +213,27 @@ type Statement struct {
 	Predicate Predicate
 }
 
-// Verified is a receipt's statement that passed Verify, or one this package built and signed. Only
-// this package makes one that holds a statement, so a caller holding a Verified holds a statement
-// that was checked (verified-by-type, record 0016). The zero Verified, which any package can write,
-// holds no statement: its Statement is the zero Statement, with no id.
+// Verified is a receipt's statement that passed Verify, or one this package built and signed; or a
+// close that did (close-2). Only this package makes one that holds a statement or a close, so a
+// caller holding a Verified holds one that was checked (verified-by-type, record 0016). The zero
+// Verified, which any package can write, holds neither: its Statement is the zero Statement, with no
+// id, and it is no close.
 type Verified struct {
 	s Statement
+	c *Close
 }
 
-// Statement returns a copy of the verified statement (record 0016).
+// Statement returns a copy of the verified statement (record 0016). For a close it is the zero
+// Statement: a close is read with Close.
 func (v Verified) Statement() Statement { return v.s }
+
+// Close returns a copy of the verified close, and true, when v is one (close-2, record 0022).
+func (v Verified) Close() (Close, bool) {
+	if v.c == nil {
+		return Close{}, false
+	}
+	return v.c.copy(), true
+}
 
 // Digest returns the salted digest of a part: the lowercase hex SHA-256 of its salt's bytes followed
 // by its body's bytes (crossing-3). The salt comes first, in the order of crossing-3's formula: an
@@ -454,7 +475,8 @@ func pairs(kind, verdict, reason string) bool {
 	if kind != KindCrossing && kind != KindResolution {
 		return false
 	}
-	resolutionOnly := reason == ReasonDeclined || reason == ReasonCancelled || reason == ReasonTimeout || reason == ReasonUndeliverable
+	resolutionOnly := reason == ReasonDeclined || reason == ReasonCancelled || reason == ReasonTimeout ||
+		reason == ReasonUndeliverable || reason == ReasonClosed
 	_, judged := judgeReason(reason)
 	if !resolutionOnly && !judged && reason != composition.ReasonOK && reason != composition.ReasonNoMatch &&
 		reason != composition.ReasonMaybe {
@@ -506,6 +528,8 @@ func fits(kind, verdict, reason string, by By) bool {
 		return by.Decider == ByMediator && by.Event == EventDeadline
 	case ReasonUndeliverable:
 		return by.Decider == ByMediator && by.Event == EventUndeliverable
+	case ReasonClosed:
+		return block && by.Decider == ByMediator && by.Event == EventClose
 	}
 	return (pass || block) && by.Decider == ByAnswer
 }
@@ -538,22 +562,16 @@ func showBy(b By) string {
 // form with chain, so nothing of an unverified receipt reaches its reader unread. Whatever presents
 // what it returns must say that the receipt was not verified.
 //
+// A close receipt holds no receipt's statement: Decode refuses it with statement-type, and
+// DecodeClose reads it (close-2).
+//
 // It reads neither the payload type nor the envelope's other members (rows 2 and 3), so its code
 // can differ from the verifier's for one receipt: a wrong payload type with a payload that is not
 // base64 is the verifier's payload-type and Decode's signature.
 func Decode(receipt []byte) (Statement, error) {
-	v, _, err := shape.Decode(receipt)
+	payload, err := payloadOf(receipt)
 	if err != nil {
-		return Statement{}, &Error{Code: CodeNotCanonical, Index: 0}
-	}
-	o, _ := v.(shape.Object)
-	s, _ := o["payload"].(string)
-	payload, ok := shape.Base64(s)
-	if !ok {
-		return Statement{}, &Error{Code: CodeSignature, Index: 0}
-	}
-	if _, err := canonical.Form(payload); err != nil {
-		return Statement{}, &Error{Code: CodeNotCanonical, Index: 0}
+		return Statement{}, err
 	}
 	st, ok := readStatement(payload)
 	if !ok {
@@ -573,8 +591,16 @@ func Decode(receipt []byte) (Statement, error) {
 const NotVerified = "not verified: this receipt was decoded without checking its signature, its mediator or its chain"
 
 // Show decodes a receipt without verifying it and returns its words, one line each, the first saying
-// that it was not verified (receipt-8). A forged receipt shows exactly as a real one does.
+// that it was not verified (receipt-8). A forged receipt shows exactly as a real one does. A close
+// receipt shows as a close, with one line per chain and per delivery not yet fetched (close-2).
 func Show(receipt []byte) ([]string, error) {
+	if payload, err := payloadOf(receipt); err == nil && isClose(payload) {
+		c, err := DecodeClose(receipt)
+		if err != nil {
+			return nil, err
+		}
+		return showClose(c), nil
+	}
 	s, err := Decode(receipt)
 	if err != nil {
 		return nil, err

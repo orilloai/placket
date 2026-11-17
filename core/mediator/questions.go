@@ -114,10 +114,12 @@ func (b *batch) close(q *question, from, reason, at string, by receipts.By) erro
 	return err
 }
 
-// The by of the mediator's own closings (receipt-11): a deadline, and a question nobody can answer.
+// The by of the mediator's own closings (receipt-11): a deadline, a question nobody can answer, and
+// a close.
 var (
 	byDeadline      = receipts.By{Decider: receipts.ByMediator, Event: receipts.EventDeadline}
 	byUndeliverable = receipts.By{Decider: receipts.ByMediator, Event: receipts.EventUndeliverable}
+	byClose         = receipts.By{Decider: receipts.ByMediator, Event: receipts.EventClose}
 )
 
 // commit changes the state: every receipt the batch built, the chains, the deliveries, and the
@@ -208,8 +210,9 @@ func (m *Mediator) Answerers(questionID string) ([]string, bool) {
 // (answer-call, maybe-11); the question it names is open at a time before its deadline
 // (no-open-question, maybe-7); the caller may take its action, an answerer for an accept, a change or
 // a decline and the question's asker for a cancel of a question with an answerer (not-an-answerer,
-// maybe-6); and the answer's text and salt fit the call (answer-body). A rejected answer writes
-// nothing and leaves the question as it was.
+// maybe-6); and the answer's text and salt fit the call (answer-body). Once the Accord is closed, a
+// member's answer is rejected with closed, right after membership (close-3). A rejected answer
+// writes nothing and leaves the question as it was.
 //
 // An accept forms the answer and a change the version (maybe-8, maybe-9), under the answerer's salt,
 // so its digest is the call's: a part decided by its kind through composition from the answerer to
@@ -229,6 +232,10 @@ func (m *Mediator) Resolve(caller string, r Resolution, at string) ([]Outcome, e
 	// Row 1: the caller is a member (setup-contract-6).
 	if !m.accord.Member(caller) {
 		return nil, &Rejection{Code: NotAMember}
+	}
+	// Right after membership: a closed Accord takes no answer (close-3).
+	if m.closed != nil {
+		return nil, &Rejection{Code: AccordClosed}
 	}
 	// Row 2: the answer call, the caller's, under this Accord (maybe-11).
 	c, err := answer.Read(r.Call)

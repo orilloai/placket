@@ -149,6 +149,8 @@ func byOf(kind, verdict, reason string) receipts.By {
 		return receipts.By{Decider: receipts.ByMediator, Event: receipts.EventDeadline}
 	case reason == receipts.ReasonUndeliverable:
 		return receipts.By{Decider: receipts.ByMediator, Event: receipts.EventUndeliverable}
+	case reason == receipts.ReasonClosed:
+		return receipts.By{Decider: receipts.ByMediator, Event: receipts.EventClose}
 	case kind == receipts.KindResolution:
 		return answerBy
 	}

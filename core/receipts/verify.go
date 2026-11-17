@@ -23,20 +23,41 @@ func Verify(mediator string, list [][]byte) ([]Verified, error) {
 	if !isReference(mediator) {
 		return nil, &Error{Code: CodeReference, Index: -1}
 	}
-	statements, _, fail := chain(mediator, list, false)
-	// Rows 1 to 6 hold up to fail; row 7 reads only the receipts up to each one, so a release failure
-	// before fail is the first failure of the list.
-	if _, err := releases(statements, false); err != nil {
+	entries, _, fail := chain(mediator, list, false)
+	// Rows 1 to 6 hold up to fail; rows 7 to 9 read only the receipts up to each one, so a failure of
+	// theirs before fail is the first failure of the list.
+	_, err := releases(entries, false)
+	if err := first(err, closeRows(entries, false), fail); err != nil {
 		return nil, err
 	}
-	if fail != nil {
-		return nil, fail
+	return verifiedOf(entries), nil
+}
+
+// first returns the failure of rows 7 to 9 at the lowest index, row 7's at an index both name, or,
+// when neither failed, the failure of rows 1 to 6, which comes after both.
+func first(release error, close, rest *Error) error {
+	var r *Error
+	if release != nil {
+		r, _ = release.(*Error)
 	}
-	out := make([]Verified, len(statements))
-	for i, s := range statements {
-		out[i] = Verified{s: s}
+	switch {
+	case r != nil && (close == nil || r.Index <= close.Index):
+		return r
+	case close != nil:
+		return close
+	case rest != nil:
+		return rest
 	}
-	return out, nil
+	return nil
+}
+
+// verifiedOf makes each entry the type only verification makes (record 0016).
+func verifiedOf(entries []entry) []Verified {
+	out := make([]Verified, len(entries))
+	for i, e := range entries {
+		out[i] = Verified{s: e.s, c: e.c}
+	}
+	return out
 }
 
 // A Start is a chain of a subset that starts after its first receipt: the pair's from and to, and
@@ -64,36 +85,40 @@ func VerifySubset(mediator string, list [][]byte) (Subset, error) {
 	if !isReference(mediator) {
 		return Subset{}, &Error{Code: CodeReference, Index: -1}
 	}
-	statements, starts, fail := chain(mediator, list, true)
-	places, err := releases(statements, true)
-	if err != nil {
+	entries, starts, fail := chain(mediator, list, true)
+	places, err := releases(entries, true)
+	if err := first(err, closeRows(entries, true), fail); err != nil {
 		return Subset{}, err
 	}
-	if fail != nil {
-		return Subset{}, fail
-	}
-	out := Subset{Verified: make([]Verified, len(statements)), Places: places, Starts: starts}
-	for i, s := range statements {
-		out.Verified[i] = Verified{s: s}
-	}
-	return out, nil
+	return Subset{Verified: verifiedOf(entries), Places: places, Starts: starts}, nil
 }
 
-// chain runs rows 1 to 6 over the list and returns the statements of the receipts before the first
+// An entry is one receipt of a list that passed rows 1 to 6: a receipt's statement, or a close
+// (close-2), which is in no chain.
+type entry struct {
+	s Statement
+	c *Close
+}
+
+// chain runs rows 1 to 6 over the list and returns the entries of the receipts before the first
 // that fails, and that failure. For a subset, the first receipt of a pair may have any seq, and the
-// chains that start above 1 are returned.
-func chain(mediator string, list [][]byte, subset bool) ([]Statement, []Start, *Error) {
+// chains that start above 1 are returned. A close has no seq or prev, and row 6 does not read it.
+func chain(mediator string, list [][]byte, subset bool) ([]entry, []Start, *Error) {
 	type link struct {
 		seq int64
 		id  string
 	}
 	last := map[[2]string]link{}
-	var out []Statement
+	var out []entry
 	var starts []Start
 	for i, r := range list {
-		st, code := one(r, mediator)
+		st, cl, code := one(r, mediator)
 		if code != "" {
 			return out, starts, &Error{Code: code, Index: i}
+		}
+		if cl != nil {
+			out = append(out, entry{c: cl})
+			continue
 		}
 		// Row 6.
 		pair := [2]string{st.Predicate.From, st.Predicate.To}
@@ -112,25 +137,122 @@ func chain(mediator string, list [][]byte, subset bool) ([]Statement, []Start, *
 			return out, starts, &Error{Code: CodeChain, Index: i}
 		}
 		last[pair] = link{seq: seq, id: st.ID}
-		out = append(out, st.Statement)
+		out = append(out, entry{s: st.Statement})
 	}
 	return out, starts, nil
 }
 
-// one runs rows 1 to 5 of section 8 over one receipt.
-func one(receipt []byte, mediator string) (reading, Code) {
+// one runs rows 1 to 5 of section 8 over one receipt: a receipt's statement, or a close's, read
+// against close-2 by the predicate type its payload names.
+func one(receipt []byte, mediator string) (reading, *Close, Code) {
 	payload, code := open(receipt, mediator)
 	if code != "" {
-		return reading{}, code
+		return reading{}, nil, code
+	}
+	if isClose(payload) {
+		c, ok := readClose(payload)
+		if !ok {
+			return reading{}, nil, CodeStatementType
+		}
+		if c.mediator != any(mediator) {
+			return reading{}, nil, CodeMediator
+		}
+		return reading{}, &c.Close, ""
 	}
 	st, ok := readStatement(payload)
 	if !ok {
-		return reading{}, CodeStatementType
+		return reading{}, nil, CodeStatementType
 	}
 	if st.mediator != any(mediator) {
-		return reading{}, CodeMediator
+		return reading{}, nil, CodeMediator
 	}
-	return st, ""
+	return st, nil, ""
+}
+
+// closeRows runs rows 8 and 9 of section 8 over the entries (close-4) and returns the first failure.
+// Row 9: no receipt follows a close. Row 8, over a whole list: a closed closing is followed only by
+// another, of the same at, or by a close; a close's at is that of the closed closings right before
+// it; its chains are exactly the last receipt of every chain before it, ordered by pair; and each of
+// its unfetched names a distinct receipt before it that queued a delivery to its to, one that
+// passed. Over a subset, row 8 reads only that each chain the subset holds ends at the seq and
+// receipt the close lists for it.
+func closeRows(entries []entry, subset bool) *Error {
+	last := map[[2]string]Final{}
+	queued := map[string]string{}
+	run, runAt, closed := false, "", false
+	fail := func(i int) *Error { return &Error{Code: CodeClose, Index: i} }
+	for i, e := range entries {
+		if closed {
+			return &Error{Code: CodeAfterClose, Index: i}
+		}
+		if c := e.c; c != nil {
+			closed = true
+			listed := map[[2]string]Final{}
+			for _, f := range c.Chains {
+				listed[[2]string{f.From, f.To}] = f
+			}
+			if subset {
+				for pair, f := range last {
+					if listed[pair] != f {
+						return fail(i)
+					}
+				}
+				continue
+			}
+			if run && runAt != c.At || !sameFinals(c.Chains, finals(last)) {
+				return fail(i)
+			}
+			seen := map[string]bool{}
+			for _, u := range c.Unfetched {
+				if seen[u.Receipt] || queued[u.Receipt] != u.To {
+					return fail(i)
+				}
+				seen[u.Receipt] = true
+			}
+			continue
+		}
+		p := e.s.Predicate
+		isClosed := p.Kind == KindResolution && p.Reason == ReasonClosed
+		if !subset && run && (!isClosed || p.At != runAt) {
+			return fail(i)
+		}
+		if isClosed && !run {
+			run, runAt = true, p.At
+		}
+		last[[2]string{p.From, p.To}] = Final{From: p.From, To: p.To, Seq: p.Seq, Receipt: e.s.ID}
+		if p.Verdict == pass {
+			queued[e.s.ID] = p.To
+		}
+	}
+	return nil
+}
+
+// finals is the last receipt of each chain, ordered by pair: by from, then by to, in actor-reference
+// order (close-2).
+func finals(last map[[2]string]Final) []Final {
+	out := make([]Final, 0, len(last))
+	for _, f := range last {
+		out = append(out, f)
+	}
+	sort.Slice(out, func(i, j int) bool {
+		if out[i].From != out[j].From {
+			return canonical.Less(out[i].From, out[j].From)
+		}
+		return canonical.Less(out[i].To, out[j].To)
+	})
+	return out
+}
+
+func sameFinals(a, b []Final) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
 }
 
 // Role is what a receipt is in the questions of its list (receipt-6).
@@ -150,10 +272,12 @@ const (
 	// RoleOutside is a receipt of a subset whose question is not in the subset: a resolution receipt,
 	// or a crossing receipt an answer decided, that belongs to no question of the list (VerifySubset).
 	RoleOutside
+	// RoleClose is a close receipt (close-2): it belongs to no question, and no receipt follows it.
+	RoleClose
 )
 
 // A Place is a receipt's place among the questions of its list: its role and, for every role but
-// RoleGive and RoleOutside, the index of its question's receipt (receipt-6, record 0005).
+// RoleGive, RoleOutside and RoleClose, the index of its question's receipt (receipt-6, record 0005).
 type Place struct {
 	Role     Role
 	Question int
@@ -165,17 +289,17 @@ type Place struct {
 // at their index (section 8, row 7). It takes Verified alone, so no caller reads the questions of
 // receipts nobody verified (record 0016).
 func Releases(list []Verified) ([]Place, error) {
-	statements := make([]Statement, len(list))
+	entries := make([]entry, len(list))
 	for i, v := range list {
-		statements[i] = v.s
+		entries[i] = entry{s: v.s, c: v.c}
 	}
-	return releases(statements, false)
+	return releases(entries, false)
 }
 
-// releases is Releases over statements, which Verify runs as its row 7 before it has any Verified.
+// releases is Releases over entries, which Verify runs as its row 7 before it has any Verified.
 // For a subset, a receipt that would belong to a question not in the list is RoleOutside, not a
-// failure.
-func releases(statements []Statement, subset bool) ([]Place, error) {
+// failure. A close is RoleClose.
+func releases(entries []entry, subset bool) ([]Place, error) {
 	type question struct {
 		closing  int
 		answer   string // NameAnswer or NameChanged when the closing is an answer that passed
@@ -186,9 +310,14 @@ func releases(statements []Statement, subset bool) ([]Place, error) {
 	}
 	latest := map[Envelope]int{}
 	questions := map[int]*question{}
-	places := make([]Place, len(statements))
+	places := make([]Place, len(entries))
 	fail := func(i int) ([]Place, error) { return nil, &Error{Code: CodeRelease, Index: i} }
-	for i, s := range statements {
+	for i, e := range entries {
+		if e.c != nil {
+			places[i] = Place{Role: RoleClose, Question: -1}
+			continue
+		}
+		s := e.s
 		p := s.Predicate
 		if p.Kind == KindCrossing && p.Verdict == escalate {
 			latest[p.Envelope] = i
@@ -210,13 +339,13 @@ func releases(statements []Statement, subset bool) ([]Place, error) {
 			places[i] = Place{Role: RoleGive, Question: -1}
 			continue
 		}
-		q, ask := questions[qi], statements[qi]
+		q, ask := questions[qi], entries[qi].s
 		if q.closing < 0 {
 			if p.Kind != KindResolution || p.To != ask.Predicate.From {
 				return fail(i)
 			}
 			switch p.Reason {
-			case ReasonDeclined, ReasonCancelled, ReasonTimeout, ReasonUndeliverable:
+			case ReasonDeclined, ReasonCancelled, ReasonTimeout, ReasonUndeliverable, ReasonClosed:
 				if s.Subject != ask.Subject {
 					return fail(i)
 				}
@@ -299,15 +428,25 @@ func Reconcile(mediator, accord, card string, presented [][]byte, kept []Kept) (
 	if err != nil {
 		return Report{}, err
 	}
-	statements := make([]Statement, len(verified))
-	for i, v := range verified {
-		statements[i] = v.s
-	}
-	places, _ := releases(statements, false)
+	// A close is presented with the receipts and checked against the same Accord and card; it echoes
+	// no envelope and queued nothing, so the lists read only the others (close-2).
+	var statements []Statement
+	var places []Place
+	all, _ := Releases(verified)
+	index := map[int]int{}
 	// Row 2.
-	for i, s := range statements {
-		if s.Predicate.Accord != accord || s.Predicate.Card != card {
+	for i, v := range verified {
+		a, c := v.s.Predicate.Accord, v.s.Predicate.Card
+		if v.c != nil {
+			a, c = v.c.Accord, v.c.Card
+		}
+		if a != accord || c != card {
 			return Report{}, &Error{Code: CodePresented, Index: i}
+		}
+		if v.c == nil {
+			index[i] = len(statements)
+			statements = append(statements, v.s)
+			places = append(places, all[i])
 		}
 	}
 	parties := append([]Kept(nil), kept...)
@@ -316,8 +455,8 @@ func Reconcile(mediator, accord, card string, presented [][]byte, kept []Kept) (
 	delivered := make([][]string, len(parties))
 	for pi, k := range parties {
 		for i, r := range k.Delivered {
-			st, code := one(r, mediator)
-			if code != "" || st.Predicate.Accord != accord || st.Predicate.Card != card ||
+			st, cl, code := one(r, mediator)
+			if code != "" || cl != nil || st.Predicate.Accord != accord || st.Predicate.Card != card ||
 				st.Predicate.Verdict != pass || st.Predicate.To != k.Actor {
 				return Report{}, &Error{Code: CodeKept, Index: i, Actor: k.Actor}
 			}
@@ -338,7 +477,7 @@ func Reconcile(mediator, accord, card string, presented [][]byte, kept []Kept) (
 		// of the question it belongs to (crossing-5).
 		actor := s.Predicate.From
 		if places[i].Role != RoleGive {
-			actor = statements[places[i].Question].Predicate.From
+			actor = statements[index[places[i].Question]].Predicate.From
 		}
 		echoed[echo{actor, s.Predicate.Envelope.Seq, s.Predicate.Envelope.Hash}] = true
 	}

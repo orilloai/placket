@@ -62,7 +62,9 @@ type Decision struct {
 // founding set its operator, how many members that operator is principal of, the number of members,
 // and the number of answer calls given that match no receipt.
 type Report struct {
-	Mediator                     string
+	Mediator string
+	// Close is the id of the close receipt the list holds, and empty when it holds none (close-4).
+	Close                        string
 	Subset                       receipts.Subset
 	Decisions                    []Decision
 	Module                       bool
@@ -134,16 +136,23 @@ func Check(e Evidence) (Report, error) {
 		}
 		r := Report{Mediator: e.Mediator, Subset: sub}
 		for i, v := range sub.Verified {
+			if c, ok := v.Close(); ok {
+				r.Close = c.ID
+				continue
+			}
 			r.Decisions = append(r.Decisions, Decision{Index: i, By: v.Statement().Predicate.By,
 				Checked: sub.Places[i].Role != receipts.RoleOutside})
 		}
 		return r, nil
 	}
-	// Row 0: the founding set is the Accord's.
+	// Row 0: the founding set is the Accord's, founded at the first receipt's time, a close's when the
+	// close is the first (close-4).
 	at := earliest
 	if len(e.Receipts) > 0 {
 		if s, err := receipts.Decode(e.Receipts[0]); err == nil {
 			at = s.Predicate.At
+		} else if c, err := receipts.DecodeClose(e.Receipts[0]); err == nil {
+			at = c.At
 		}
 	}
 	a, err := setup.Found(e.Founding, at)
@@ -238,8 +247,15 @@ func (c *checker) statement(i int) receipts.Statement { return c.r.Subset.Verifi
 // receipt runs rows 1 to 4 over the receipt at index i, records its decision, and returns the code
 // of the first row that failed, or none. A row after a failed one is not run, but the receipt's
 // question is recorded and its decision appended whatever failed, so the receipts after it are read
-// as the list holds them.
+// as the list holds them. A close goes through row 1 alone, and is no decision (close-4).
 func (c *checker) receipt(i int) Code {
+	if cl, ok := c.r.Subset.Verified[i].Close(); ok {
+		c.r.Close = cl.ID
+		if cl.Accord != c.e.Accord || cl.Card != c.a.Card() {
+			return CodeAccord
+		}
+		return ""
+	}
 	s := c.statement(i)
 	p := s.Predicate
 	place := c.r.Subset.Places[i]
@@ -264,9 +280,9 @@ func (c *checker) receipt(i int) Code {
 		failed = CodeAccord
 	}
 	// Row 2: the parties are members, or the sender the mediator where it closes a question (maybe-4,
-	// maybe-5).
-	byMediator := p.Kind == receipts.KindResolution && (p.Reason == receipts.ReasonTimeout || p.Reason == receipts.ReasonUndeliverable) &&
-		p.From == c.r.Mediator
+	// maybe-5, close-1).
+	byMediator := p.Kind == receipts.KindResolution && (p.Reason == receipts.ReasonTimeout || p.Reason == receipts.ReasonUndeliverable ||
+		p.Reason == receipts.ReasonClosed) && p.From == c.r.Mediator
 	if failed == "" && (!c.a.Member(p.To) || (!c.a.Member(p.From) && !byMediator)) {
 		failed = CodeParty
 	}
@@ -328,7 +344,8 @@ func (c *checker) decided(i int, s receipts.Statement, place receipts.Place, q *
 		switch p.Reason {
 		case receipts.ReasonTimeout:
 			return p.At == q.deadline && p.From == first
-		case receipts.ReasonUndeliverable:
+		case receipts.ReasonUndeliverable, receipts.ReasonClosed:
+			// That a closed closing's at is its close's is validity's row 8 (close-4).
 			return p.At < q.deadline && p.From == first
 		case receipts.ReasonDeclined, receipts.ReasonCancelled:
 			return p.At < q.deadline && len(q.answerers) > 0 && p.From == first
