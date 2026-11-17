@@ -565,3 +565,30 @@ func TestClosedWordInLogAndShow(t *testing.T) {
 		t.Fatalf("show of close.json: %v", sc)
 	}
 }
+
+// TestTornCloseAtStart is U14 at the command line (close-1): a window on a journal whose close was
+// cut before the close receipt refuses to start, saying to run window close, with tool error
+// journal receipts.jsonl close; window close then writes the close receipt alone.
+func TestTornCloseAtStart(t *testing.T) {
+	t.Parallel()
+	a := newAccord(t, "proposer", "applier", "decider")
+	a.start(t)
+	a.openOne(t, "Rename total.")
+	a.window.stop(t)
+	a.closeNow(t)
+	full := a.receipts(t)
+	lines := a.journalLines(t)
+	cut := append(bytes.Join(lines[:len(lines)-1], []byte("\n")), '\n')
+	if err := os.WriteFile(filepath.Join(a.journal(), journal.FileReceipts), cut, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	r := run(t, env(), "window", "--key", a.key("mediator"), "--founding", filepath.Join(a.dir, "founding.json"),
+		"--socket", a.socket(), "--journal", a.journal())
+	if r.code != cli.ExitTool || !slices.Equal(r.lines(), []string{cli.LineTornClose, "error journal receipts.jsonl close"}) {
+		t.Fatalf("a window on a torn close: %v", r)
+	}
+	c := must(t, a.closeArgs()...)
+	if len(c.lines()) != 1 || !bytes.Equal(a.receipts(t), full) {
+		t.Fatalf("completing the close: %v", c)
+	}
+}
