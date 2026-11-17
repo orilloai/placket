@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"sync"
 	"syscall"
@@ -142,7 +143,7 @@ func TestAWindowKilled(t *testing.T) {
 		t.Fatalf("%d receipts after the restart, %d before", len(lines), before)
 	}
 	r := run(t, env(), a.as("proposer", "result", "--question", open)...)
-	if r.code != 1 || !strings.HasPrefix(r.stderr, "undeliverable sha256:") {
+	if r.code != 1 || !regexp.MustCompile(`^undeliverable `+receiptID+`\n$`).MatchString(r.stderr) {
 		t.Fatalf("result: %v", r)
 	}
 	if r := run(t, env(), a.as("decider", "answer", "--question", open)...); r.code != 2 || r.stderr != "rejected no-open-question\n" {
@@ -152,7 +153,7 @@ func TestAWindowKilled(t *testing.T) {
 	if len(got) != 1 || got[0].stdout != "Rename total.\n" {
 		t.Fatalf("the applier fetched %v", got)
 	}
-	if r := must(t, "verify", "--mediator", a.refs["mediator"], "--receipts", a.journal()); !strings.HasPrefix(r.stderr, fmt.Sprintf("verified %d receipts\n", before+1)) {
+	if r := must(t, "verify", "--mediator", a.refs["mediator"], "--receipts", a.journal()); r.lines()[0] != fmt.Sprintf("verified %d receipts", before+1) {
 		t.Fatalf("verify: %v", r)
 	}
 	if !strings.Contains(logs[1].String(), "reloaded block undeliverable ") {

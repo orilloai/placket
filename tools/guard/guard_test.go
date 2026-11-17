@@ -393,12 +393,13 @@ func TestCommand(t *testing.T) {
 		t.Fatalf("got %q, want %q", b.String(), want)
 	}
 	b.Reset()
-	if rc := run(live, []string{"no-such-rule"}, &b); rc != 2 || !strings.HasPrefix(b.String(), "guard: no-such-rule: no such rule; the rules are: core-no-deps ") {
-		t.Fatalf("got %d and %q", rc, b.String())
+	if want := "guard: no-such-rule: no such rule; the rules are: " + ruleNames() + "\n"; run(live, []string{"no-such-rule"}, &b) != 2 || b.String() != want ||
+		!strings.HasPrefix(ruleNames(), "core-no-deps ") {
+		t.Fatalf("got %q, want %q", b.String(), want)
 	}
 	b.Reset()
-	if rc := run(live, nil, &b); rc != 2 {
-		t.Fatalf("got %d and %q; want 2", rc, b.String())
+	if want := "guard: name the rules to check: " + ruleNames() + "\n"; run(live, nil, &b) != 2 || b.String() != want {
+		t.Fatalf("got %q, want %q", b.String(), want)
 	}
 }
 

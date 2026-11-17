@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -113,10 +114,15 @@ func TestTwoWaitsEachEndWithTheirOwn(t *testing.T) {
 	must(t, a.as("decider", "change", "--question", q2, "--text", "Two, changed.")...)
 	must(t, a.as("decider", "answer", "--question", q1, "--text", "One, yes.")...)
 	r1, r2 := w1.end(t), w2.end(t)
-	if r1.code != 0 || last(r1.stdout) != "One, yes." || !strings.Contains(r1.stderr, "accepted sha256:") {
+	// The first wait may fetch the second's changed version before its own answer, and then prints it
+	// as get does.
+	first := regexp.MustCompile(`^ask maybe ` + q1 + `\naccepted ` + receiptID + `\n(delivery ` + receiptID + ` kind changed-version messageId change:` + q2 +
+		` salt [0-9a-f]{32} re ` + q2 + `\n)?$`)
+	if r1.code != 0 || last(r1.stdout) != "One, yes." || !first.MatchString(r1.stderr) {
 		t.Fatalf("the first wait: %v", r1)
 	}
-	if r2.code != 1 || last(r2.stdout) != "Two, changed." || !strings.Contains(r2.stderr, "changed sha256:") {
+	second := regexp.MustCompile(`^ask maybe ` + q2 + `\nchanged ` + receiptID + `\n$`)
+	if r2.code != 1 || last(r2.stdout) != "Two, changed." || !second.MatchString(r2.stderr) {
 		t.Fatalf("the second wait: %v", r2)
 	}
 	kept, _ := os.ReadFile(filepath.Join(a.state("proposer"), "kept.jsonl"))
@@ -127,3 +133,6 @@ func TestTwoWaitsEachEndWithTheirOwn(t *testing.T) {
 		t.Fatalf("a delivery was left: %v", r)
 	}
 }
+
+// receiptID matches a receipt id, a typed hash, in a pattern.
+const receiptID = `sha256:[0-9a-f]{64}`

@@ -287,8 +287,13 @@ func TestAJournalWriteThatFails(t *testing.T) {
 		}
 		_ = os.Chmod(w.journal, 0o700)
 		_ = os.Chmod(filepath.Join(w.journal, journal.FileReceipts), 0o600)
+		held, err := os.ReadDir(filepath.Join(w.journal, journal.DirHeld))
+		if err != nil || len(held) != 1 {
+			t.Fatalf("%s: held/ holds %v, %v", how, held, err)
+		}
 		win = start(t, w.window(t))
-		if !strings.Contains(win.stderr.String(), "a delivery whose receipt was never journaled") {
+		want := "journal: held/" + held[0].Name() + " holds a delivery whose receipt was never journaled; it never crossed, and is removed\n"
+		if win.stderr.String() != want {
 			t.Fatalf("%s: stderr %q", how, win.stderr.String())
 		}
 		if r := w.give(t, "proposer", "applier", "n-1", "note", "A note."); r.Outcome == nil || r.Outcome.Verdict != "pass" {

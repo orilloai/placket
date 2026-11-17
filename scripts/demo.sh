@@ -33,6 +33,9 @@ fi
 cd "$out"
 
 step() { echo; echo "== $*"; }
+# pause: a tenth of a second where sleep takes a fraction, which POSIX does not promise, and a
+# second where it does not.
+pause() { sleep 0.1 2>/dev/null || sleep 1; }
 # run NAME ARGS...: run the binary as one party, printing what it prints, and its exit code.
 run() {
 	who=$1
@@ -94,7 +97,7 @@ start_window() {
 	until grep -q '^operator ' window.log 2>/dev/null && [ "$(grep -c '^operator ' window.log)" -ge "$1" ]; do
 		n=$((n + 1))
 		[ "$n" -lt 100 ] || { echo "the window did not start"; cat window.log; exit 1; }
-		sleep 0.1
+		pause
 	done
 }
 start_window 1
@@ -126,7 +129,7 @@ question() {
 		[ -z "$q" ] || break
 		n=$((n + 1))
 		[ "$n" -lt 100 ] || { echo "no question came"; exit 1; }
-		sleep 0.1
+		pause
 	done
 	sed -n 's/.*"message":"\([^"]*\)".*/decider: questions: \1/p' "$out/questions" | head -n 1
 }
