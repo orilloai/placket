@@ -313,6 +313,9 @@ func (w *window) serve(ctx context.Context, l *net.UnixListener) error {
 				}
 			}
 			pause = 0
+			// The deadline is set before the connection is registered, so the shutdown's deadline of
+			// now, set to every registered connection, is never overwritten by a later one.
+			_ = c.SetDeadline(time.Now().Add(readTimeout))
 			mu.Lock()
 			if closed {
 				mu.Unlock()
@@ -366,10 +369,13 @@ func temporary(err error) bool {
 	return errors.Is(err, syscall.EMFILE) || errors.Is(err, syscall.ENFILE) || (errors.As(err, &ne) && ne.Timeout())
 }
 
-// read reads one call from c, hands it to the window, and writes the reply, if one comes.
+// readTimeout is how long a connection may take to send its call and read its reply.
+const readTimeout = 30 * time.Second
+
+// read reads one call from c, hands it to the window, and writes the reply, if one comes. Its
+// deadline is set before it starts.
 func read(c net.Conn, reqs chan<- request, done <-chan struct{}) {
 	defer c.Close()
-	_ = c.SetDeadline(time.Now().Add(30 * time.Second))
 	br := bufio.NewReaderSize(c, 64<<10)
 	var line []byte
 	tooLarge := false
@@ -584,17 +590,73 @@ func (w *window) questions(c Call, ev *Event) []byte {
 		case !ok:
 			continue
 		}
-		a := wireAsked{ID: &q.ID, Asker: &q.Asker, Kind: &q.Kind, Deadline: &q.Deadline, Form: &q.Form}
-		if q.Form == "raw" {
-			n := len(q.Part)
-			a.Size = &n
-		} else {
+		n := len(q.Part)
+		a := wireAsked{ID: &q.ID, Asker: &q.Asker, Kind: &q.Kind, Deadline: &q.Deadline, Form: &q.Form, Size: &n}
+		if q.Form != "raw" {
 			s := string(q.Part)
 			a.Message = &s
 		}
 		list = append(list, a)
 	}
-	return encodeReply(wireReply{Questions: &list})
+	return questionsReply(list, ev)
+}
+
+// questionsReply encodes the questions reply in at most MaxReply bytes, so a client reads every
+// reply the window sends, however many questions are open and however large their parts. Each
+// question in list carries its part's Size, and a text or data question its Message too. First
+// every question is counted by its size alone; a question that would take the reply past MaxReply
+// even so is left out, with every one after it, until earlier questions close. Then, oldest first,
+// a text or data question keeps its message while the reply still fits, and is otherwise shown by
+// its size alone, as a raw part always is.
+func questionsReply(list []wireAsked, ev *Event) []byte {
+	empty := []wireAsked{}
+	used := len(encodeReply(wireReply{Questions: &empty}))
+	for i := range list {
+		a := list[i]
+		a.Message = nil
+		n := encodedLen(a)
+		if i > 0 {
+			n++ // the comma before it
+		}
+		if used+n > MaxReply {
+			list = list[:i]
+			break
+		}
+		used += n
+	}
+	for i := range list {
+		if list[i].Message == nil {
+			continue
+		}
+		bare := list[i]
+		bare.Message = nil
+		grow := encodedLen(list[i]) - encodedLen(bare)
+		if used+grow > MaxReply {
+			list[i].Message = nil
+			continue
+		}
+		used += grow
+		list[i].Size = nil
+	}
+	b := encodeReply(wireReply{Questions: &list})
+	if len(b) > MaxReply {
+		ev.Door = Internal
+		return refusal(byDoor, string(Internal))
+	}
+	return b
+}
+
+// encodedLen is the length of a question's canonical bytes in a reply.
+func encodedLen(a wireAsked) int {
+	b, err := json.Marshal(a)
+	if err != nil {
+		return MaxReply + 1
+	}
+	c, err := canonical.Form(b)
+	if err != nil {
+		return MaxReply + 1
+	}
+	return len(c)
 }
 
 func (w *window) resolve(c Call, at string, ev *Event) ([]byte, error) {
