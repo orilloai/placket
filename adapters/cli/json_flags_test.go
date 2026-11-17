@@ -97,7 +97,8 @@ var commandFlags = []commandRow{
 		"actor":    {input, "the actor of the one binding it makes", nil},
 		"mediator": {input, "the mediator the one binding names", nil},
 		"until":    {input, "the time the one binding ends", nil},
-		"role":     {input, "each role goes into the one binding it makes", nil}}},
+		"role":     {input, "each role goes into the one binding it makes", nil},
+		"policy":   {input, "the policy whose hash the one binding names", nil}}},
 	{words: []string{"founding"}, flags: map[string]flagUse{
 		"json": jsonFlag, "policy": {input, "the policy of the one set it makes", nil},
 		"mediator":    {input, "the mediator of the one set", nil},

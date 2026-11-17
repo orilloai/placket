@@ -308,7 +308,7 @@ func TestTermChecksList(t *testing.T) {
 // which composition matches a term's with against.
 func TestRolesAreTheBindings(t *testing.T) {
 	t.Parallel()
-	names := []string{"ask-and-log", "compose", "one-binding-two-roles", "operator-changes-the-id", "policy-without-roles"}
+	names := []string{"ask-and-log", "compose", "one-binding-two-roles", "operator-changes-the-id", "policy-without-roles", "two-principals", "two-entries-one-role", "a-role-held-not-required"}
 	for _, name := range names {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()

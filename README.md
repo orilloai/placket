@@ -47,12 +47,15 @@ An Accord is founded from five kinds of file: the policy, the mediator, the card
 for k in mediator operator principal proposer applier decider; do
 	placket key new --out "$k.key" >"$k.ref"
 done
-# Each party signs its terms; the principal binds it to its role under this mediator.
+# The policy: the roles that must be held, and each principal with the roles it may grant. Here one
+# principal stands behind all three parties.
+echo "{\"roles\":[\"proposer\",\"applier\",\"decider\"],\"principals\":[{\"principal\":\"$(cat principal.ref)\",\"roles\":[\"proposer\",\"applier\",\"decider\"]}]}" >policy.json
+# Each party signs its terms; its principal binds it to its role under this mediator and this policy.
 for a in proposer applier decider; do
 	placket declare --key "$a.key" --terms "$a.terms" >"$a.declaration"
-	placket bind --key principal.key --actor "$(cat "$a.ref")" --role "$a" --mediator "$(cat mediator.ref)" --until 2099-01-01T00:00:00Z >"$a.binding"
+	placket bind --key principal.key --actor "$(cat "$a.ref")" --role "$a" --mediator "$(cat mediator.ref)" --until 2099-01-01T00:00:00Z \
+		--policy policy.json >"$a.binding"
 done
-echo "{\"roles\":[\"proposer\",\"applier\",\"decider\"],\"principals\":[\"$(cat principal.ref)\"]}" >policy.json
 echo "{\"actor\":\"$(cat mediator.ref)\",\"operator\":\"$(cat operator.ref)\",\"runs\":\"process\"}" >mediator.json
 # The card names the decision module this binary runs.
 placket card --default >card.json
@@ -61,6 +64,8 @@ placket founding --policy policy.json --mediator mediator.json --card card.json 
 	--binding proposer.binding --binding applier.binding --binding decider.binding >founding.json
 placket window --key mediator.key --founding founding.json --socket /tmp/plk.s --journal journal
 ```
+
+Each party's binding is signed by that party's own principal, under the policy it names by hash, and gives only roles the policy lets that principal grant. One principal may stand behind every party, as here, or each side may have its own, as in the guarded-export pattern (`patterns/guarded-export/`); `verify --founding` names each member's roles and principal.
 
 `placket card --default` prints the binary's own card on standard output, and on standard error its card hash and `module <version> <hash>`. The hash is taken from the source of the decision module, `core/composition/composition.go`, that the binary was built from, so a binary with another module prints another card (`docs/adr/0012-the-kernel-hash.md`). Never copy a card from another build:
 
@@ -71,26 +76,26 @@ placket window --key mediator.key --founding founding.json --socket /tmp/plk.s -
 Its first receipt, `seq` 1 of the proposer's chain to the applier, is the first proposal's ask:
 
 ```
-{"payload":"eyJfdHlwZSI6Imh0dHBzOi8vaW4tdG90by5pby9TdGF0ZW1lbnQvdjEiLCJwcmVkaWNhdGUiOnsiYWNjb3JkIjoic2hhMjU2OjhhMDY0NmFmZTA4OTIzZjhiM2Y5Y2MxNWM2M2JjZTE4NjAxYzU3M2ExNjA4ZGMwYzViNDA5NGM5OTRmYjYwYTQiLCJhdCI6IjIwMjYtMTEtMTJUMjI6MzI6NThaIiwiY2FyZCI6InNoYTI1Njo2OTBlNWRiYjY3NzA0YjYwZmM0NzUxMmNkOGYwMjE0M2E3ODc2ZTg4NWNmODY1ZTRiZGU3OWVkN2ZiZTVjMzU2IiwiZW52ZWxvcGUiOnsiaGFzaCI6InNoYTI1Njo5OTI4MTY0ZDNmZWExYTI1MWJlMGU5MjFkYjZlOGNjNTIwZWZjMmFiZWZjMjZkMDU4ODcxOWU4MTFhMTk2ZDQxIiwic2VuZGVyIjoiZWQyNTUxOTo2ZmMzNjg0ZDFhMzBjMzViZWNmZGQxMDk1MjliZGUxM2IxNGYyYzU2NmRiMmUxOTIxMGU5OGM4NDJlYmU5NDI1Iiwic2VxIjoxfSwiZnJvbSI6ImVkMjU1MTk6NmZjMzY4NGQxYTMwYzM1YmVjZmRkMTA5NTI5YmRlMTNiMTRmMmM1NjZkYjJlMTkyMTBlOThjODQyZWJlOTQyNSIsImtpbmQiOiJjcm9zc2luZyIsIm1lZGlhdG9yIjoiZWQyNTUxOToyNzRmNmFmNWE1NzZhYjRkNTU0NGMzM2JiOGU0ZDRiMTE0OGFjODY1NGM0ZmUyNmMxYmEyY2NlNDAwY2MyN2ZkIiwicmVhc29uIjoibWF5YmUiLCJzZXEiOjEsInRvIjoiZWQyNTUxOTo2MDQyNmUzODY5NjNmZTZkMWY0NGNiZTAyMmFkNGJjMjRlNzc0YjBhZWI3Y2IyZGRhMzJhNGJkMWFlNmMzNTNlIiwidmVyZGljdCI6ImVzY2FsYXRlIn0sInByZWRpY2F0ZVR5cGUiOiJodHRwczovL3BsYWNrZXQuZGV2L3JlY2VpcHQvMC4xIiwic3ViamVjdCI6W3siZGlnZXN0Ijp7InNhbHRlZC1zaGEyNTYiOiI0MzhlYThjNjhjYjQxM2MzNjU0NjNjNzMxMTc4MGU1MjdjODIxOTIyNjMwYTZkZDUyMWIyMjI1ZmFmYjNhOWYyIn0sIm5hbWUiOiJwcm9wb3NhbCJ9XX0=","payloadType":"application/vnd.in-toto+json","signatures":[{"keyid":"ed25519:274f6af5a576ab4d5544c33bb8e4d4b1148ac8654c4fe26c1ba2cce400cc27fd","sig":"6n12Nx0bP3aUcPjQfH3ys9/t4XsUMTuPesn5uNBVwSxLZ1LqOc5x6eMN2XvE8aBR2bUVcKKn5rZAKELTycSJAQ=="}]}
+{"payload":"eyJfdHlwZSI6Imh0dHBzOi8vaW4tdG90by5pby9TdGF0ZW1lbnQvdjEiLCJwcmVkaWNhdGUiOnsiYWNjb3JkIjoic2hhMjU2OjdmMWM2ZWE2ZjgwMGU4OGQ2NzBhZGEzZTVkNmU0ZDI5OGMyOTc2M2YzNjE3Y2ZhYWJiODI4NmY4ZDI3ZWY0ZjciLCJhdCI6IjIwMjYtMTEtMTdUMDM6NTI6MTRaIiwiY2FyZCI6InNoYTI1Njo2OTBlNWRiYjY3NzA0YjYwZmM0NzUxMmNkOGYwMjE0M2E3ODc2ZTg4NWNmODY1ZTRiZGU3OWVkN2ZiZTVjMzU2IiwiZW52ZWxvcGUiOnsiaGFzaCI6InNoYTI1Njo3ZDZlMWRlYmQxOGNlMzNkMmQyMmVkZTMyMjBmMzdmYmM1Y2NiNTZmNzA0YWMyNDk2YjI5ZmQ0N2U2N2M0OTA2Iiwic2VuZGVyIjoiZWQyNTUxOTozZDYxMjQ5NTgwNWViNmFkYjFkYmI2YTFhMDc1OTJhYTUyYzVkNzFhMGU0ZWM3ZTFiYzczMjlhNGViMmMxMzc3Iiwic2VxIjoxfSwiZnJvbSI6ImVkMjU1MTk6M2Q2MTI0OTU4MDVlYjZhZGIxZGJiNmExYTA3NTkyYWE1MmM1ZDcxYTBlNGVjN2UxYmM3MzI5YTRlYjJjMTM3NyIsImtpbmQiOiJjcm9zc2luZyIsIm1lZGlhdG9yIjoiZWQyNTUxOToyNWE3ZmM4OTRmYmI0NzU1Yjk3Nzg1YzFlNDI3ZDNmMzNhY2IwZjU5NjhhZTYwZjdmZGY2YjY5ZmIxZjExOWMxIiwicmVhc29uIjoibWF5YmUiLCJzZXEiOjEsInRvIjoiZWQyNTUxOToyMjFiNzg0MDJhMjBiNmMyMjkxZmYzOWJiYzdkYmIyOTQzYzRiMTkzYTYxMTU3NDI1MzE2NTczNWI5MDU2ZTc4IiwidmVyZGljdCI6ImVzY2FsYXRlIn0sInByZWRpY2F0ZVR5cGUiOiJodHRwczovL3BsYWNrZXQuZGV2L3JlY2VpcHQvMC4xIiwic3ViamVjdCI6W3siZGlnZXN0Ijp7InNhbHRlZC1zaGEyNTYiOiJlZDBhOTVmZDQ1ZmUyMmU3ZWE4ZWM2NGFmOTY0ZWU5OTFjY2ZmOGIxMDNhZGVlMTIwYWRkNTcyZTk1MDVjZjI0In0sIm5hbWUiOiJwcm9wb3NhbCJ9XX0=","payloadType":"application/vnd.in-toto+json","signatures":[{"keyid":"ed25519:25a7fc894fbb4755b97785c1e427d3f33acb0f5968ae60f7fdf6b69fb1f119c1","sig":"zD+o8W30UH0xMvCADFmkFSrYZ2UZ4TQKGAeOzAczMKdJ0OFwzUps6av125OKDqUDVfpVeo3wClzQsl5F0EZ6Ag=="}]}
 ```
 
 and `placket show --receipt` prints, on standard error, then on standard output:
 
 ```
 not verified
-ask maybe proposal 2026-11-12T22:32:58Z
-from ed25519:6fc3684d1a30c35becfdd109529bde13b14f2c566db2e19210e98c842ebe9425 to ed25519:60426e386963fe6d1f44cbe022ad4bc24e774b0aeb7cb2dda32a4bd1ae6c353e
+ask maybe proposal 2026-11-17T03:52:14Z
+from ed25519:3d612495805eb6adb1dbb6a1a07592aa52c5d71a0e4ec7e1bc7329a4eb2c1377 to ed25519:221b78402a20b6c2291ff39bbc7dbb2943c4b193a611574253165735b9056e78
 module: named by card sha256:690e5dbb67704b60fc47512cd8f02143a7876e885cf865e4bde79ed7fbe5c356.
 claim: the mediator held this part and asked the roles its terms name. This receipt delivered nothing.
 not claimed: what any party did with a part after it crossed; anything that did not go through this mediator; reworded or derived content; who was at a key.
 not verified: this receipt was decoded without checking its signature, its mediator or its chain
-receipt sha256:395ba3b3285246850b8ad4d66c5889f637a3c360f95e908da8c8dbd9a2a603dd
-crossing from ed25519:6fc3684d1a30c35becfdd109529bde13b14f2c566db2e19210e98c842ebe9425 to ed25519:60426e386963fe6d1f44cbe022ad4bc24e774b0aeb7cb2dda32a4bd1ae6c353e
+receipt sha256:435d8054381d30571321f54e2918fccfb9fbeb6812fe38546e452f8f9daae7b9
+crossing from ed25519:3d612495805eb6adb1dbb6a1a07592aa52c5d71a0e4ec7e1bc7329a4eb2c1377 to ed25519:221b78402a20b6c2291ff39bbc7dbb2943c4b193a611574253165735b9056e78
 verdict escalate, reason maybe
-subject proposal, salted-sha256 438ea8c68cb413c365463c7311780e527c821922630a6dd521b2225fafb3a9f2
-accord sha256:8a0646afe08923f8b3f9cc15c63bce18601c573a1608dc0c5b4094c994fb60a4, card sha256:690e5dbb67704b60fc47512cd8f02143a7876e885cf865e4bde79ed7fbe5c356
-mediator ed25519:274f6af5a576ab4d5544c33bb8e4d4b1148ac8654c4fe26c1ba2cce400cc27fd, seq 1, at 2026-11-12T22:32:58Z
-envelope of ed25519:6fc3684d1a30c35becfdd109529bde13b14f2c566db2e19210e98c842ebe9425, seq 1, hash sha256:9928164d3fea1a251be0e921db6e8cc520efc2abefc26d0588719e811a196d41
+subject proposal, salted-sha256 ed0a95fd45fe22e7ea8ec64af964ee991ccff8b103adee120add572e9505cf24
+accord sha256:7f1c6ea6f800e88d670ada3e5d6e4d298c29763f3617cfaabb8286f8d27ef4f7, card sha256:690e5dbb67704b60fc47512cd8f02143a7876e885cf865e4bde79ed7fbe5c356
+mediator ed25519:25a7fc894fbb4755b97785c1e427d3f33acb0f5968ae60f7fdf6b69fb1f119c1, seq 1, at 2026-11-17T03:52:14Z
+envelope of ed25519:3d612495805eb6adb1dbb6a1a07592aa52c5d71a0e4ec7e1bc7329a4eb2c1377, seq 1, hash sha256:7d6e1debd18ce33d2d22ede3220f37fbc5ccb56f704ac2496b29fd47e67c4906
 ```
 
 ## Where to start

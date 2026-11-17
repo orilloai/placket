@@ -1,0 +1,181 @@
+{
+  "expect": {
+    "code": "invalid-shape"
+  },
+  "foundedAt": "2026-11-12T08:00:00Z",
+  "input": {
+    "bindings": [
+      {
+        "actor": "ed25519:375dea8c4519dbae84fc9eb513e97eb4b693968ef37d52ac10da7b79250c6a22",
+        "mediator": "ed25519:84254f9d593b0f7811b18c00b656a70fe1a9595ed353c73286ea83d300226ed3",
+        "policy": "sha256:a1911de696860a8ae23f88e8233fe099d8ace493d1a84db671c9cfea482cc3c5",
+        "principal": "ed25519:7953e3ee4311c21f4990662dbe506689868533db6fb93a77351351e8d6119574",
+        "roles": [
+          "decider"
+        ],
+        "sig": "b12c17a0df3cd55b32f640b6c20938538bafc124d358ac8f9b12031bf362222297844218bed8cd7fe11430d7a777df6e5706eb12f7310a4ecf244d141bc18f0b",
+        "until": "2027-11-12T00:00:00Z"
+      },
+      {
+        "actor": "ed25519:7cf35b36b9d57c62b9f3d5be2eb4d39147afa1b7625cd0032443523254df3bea",
+        "mediator": "ed25519:84254f9d593b0f7811b18c00b656a70fe1a9595ed353c73286ea83d300226ed3",
+        "policy": "sha256:a1911de696860a8ae23f88e8233fe099d8ace493d1a84db671c9cfea482cc3c5",
+        "principal": "ed25519:7953e3ee4311c21f4990662dbe506689868533db6fb93a77351351e8d6119574",
+        "roles": [
+          "proposer"
+        ],
+        "sig": "11d54350395548c922b0ebf44034cbbcf95198219697767b88319bffd4073b4b9de50523cc0b10a7d1f877ca01ffb2fe866affe5233e274443d397676e9ada05",
+        "until": "2027-11-12T00:00:00Z"
+      },
+      {
+        "actor": "ed25519:a80586279ba17c5360b029018bf025be0169fdb02087e77301774c99eed92117",
+        "mediator": "ed25519:84254f9d593b0f7811b18c00b656a70fe1a9595ed353c73286ea83d300226ed3",
+        "policy": "sha256:a1911de696860a8ae23f88e8233fe099d8ace493d1a84db671c9cfea482cc3c5",
+        "principal": "ed25519:7953e3ee4311c21f4990662dbe506689868533db6fb93a77351351e8d6119574",
+        "roles": [
+          "applier"
+        ],
+        "sig": "dd89946711278696b33848fd407b4484a78587d7e968e353d4e141390d72a103bfedca5a732828b5a142545e589cbec696db14126154731c5c9c1d243db03606",
+        "until": "2027-11-12T00:00:00Z"
+      }
+    ],
+    "card": {
+      "checks": [],
+      "judges": [],
+      "kernel": {
+        "hash": "sha256:a8755bef6ff188c2dc6b74377a73c6a49d612fc44915675db9d2795bb5b99475",
+        "version": "0.1.0"
+      },
+      "spec": "0.1"
+    },
+    "declarations": [
+      {
+        "actor": "ed25519:375dea8c4519dbae84fc9eb513e97eb4b693968ef37d52ac10da7b79250c6a22",
+        "sig": "316c890d952df9fddbb2b50ea255bf2fb584d32cc8cf73d0226eff87cce4036f500277b2469c875a9037adbb901ceac72354874b93e4774d75103b7e8fccc00e",
+        "terms": [
+          {
+            "dir": "give",
+            "select": {
+              "kind": [
+                "answer",
+                "changed-version"
+              ]
+            },
+            "stance": "want",
+            "with": [
+              "role:proposer",
+              "role:applier"
+            ]
+          }
+        ]
+      },
+      {
+        "actor": "ed25519:7cf35b36b9d57c62b9f3d5be2eb4d39147afa1b7625cd0032443523254df3bea",
+        "sig": "2f0b765521a0114cf2c7a6c534c2fdee936383adb5ae306e129909efa045fd86884e8de2fc6440f3528303cde34e47808f71b6d9867b0cc9098f49c80e138102",
+        "terms": [
+          {
+            "dir": "give",
+            "resolve": {
+              "timeout": 3600,
+              "to": [
+                "role:decider"
+              ]
+            },
+            "select": {
+              "kind": [
+                "proposal"
+              ]
+            },
+            "stance": "maybe",
+            "with": [
+              "role:applier"
+            ]
+          },
+          {
+            "dir": "give",
+            "select": {
+              "kind": [
+                "note"
+              ]
+            },
+            "stance": "want",
+            "with": [
+              "role:applier"
+            ]
+          },
+          {
+            "dir": "get",
+            "select": {
+              "kind": [
+                "answer",
+                "changed-version"
+              ]
+            },
+            "stance": "want",
+            "with": [
+              "role:decider"
+            ]
+          }
+        ]
+      },
+      {
+        "actor": "ed25519:a80586279ba17c5360b029018bf025be0169fdb02087e77301774c99eed92117",
+        "sig": "a8de4390b6d13517b7304fca7faa74223a4a244d96a6b2f0f3d0c65931c308c385f89f5c0b5ef6e119d1e183526631bd0ff955287e885826a53dc0c64ca1850f",
+        "terms": [
+          {
+            "dir": "get",
+            "select": {
+              "kind": [
+                "proposal",
+                "note"
+              ]
+            },
+            "stance": "want",
+            "with": [
+              "role:proposer"
+            ]
+          },
+          {
+            "dir": "get",
+            "select": {
+              "kind": [
+                "changed-version"
+              ]
+            },
+            "stance": "want",
+            "with": [
+              "role:decider"
+            ]
+          }
+        ]
+      }
+    ],
+    "mediator": {
+      "actor": "ed25519:84254f9d593b0f7811b18c00b656a70fe1a9595ed353c73286ea83d300226ed3",
+      "operator": "ed25519:30f97501d13dd5589fc04e36ba98ccca1e44f52c1b3f578f1aca3c57c2181fbc",
+      "runs": "process"
+    },
+    "policy": {
+      "principals": [
+        {
+          "principal": "ed25519:7953e3ee4311c21f4990662dbe506689868533db6fb93a77351351e8d6119574",
+          "roles": [
+            "proposer",
+            "applier",
+            "decider",
+            "decider"
+          ]
+        }
+      ],
+      "roles": [
+        "proposer",
+        "applier",
+        "decider"
+      ]
+    }
+  },
+  "operation": "found",
+  "spec": "0.1",
+  "tests": "setup-contract-9: a policy entry whose roles repeats a label is invalid-shape",
+  "vector": "founding/entry-roles-repeated"
+}

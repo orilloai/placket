@@ -20,6 +20,7 @@ It does not normalize for you. Placket compares bytes. The proposer normalizes e
 
 From `spec/protocol.md`:
 
+- §3, Founding an Accord, setup-contract-2 and setup-contract-3: each party's binding is signed by its own principal and gives only the roles the policy lets that principal grant. Here one principal binds the proposer and the approver, and another binds the receiver.
 - §6, Questions, the three answers and release: a proposal the terms make a question crosses only when the approver accepts it, or changes it, with release; a decline blocks it.
 - §11, commands-3, What a command makes or fetches: `get --all --out --json` fetches every delivery to files and lists them.
 - §11, commands-5, A file checked against what crossed: the guard's check, `released --file F --state DIR`. Bytes match only when a receipt that passed, addressed to the receiver, names their salted digest.
@@ -65,6 +66,6 @@ claim: each receipt is this mediator's signed decision about one part under this
 
 ## Making it yours
 
-Change the lines marked `# CHANGE`: the normalization, the bindings' lifetime, the records, where the value sits inside a part, the export step, and the rule for "only the latest". Keep the normalization the same on both sides of the crossing, and check the value the export step is about to write, not a copy of it.
+Change the lines marked `# CHANGE`: the normalization, who binds whom, the bindings' lifetime, the records, where the value sits inside a part, the export step, and the rule for "only the latest". Keep the normalization the same on both sides of the crossing, and check the value the export step is about to write, not a copy of it.
 
 Here each record is a whole part, so `at` is empty and the guard asks `released --state DIR --file V`. When your part wraps the value in a body, such as `{"summary":...,"topic":...,"payload":...}` with the value at `/payload`, set `at=/payload`: the guard then asks `released --state DIR --at /payload --value-file V`, which matches when V's bytes are exactly the value at that path inside a part the receiver kept (§11, commands-6 and commands-7). The guard writes V without the newline after it, since a value inside a body has none. The normalization then applies to the value alone, and the proposer must have put the value inside the body in those same bytes.

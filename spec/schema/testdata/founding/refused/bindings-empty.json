@@ -118,7 +118,14 @@
   },
   "policy": {
     "principals": [
-      "ed25519:534b70c488c3bdeb57b19682f11c7d18cdb43087760a253b4fb0cb8f6d251b99"
+      {
+        "principal": "ed25519:534b70c488c3bdeb57b19682f11c7d18cdb43087760a253b4fb0cb8f6d251b99",
+        "roles": [
+          "applier",
+          "decider",
+          "proposer"
+        ]
+      }
     ],
     "roles": [
       "applier",

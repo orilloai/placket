@@ -68,11 +68,13 @@ cat >decider.terms <<T
  {"stance":"want","dir":"give","with":["role:proposer"],"select":{"kind":["answer","changed-version","comment"]}},
  {"stance":"want","dir":"give","with":["role:applier"],"select":{"kind":["changed-version"]}}]}
 T
+# One principal stands behind all three parties, and may grant each of their roles.
+echo "{\"roles\":[\"proposer\",\"applier\",\"decider\"],\"principals\":[{\"principal\":\"$(ref principal)\",\"roles\":[\"proposer\",\"applier\",\"decider\"]}]}" >policy.json
 for a in proposer applier decider; do
 	"$p" declare --key "$a.key" --terms "$a.terms" >"$a.declaration"
-	"$p" bind --key principal.key --actor "$(ref "$a")" --role "$a" --mediator "$(ref mediator)" --until 2099-01-01T00:00:00Z >"$a.binding"
+	"$p" bind --key principal.key --actor "$(ref "$a")" --role "$a" --mediator "$(ref mediator)" --until 2099-01-01T00:00:00Z \
+		--policy policy.json >"$a.binding"
 done
-echo "{\"roles\":[\"proposer\",\"applier\",\"decider\"],\"principals\":[\"$(ref principal)\"]}" >policy.json
 echo "{\"actor\":\"$(ref mediator)\",\"operator\":\"$(ref operator)\",\"runs\":\"process\"}" >mediator.json
 # The card names the decision module this binary runs; its window refuses any other.
 "$p" card --default >card.json 2>card.out
