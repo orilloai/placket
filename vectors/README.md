@@ -2,7 +2,7 @@
 
 A conformance vector states inputs and the exact results an implementation of the placket protocol must produce from them. Section 10 of `spec/protocol.md` defines what a vector is, and `spec/schema/vector.json` is its format. This directory holds the vectors, the generators that write them, the coverage list that says which requirement each one covers, and this file.
 
-The vectors cover every section of the protocol: the canonical form, signing, founding, the door and composition, questions with their answers, deadlines and release, receipts, verifying, conformance to the Accord and reconciling. The coverage list leaves no requirement and no scenario open.
+The vectors cover every section of the protocol: the canonical form, signing, founding, the door and composition, questions with their answers, deadlines and release, receipts, verifying, conformance to the Accord, reconciling and closing an Accord. The coverage list leaves no requirement and no scenario open.
 
 ## Layout
 
@@ -30,6 +30,7 @@ A group's vectors test the core packages in its row. Its generator must not impo
 | `receipts` | 7, 8, 9 | `receipts`, `mediator` |
 | `questions` | 6 | `mediator`, `receipts`, `answer` |
 | `conform` | 8 | `conform` |
+| `close` | 8, 13 | `mediator`, `receipts` |
 
 The `signatures` group holds, beside `sign` and `verify-signature` vectors, `verify` vectors of a receipt's payload signature, so a fault in `receipts` shows there too.
 
@@ -47,7 +48,7 @@ A vector's expected result never comes from the code it tests (`vectors-independ
 
 The independent check needs these tools: `openssl` (OpenSSL 3.0 or later; LibreSSL is refused), `jq`, `basenc` and `base64` (GNU coreutils), `od`, `sed`, `grep`, `awk`, `tr` and `wc`.
 
-To write the vectors again after changing a generator: `cd vectors && for g in canonical signatures founding crossing receipts questions conform; do go run ./$g; done`. The planted-fault test fails when the committed vectors are not what the generators write.
+To write the vectors again after changing a generator: `cd vectors && for g in canonical signatures founding crossing receipts questions conform close; do go run ./$g; done`. The planted-fault test fails when the committed vectors are not what the generators write.
 
 ## How the runner judges a vector
 
@@ -105,6 +106,8 @@ A change to a frozen format, the vector format included, carries a note here and
 - 0.1, before release: one host, one protocol number and 32-byte salts (`spec/frozen-formats.md`, decision record 0020). Every vector's type URIs, predicate type and crossing extension are under `https://placket.tech/`, every salt is 32 bytes, a `resolve` step's `salt` included, and every message a member gives has `role` `ROLE_USER`. Every group was written again, once: every signature, receipt, id and hash changed. The vector `signatures/registration-reserved` is gone with the reserved type, and vectors were added for a URI under the old host for each signed kind, a give in the agent's role and a card of another `spec`. No other code, verdict, reason or step changed.
 
 - 0.1, before release: who decided, the answer call, judges and conformance (`spec/frozen-formats.md`, decision record 0021). Every group was written again: every receipt's predicate names its decider in `by`, and every card lost `checks`. The scenario vectors' answer steps carry the signed call as `callHex`, the deliveries an answer queues carry it as `answer`, and an undeliverable step is `question` and `undeliverable`; the runner pairs an answer step's call with its `expect`. A new group, `conform`, tests `core/conform`, and `questions` tests `core/answer` too. Retired or renamed: `founding/a-check-and-maybe-without-resolve`, renamed `a-judge-and-maybe-without-resolve`; `founding/a-check-and-no-binding`, renamed `a-judge-and-no-binding`, now `judge-unknown`; `founding/term-names-a-check`, now `term-invalid`; `receipts/a-reserved-check-reason`, renamed `a-retired-check-reason`, now `statement-type`; and `questions/a-cancel`, a cancel by the decider that is now `not-an-answerer`, merged into `questions/cancel-by-asker`. Added: the judge vectors of `crossing`, the answer call's of `signatures`, `questions` and `receipts`, the judged and superseding sets of `founding`, and the `conform` group.
+
+- 0.1, before release: the close (`spec/frozen-formats.md`, decision record 0022). A new group, `close`, tests a close in `mediator` and `receipts`: scenario vectors with a `close` step, which expects the closings it writes and the close receipt, and `verify` vectors that expect `after-close`, `close` or `verified`. A scenario's `get` step expects `close` once a closed Accord's queue is empty, and a `give` or `resolve` step the rejection `closed`. `conform/close-*.json` add the close's closings to the `conform` group. No landed vector changes.
 
 The vector format is at version 0.1 as written. The coverage list is this directory's own record, not a frozen format; its `tests` and `rest` members were added with the first vectors.
 

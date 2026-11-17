@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://placket.tech/schema/0.1/predicate.json",
   "title": "Receipt predicate",
-  "description": "What a receipt states about one decision (receipt-3, receipt-4, receipt-9, receipt-10, receipt-11, crossing-5). A crossing receipt's verdict is pass, block or escalate; a resolution receipt's is pass or block. pass goes with reason ok and escalate with maybe; block goes with any other reason, maybe included. declined, cancelled, timeout and undeliverable are resolution reasons only, and judge:<name> a crossing block's only. by names the decider: the terms, a judge by its card name, an answer by its call's typed hash, or the mediator with the event that made it decide, deadline or undeliverable; a judge's block is by a judge, and the verifier compares the names. prev is absent exactly when seq is 1. envelope names the envelope a receipt echoes: the key that signed it, its seq and its hash. In a crossing receipt envelope.sender is from; a schema cannot compare two members, so the verifier's statement row checks it and the rest of by's fit (receipt-3, receipt-6, receipt-11).",
+  "description": "What a receipt states about one decision (receipt-3, receipt-4, receipt-9, receipt-10, receipt-11, crossing-5). A crossing receipt's verdict is pass, block or escalate; a resolution receipt's is pass or block. pass goes with reason ok and escalate with maybe; block goes with any other reason, maybe included. declined, cancelled, timeout, undeliverable and closed are resolution reasons only, and judge:<name> a crossing block's only. by names the decider: the terms, a judge by its card name, an answer by its call's typed hash, or the mediator with the event that made it decide, deadline, undeliverable or close, the last only with the reason closed and the reason closed only with it (close-1); a judge's block is by a judge, and the verifier compares the names. prev is absent exactly when seq is 1. envelope names the envelope a receipt echoes: the key that signed it, its seq and its hash. In a crossing receipt envelope.sender is from; a schema cannot compare two members, so the verifier's statement row checks it and the rest of by's fit (receipt-3, receipt-6, receipt-11).",
   "type": "object",
   "properties": {
     "accord": {
@@ -64,7 +64,7 @@
     },
     "reason": {
       "type": "string",
-      "pattern": "^(?:ok|no-match|maybe|declined|cancelled|timeout|undeliverable|judge:[a-z0-9]+(?:-[a-z0-9]+)*)$"
+      "pattern": "^(?:ok|no-match|maybe|declined|cancelled|timeout|undeliverable|closed|judge:[a-z0-9]+(?:-[a-z0-9]+)*)$"
     },
     "by": {
       "$ref": "#/$defs/by"
@@ -176,9 +176,58 @@
                 "declined",
                 "cancelled",
                 "timeout",
-                "undeliverable"
+                "undeliverable",
+                "closed"
               ]
             }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "reason": {
+            "const": "closed"
+          }
+        },
+        "required": [
+          "reason"
+        ]
+      },
+      "then": {
+        "properties": {
+          "kind": {
+            "const": "resolution"
+          },
+          "verdict": {
+            "const": "block"
+          },
+          "by": {
+            "const": {
+              "mediator": "close"
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "by": {
+            "const": {
+              "mediator": "close"
+            }
+          }
+        },
+        "required": [
+          "by"
+        ]
+      },
+      "then": {
+        "properties": {
+          "reason": {
+            "const": "closed"
           }
         }
       }
@@ -216,7 +265,7 @@
       "maximum": 9007199254740991
     },
     "by": {
-      "description": "The decider of receipt-11: the string terms, or an object of exactly one member: judge, a judge's card name; answer, the typed hash of the answer call; or mediator, deadline or undeliverable.",
+      "description": "The decider of receipt-11: the string terms, or an object of exactly one member: judge, a judge's card name; answer, the typed hash of the answer call; or mediator, deadline, undeliverable or close.",
       "oneOf": [
         {
           "const": "terms"
@@ -251,7 +300,8 @@
             "mediator": {
               "enum": [
                 "deadline",
-                "undeliverable"
+                "undeliverable",
+                "close"
               ]
             }
           },
