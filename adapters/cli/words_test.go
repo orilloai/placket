@@ -1,6 +1,7 @@
 package cli_test
 
 import (
+	"encoding/json"
 	"go/ast"
 	"go/parser"
 	"go/token"
@@ -10,6 +11,8 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+
+	"github.com/orilloai/placket/adapters/cli"
 )
 
 // literal is a string literal of a Go file: its value, and where it is.
@@ -102,8 +105,12 @@ func TestEveryPrintedStringStopsAtTheCrossing(t *testing.T) {
 			}
 		}
 	}
-	if claims != len(printed)-1 || !strings.Contains(printed[len(printed)-1].stdout, `"claim":"claim: `) || !strings.Contains(printed[len(printed)-1].stdout, `"notClaimed":"not claimed: `) {
+	if claims != len(printed)-1 {
 		t.Fatalf("%d claim lines in %d outputs", claims, len(printed))
+	}
+	var lg struct{ Claim, NotClaimed string }
+	if err := json.Unmarshal([]byte(printed[len(printed)-1].stdout), &lg); err != nil || lg.Claim != cli.ClaimVerified || lg.NotClaimed != cli.Scope {
+		t.Fatalf("log --format json: claim %q, notClaimed %q, %v", lg.Claim, lg.NotClaimed, err)
 	}
 }
 

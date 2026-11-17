@@ -66,8 +66,8 @@ func oneAccord(st []receipts.Statement) (string, int) {
 // set is given, the counts of verdicts, questions and releases, the claim and the scope line. The
 // receipts must all be of one Accord and card, or it is tool error verify, accord or card, at the
 // first that differs. A founding set is tool error founding unless it founds the receipts' Accord
-// and its mediator is M; with no receipts there is no Accord to compare, and the set is checked
-// alone, as founding checks it. With a founding set it also names each member, in actor-reference order: a
+// and its mediator is M; with no receipts there is no Accord to compare, and the set is founded and
+// its mediator compared with M, nothing else. With a founding set it also names each member, in actor-reference order: a
 // line `member <actor> roles <r1,r2> principal <principal>` after the module's lines, and members in
 // the object (commands-4). A card whose module is not this build's is named after the module line,
 // and still verifies (docs/adr/0012-the-kernel-hash.md).
@@ -115,7 +115,7 @@ func verifyCommand(r *run, args []string) int {
 		}
 		// The set must be the journal's Accord and name the key the receipts were verified under.
 		a, err := setup.Found(set, at)
-		// A journal with no receipts has no Accord to compare: the set is checked alone.
+		// A journal with no receipts has no Accord to compare: the set's mediator is still compared.
 		if err != nil || (len(st) > 0 && a.ID() != accord) || a.Mediator() != *med {
 			return r.tool(codeFound)
 		}

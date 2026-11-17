@@ -335,6 +335,9 @@ func TestReloadRefusesEachFault(t *testing.T) {
 			mediator.Queued{To: released.To, Delivery: withMembers(t, released.Delivery, map[string]any{
 				"receipt": json.RawMessage(list[0])})}), code: mediator.CodeHeld, index: len(queued) - 1},
 		{name: "a delivery given twice", queued: append(append([]mediator.Queued(nil), queued...), released), code: mediator.CodeHeld, index: len(queued)},
+		{name: "a delivery of another kind than its receipt names", queued: append(append([]mediator.Queued(nil), queued[:len(queued)-1]...),
+			mediator.Queued{To: released.To, Delivery: withMembers(t, released.Delivery, map[string]any{"kind": "another"})}),
+			code: mediator.CodeHeld, index: len(queued) - 1},
 		{name: "a delivery whose body misses its digest", queued: append(append([]mediator.Queued(nil), queued[:len(queued)-1]...),
 			mediator.Queued{To: released.To, Delivery: withText(t, released.Delivery, "Another body.")}), code: mediator.CodeHeld, index: len(queued) - 1},
 		{name: "a delivery not in canonical form", queued: []mediator.Queued{{To: released.To, Delivery: append([]byte(" "), released.Delivery...)}},

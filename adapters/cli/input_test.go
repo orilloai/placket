@@ -90,7 +90,7 @@ func TestAnAccordThatIsNotAnIDBuildsNoPath(t *testing.T) {
 	// The state directory of ../../<name> would be beside the Accord's directory.
 	outside := filepath.Base(a.dir) + "-outside"
 	t.Cleanup(func() { _ = os.RemoveAll(filepath.Join(filepath.Dir(a.dir), outside)) })
-	for _, accord := range []string{"../../" + outside, "..", "x", "sha256:" + strings.Repeat("A", 64), "sha256:" + strings.Repeat("a", 63), strings.Repeat("a", 64)} {
+	for _, accord := range []string{"../../" + outside, "..", "x", "sha256:" + strings.Repeat("A", 64), "sha256:" + strings.Repeat("g", 64), "sha256:" + strings.Repeat("a", 63) + "z", "sha256:" + strings.Repeat("a", 63), strings.Repeat("a", 64)} {
 		r := run(t, env(), "get", "--key", a.key("ann"), "--socket", a.socket(), "--accord", accord)
 		if r.code != 3 || r.stdout != "" || r.stderr != "usage: placket: --accord is not an Accord id\nerror usage\n" {
 			t.Fatalf("--accord %q: %v", accord, r)

@@ -68,6 +68,7 @@ func TestJournalErrorsQuoteNothing(t *testing.T) {
 	}{
 		{journal.FileAccord, `{"accord":"` + secret + `"}` + "\n", "journal: journal: accord line 1"},
 		{journal.FileQuestions, `{"question":"` + secret + `"}` + "\n", "journal: journal: questions.jsonl line 1"},
+		{filepath.Join(journal.DirHeld, "x"), `{"delivery":"` + secret + `"}`, "journal: journal: held/x"},
 	} {
 		dir := t.TempDir()
 		j, err := journal.Open(dir, &bytes.Buffer{})
