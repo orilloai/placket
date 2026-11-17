@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/orilloai/placket/adapters/internal/strict"
 	"github.com/orilloai/placket/adapters/local"
 	"github.com/orilloai/placket/core/canonical"
 	"github.com/orilloai/placket/core/composition"
@@ -30,6 +31,13 @@ type delivery struct {
 	Text      *string         `json:"text"`
 	Raw       *string         `json:"raw"`
 	Data      json.RawMessage `json:"data"`
+}
+
+// keptDelivery is a line of kept.jsonl for a fetched part: the delivery, with the answer call kept
+// beside it when there is one (keptLine).
+type keptDelivery struct {
+	delivery
+	AnswerCall json.RawMessage `json:"answerCall"`
 }
 
 // bytes is the delivery's body as get writes it: a text's UTF-8, a raw body's decoded bytes, a data
@@ -96,7 +104,7 @@ func (s *session) fetch(keep bool) (*delivery, []byte, int) {
 		return nil, nil, 0
 	}
 	var d delivery
-	if err := json.Unmarshal(rep.Delivery, &d); err != nil || !s.about(d) {
+	if !strict.Decode(rep.Delivery, &d) || !s.about(d) {
 		return nil, nil, s.r.tool("reply")
 	}
 	if err := s.dir.AddDelivered(d.Receipt); err != nil {
@@ -117,7 +125,7 @@ func (s *session) fetch(keep bool) (*delivery, []byte, int) {
 // keptLine is a fetched delivery's line of kept.jsonl: the delivery, with its answer call beside it.
 func keptLine(delivery, answerCall []byte) []byte {
 	var o map[string]json.RawMessage
-	if json.Unmarshal(delivery, &o) != nil {
+	if !strict.Decode(delivery, &o) {
 		return nil
 	}
 	if answerCall != nil {

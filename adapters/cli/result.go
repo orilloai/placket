@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/orilloai/placket/adapters/export"
+	"github.com/orilloai/placket/adapters/internal/strict"
 	"github.com/orilloai/placket/adapters/local"
 	"github.com/orilloai/placket/core/composition"
 	"github.com/orilloai/placket/core/receipts"
@@ -101,11 +102,11 @@ func (s *session) fetchOwn(question, closing string) int {
 		return s.r.failed(err)
 	}
 	for _, l := range kept {
-		var d delivery
-		if json.Unmarshal(l, &d) == nil && own(&d, question, closing) {
-			line(s.r.stdout, s.r.screen(d.bytes()))
+		var k keptDelivery
+		if strict.Decode(l, &k) && own(&k.delivery, question, closing) {
+			line(s.r.stdout, s.r.screen(k.bytes()))
 			s.r.put(memberFetched, true)
-			s.r.put(memberAnswer, deliveryObject(&d, true))
+			s.r.put(memberAnswer, deliveryObject(&k.delivery, true))
 			return 0
 		}
 	}

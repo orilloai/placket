@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/orilloai/placket/adapters/internal/strict"
 	"github.com/orilloai/placket/core/canonical"
 	"github.com/orilloai/placket/core/composition"
 )
@@ -44,24 +45,44 @@ type kernel struct {
 
 // kernelOf reads the kernel of a card's bytes; false when it has none that reads.
 func kernelOf(card []byte) (kernel, bool) {
-	var c struct {
-		Kernel *kernel `json:"kernel"`
+	m, ok := strict.Member(card, "kernel")
+	var k struct {
+		Version *string `json:"version"`
+		Hash    *string `json:"hash"`
 	}
-	if json.Unmarshal(card, &c) != nil || c.Kernel == nil {
+	if !ok || !strict.Decode(m, &k) || k.Version == nil || k.Hash == nil {
 		return kernel{}, false
 	}
-	return *c.Kernel, true
+	return kernel{Version: *k.Version, Hash: *k.Hash}, true
 }
 
 // cardOf is the card member of a founding set's bytes, or nil.
 func cardOf(set []byte) []byte {
-	var s struct {
-		Card json.RawMessage `json:"card"`
+	c, _ := strict.Member(set, "card")
+	return c
+}
+
+// member is the value of the member of b reached through names, one object at a time, each read
+// with strict.Member: a name matches only as written, and bytes the canonical form refuses have none.
+func member(b []byte, names ...string) (json.RawMessage, bool) {
+	for _, n := range names {
+		m, ok := strict.Member(b, n)
+		if !ok {
+			return nil, false
+		}
+		b = m
 	}
-	if json.Unmarshal(set, &s) != nil {
-		return nil
+	return b, true
+}
+
+// memberString is the string member of b reached through names, or "" when there is none.
+func memberString(b []byte, names ...string) string {
+	m, ok := member(b, names...)
+	var s string
+	if !ok || json.Unmarshal(m, &s) != nil {
+		return ""
 	}
-	return s.Card
+	return s
 }
 
 // otherModule is the line that names a kernel that is not this build's, or "" when it is.

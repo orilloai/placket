@@ -9,6 +9,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/orilloai/placket/adapters/internal/strict"
 	"github.com/orilloai/placket/adapters/journal"
 	"github.com/orilloai/placket/adapters/local"
 	"github.com/orilloai/placket/core/composition"
@@ -22,23 +23,15 @@ func init() {
 
 // predicateOf is the predicate member of a receipt's statement, as the receipt holds it.
 func predicateOf(receipt []byte) []byte {
-	var env struct {
-		Payload string `json:"payload"`
-	}
-	if json.Unmarshal(receipt, &env) != nil {
-		return nil
-	}
-	p, err := base64.StdEncoding.DecodeString(env.Payload)
+	p, err := base64.StdEncoding.DecodeString(memberString(receipt, "payload"))
 	if err != nil {
 		return nil
 	}
-	var st struct {
-		Predicate json.RawMessage `json:"predicate"`
-	}
-	if json.Unmarshal(p, &st) != nil {
+	pr, ok := member(p, "predicate")
+	if !ok {
 		return nil
 	}
-	return canonicalJSON(st.Predicate)
+	return canonicalJSON(pr)
 }
 
 // notVerified prints the verifier's failure, its code and the line of receipts.jsonl it is at.
@@ -180,51 +173,39 @@ func verifyCommand(r *run, args []string) int {
 // putModule puts the operator and the decision module of a founded set: operator, runs, module and
 // checks.
 func (r *run) putModule(set []byte) {
-	var s struct {
-		Mediator struct {
-			Operator string `json:"operator"`
-			Runs     string `json:"runs"`
-		} `json:"mediator"`
-		Card struct {
-			Kernel json.RawMessage   `json:"kernel"`
-			Checks []json.RawMessage `json:"checks"`
-		} `json:"card"`
-	}
-	_ = json.Unmarshal(set, &s)
 	checks := []json.RawMessage{}
-	r.put(memberOperator, s.Mediator.Operator)
-	r.put("runs", s.Mediator.Runs)
-	r.put(LabelModule, s.Card.Kernel)
-	r.put("checks", append(checks, s.Card.Checks...))
+	if c, ok := member(set, "card", "checks"); ok {
+		var list []json.RawMessage
+		_ = json.Unmarshal(c, &list)
+		checks = append(checks, list...)
+	}
+	k, _ := member(set, "card", "kernel")
+	r.put(memberOperator, memberString(set, "mediator", "operator"))
+	r.put("runs", memberString(set, "mediator", "runs"))
+	r.put(LabelModule, k)
+	r.put("checks", checks)
 }
 
 // moduleLines are the lines that name the operator and the decision module of a founded set, and
 // the line that names the module when it is not this build's (docs/adr/0012-the-kernel-hash.md).
 func moduleLines(set []byte) []string {
-	var s struct {
-		Mediator struct {
-			Operator string `json:"operator"`
-			Runs     string `json:"runs"`
-		} `json:"mediator"`
-		Card struct {
-			Kernel struct {
-				Version string `json:"version"`
-				Hash    string `json:"hash"`
-			} `json:"kernel"`
-			Checks []struct {
-				Name    string `json:"name"`
-				Version string `json:"version"`
-				Hash    string `json:"hash"`
-			} `json:"checks"`
-		} `json:"card"`
-	}
-	_ = json.Unmarshal(set, &s)
-	out := []string{"operator " + s.Mediator.Operator + " runs " + s.Mediator.Runs,
-		LabelModule + " " + s.Card.Kernel.Version + " " + s.Card.Kernel.Hash}
-	if l := otherModule(kernel(s.Card.Kernel)); l != "" {
+	k, _ := kernelOf(cardOf(set))
+	out := []string{"operator " + memberString(set, "mediator", "operator") + " runs " + memberString(set, "mediator", "runs"),
+		LabelModule + " " + k.Version + " " + k.Hash}
+	if l := otherModule(k); l != "" {
 		out = append(out, l)
 	}
-	for _, c := range s.Card.Checks {
+	var checks []json.RawMessage
+	if c, ok := member(set, "card", "checks"); ok {
+		_ = json.Unmarshal(c, &checks)
+	}
+	for _, b := range checks {
+		var c struct {
+			Name    string `json:"name"`
+			Version string `json:"version"`
+			Hash    string `json:"hash"`
+		}
+		_ = strict.Decode(b, &c)
 		out = append(out, "check "+c.Name+" "+c.Version+" "+c.Hash)
 	}
 	return out

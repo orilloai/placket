@@ -377,13 +377,13 @@ func readGiven(line []byte) (keptPart, bool) {
 		return keptPart{}, false
 	}
 	var m struct {
-		Metadata map[string]struct {
-			Topic string `json:"topic"`
-			Re    string `json:"re"`
-		} `json:"metadata"`
-		Parts []json.RawMessage `json:"parts"`
+		MessageID  json.RawMessage            `json:"messageId"`
+		Role       json.RawMessage            `json:"role"`
+		Extensions json.RawMessage            `json:"extensions"`
+		Metadata   map[string]json.RawMessage `json:"metadata"`
+		Parts      []json.RawMessage          `json:"parts"`
 	}
-	if json.Unmarshal(msg, &m) != nil || len(m.Parts) != 1 {
+	if !strict.Decode(msg, &m) || len(m.Parts) != 1 {
 		return keptPart{}, false
 	}
 	x := m.Metadata[mediator.Extension]
@@ -391,24 +391,36 @@ func readGiven(line []byte) (keptPart, bool) {
 	if !ok {
 		return keptPart{}, false
 	}
-	p.given, p.topic, p.re = true, x.Topic, x.Re
-	var meta struct {
-		Metadata map[string]struct {
-			Kind string `json:"kind"`
-		} `json:"metadata"`
+	p.given, p.topic, p.re = true, stringMember(x, "topic"), stringMember(x, "re")
+	var part struct {
+		Text     json.RawMessage            `json:"text"`
+		Raw      json.RawMessage            `json:"raw"`
+		Data     json.RawMessage            `json:"data"`
+		URL      json.RawMessage            `json:"url"`
+		Metadata map[string]json.RawMessage `json:"metadata"`
 	}
-	if json.Unmarshal(m.Parts[0], &meta) != nil {
+	if !strict.Decode(m.Parts[0], &part) {
 		return keptPart{}, false
 	}
-	p.kind = meta.Metadata[mediator.Extension].Kind
+	p.kind = stringMember(part.Metadata[mediator.Extension], "kind")
 	return p, true
+}
+
+// stringMember is the string member of the object b named name, exactly, or "" when it has none.
+func stringMember(b []byte, name string) string {
+	m, ok := strict.Member(b, name)
+	var s string
+	if !ok || json.Unmarshal(m, &s) != nil {
+		return ""
+	}
+	return s
 }
 
 // readBody reads a part's or a delivery's body: its text for a text body, a data body's canonical
 // JSON, and nothing for a raw body; and the bytes the salted digest covers.
 func readBody(b []byte) (keptPart, []byte, bool) {
 	var o map[string]json.RawMessage
-	if json.Unmarshal(b, &o) != nil {
+	if !strict.Decode(b, &o) {
 		return keptPart{}, nil, false
 	}
 	var p keptPart

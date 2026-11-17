@@ -2,7 +2,6 @@ package cli
 
 import (
 	"bytes"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -47,16 +46,11 @@ func windowCommand(r *run, args []string) int {
 			return r.tool(codeFound, detailKernel)
 		}
 	}
-	var parts struct {
-		Mediator struct {
-			Operator string `json:"operator"`
-		} `json:"mediator"`
-	}
-	_ = json.Unmarshal(set, &parts)
+	operator := memberString(set, "mediator", "operator")
 	err = local.Run(r.env.Context, local.Window{
 		Key: k, Founding: set, Socket: *socket, Journal: *dir, Disk: r.env.Disk,
 		Now: r.env.Now, Rand: r.env.Rand, Stderr: r.stderr, Ready: r.env.Ready,
-		Event: func(e local.Event) { r.event(e, parts.Mediator.Operator) },
+		Event: func(e local.Event) { r.event(e, operator) },
 	})
 	if err == nil {
 		return ExitOK

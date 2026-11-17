@@ -10,6 +10,7 @@ import (
 	"slices"
 
 	"github.com/orilloai/placket/adapters/internal/pointer"
+	"github.com/orilloai/placket/adapters/internal/strict"
 	"github.com/orilloai/placket/adapters/state"
 	"github.com/orilloai/placket/core/composition"
 	"github.com/orilloai/placket/core/receipts"
@@ -229,8 +230,8 @@ func keptCrossed(d *state.Dir) ([]crossed, error) {
 	}
 	var out []crossed
 	for _, l := range kept {
-		var k delivery
-		if json.Unmarshal(l, &k) != nil || !k.oneBody() {
+		var k keptDelivery
+		if !strict.Decode(l, &k) || !k.oneBody() {
 			continue
 		}
 		c, has := byID[k.ReceiptID]
@@ -262,10 +263,9 @@ func fetchedSalts(d *state.Dir) (map[string][]string, error) {
 		return nil, err
 	}
 	for _, l := range kept {
-		var m map[string]json.RawMessage
-		var id, salt string
-		if json.Unmarshal(l, &m) == nil && json.Unmarshal(m["receiptId"], &id) == nil && json.Unmarshal(m["salt"], &salt) == nil {
-			out[id] = append(out[id], salt)
+		var k keptDelivery
+		if strict.Decode(l, &k) && k.ReceiptID != "" && k.Salt != "" {
+			out[k.ReceiptID] = append(out[k.ReceiptID], k.Salt)
 		}
 	}
 	return out, nil
