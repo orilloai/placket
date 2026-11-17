@@ -60,6 +60,10 @@ schema=${example#spec/schema/testdata/}
 schema=${schema%%/*}
 mv "$example" "spec/schema/testdata/$schema/accepted/"
 moved=spec/schema/testdata/$schema/accepted/${example##*/}
+# agents-md-short: the entry file over its 150 lines.
+i=0; while [ "$i" -lt 151 ]; do echo x; i=$((i + 1)); done >>AGENTS.md
+# no-hidden-text: a bidi control character in a Markdown file.
+printf 'An \342\200\256 override\n' >docs/hidden.md
 # machine-rules-in-ci: secrets left out of ci's prerequisites.
 awk '/^ci:/ && !/=/ { on = 1 } on { line = $0; gsub(/ secrets( |$)/, " ", line); print line; if ($0 !~ /\\$/) on = 0; next } { print }' Makefile >Makefile.new
 mv Makefile.new Makefile
@@ -79,7 +83,9 @@ claims-stop-at-crossing adapters/wiring/say.go
 main-is-thin cmd/placket/main.go
 root-module go.mod
 machine-rules-in-ci Makefile
-ci-stays-fast scripts/clear.sh'
+ci-stays-fast scripts/clear.sh
+no-hidden-text docs/hidden.md
+agents-md-short AGENTS.md'
 rules=$(printf '%s\n' "$expect" | awk '{ print $1 }')
 
 name="one fault per rule"
@@ -105,7 +111,7 @@ while read -r rule files; do
 	# Its closing line, and on the next line its time.
 	if ! awk -v r="$rule" '
 		prev { if ($0 ~ "^time: " r ": [0-9]+s$") found = 1; prev = 0 }
-		index($0, r ": refused: ") == 1 && / [(]AGENTS[.]md, / { prev = 1 }
+		index($0, r ": refused: ") == 1 && / [(]docs[/]rules[/][a-z]+[.]md#/ { prev = 1 }
 		END { exit !found }' "$out"; then fail="$rule's closing line is not followed by its time"; fi
 done <"$tmp/expect"
 if [ -z "$fail" ]; then

@@ -106,5 +106,5 @@ done <"$tmp/tests"
 [ -f "$tmp/failed" ] && failed=1
 say "$count Go tests named"
 [ "$count" -gt 0 ] || failed=1
-if [ "$failed" -ne 0 ]; then say "refused: a Go test the coverage list names must exist and pass (AGENTS.md, runner-no-silent-pass)"; exit 1; fi
+if [ "$failed" -ne 0 ]; then say "refused: a Go test the coverage list names must exist and pass (docs/rules/tests.md#runner-no-silent-pass)"; exit 1; fi
 say ok

@@ -118,7 +118,14 @@ func expect(t *testing.T, got string, code int, want string, wantCode int) {
 	}
 }
 
-const refused = "red-green-tests: refused: every test the change adds or changes fails without its code and passes with it, and none is removed or skipped unexplained (AGENTS.md, red-green-tests)"
+const refused = "red-green-tests: refused: every test the change adds or changes fails without its code and passes with it, and none is removed or skipped unexplained (docs/rules/tests.md#red-green-tests)"
+
+// The closing line of a refusal links the rule's heading in docs/rules/.
+func TestRefusalLinksItsRule(t *testing.T) {
+	if !strings.HasSuffix(why, " (docs/rules/tests.md#red-green-tests)") {
+		t.Fatalf("the refusal's reason is %q; it must end by linking docs/rules/tests.md#red-green-tests", why)
+	}
+}
 
 // T1: an added test that fails at the base and passes at the head is red (fails), and the change is ok.
 func TestAddedTestRedThenGreen(t *testing.T) {
