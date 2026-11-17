@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://placket.dev/schema/0.1/timestamp.json",
+  "$id": "https://placket.tech/schema/0.1/timestamp.json",
   "title": "Timestamp",
   "description": "The one form of every time in every format (receipt-10): a calendar date and a time of day in whole seconds, UTC, written YYYY-MM-DDTHH:MM:SSZ, from 00:00:00 to 23:59:59, with no leap second. February 29 exists only in a leap year of the Gregorian calendar.",
   "type": "string",

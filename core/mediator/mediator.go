@@ -29,17 +29,27 @@ import (
 	"github.com/orilloai/placket/core/signing"
 )
 
-// Extension is the crossing extension's URI (crossing-1).
-const Extension = "https://placket.dev/crossing/0.1"
+// Extension is the crossing extension's URI (crossing-1). It ends in the protocol number, the
+// card's spec (setup-contract-4), as each placket URI does.
+const Extension = "https://placket.tech/crossing/0.1"
 
-// The roles a crossing message may have (crossing-1).
+// The roles of a crossing message, with A2A 1.0's meaning (crossing-1): a member gives as an A2A
+// client, ROLE_USER, and a part the mediator forms from an answer is the agent's, ROLE_AGENT. The
+// door accepts only RoleUser from a member.
 const (
 	RoleAgent = "ROLE_AGENT"
 	RoleUser  = "ROLE_USER"
 )
 
-// MinSaltBytes is the shortest salt a part may have, in bytes (crossing-2).
-const MinSaltBytes = crossing.MinSaltBytes
+// SaltBytes is the length of every salt, in bytes: a part's, and the salt of each part the mediator
+// forms (crossing-2, crossing-3).
+const SaltBytes = crossing.SaltBytes
+
+// MinSaltBytes is the length of every salt, in bytes.
+//
+// Deprecated: use SaltBytes. A salt is exactly SaltBytes long; MinSaltBytes is removed at the
+// release.
+const MinSaltBytes = SaltBytes
 
 // RejectionCode is a code a caller's operation is rejected with: what the caller did wrong, spelled
 // as the door's check tables spell it (section 4).
@@ -84,7 +94,7 @@ const (
 	CodeAt ErrorCode = "at"
 	// CodeInternal: a receipt or delivery the mediator could not write. No input causes it.
 	CodeInternal ErrorCode = "internal"
-	// CodeSalt: an accept or a change whose salt is shorter than MinSaltBytes (section 6).
+	// CodeSalt: an accept or a change whose salt is not exactly SaltBytes (section 6).
 	CodeSalt ErrorCode = "salt"
 	// CodeAnswer: a change with an empty version (maybe-9).
 	CodeAnswer ErrorCode = "answer"
@@ -382,7 +392,7 @@ func (m *Mediator) admit(caller string, message, envelope []byte) (give, Rejecti
 		return g, ExtensionMissing
 	}
 	messageID, ok := mo["messageId"].(string)
-	if !ok || messageID == "" || (mo["role"] != RoleAgent && mo["role"] != RoleUser) {
+	if !ok || messageID == "" || mo["role"] != RoleUser {
 		return g, ExtensionMissing
 	}
 	exts, ok := mo["extensions"].([]any)

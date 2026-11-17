@@ -124,21 +124,29 @@ func TestWindowLeavesAnUnreadableCardToFounding(t *testing.T) {
 	}
 }
 
-// TestVerifyNamesAnotherModule verifies the committed demo journal, whose card names the hash typed
-// by hand before this build: the module line is followed by the line that names it another build's.
+// TestVerifyNamesAnotherModule verifies a journal with no receipts yet under a founding set whose
+// card names another module than this build's: the module line is followed by the line that names it another build's.
 func TestVerifyNamesAnotherModule(t *testing.T) {
 	t.Parallel()
-	demo := filepath.Join("..", "..", "scripts", "demo")
-	med, err := os.ReadFile(filepath.Join(demo, "mediator.ref"))
-	if err != nil {
+	a := newAccord(t, "p1", "p2")
+	_, set := a.refound(t, otherCard)
+	if err := os.MkdirAll(a.journal(), 0o700); err != nil {
 		t.Fatal(err)
 	}
-	r := must(t, "verify", "--mediator", strings.TrimSpace(string(med)), "--receipts", filepath.Join(demo, "journal"), "--founding", filepath.Join(demo, "founding.json"))
-	const old = "sha256:a8755bef6ff188c2dc6b74377a73c6a49d612fc44915675db9d2795bb5b99475"
-	l := r.lines()
-	if len(l) < 5 || l[3] != "module 0.1.0 "+old || l[4] != otherLine("0.1.0", old) {
-		t.Fatalf("verify: %v", r)
+	if err := os.WriteFile(filepath.Join(a.journal(), "receipts.jsonl"), nil, 0o600); err != nil {
+		t.Fatal(err)
 	}
+	r := must(t, "verify", "--mediator", a.refs["mediator"], "--receipts", a.journal(), "--founding", set)
+	l := r.lines()
+	for i := range l {
+		if l[i] == "module 0.1.0 "+otherHash {
+			if i+1 < len(l) && l[i+1] == otherLine("0.1.0", otherHash) {
+				return
+			}
+			break
+		}
+	}
+	t.Fatalf("verify: %v", r)
 }
 
 // TestVerifyOfThisModule prints no such line when the card is this build's.

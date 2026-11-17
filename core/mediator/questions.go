@@ -196,7 +196,7 @@ func (m *Mediator) Answerers(questionID string) ([]string, bool) {
 // (no-open-question, maybe-7), and the caller is one of its answerers (not-an-answerer, maybe-6). A
 // rejected answer writes nothing. The answer's own inputs are checked next, and their misuse is an
 // *Error, writing nothing: an action that is not one of the four (action), an accept or a change with a salt
-// shorter than MinSaltBytes (salt), a change with an empty version (answer).
+// that is not exactly SaltBytes (salt), a change with an empty version (answer).
 //
 // An accept forms the answer and a change the version (maybe-8, maybe-9), a part decided by its kind
 // through composition from the answerer to the asker as a part the mediator formed; its resolution
@@ -227,7 +227,7 @@ func (m *Mediator) Resolve(caller, questionID string, r Resolution, at string) (
 	// The answer's own inputs, the caller's to get right.
 	switch r.Action {
 	case Accepted, Changed:
-		if len(r.Salt) < MinSaltBytes {
+		if len(r.Salt) != SaltBytes {
 			return nil, failure(CodeSalt)
 		}
 		if r.Action == Changed && r.Answer == "" {

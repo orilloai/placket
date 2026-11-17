@@ -12,7 +12,7 @@
   },
   "messageId": "6f1c2a4e-8d3b-4f7a-9c21-0b5e7d9a3f10",
   "kind": "proposal",
-  "salt": "e3b0c44298fc1c149afbf4c8996fb924",
+  "salt": "e3b0c44298fc1c149afbf4c8996fb9242646036bb22781536be710245c8cbb04",
   "text": "Rename the field total to amount in invoices.",
   "topic": "invoices"
 }

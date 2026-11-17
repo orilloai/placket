@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://placket.dev/schema/0.1/binding.json",
+  "$id": "https://placket.tech/schema/0.1/binding.json",
   "title": "Binding",
-  "description": "A principal's statement of the roles an actor holds under one mediator and one policy, named by the typed hash of the founding set's policy, until a time, signed by the principal under https://placket.dev/binding/0.1 (setup-contract-2, setup-contract-3).",
+  "description": "A principal's statement of the roles an actor holds under one mediator and one policy, named by the typed hash of the founding set's policy, until a time, signed by the principal under https://placket.tech/binding/0.1 (setup-contract-2, setup-contract-3).",
   "type": "object",
   "properties": {
     "actor": {

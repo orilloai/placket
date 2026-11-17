@@ -18,7 +18,7 @@ import (
 )
 
 const (
-	schemaURL  = "https://placket.dev/schema/0.1/"
+	schemaURL  = "https://placket.tech/schema/0.1/"
 	draftURL   = "https://json-schema.org/draft/2020-12/schema"
 	schemaDir  = "spec/schema"
 	examples   = "spec/schema/testdata"

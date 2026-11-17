@@ -1,7 +1,7 @@
 {
   "metadata": {
-    "https://placket.dev/crossing/0.1": {
-      "salt": "e3b0c44298fc1c149afbf4c8996fb924"
+    "https://placket.tech/crossing/0.1": {
+      "salt": "e3b0c44298fc1c149afbf4c8996fb9242646036bb22781536be710245c8cbb04"
     }
   },
   "text": "Rename the field total to amount in invoices."

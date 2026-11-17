@@ -52,11 +52,11 @@ OpenSSL\ [3-9].* | OpenSSL\ [1-9][0-9].*) ;;
 *) die "openssl is not OpenSSL 3.0 or later: $version" ;;
 esac
 
-ext=https://placket.dev/crossing/0.1
+ext=https://placket.tech/crossing/0.1
 intoto=application/vnd.in-toto+json
-tdecl=https://placket.dev/declaration/0.1
-tbind=https://placket.dev/binding/0.1
-tenv=https://placket.dev/envelope/0.1
+tdecl=https://placket.tech/declaration/0.1
+tbind=https://placket.tech/binding/0.1
+tenv=https://placket.tech/envelope/0.1
 
 hex2bin() { tr -d '\n' | tr 'abcdef' 'ABCDEF' | basenc --base16 -d; }
 bin2hex() { od -An -v -tx1 | tr -d ' \n'; }

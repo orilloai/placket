@@ -15,7 +15,7 @@ import (
 const (
 	protocolMD = "spec/protocol.md"
 	draft      = "https://json-schema.org/draft/2020-12/schema"
-	uri        = "https://placket.dev/schema/0.1"
+	uri        = "https://placket.tech/schema/0.1"
 )
 
 // move renames a file of the copy into another directory.

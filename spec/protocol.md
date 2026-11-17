@@ -18,7 +18,7 @@ These rules hold in every section.
 - **Codes are closed lists.** Each operation returns only the codes its table lists, spelled as the table spells them. A code is a result a caller or a verifier sees; how a program reports its own misuse is not part of the protocol.
 - **Nothing past the crossing.** The protocol judges what crosses a handoff. No requirement, receipt or code states anything about what a receiver does with a part after it was queued for it.
 
-The external standards this text uses are named once, by version: JSON (RFC 8259), JSON Pointer (RFC 6901), UTF-8 (RFC 3629), UTF-16 code units as Unicode 16.0 defines them, SHA-256 (FIPS 180-4), Ed25519 (RFC 8032), base64 (RFC 4648), timestamps (a profile of RFC 3339), DSSE 1.0 (Dead Simple Signing Envelope), the in-toto Statement v1, the A2A protocol 1.0 message format, and JSON Schema draft 2020-12 for the schemas.
+The external standards this text uses are named once, by version: JSON (RFC 8259), JSON Pointer (RFC 6901), UTF-8 (RFC 3629), UTF-16 code units as Unicode 16.0 defines them, SHA-256 (FIPS 180-4), Ed25519 (RFC 8032), base64 (RFC 4648), timestamps (a profile of RFC 3339), DSSE 1.0 (Dead Simple Signing Envelope), the in-toto Statement v1, the A2A protocol 1.0 Message, of which the crossing message is a closed profile, and JSON Schema draft 2020-12 for the schemas.
 
 ## 1. Canonical form and hashes
 
@@ -267,7 +267,7 @@ The signing bytes of an object under a type URI are the DSSE 1.0 pre-authenticat
 
 #### Scenario: the type URI comes from the operation
 
-- Given a binding signed under `https://placket.dev/declaration/0.1` instead of `https://placket.dev/binding/0.1`
+- Given a binding signed under `https://placket.tech/declaration/0.1` instead of `https://placket.tech/binding/0.1`
 - When founding verifies it
 - Then it fails with `binding-signature`
 
@@ -285,11 +285,11 @@ The signing bytes of an object under a type URI are the DSSE 1.0 pre-authenticat
 
 ### signing-4 Type URIs
 
-Placket signs objects of four kinds under four type URIs: `https://placket.dev/declaration/0.1`, `https://placket.dev/binding/0.1`, `https://placket.dev/envelope/0.1` and `https://placket.dev/registration/0.1`. The last names a registration, which this version reserves: no object of this version is signed or verified under it. A signature over any other payload, such as a receipt's statement or a message of a door, is a DSSE signature over that payload under its own payload type, and its payload type is never one of the four, so no payload signature can be taken for a placket object's signature, or the reverse. A receipt is signed so, under the payload type `application/vnd.in-toto+json` (receipt-1).
+Placket signs objects of three kinds under three type URIs: `https://placket.tech/declaration/0.1`, `https://placket.tech/binding/0.1` and `https://placket.tech/envelope/0.1`. Each ends in the protocol number setup-contract-4 names. A signature over any other payload, such as a receipt's statement or a message of a door, is a DSSE signature over that payload under its own payload type, and its payload type is never one of the three, so no payload signature can be taken for a placket object's signature, or the reverse. A receipt is signed so, under the payload type `application/vnd.in-toto+json` (receipt-1).
 
 #### Scenario: a placket URI as a payload type
 
-- Given a payload signature whose payload type is `https://placket.dev/envelope/0.1`
+- Given a payload signature whose payload type is `https://placket.tech/envelope/0.1`
 - When it is made or checked as a payload signature
 - Then it is refused, and no envelope is signed or verified by that route
 
@@ -303,13 +303,13 @@ Founding reads a founding set and the time it is founded at, and either founds a
 | 2 | Shape | The whole set but what rows 4 to 8 read: the top level; `policy`, `mediator` and `card` in full; `declarations` and `bindings` as non-empty arrays of objects; each declaration's members, none but `actor`, `terms` and `sig`, and its `actor` present and a string; each binding in full, `until` by the timestamp rule included; the order of both lists (setup-contract-9, setup-contract-10) | `invalid-shape` |
 | 3 | One binding per actor | The bindings' `actor` members | `binding-duplicate` |
 | 4 | Actor | The declaration's `actor`, as an actor reference (signing-1) | `actor-reference` |
-| 5 | Declaration signature | The declaration's `sig`, and the declaration, under `https://placket.dev/declaration/0.1` by its `actor` (signing-2) | `declaration-signature` |
+| 5 | Declaration signature | The declaration's `sig`, and the declaration, under `https://placket.tech/declaration/0.1` by its `actor` (signing-2) | `declaration-signature` |
 | 6 | Terms | The declaration's `terms` and each term's members, a `resolve` on a term that is not a `maybe` and the form of every `resolve` included, but not whether a `maybe` term has one (setup-contract-1) | `term-invalid` |
 | 7 | Maybe rule | Each term of stance `maybe`, for the presence of its `resolve` member | `maybe-without-resolve` |
 | 8 | Checks | Each check a term names, against the card's `checks` | `check-unknown` |
 | 9 | Binding present | A binding whose `actor` is the declaration's | `binding-missing` |
 | 10 | Principal | That binding's `principal`, against the `principal` of each entry of the policy's `principals` | `binding-principal` |
-| 11 | Binding signature | That binding's `sig`, under `https://placket.dev/binding/0.1` by its `principal` (signing-2) | `binding-signature` |
+| 11 | Binding signature | That binding's `sig`, under `https://placket.tech/binding/0.1` by its `principal` (signing-2) | `binding-signature` |
 | 12 | Binding roles | Each role of that binding's `roles`, against the `roles` of its principal's entry | `binding-role` |
 | 13 | Binding policy | That binding's `policy`, against the typed hash of the set's `policy` (canonical-3) | `binding-policy` |
 | 14 | Binding mediator | That binding's `mediator`, against the set's `mediator.actor` | `binding-mediator` |
@@ -321,7 +321,7 @@ When every row passes, the Accord is founded: its id is the typed hash of the se
 
 ### setup-contract-1 Declarations
 
-A declaration is an actor's own terms, signed by that actor (`declaration.json`, `term.json`). Its `actor` is the actor's reference, its `terms` a non-empty list of terms, and its `sig` the actor's signature under `https://placket.dev/declaration/0.1`. A term has a `stance` (`need`, `want`, `maybe` or `no`), a `dir` (`give` or `get`), `with`, a non-empty list of distinct role selectors `role:<label>` naming roles the other side must hold, and `select`, an object whose one member `kind` is a non-empty list of distinct kinds. A label and a kind are lowercase letters and digits in words joined by single hyphens, at most 64 characters. A term of stance `maybe` has a `resolve` member: `to`, a non-empty list of distinct role selectors naming who answers, and `timeout`, a whole number of seconds from 1 to 2^53 − 1. A term of any other stance has none. A term may name checks in `checks`, a non-empty list of objects each with a check's `name` and a `corpus` label; this version loads no check, so every named check is `check-unknown`. A term with a member missing, of the wrong type, of the wrong form or not listed is `term-invalid`, and so is a `terms` member that is missing, empty or not a list. Every party of an Accord signs its own terms: founding refuses a declaration signed by any key but its actor's.
+A declaration is an actor's own terms, signed by that actor (`declaration.json`, `term.json`). Its `actor` is the actor's reference, its `terms` a non-empty list of terms, and its `sig` the actor's signature under `https://placket.tech/declaration/0.1`. A term has a `stance` (`need`, `want`, `maybe` or `no`), a `dir` (`give` or `get`), `with`, a non-empty list of distinct role selectors `role:<label>` naming roles the other side must hold, and `select`, an object whose one member `kind` is a non-empty list of distinct kinds. A label and a kind are lowercase letters and digits in words joined by single hyphens, at most 64 characters. A term of stance `maybe` has a `resolve` member: `to`, a non-empty list of distinct role selectors naming who answers, and `timeout`, a whole number of seconds from 1 to 2^53 − 1. A term of any other stance has none. A term may name checks in `checks`, a non-empty list of objects each with a check's `name` and a `corpus` label; this version loads no check, so every named check is `check-unknown`. A term with a member missing, of the wrong type, of the wrong form or not listed is `term-invalid`, and so is a `terms` member that is missing, empty or not a list. Every party of an Accord signs its own terms: founding refuses a declaration signed by any key but its actor's.
 
 #### Scenario: a selector that is not a role
 
@@ -349,7 +349,7 @@ A declaration is an actor's own terms, signed by that actor (`declaration.json`,
 
 ### setup-contract-2 Bindings and roles
 
-An actor holds a role only by a binding: a principal's signed statement that the actor holds a list of roles under one mediator and one policy until a time (`binding.json`). A binding has the `actor`, the `principal` that signs it, `roles`, a non-empty list of distinct labels, `policy`, the typed hash of the canonical bytes of the founding set's `policy` object it was signed for (canonical-3), the `mediator`'s reference, `until`, a timestamp, and `sig`, the principal's signature under `https://placket.dev/binding/0.1`. Roles come from nowhere else: not from a declaration, a policy or a message. The policy says which roles each principal may grant; a binding gives an actor only roles its principal's entry lists. The principal that signs an actor's binding is that party's principal, and one principal may stand behind several parties of an Accord, or all of them. The policy does not list actors: founding checks that a binding's principal has an entry, may grant the roles the binding gives and signed for this policy, and never which actor a principal may bind. Who stands behind each actor is read from the founding set (commands-4, `verify --founding`). A binding's `until` must be later than the founding time; a binding is checked against the clock at founding only. One binding may name several roles, and one actor may then hold them all.
+An actor holds a role only by a binding: a principal's signed statement that the actor holds a list of roles under one mediator and one policy until a time (`binding.json`). A binding has the `actor`, the `principal` that signs it, `roles`, a non-empty list of distinct labels, `policy`, the typed hash of the canonical bytes of the founding set's `policy` object it was signed for (canonical-3), the `mediator`'s reference, `until`, a timestamp, and `sig`, the principal's signature under `https://placket.tech/binding/0.1`. Roles come from nowhere else: not from a declaration, a policy or a message. The policy says which roles each principal may grant; a binding gives an actor only roles its principal's entry lists. The principal that signs an actor's binding is that party's principal, and one principal may stand behind several parties of an Accord, or all of them. The policy does not list actors: founding checks that a binding's principal has an entry, may grant the roles the binding gives and signed for this policy, and never which actor a principal may bind. Who stands behind each actor is read from the founding set (commands-4, `verify --founding`). A binding's `until` must be later than the founding time; a binding is checked against the clock at founding only. One binding may name several roles, and one actor may then hold them all.
 
 #### Scenario: two principals
 
@@ -417,7 +417,7 @@ For each declaration, founding finds the binding whose `actor` is the declaratio
 
 ### setup-contract-4 The card
 
-The card says what can change a verdict under the Accord (`card.json`). Its `spec` is `0.1`, the version of this protocol. Its `kernel` names the decision module by a `version` and a `hash`, which the operator writes and founding reads for shape only. Its `judges` is a reserved list, read for shape only: each entry a `name`, a `version` and a `hash`. Its `checks` lists the checks the module loads, each with a `name`, a `version` and a `hash`; in this version it is empty. The card holds no other member. Its typed hash is the card hash, which every receipt carries (receipt-3), so every receipt names the module that judged it.
+The card says what can change a verdict under the Accord (`card.json`). Its `spec` is `0.1`, the version of this protocol and the one protocol number every placket URI carries: each type URI (signing-4), the receipt's predicate type (receipt-1) and the crossing extension's URI (crossing-1) end in it, and each schema's `$id` holds it as the segment after `schema/`, as in `https://placket.tech/schema/0.1/card.json`. This version knows one value, `0.1`, and a card whose `spec` is any other is `invalid-shape`. A later version changes every URI and the `spec` together. Its `kernel` names the decision module by a `version` and a `hash`, which the operator writes and founding reads for shape only. Its `judges` is a reserved list, read for shape only: each entry a `name`, a `version` and a `hash`. Its `checks` lists the checks the module loads, each with a `name`, a `version` and a `hash`; in this version it is empty. The card holds no other member. Its typed hash is the card hash, which every receipt carries (receipt-3), so every receipt names the module that judged it.
 
 #### Scenario: a card that loads a check
 
@@ -428,6 +428,12 @@ The card says what can change a verdict under the Accord (`card.json`). Its `spe
 #### Scenario: a member the card does not list
 
 - Given a set whose card has a member `models`
+- When it is founded
+- Then it is refused with `invalid-shape`
+
+#### Scenario: a card of another spec
+
+- Given a set whose card's `spec` is `0.2`
 - When it is founded
 - Then it is refused with `invalid-shape`
 
@@ -564,17 +570,17 @@ The door is where a member gives a part to another member and fetches what was q
 | # | Check | Reads | Code |
 |---|---|---|---|
 | 1 | Member | The caller's key, against the Accord's members (setup-contract-6) | `not-a-member` |
-| 2 | Envelope signature | The envelope bytes: accepted by the canonical form, an object with exactly `seq`, `hash` and `sig`, its `sig` verifying under the caller's key and `https://placket.dev/envelope/0.1` (signing-2) | `envelope-signature` |
+| 2 | Envelope signature | The envelope bytes: accepted by the canonical form, an object with exactly `seq`, `hash` and `sig`, its `sig` verifying under the caller's key and `https://placket.tech/envelope/0.1` (signing-2) | `envelope-signature` |
 | 3 | Canonical message | The message bytes (canonical-1) | `not-canonical` |
 | 4 | Envelope hash | The envelope's `hash`: the typed hash of the message's canonical bytes (crossing-4) | `envelope-hash` |
 | 5 | Sequence | The envelope's `seq`: a whole number from 1 to 2^53 − 1, above the caller's highest accepted `seq` in this Accord (crossing-4) | `envelope-sequence` |
-| 6 | Crossing message | The message's frame: an object; no member but `messageId`, `role`, `parts`, `extensions` and `metadata`; `messageId` a non-empty string; `role` `ROLE_AGENT` or `ROLE_USER`; `extensions` exactly the crossing extension's URI; `metadata` holding exactly the extension's object under it; and that object's `re`, `topic` and `gate`, and no member it does not list. `to`, `accord` and `parts`, missing included, belong to rows 7, 8 and 9 (crossing-1) | `extension-missing` |
+| 6 | Crossing message | The message's frame: an object; no member but `messageId`, `role`, `parts`, `extensions` and `metadata`; `messageId` a non-empty string; `role` `ROLE_USER`; `extensions` exactly the crossing extension's URI; `metadata` holding exactly the extension's object under it; and that object's `re`, `topic` and `gate`, and no member it does not list. `to`, `accord` and `parts`, missing included, belong to rows 7, 8 and 9 (crossing-1) | `extension-missing` |
 | 7 | Receiver | The extension's `to`: present, an actor reference of a member (crossing-1) | `receiver-unknown` |
 | 8 | Accord | The extension's `accord`: present, this Accord's id | `accord-mismatch` |
 | 9 | One part | The message's `parts`: present, a list of exactly one element | `one-part` |
 | 10 | One body | The part: an object with exactly one of the body members `text`, `raw`, `data` and `url`, a `text` that is a string, a `raw` in standard base64, a `data` that is not `null`, and no member but that body and `metadata` (crossing-2) | `one-body` |
 | 11 | Body form | A `url` body, whatever its value (crossing-2) | `url-unsupported` |
-| 12 | Part metadata | The part's `metadata`: exactly the crossing extension's object, with a `kind` and a `salt` of at least 16 bytes (crossing-2) | `part-metadata` |
+| 12 | Part metadata | The part's `metadata`: exactly the crossing extension's object, with a `kind` and a `salt` of exactly 32 bytes (crossing-2) | `part-metadata` |
 
 A fetch carries only the authenticated caller.
 
@@ -586,7 +592,7 @@ A member's fetch returns the first delivery queued for it, once, or nothing when
 
 ### crossing-1 The crossing message
 
-A part crosses in an A2A protocol 1.0 message that carries the crossing extension, `https://placket.dev/crossing/0.1` (`message.json`). The message has exactly the members `messageId`, a non-empty string; `role`, `ROLE_AGENT` for a part a member gives and `ROLE_USER` for one the mediator forms from an answer (maybe-8, maybe-9); `parts`, the list of its one part; `extensions`, the list holding exactly the crossing extension's URI; and `metadata`, holding exactly one member, under that URI, the crossing extension's object. That object has `accord`, the Accord's id; `to`, the receiver's reference; and it may have `re`, the id of the receipt the message answers; `topic`, a non-empty string that groups crossings; and `gate`, reserved for a later version and read for shape only: lowercase letters and digits in words joined by single hyphens or underscores, at most 64 characters, such as `out_you`. The sender is not a member of the message: it is the caller, whose key signed the envelope (crossing-6). The extension has no `from`, so a give whose extension carries one is `extension-missing`, as for any member the frame does not list, whatever its value; no member of a message can name a sender other than the caller. The door accepts either `role` from a member. No check reads `topic`, `gate` or `role` but for their shape, and no receipt or delivery carries `topic` or `gate`.
+A part crosses in an A2A protocol 1.0 message that carries the crossing extension, `https://placket.tech/crossing/0.1` (`message.json`). The frame is a closed profile of the A2A 1.0 Message: it keeps A2A's names and meanings, fixes which members a message has and the values some of them take, and allows nothing else. The mediator stands on the agent's side of A2A's roles, and each member on the client's. The message has exactly the members `messageId`, a non-empty string; `role`, `ROLE_USER` for a part a member gives, as an A2A client sends, and `ROLE_AGENT` for one the mediator forms from an answer (maybe-8, maybe-9), as an A2A agent answers; `parts`, the list of its one part; `extensions`, the list holding exactly the crossing extension's URI; and `metadata`, holding exactly one member, under that URI, the crossing extension's object. That object has `accord`, the Accord's id; `to`, the receiver's reference; and it may have `re`, the id of the receipt the message answers; `topic`, a non-empty string that groups crossings; and `gate`, reserved for a later version and read for shape only: lowercase letters and digits in words joined by single hyphens or underscores, at most 64 characters, such as `out_you`. The sender is not a member of the message: it is the caller, whose key signed the envelope (crossing-6). The extension has no `from`, so a give whose extension carries one is `extension-missing`, as for any member the frame does not list, whatever its value; no member of a message can name a sender other than the caller. The door accepts only `ROLE_USER` from a member: a give with `ROLE_AGENT` is `extension-missing`, as for any other defect of the frame. No check reads `topic` or `gate` but for their shape, no check reads `role` but for its value, and no receipt or delivery carries `topic` or `gate`.
 
 #### Scenario: a message from another Accord
 
@@ -606,6 +612,12 @@ A part crosses in an A2A protocol 1.0 message that carries the crossing extensio
 - When the door checks each
 - Then each is rejected with `extension-missing`
 
+#### Scenario: a give in the agent's role
+
+- Given a member's correctly signed give whose `role` is `ROLE_AGENT`, and separately the same give with `ROLE_USER`
+- When the door checks each
+- Then the first is rejected with `extension-missing`, and the second is decided
+
 #### Scenario: a reserved gate
 
 - Given a member's correctly signed give whose extension has `gate` `out_you`, and separately one with `gate` `Out_You`
@@ -614,7 +626,7 @@ A part crosses in an A2A protocol 1.0 message that carries the crossing extensio
 
 ### crossing-2 The part
 
-The one part has exactly one body and the crossing extension's metadata (`part.json`). The body is `text`, a string; `raw`, bytes in standard base64; or `data`, any JSON value but `null`. A part with no body, with two, or with any member but its body and `metadata` is `one-body`, and so is a `raw` that is not standard base64 in its one encoding. A `url` body is not a body of this version: a part whose one body is `url` is `url-unsupported`, whatever the value. The part's `metadata` holds exactly one member, under the crossing extension's URI, with exactly `kind`, a kind as setup-contract-1 defines it, and `salt`, at least 16 bytes in lowercase hex; any other is `part-metadata`. The body's bytes are the UTF-8 of `text`, the decoded bytes of `raw`, or the canonical bytes of `data`.
+The one part has exactly one body and the crossing extension's metadata (`part.json`). The body is `text`, a string; `raw`, bytes in standard base64; or `data`, any JSON value but `null`. A part with no body, with two, or with any member but its body and `metadata` is `one-body`, and so is a `raw` that is not standard base64 in its one encoding. A `url` body is not a body of this version: a part whose one body is `url` is `url-unsupported`, whatever the value. The part's `metadata` holds exactly one member, under the crossing extension's URI, with exactly `kind`, a kind as setup-contract-1 defines it, and `salt`, exactly 32 bytes in lowercase hex, 64 digits; any other is `part-metadata`. The body's bytes are the UTF-8 of `text`, the decoded bytes of `raw`, or the canonical bytes of `data`.
 
 #### Scenario: two bodies
 
@@ -628,15 +640,15 @@ The one part has exactly one body and the crossing extension's metadata (`part.j
 - When the door checks it
 - Then it is rejected with `url-unsupported`
 
-#### Scenario: a short salt
+#### Scenario: a salt of 31 or 33 bytes
 
-- Given a correctly signed give whose part's salt is 15 bytes
-- When the door checks it
-- Then it is rejected with `part-metadata`
+- Given a correctly signed give whose part's salt is 31 bytes, and separately one whose salt is 33 bytes
+- When the door checks each
+- Then each is rejected with `part-metadata`
 
 ### crossing-3 Digests, salts and deliveries
 
-A part is named in a receipt by its kind and its salted digest: the lowercase hex SHA-256 of the salt's bytes followed by the body's bytes. The first holder of a part mints its salt, at least 16 random bytes; the mediator mints the salt of every part it forms. No receipt carries a body or a salt. When a part passes, the mediator queues for its receiver a delivery (`delivery.json`): the receipt that passed it and its id, the part's `messageId`, `kind` and `salt`, the message's `re` when it has one, and the body, as `text`, `raw` or `data` as it crossed. A delivery holds nothing else. Its format is frozen because a receiver checks the receipt and the digest with it and every scenario vector compares it member by member (conformance-vectors-5). A door hands a delivery out in a reply of its own format, and where the delivery's body is an answer or a changed version the door may attach beside it the call by which the answerer signed that answer. That call is the door's format, not a member of the delivery: no receipt covers it, and no check of this protocol reads it. Deliveries are queued per receiver in the order of their receipts, and each is handed out once, to its receiver only, by a fetch. The mediator keeps no body or salt of a part that was blocked, or of a delivery once fetched.
+A part is named in a receipt by its kind and its salted digest: the lowercase hex SHA-256 of the salt's bytes followed by the body's bytes. A salt is exactly 32 bytes, so a digest opens as one salt and one body only. The first holder of a part mints its salt, 32 random bytes; the mediator mints the salt of every part it forms, 32 bytes too. No receipt carries a body or a salt. When a part passes, the mediator queues for its receiver a delivery (`delivery.json`): the receipt that passed it and its id, the part's `messageId`, `kind` and `salt`, the message's `re` when it has one, and the body, as `text`, `raw` or `data` as it crossed. A delivery holds nothing else. Its format is frozen because a receiver checks the receipt and the digest with it and every scenario vector compares it member by member (conformance-vectors-5). A door hands a delivery out in a reply of its own format, and where the delivery's body is an answer or a changed version the door may attach beside it the call by which the answerer signed that answer. That call is the door's format, not a member of the delivery: no receipt covers it, and no check of this protocol reads it. Deliveries are queued per receiver in the order of their receipts, and each is handed out once, to its receiver only, by a fetch. The mediator keeps no body or salt of a part that was blocked, or of a delivery once fetched.
 
 #### Scenario: whoever holds the body and salt can show the part
 
@@ -658,7 +670,7 @@ A part is named in a receipt by its kind and its salted digest: the lowercase he
 
 ### crossing-4 The envelope
 
-The envelope is the sender's signed claim to one submission (`envelope.json`): `seq`, its sequence number in this Accord, `hash`, the typed hash of the message's canonical bytes, and `sig`, the sender's signature under `https://placket.dev/envelope/0.1`. A message edited after its envelope was signed is `envelope-hash`. A `seq` at or below the highest the caller has had accepted in this Accord, or not a whole number from 1 to 2^53 − 1, is `envelope-sequence`, so a replayed envelope is refused. A `seq` is accepted when its give writes a receipt; a rejected give consumes none. A `seq` may skip numbers: it need only be above the last accepted.
+The envelope is the sender's signed claim to one submission (`envelope.json`): `seq`, its sequence number in this Accord, `hash`, the typed hash of the message's canonical bytes, and `sig`, the sender's signature under `https://placket.tech/envelope/0.1`. A message edited after its envelope was signed is `envelope-hash`. A `seq` at or below the highest the caller has had accepted in this Accord, or not a whole number from 1 to 2^53 − 1, is `envelope-sequence`, so a replayed envelope is refused. A `seq` is accepted when its give writes a receipt; a rejected give consumes none. A `seq` may skip numbers: it need only be above the last accepted.
 
 #### Scenario: an edited message
 
@@ -836,7 +848,7 @@ A give that composition decides `escalate` opens a question: the mediator writes
 | 2 | Open question | The question's id: a question that is open, at a time before its deadline (maybe-7) | `no-open-question` |
 | 3 | Answerer | The caller, among the question's answerers (maybe-6) | `not-an-answerer` |
 
-A rejected answer writes nothing and leaves the question as it was. The answer's own inputs are its caller's to get right, and are checked after these rows with no protocol code: an action that is not one of the four, an accept or a change without a salt of at least 16 bytes, or a change with an empty text, is refused as the caller's misuse, writes nothing and leaves the question open. An answer that passes the rows closes the question and writes its receipts, all of them before any state changes: the resolution receipt first, then the release receipt when one is written. The mediator's own finding that a question cannot be delivered reads only row 2. Its deadline is reached by the passing of time, which reads nothing and refuses nothing (maybe-5).
+A rejected answer writes nothing and leaves the question as it was. The answer's own inputs are its caller's to get right, and are checked after these rows with no protocol code: an action that is not one of the four, an accept or a change without a salt of exactly 32 bytes, or a change with an empty text, is refused as the caller's misuse, writes nothing and leaves the question open. An answer that passes the rows closes the question and writes its receipts, all of them before any state changes: the resolution receipt first, then the release receipt when one is written. The mediator's own finding that a question cannot be delivered reads only row 2. Its deadline is reached by the passing of time, which reads nothing and refuses nothing (maybe-5).
 
 The answerers of a question are the members whose bindings give them a role its rule names in `resolve.to`, in actor-reference order. The list may be empty: founding checks that the policy's roles are held, not that a rule's are.
 
@@ -942,7 +954,7 @@ An answer, or a finding that a question cannot be delivered, for an id that name
 
 ### maybe-8 The answer's message
 
-An accepted answer is a part the mediator forms: `messageId` `answer:` followed by the question's id, kind `answer`, `re` the question's id, a `text` body holding the answer's text, and the salt the mediator minted for it, at least 16 bytes. Its message's `role` is `ROLE_USER`. The answer's text may be any string.
+An accepted answer is a part the mediator forms: `messageId` `answer:` followed by the question's id, kind `answer`, `re` the question's id, a `text` body holding the answer's text, and the salt the mediator minted for it, 32 bytes. Its message's `role` is `ROLE_AGENT`, since the mediator forms it. The answer's text may be any string.
 
 #### Scenario: the delivered answer
 
@@ -952,7 +964,7 @@ An accepted answer is a part the mediator forms: `messageId` `answer:` followed 
 
 ### maybe-9 A changed answer
 
-A change is an answerer's own version of the asked part, as a non-empty text. The mediator forms one part from it: `messageId` `change:` followed by the question's id, kind `changed-version`, `re` the question's id, a `text` body holding the version, and one salt the mediator minted, at least 16 bytes, with `role` `ROLE_USER`. It decides that part from the answerer to the asker as it decides an accepted answer, and the resolution receipt's subject is the version, of kind `changed-version`: that is how a change is recorded. A pass queues the version for the asker. A change with an empty version is the caller's misuse: it is refused with no protocol code, writes nothing and leaves the question open. The asked part is never released after a change.
+A change is an answerer's own version of the asked part, as a non-empty text. The mediator forms one part from it: `messageId` `change:` followed by the question's id, kind `changed-version`, `re` the question's id, a `text` body holding the version, and one salt the mediator minted, 32 bytes, with `role` `ROLE_AGENT`. It decides that part from the answerer to the asker as it decides an accepted answer, and the resolution receipt's subject is the version, of kind `changed-version`: that is how a change is recorded. A pass queues the version for the asker. A change with an empty version is the caller's misuse: it is refused with no protocol code, writes nothing and leaves the question open. The asked part is never released after a change.
 
 #### Scenario: a change returned to the asker
 
@@ -1021,7 +1033,7 @@ A receipt is the mediator's signed statement of one decision. Writing one refuse
 
 ### receipt-1 The receipt
 
-A receipt is a DSSE 1.0 envelope (`receipt.json`) with exactly `payloadType`, `application/vnd.in-toto+json`; `payload`, the standard base64 of the canonical bytes of the receipt's statement; and `signatures`, a list of exactly one entry with exactly `keyid`, the mediator's reference, and `sig`, the standard base64 of the mediator's Ed25519 signature over the DSSE pre-authentication encoding of the payload type and the payload's bytes (signing-2). The statement is an in-toto Statement v1 (`statement.json`): `_type` `https://in-toto.io/Statement/v1`, `subject`, `predicateType` `https://placket.dev/receipt/0.1`, and `predicate`. A receipt's id is the typed hash of the canonical bytes of its statement. The mediator writes the payload in canonical form, so putting it in canonical form again changes nothing.
+A receipt is a DSSE 1.0 envelope (`receipt.json`) with exactly `payloadType`, `application/vnd.in-toto+json`; `payload`, the standard base64 of the canonical bytes of the receipt's statement; and `signatures`, a list of exactly one entry with exactly `keyid`, the mediator's reference, and `sig`, the standard base64 of the mediator's Ed25519 signature over the DSSE pre-authentication encoding of the payload type and the payload's bytes (signing-2). The statement is an in-toto Statement v1 (`statement.json`): `_type` `https://in-toto.io/Statement/v1`, `subject`, `predicateType` `https://placket.tech/receipt/0.1`, and `predicate`. A receipt's id is the typed hash of the canonical bytes of its statement. The mediator writes the payload in canonical form, so putting it in canonical form again changes nothing.
 
 #### Scenario: the anatomy of a receipt
 
@@ -1322,7 +1334,7 @@ The runner compares exactly. A rejection is compared by its code. An outcome is 
 
 ### conformance-vectors-6 The resolve step
 
-A `resolve` step has `question`, the id of the question's receipt, and `action`: `accepted`, `changed`, `declined`, `cancelled`, or `undeliverable`, the mediator's finding that nobody can be reached, which takes no caller. For `accepted` and `changed` it has `content.answer`, the answer's text or the version, which for `changed` is not empty, and `salt`, the salt the mediator mints. It may have `release`, `true`, for `accepted` and `changed` only; its `expect` then holds `release`, the release receipt's outcome, when one was written, and holds none when the step has no `release`. `by` names the member that answers; without it, the runner answers as the question's first answerer, by actor-reference order. `expect` is the outcome of the resolution receipt, or the rejection. After `accepted` or `changed` that outcome is composition's, and so is the release's; after `declined`, `cancelled` or `undeliverable` it is `block` with that action as its reason.
+A `resolve` step has `question`, the id of the question's receipt, and `action`: `accepted`, `changed`, `declined`, `cancelled`, or `undeliverable`, the mediator's finding that nobody can be reached, which takes no caller. For `accepted` and `changed` it has `content.answer`, the answer's text or the version, which for `changed` is not empty, and `salt`, the salt the mediator mints, exactly 32 bytes in lowercase hex. It may have `release`, `true`, for `accepted` and `changed` only; its `expect` then holds `release`, the release receipt's outcome, when one was written, and holds none when the step has no `release`. `by` names the member that answers; without it, the runner answers as the question's first answerer, by actor-reference order. `expect` is the outcome of the resolution receipt, or the rejection. After `accepted` or `changed` that outcome is composition's, and so is the release's; after `declined`, `cancelled` or `undeliverable` it is `block` with that action as its reason.
 
 #### Scenario: an accepted answer with release
 
@@ -1545,7 +1557,7 @@ Every command that prints a claim line carries it in its object under `claim`, w
 
 ### commands-5 A file checked against what crossed
 
-`released --file F --state DIR` says whether the bytes of the file F are a part that crossed to the key whose state directory is DIR. It reads the directory and writes nothing. The directory keeps, for each delivery the key fetched, the delivery's receipt and the salt the part came with. The file matches a delivery when the delivery's receipt passed, is addressed to the directory's key, and names as its digest the salted digest of the file's bytes under that salt (crossing-3). A file matches only as the fetch wrote the body: a text's UTF-8, a raw body's decoded bytes, a data body's canonical bytes. The command compares bytes; which fields count, and how values are normalised before the check, are the caller's.
+`released --file F --state DIR` says whether the bytes of the file F are a part that crossed to the key whose state directory is DIR. It reads the directory and writes nothing. The directory keeps, for each delivery the key fetched, the delivery's receipt and the salt the part came with; a salt that is not 32 bytes matches nothing. The file matches a delivery when the delivery's receipt passed, is addressed to the directory's key, and names as its digest the salted digest of the file's bytes under that salt (crossing-3). A file matches only as the fetch wrote the body: a text's UTF-8, a raw body's decoded bytes, a data body's canonical bytes. The command compares bytes; which fields count, and how values are normalised before the check, are the caller's.
 
 On a match the command prints the receipt's id on standard output and exits 0. On standard error it prints `not verified`, the claim line `claim: these bytes, under the salt they were fetched with, are the part this receipt let cross to this key.` and the scope line. The receipt is read as the directory holds it, not verified; verifying the journal shows it is the mediator's (receipt-6). With no match it prints `no release matches these bytes` on standard error, nothing on standard output, and exits 1. A receipt that blocked, and a receipt addressed to another key, never match, whatever the directory holds. A file that cannot be read is the command's error `file`. The command says only that these bytes are what crossed under the receipt, never what any party did with them after.
 
@@ -1613,7 +1625,7 @@ On a match the command prints the receipt's id on standard output and exits 0. O
 
 ### commands-7 Everything a key kept, checked against what crossed
 
-`released --state DIR`, without `--file`, says whether a part that crossed to the key whose state directory is DIR is among the parts the directory kept, and which. It reads the directory and writes nothing. It tries every part the key fetched and kept, in the order the key fetched them; a part the key gave, and a version it gave as an answer, are not tried. Each kept part is checked as commands-5 checks a file, its body as the fetch wrote it: it matches when the delivery's receipt the directory keeps, of the receipt id the part names, passed, is addressed to the directory's key, names the part's kind, and names as its digest the salted digest of the part's body under the salt the part was kept with (crossing-3). So a kept part whose body, salt or kind was changed after it was kept never matches, and a directory that kept nothing matches nothing. With `--file`, the command is as commands-5 and commands-6 say.
+`released --state DIR`, without `--file`, says whether a part that crossed to the key whose state directory is DIR is among the parts the directory kept, and which. It reads the directory and writes nothing. It tries every part the key fetched and kept, in the order the key fetched them; a part the key gave, and a version it gave as an answer, are not tried. Each kept part is checked as commands-5 checks a file, its body as the fetch wrote it: it matches when the delivery's receipt the directory keeps, of the receipt id the part names, passed, is addressed to the directory's key, names the part's kind, and names as its digest the salted digest of the part's body under the salt the part was kept with (crossing-3). So a kept part whose body, salt or kind was changed after it was kept, or whose salt is not 32 bytes, never matches, and a directory that kept nothing matches nothing. With `--file`, the command is as commands-5 and commands-6 say.
 
 Conditions narrow a match, and a part matches only when every condition given holds:
 
@@ -1652,7 +1664,7 @@ On a match the command prints on standard output the receipt id of the first mat
 A kept part is a line of a party's kept record, given with `--kept`. It is used only when a verified receipt covers it, and it is joined to that receipt by what the receipt signed, never by a time, a kind or a sender alone:
 
 - **A part the actor gave** is joined by its envelope: the typed hash of the kept message's canonical bytes is the receipt's `envelope.hash`, and the part's kind is the receipt's subject `name`. Its body, kind, topic and re are covered.
-- **A part the actor fetched, or a version it gave as an answer**, is joined by its salted digest: the digest of crossing-3 under the kept salt is the receipt's subject digest, and its kind is the subject `name`. Its body alone is covered; a topic or a re it carries is not used.
+- **A part the actor fetched, or a version it gave as an answer**, is joined by its salted digest: the digest of crossing-3 under the kept salt, which must be 32 bytes, is the receipt's subject digest, and its kind is the subject `name`. Its body alone is covered; a topic or a re it carries is not used.
 
 A kept part that no receipt covers is left out, and the log says so on standard error, naming the receipt it claims.
 

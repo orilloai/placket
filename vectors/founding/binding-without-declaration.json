@@ -13,7 +13,7 @@
         "roles": [
           "decider"
         ],
-        "sig": "8c20f52a8c51e007c39f67fe9d4767707f4fb815fe46831094cd2587716c6757b3316b13559ddead129391743f05bd50a8d278ccd15c143fa2725fa86601970f",
+        "sig": "2bea7e449185594258474457c3b31f87c420e6c0e8a15bcfa6cc3a8e2bf57f7bc09f1cf99297aa3dc77e597beab5b36464220922d7b59b2e4cd83280631e4f0c",
         "until": "2027-11-12T00:00:00Z"
       },
       {
@@ -24,7 +24,7 @@
         "roles": [
           "proposer"
         ],
-        "sig": "777986e5a9307d80e95dd906de17f77456a76f574e646eff9b4d46e7818e2254e53dfe13b7e00c45622cabc5f43c526d275953361e942ede43e1358bb3508405",
+        "sig": "6fe390c551f0bbb824d2bf9b64e8d8bf7e3f1aab00a3f08728ca42a47ebaec95b706dfe9f0c592bb0327e9a6f14ed48431eb0cdf7f7f0b9a9651ca4d21860007",
         "until": "2027-11-12T00:00:00Z"
       },
       {
@@ -35,7 +35,7 @@
         "roles": [
           "applier"
         ],
-        "sig": "0940f586d652e826e681291f982c3ff6721a5427f1388421925ec105238a0ac917c93ef32cb25691815259aa3c5d03e89954080d1f14f8d9f933776e54ea760c",
+        "sig": "bbef9d364fd192f1c85935ab27b3d93a203c70eee2c0dfb5bf5ffec94e6344b9f0742c5253f4ab233d15acf171df4145ad8297b83d540310c7ee62cce1fdee02",
         "until": "2027-11-12T00:00:00Z"
       }
     ],
@@ -51,7 +51,7 @@
     "declarations": [
       {
         "actor": "ed25519:7cf35b36b9d57c62b9f3d5be2eb4d39147afa1b7625cd0032443523254df3bea",
-        "sig": "2f0b765521a0114cf2c7a6c534c2fdee936383adb5ae306e129909efa045fd86884e8de2fc6440f3528303cde34e47808f71b6d9867b0cc9098f49c80e138102",
+        "sig": "d6859290e0f713addea89f5d7d54cf5161fa13a42b24d337785f7111c6486421cc9e5c4d51653a5ade8be2e6b7697d6ad13d43121a0f1ebce9c3a56bb9699a07",
         "terms": [
           {
             "dir": "give",
@@ -100,7 +100,7 @@
       },
       {
         "actor": "ed25519:a80586279ba17c5360b029018bf025be0169fdb02087e77301774c99eed92117",
-        "sig": "a8de4390b6d13517b7304fca7faa74223a4a244d96a6b2f0f3d0c65931c308c385f89f5c0b5ef6e119d1e183526631bd0ff955287e885826a53dc0c64ca1850f",
+        "sig": "8620748e7e658b3e7759ccc3471449096cd76c93a3cb77e74537c30ada0df811ab77ae2133ee229da2867ef318a78a23697c562ea25df35de333a1f5c1f86c06",
         "terms": [
           {
             "dir": "get",

@@ -52,9 +52,9 @@
     "scenarios": {"the type URI comes from the operation": {"vectors": ["signatures/binding-under-declaration-uri", "founding/binding-under-declaration-uri"]}, "signed by another key": {"vectors": ["signatures/envelope-by-another-key", "crossing/an-envelope-by-another-key"]}, "a malleated signature": {"vectors": ["signatures/malleated-signature", "signatures/receipt-malleated-signature"]}}
   },
   "signing-4": {
-    "vectors": ["signatures/receipt-verifies", "signatures/receipt-placket-payload-type", "signatures/registration-reserved"],
-    "tests": ["core/signing:TestPayloadSignaturesRefuseTheFourTypeURIs"],
-    "scenarios": {"a placket URI as a payload type": {"tests": ["core/signing:TestPayloadSignaturesRefuseTheFourTypeURIs"]}}
+    "vectors": ["signatures/receipt-verifies", "signatures/receipt-placket-payload-type", "signatures/a-binding-under-the-old-domain"],
+    "tests": ["core/signing:TestPayloadSignaturesRefuseTheThreeTypeURIs"],
+    "scenarios": {"a placket URI as a payload type": {"tests": ["core/signing:TestPayloadSignaturesRefuseTheThreeTypeURIs"]}}
   },
   "setup-contract-1": {
     "vectors": ["founding/selector-not-a-role", "founding/maybe-without-resolve", "founding/term-names-a-check", "founding/declaration-edited", "founding/resolve-on-a-want"],
@@ -69,8 +69,8 @@
     "scenarios": {"a binding by an unlisted principal": {"vectors": ["founding/binding-unlisted-principal"]}, "a binding that gives a role its principal may not grant": {"vectors": ["founding/binding-role-not-granted"]}, "a binding signed for another policy": {"vectors": ["founding/binding-other-policy"]}, "a binding for another mediator": {"vectors": ["founding/binding-other-mediator"]}, "a binding with no declaration": {"vectors": ["founding/binding-without-declaration"]}}
   },
   "setup-contract-4": {
-    "vectors": ["founding/card-loads-a-check", "founding/card-unlisted-member"],
-    "scenarios": {"a card that loads a check": {"vectors": ["founding/card-loads-a-check"]}, "a member the card does not list": {"vectors": ["founding/card-unlisted-member"]}}
+    "vectors": ["founding/card-loads-a-check", "founding/card-unlisted-member", "founding/a-card-of-another-spec"],
+    "scenarios": {"a card that loads a check": {"vectors": ["founding/card-loads-a-check"]}, "a member the card does not list": {"vectors": ["founding/card-unlisted-member"]}, "a card of another spec": {"vectors": ["founding/a-card-of-another-spec"]}}
   },
   "setup-contract-5": {
     "vectors": ["founding/ask-and-log", "founding/ask-and-log-later", "founding/policy-role-nobody-holds", "founding/compose", "founding/policy-without-roles", "founding/own-no", "founding/long-wait", "founding/unanswered", "founding/answer-under-maybe", "founding/a-role-held-not-required"],
@@ -97,12 +97,12 @@
     "scenarios": {"declarations out of order": {"vectors": ["founding/declarations-out-of-order"]}, "two bindings for one actor": {"vectors": ["founding/two-bindings-one-actor"]}}
   },
   "crossing-1": {
-    "vectors": ["crossing/a-message-from-another-accord", "crossing/an-unknown-receiver", "crossing/a-member-the-frame-does-not-list", "crossing/a-reserved-gate", "crossing/bodies-roles-and-replies"],
-    "scenarios": {"a message from another Accord": {"vectors": ["crossing/a-message-from-another-accord"]}, "an unknown receiver": {"vectors": ["crossing/an-unknown-receiver"]}, "a member the frame does not list": {"vectors": ["crossing/a-member-the-frame-does-not-list"]}, "a reserved gate": {"vectors": ["crossing/a-reserved-gate"]}}
+    "vectors": ["crossing/a-message-from-another-accord", "crossing/an-unknown-receiver", "crossing/a-member-the-frame-does-not-list", "crossing/a-give-in-the-agents-role", "crossing/the-old-crossing-extension", "crossing/a-reserved-gate", "crossing/bodies-roles-and-replies"],
+    "scenarios": {"a message from another Accord": {"vectors": ["crossing/a-message-from-another-accord"]}, "an unknown receiver": {"vectors": ["crossing/an-unknown-receiver"]}, "a member the frame does not list": {"vectors": ["crossing/a-member-the-frame-does-not-list"]}, "a give in the agent's role": {"vectors": ["crossing/a-give-in-the-agents-role"]}, "a reserved gate": {"vectors": ["crossing/a-reserved-gate"]}}
   },
   "crossing-2": {
     "vectors": ["crossing/one-body", "crossing/a-url-body", "crossing/part-metadata", "crossing/bodies-roles-and-replies"],
-    "scenarios": {"two bodies": {"vectors": ["crossing/one-body"]}, "a url body": {"vectors": ["crossing/a-url-body"]}, "a short salt": {"vectors": ["crossing/part-metadata"]}}
+    "scenarios": {"two bodies": {"vectors": ["crossing/one-body"]}, "a url body": {"vectors": ["crossing/a-url-body"]}, "a salt of 31 or 33 bytes": {"vectors": ["crossing/part-metadata"]}}
   },
   "crossing-3": {
     "vectors": ["crossing/a-give-then-the-end-state", "crossing/bodies-roles-and-replies", "crossing/a-delivery-is-fetched-once", "crossing/no-delivery-for-a-block"],
@@ -185,7 +185,7 @@
     "scenarios": {"an accept releases the asked part with its digest unchanged": {"vectors": ["questions/an-accept-releases-the-asked-part"]}, "a change returned to the asker and released to the receiver under one digest": {"vectors": ["questions/a-change-released-to-the-receiver"]}, "an accept's release is decided again and passes": {"vectors": ["questions/an-accept-releases-the-asked-part"]}, "a release receipt echoes the question's envelope and counts as an echo for the asker only": {"vectors": ["receipts/a-release-counts-as-an-echo-for-the-asker-only", "receipts/a-resolution-counts-as-an-echo-for-the-asker-only", "questions/an-accept-releases-the-asked-part", "questions/a-change-released-to-the-receiver"]}, "a decline releases nothing": {"vectors": ["questions/a-decline-releases-nothing"]}}
   },
   "receipt-1": {
-    "vectors": ["receipts/three-gives-are-echoed", "receipts/a-chain-verifies", "receipts/a-statement-of-another-type"],
+    "vectors": ["receipts/three-gives-are-echoed", "receipts/a-chain-verifies", "receipts/a-statement-of-another-type", "receipts/a-receipt-under-the-old-domain"],
     "scenarios": {"the anatomy of a receipt": {"vectors": ["receipts/three-gives-are-echoed", "receipts/a-chain-verifies", "receipts/a-statement-of-another-type"]}}
   },
   "receipt-2": {

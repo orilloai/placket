@@ -22,11 +22,12 @@ import (
 	"github.com/orilloai/placket/core/signing"
 )
 
-// The fixed values of a receipt and its statement (receipt-1).
+// The fixed values of a receipt and its statement (receipt-1). PredicateType ends in the protocol
+// number, the card's spec (setup-contract-4); core/mediator's tests hold it to setup.Spec.
 const (
 	PayloadType   = "application/vnd.in-toto+json"
 	StatementType = "https://in-toto.io/Statement/v1"
-	PredicateType = "https://placket.dev/receipt/0.1"
+	PredicateType = "https://placket.tech/receipt/0.1"
 )
 
 // The kinds of receipt (receipt-3).

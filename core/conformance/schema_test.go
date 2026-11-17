@@ -43,7 +43,7 @@ func TestSchemaExamples(t *testing.T) {
 	total := 0
 	for _, d := range dirs {
 		name := filepath.Base(d)
-		root, err := set.compile("https://placket.dev/schema/0.1/" + name + ".json#")
+		root, err := set.compile("https://placket.tech/schema/0.1/" + name + ".json#")
 		if err != nil {
 			t.Fatalf("%s: %v", name, err)
 		}
@@ -268,7 +268,7 @@ func FuzzValidate(f *testing.F) {
 			f.Fatal(err)
 		}
 	}
-	root, err := set.compile("https://placket.dev/schema/0.1/vector.json#")
+	root, err := set.compile("https://placket.tech/schema/0.1/vector.json#")
 	if err != nil {
 		f.Fatal(err)
 	}

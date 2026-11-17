@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://placket.dev/schema/0.1/delivery.json",
+  "$id": "https://placket.tech/schema/0.1/delivery.json",
   "title": "Delivery",
   "description": "What a receiver fetches for a part that passed to it (crossing-3): the receipt that passed it and its id, the part's message id, kind and salt, the receipt the message answers when it names one, and the body in the form it crossed. It holds nothing else. A door hands it out in a reply of its own format, and the answerer's signed call it attaches to an answer's delivery travels beside it there, not as a member of it.",
   "type": "object",

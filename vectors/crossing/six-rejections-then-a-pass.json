@@ -6,17 +6,17 @@
           "kind": "note",
           "messageId": "note-1",
           "receipt": {
-            "payload": "eyJfdHlwZSI6Imh0dHBzOi8vaW4tdG90by5pby9TdGF0ZW1lbnQvdjEiLCJwcmVkaWNhdGUiOnsiYWNjb3JkIjoic2hhMjU2OjM3NzY2NmU2YjcyNGFkMDUyOTA5Y2E1YzdiYmViYWEyMmQ0NTY4MzkzOWM2NWJmZmNlNDM1OGQ2M2U4N2I3N2UiLCJhdCI6IjIwMjYtMTEtMTJUMDk6MDY6MDBaIiwiY2FyZCI6InNoYTI1Njo2OTBlNWRiYjY3NzA0YjYwZmM0NzUxMmNkOGYwMjE0M2E3ODc2ZTg4NWNmODY1ZTRiZGU3OWVkN2ZiZTVjMzU2IiwiZW52ZWxvcGUiOnsiaGFzaCI6InNoYTI1Njo5NTA3N2QxZWFiMDhmZjU0OTFlNzViN2U4NzYzMzM0OGM1OTVlZWU1NGNlNzE1MzliN2M0YTdhYmNjMzAyM2IzIiwic2VuZGVyIjoiZWQyNTUxOTo3Y2YzNWIzNmI5ZDU3YzYyYjlmM2Q1YmUyZWI0ZDM5MTQ3YWZhMWI3NjI1Y2QwMDMyNDQzNTIzMjU0ZGYzYmVhIiwic2VxIjoxfSwiZnJvbSI6ImVkMjU1MTk6N2NmMzViMzZiOWQ1N2M2MmI5ZjNkNWJlMmViNGQzOTE0N2FmYTFiNzYyNWNkMDAzMjQ0MzUyMzI1NGRmM2JlYSIsImtpbmQiOiJjcm9zc2luZyIsIm1lZGlhdG9yIjoiZWQyNTUxOTo4NDI1NGY5ZDU5M2IwZjc4MTFiMThjMDBiNjU2YTcwZmUxYTk1OTVlZDM1M2M3MzI4NmVhODNkMzAwMjI2ZWQzIiwicmVhc29uIjoib2siLCJzZXEiOjEsInRvIjoiZWQyNTUxOTphODA1ODYyNzliYTE3YzUzNjBiMDI5MDE4YmYwMjViZTAxNjlmZGIwMjA4N2U3NzMwMTc3NGM5OWVlZDkyMTE3IiwidmVyZGljdCI6InBhc3MifSwicHJlZGljYXRlVHlwZSI6Imh0dHBzOi8vcGxhY2tldC5kZXYvcmVjZWlwdC8wLjEiLCJzdWJqZWN0IjpbeyJkaWdlc3QiOnsic2FsdGVkLXNoYTI1NiI6IjVjODgwMDUzMjAyZDNiOGI1ODcxNDNlYmZmYzlhM2Y5ZjQ1OGRjMDI0ZGMzZGI4ZmYyNzgwZmE5YjY1MDBkMjAifSwibmFtZSI6Im5vdGUifV19",
+            "payload": "eyJfdHlwZSI6Imh0dHBzOi8vaW4tdG90by5pby9TdGF0ZW1lbnQvdjEiLCJwcmVkaWNhdGUiOnsiYWNjb3JkIjoic2hhMjU2OmZkYjRjNjEwMWIzMzg3NmE1NmU5NTAxZDc1NmIwOTA1NjcxYTlhNDRjNzI2ZTU5OWM5YTdhNzYyNzBhYWIxZGYiLCJhdCI6IjIwMjYtMTEtMTJUMDk6MDY6MDBaIiwiY2FyZCI6InNoYTI1Njo2OTBlNWRiYjY3NzA0YjYwZmM0NzUxMmNkOGYwMjE0M2E3ODc2ZTg4NWNmODY1ZTRiZGU3OWVkN2ZiZTVjMzU2IiwiZW52ZWxvcGUiOnsiaGFzaCI6InNoYTI1NjpjZmY1MTFkYjRhNDNlNGQzNTMxNzM2NGY5M2ZiMDQ3MzYwMDBmZjAyMDg1ZWI0MGJkZWZjZmE4MDlmZWMwMTJhIiwic2VuZGVyIjoiZWQyNTUxOTo3Y2YzNWIzNmI5ZDU3YzYyYjlmM2Q1YmUyZWI0ZDM5MTQ3YWZhMWI3NjI1Y2QwMDMyNDQzNTIzMjU0ZGYzYmVhIiwic2VxIjoxfSwiZnJvbSI6ImVkMjU1MTk6N2NmMzViMzZiOWQ1N2M2MmI5ZjNkNWJlMmViNGQzOTE0N2FmYTFiNzYyNWNkMDAzMjQ0MzUyMzI1NGRmM2JlYSIsImtpbmQiOiJjcm9zc2luZyIsIm1lZGlhdG9yIjoiZWQyNTUxOTo4NDI1NGY5ZDU5M2IwZjc4MTFiMThjMDBiNjU2YTcwZmUxYTk1OTVlZDM1M2M3MzI4NmVhODNkMzAwMjI2ZWQzIiwicmVhc29uIjoib2siLCJzZXEiOjEsInRvIjoiZWQyNTUxOTphODA1ODYyNzliYTE3YzUzNjBiMDI5MDE4YmYwMjViZTAxNjlmZGIwMjA4N2U3NzMwMTc3NGM5OWVlZDkyMTE3IiwidmVyZGljdCI6InBhc3MifSwicHJlZGljYXRlVHlwZSI6Imh0dHBzOi8vcGxhY2tldC50ZWNoL3JlY2VpcHQvMC4xIiwic3ViamVjdCI6W3siZGlnZXN0Ijp7InNhbHRlZC1zaGEyNTYiOiJhM2YyYjc4ZmQwMzNkMTE2Y2EzYTQ0NzEzODJhZDAxYjg5ZTkwZWM1OTNiOThhYTg1NDlhNzA1NzVhNmM5ZjdkIn0sIm5hbWUiOiJub3RlIn1dfQ==",
             "payloadType": "application/vnd.in-toto+json",
             "signatures": [
               {
                 "keyid": "ed25519:84254f9d593b0f7811b18c00b656a70fe1a9595ed353c73286ea83d300226ed3",
-                "sig": "xBQixG4FUze85geYjfr6J1BSPbMVaMypGYUWqZgLREGR1jbB7s9nSNQygC6aAUcf4hHfzgENsyVY7/Z/qM/ODQ=="
+                "sig": "Q2Dq4M6Nwj/m6ib4n7ncd4yEhigDrO4YF5ne0/oOYHgb1olwhP8jypmsR3/spE5uhvaKS7kUzDJbjtHvdzcXBA=="
               }
             ]
           },
-          "receiptId": "sha256:a64d5a2fdf71430ac3f8360bbcf14bbd53d00ecaeef406f81800b6f4fd318128",
-          "salt": "8712d2c8787900325f8b36ee75c5e83a",
+          "receiptId": "sha256:dcf6dff22f4355fd37924d42f92881d84b83eba8303b8882b44a9cff88bf3b85",
+          "salt": "8712d2c8787900325f8b36ee75c5e83abcfede823dd0b0af38d636d170ee3bf3",
           "text": "Good."
         }
       ]
@@ -25,16 +25,16 @@
     "receipts": [
       {
         "receipt": {
-          "payload": "eyJfdHlwZSI6Imh0dHBzOi8vaW4tdG90by5pby9TdGF0ZW1lbnQvdjEiLCJwcmVkaWNhdGUiOnsiYWNjb3JkIjoic2hhMjU2OjM3NzY2NmU2YjcyNGFkMDUyOTA5Y2E1YzdiYmViYWEyMmQ0NTY4MzkzOWM2NWJmZmNlNDM1OGQ2M2U4N2I3N2UiLCJhdCI6IjIwMjYtMTEtMTJUMDk6MDY6MDBaIiwiY2FyZCI6InNoYTI1Njo2OTBlNWRiYjY3NzA0YjYwZmM0NzUxMmNkOGYwMjE0M2E3ODc2ZTg4NWNmODY1ZTRiZGU3OWVkN2ZiZTVjMzU2IiwiZW52ZWxvcGUiOnsiaGFzaCI6InNoYTI1Njo5NTA3N2QxZWFiMDhmZjU0OTFlNzViN2U4NzYzMzM0OGM1OTVlZWU1NGNlNzE1MzliN2M0YTdhYmNjMzAyM2IzIiwic2VuZGVyIjoiZWQyNTUxOTo3Y2YzNWIzNmI5ZDU3YzYyYjlmM2Q1YmUyZWI0ZDM5MTQ3YWZhMWI3NjI1Y2QwMDMyNDQzNTIzMjU0ZGYzYmVhIiwic2VxIjoxfSwiZnJvbSI6ImVkMjU1MTk6N2NmMzViMzZiOWQ1N2M2MmI5ZjNkNWJlMmViNGQzOTE0N2FmYTFiNzYyNWNkMDAzMjQ0MzUyMzI1NGRmM2JlYSIsImtpbmQiOiJjcm9zc2luZyIsIm1lZGlhdG9yIjoiZWQyNTUxOTo4NDI1NGY5ZDU5M2IwZjc4MTFiMThjMDBiNjU2YTcwZmUxYTk1OTVlZDM1M2M3MzI4NmVhODNkMzAwMjI2ZWQzIiwicmVhc29uIjoib2siLCJzZXEiOjEsInRvIjoiZWQyNTUxOTphODA1ODYyNzliYTE3YzUzNjBiMDI5MDE4YmYwMjViZTAxNjlmZGIwMjA4N2U3NzMwMTc3NGM5OWVlZDkyMTE3IiwidmVyZGljdCI6InBhc3MifSwicHJlZGljYXRlVHlwZSI6Imh0dHBzOi8vcGxhY2tldC5kZXYvcmVjZWlwdC8wLjEiLCJzdWJqZWN0IjpbeyJkaWdlc3QiOnsic2FsdGVkLXNoYTI1NiI6IjVjODgwMDUzMjAyZDNiOGI1ODcxNDNlYmZmYzlhM2Y5ZjQ1OGRjMDI0ZGMzZGI4ZmYyNzgwZmE5YjY1MDBkMjAifSwibmFtZSI6Im5vdGUifV19",
+          "payload": "eyJfdHlwZSI6Imh0dHBzOi8vaW4tdG90by5pby9TdGF0ZW1lbnQvdjEiLCJwcmVkaWNhdGUiOnsiYWNjb3JkIjoic2hhMjU2OmZkYjRjNjEwMWIzMzg3NmE1NmU5NTAxZDc1NmIwOTA1NjcxYTlhNDRjNzI2ZTU5OWM5YTdhNzYyNzBhYWIxZGYiLCJhdCI6IjIwMjYtMTEtMTJUMDk6MDY6MDBaIiwiY2FyZCI6InNoYTI1Njo2OTBlNWRiYjY3NzA0YjYwZmM0NzUxMmNkOGYwMjE0M2E3ODc2ZTg4NWNmODY1ZTRiZGU3OWVkN2ZiZTVjMzU2IiwiZW52ZWxvcGUiOnsiaGFzaCI6InNoYTI1NjpjZmY1MTFkYjRhNDNlNGQzNTMxNzM2NGY5M2ZiMDQ3MzYwMDBmZjAyMDg1ZWI0MGJkZWZjZmE4MDlmZWMwMTJhIiwic2VuZGVyIjoiZWQyNTUxOTo3Y2YzNWIzNmI5ZDU3YzYyYjlmM2Q1YmUyZWI0ZDM5MTQ3YWZhMWI3NjI1Y2QwMDMyNDQzNTIzMjU0ZGYzYmVhIiwic2VxIjoxfSwiZnJvbSI6ImVkMjU1MTk6N2NmMzViMzZiOWQ1N2M2MmI5ZjNkNWJlMmViNGQzOTE0N2FmYTFiNzYyNWNkMDAzMjQ0MzUyMzI1NGRmM2JlYSIsImtpbmQiOiJjcm9zc2luZyIsIm1lZGlhdG9yIjoiZWQyNTUxOTo4NDI1NGY5ZDU5M2IwZjc4MTFiMThjMDBiNjU2YTcwZmUxYTk1OTVlZDM1M2M3MzI4NmVhODNkMzAwMjI2ZWQzIiwicmVhc29uIjoib2siLCJzZXEiOjEsInRvIjoiZWQyNTUxOTphODA1ODYyNzliYTE3YzUzNjBiMDI5MDE4YmYwMjViZTAxNjlmZGIwMjA4N2U3NzMwMTc3NGM5OWVlZDkyMTE3IiwidmVyZGljdCI6InBhc3MifSwicHJlZGljYXRlVHlwZSI6Imh0dHBzOi8vcGxhY2tldC50ZWNoL3JlY2VpcHQvMC4xIiwic3ViamVjdCI6W3siZGlnZXN0Ijp7InNhbHRlZC1zaGEyNTYiOiJhM2YyYjc4ZmQwMzNkMTE2Y2EzYTQ0NzEzODJhZDAxYjg5ZTkwZWM1OTNiOThhYTg1NDlhNzA1NzVhNmM5ZjdkIn0sIm5hbWUiOiJub3RlIn1dfQ==",
           "payloadType": "application/vnd.in-toto+json",
           "signatures": [
             {
               "keyid": "ed25519:84254f9d593b0f7811b18c00b656a70fe1a9595ed353c73286ea83d300226ed3",
-              "sig": "xBQixG4FUze85geYjfr6J1BSPbMVaMypGYUWqZgLREGR1jbB7s9nSNQygC6aAUcf4hHfzgENsyVY7/Z/qM/ODQ=="
+              "sig": "Q2Dq4M6Nwj/m6ib4n7ncd4yEhigDrO4YF5ne0/oOYHgb1olwhP8jypmsR3/spE5uhvaKS7kUzDJbjtHvdzcXBA=="
             }
           ]
         },
-        "receiptId": "sha256:a64d5a2fdf71430ac3f8360bbcf14bbd53d00ecaeef406f81800b6f4fd318128"
+        "receiptId": "sha256:dcf6dff22f4355fd37924d42f92881d84b83eba8303b8882b44a9cff88bf3b85"
       }
     ]
   },
@@ -49,7 +49,7 @@
         "roles": [
           "decider"
         ],
-        "sig": "1033a979f6884fbea987be8044b90a286e22b397005c5d84829d0b1ed78def26540dea9755f4018fc188c37ccf8b1eb09fd601baae46ce3d2fbb8e2856526808",
+        "sig": "88bd79d04722ef3e1db729e5a23580769c3ca83485ebeb8eb62e785c92445a45661d0aa0cf28525f3ad6d4b54da4ba02ab6204c377d23282c13bd67207e4790b",
         "until": "2027-11-12T00:00:00Z"
       },
       {
@@ -60,7 +60,7 @@
         "roles": [
           "proposer"
         ],
-        "sig": "ca0af443f35dafb99510fb4765905a8b46b17dba00f900ef4b13b5f0ac188241a43cacf765f30cb6ef31bf2758131733e98c69c1a102beca2ec62f36c3ae7204",
+        "sig": "0dcb40da9be0ad7dea514b37a1606b26ed83eee35f65e3e15fffecb36a78359509d2b51184f0cb19da12a1699eb244bc66f916d95919b270bb96f2256cbaac04",
         "until": "2027-11-12T00:00:00Z"
       },
       {
@@ -71,7 +71,7 @@
         "roles": [
           "applier"
         ],
-        "sig": "7e58eb490b4e969502b33f083581ee8f6bc9d75560e6019f1e16395d0dbd1048de4da5f3aec20d39bad108d3e1bddfe8e2d187bceb3ca70341e3a65816e2c809",
+        "sig": "8e1ddf94618df7d7460d2a20d3a03f594de9c03b25f2dc8efc88c2a3571934b953559d412ca585708b6d4ee9c760c55bc51c5b368923b3e775b152b7a0c52a04",
         "until": "2027-11-12T00:00:00Z"
       }
     ],
@@ -87,7 +87,7 @@
     "declarations": [
       {
         "actor": "ed25519:375dea8c4519dbae84fc9eb513e97eb4b693968ef37d52ac10da7b79250c6a22",
-        "sig": "316c890d952df9fddbb2b50ea255bf2fb584d32cc8cf73d0226eff87cce4036f500277b2469c875a9037adbb901ceac72354874b93e4774d75103b7e8fccc00e",
+        "sig": "55642d296e6f6b5086f3157132eb5fe5b36001b7141b8812f41a8b9ecd0bfa031e8c34dc7bb5a88ff54a11cc392f08a3c2260d83d9e9911e7166f667cf83bb06",
         "terms": [
           {
             "dir": "give",
@@ -107,7 +107,7 @@
       },
       {
         "actor": "ed25519:7cf35b36b9d57c62b9f3d5be2eb4d39147afa1b7625cd0032443523254df3bea",
-        "sig": "2f0b765521a0114cf2c7a6c534c2fdee936383adb5ae306e129909efa045fd86884e8de2fc6440f3528303cde34e47808f71b6d9867b0cc9098f49c80e138102",
+        "sig": "d6859290e0f713addea89f5d7d54cf5161fa13a42b24d337785f7111c6486421cc9e5c4d51653a5ade8be2e6b7697d6ad13d43121a0f1ebce9c3a56bb9699a07",
         "terms": [
           {
             "dir": "give",
@@ -156,7 +156,7 @@
       },
       {
         "actor": "ed25519:a80586279ba17c5360b029018bf025be0169fdb02087e77301774c99eed92117",
-        "sig": "a8de4390b6d13517b7304fca7faa74223a4a244d96a6b2f0f3d0c65931c308c385f89f5c0b5ef6e119d1e183526631bd0ff955287e885826a53dc0c64ca1850f",
+        "sig": "8620748e7e658b3e7759ccc3471449096cd76c93a3cb77e74537c30ada0df811ab77ae2133ee229da2867ef318a78a23697c562ea25df35de333a1f5c1f86c06",
         "terms": [
           {
             "dir": "get",
@@ -224,30 +224,30 @@
       "as": "proposer",
       "at": "2026-11-12T09:00:00Z",
       "envelope": {
-        "hash": "sha256:48208a328f2c3a505033d44cbdaa8e77b15cdf72e99c5e9838059c77213691f3",
+        "hash": "sha256:3751e53e36c4579832f0d943f6235101f078e9bbd598c232fd7b5c28d70e397f",
         "seq": 1,
-        "sig": "d0bd02a63bb60237aadd71256fd1a4b53420e3c9fd558961609476e3ded9e632f53302e02e7da01c87978cd46b5b9d2ec39adb955fb131b83d5c1bb74549e00e"
+        "sig": "58eaec38e86b7add9264d9e28cfa169635b168d4575075bb079f4b5ff860f1d205a03db0c1e200f34559daa6de957bcca94ebe3db21ebb9142d18e4496021e0b"
       },
       "expect": {
         "rejection": "extension-missing"
       },
       "message": {
         "extensions": [
-          "https://placket.dev/crossing/0.1"
+          "https://placket.tech/crossing/0.1"
         ],
         "messageId": "defect-a",
         "metadata": {
-          "https://placket.dev/crossing/0.1": {
-            "accord": "sha256:377666e6b724ad052909ca5c7bbebaa22d45683939c65bffce4358d63e87b77e",
+          "https://placket.tech/crossing/0.1": {
+            "accord": "sha256:fdb4c6101b33876a56e9501d756b0905671a9a44c726e599c9a7a76270aab1df",
             "to": "ed25519:a80586279ba17c5360b029018bf025be0169fdb02087e77301774c99eed92117"
           }
         },
         "parts": [
           {
             "metadata": {
-              "https://placket.dev/crossing/0.1": {
+              "https://placket.tech/crossing/0.1": {
                 "kind": "note",
-                "salt": "aea2d9bd8a7e0174277bf0dfa5b2fe62"
+                "salt": "aea2d9bd8a7e0174277bf0dfa5b2fe6221db0f017c0e153400bcb919ac2783fb"
               }
             },
             "text": "Defective."
@@ -261,36 +261,36 @@
       "as": "proposer",
       "at": "2026-11-12T09:01:00Z",
       "envelope": {
-        "hash": "sha256:6e66eecf30b325f5e2d1f416f989a39abfbcd65db30a4927977e8900737cf2ac",
+        "hash": "sha256:daa32d73e68abf050ea101e715ef656e819682c51a7be893062185f5cb4481a5",
         "seq": 1,
-        "sig": "0190250c0b8609aa4d92a44df84f8fb080d30b602a59915347c3e6292444c080cf3e22e4501e9c14f603e108ccc92b76c1882bb7c7045b628e7aea7cd2cc4f03"
+        "sig": "8fc7dc4cb00a1db1699e8b8a38b670dea10bc47416e3d251b5664fcd73a52a612dca267ebc93b7f7ac06513f81d09238e8af5373d5ace9ac91a3263d4ad2050a"
       },
       "expect": {
         "rejection": "receiver-unknown"
       },
       "message": {
         "extensions": [
-          "https://placket.dev/crossing/0.1"
+          "https://placket.tech/crossing/0.1"
         ],
         "messageId": "defect-b",
         "metadata": {
-          "https://placket.dev/crossing/0.1": {
-            "accord": "sha256:377666e6b724ad052909ca5c7bbebaa22d45683939c65bffce4358d63e87b77e",
+          "https://placket.tech/crossing/0.1": {
+            "accord": "sha256:fdb4c6101b33876a56e9501d756b0905671a9a44c726e599c9a7a76270aab1df",
             "to": "ed25519:2108ae3a477fbfdd11cbc878effff5cda4cc633a88f8b2e74380915a13d18b71"
           }
         },
         "parts": [
           {
             "metadata": {
-              "https://placket.dev/crossing/0.1": {
+              "https://placket.tech/crossing/0.1": {
                 "kind": "note",
-                "salt": "f43cb5fea4cab98e0d169d845db1ec35"
+                "salt": "f43cb5fea4cab98e0d169d845db1ec352e06ce9cb945b043552aaa154222b3e0"
               }
             },
             "text": "Defective."
           }
         ],
-        "role": "ROLE_AGENT"
+        "role": "ROLE_USER"
       },
       "op": "give"
     },
@@ -298,36 +298,36 @@
       "as": "proposer",
       "at": "2026-11-12T09:02:00Z",
       "envelope": {
-        "hash": "sha256:7ffb20fecbe170bdd02aabdf402e8ed3a57da43564cecf04fa6783a1c2f69d75",
+        "hash": "sha256:ef0688d2faad0efb455b9297a6ba3f41bedd19d6bd13580163931a880e48ef7c",
         "seq": 1,
-        "sig": "8794220cdd8d2ba70dffb2801b2bae4f3cb2deb14a7a1716f8d70df17ba8a4e2d9273356663b9f9019de9dbeec83353c9ccb45676ee94fa4b0a9004bb9217702"
+        "sig": "c6da9efc5e021a4782b140ae71458ad1af1dfc95219b708e6ad2610d8f3730ea715802200390673346b19d78df62f0fdc4940de6510ff5df1db2437d0b017909"
       },
       "expect": {
         "rejection": "accord-mismatch"
       },
       "message": {
         "extensions": [
-          "https://placket.dev/crossing/0.1"
+          "https://placket.tech/crossing/0.1"
         ],
         "messageId": "defect-c",
         "metadata": {
-          "https://placket.dev/crossing/0.1": {
-            "accord": "sha256:4a71b84b069f395ee4270ee8536231a3bc21707503f7c9972ccf0b9a113b06aa",
+          "https://placket.tech/crossing/0.1": {
+            "accord": "sha256:c3ad43b362d2e6f9fd026ee0eab35fda4727fcc148c49030cbac1a4a9d5c1ecb",
             "to": "ed25519:a80586279ba17c5360b029018bf025be0169fdb02087e77301774c99eed92117"
           }
         },
         "parts": [
           {
             "metadata": {
-              "https://placket.dev/crossing/0.1": {
+              "https://placket.tech/crossing/0.1": {
                 "kind": "note",
-                "salt": "c7907252fc17d55a628f438c20a2e570"
+                "salt": "c7907252fc17d55a628f438c20a2e5702d19b00142ae7822fbc2737d8fe509f5"
               }
             },
             "text": "Defective."
           }
         ],
-        "role": "ROLE_AGENT"
+        "role": "ROLE_USER"
       },
       "op": "give"
     },
@@ -335,26 +335,26 @@
       "as": "proposer",
       "at": "2026-11-12T09:03:00Z",
       "envelope": {
-        "hash": "sha256:0f125cf85c36aba4a569a118c0884e37a0220d30173113e27d9fae00ae7d48c4",
+        "hash": "sha256:b17c9ab3b0ad88ed0d6984530c3230f3789cad1cc4a89212f290533bfabf5375",
         "seq": 1,
-        "sig": "8942a969aa120fbeb7f13a653fcedb906ce65ab9ebb36d9d03310560764c31127382e2c48673090d5ad9ecbe806298a6b3792f9b7fe5973ec178c932c18db50a"
+        "sig": "4024a5ea8cb186cc9cca686d4046c29185b051aa83569c3984e512d8345d398a2e15653c1b3efafb16c841154ed9fef41b505555555e8086384a71ba0dfca900"
       },
       "expect": {
         "rejection": "one-part"
       },
       "message": {
         "extensions": [
-          "https://placket.dev/crossing/0.1"
+          "https://placket.tech/crossing/0.1"
         ],
         "messageId": "defect-d",
         "metadata": {
-          "https://placket.dev/crossing/0.1": {
-            "accord": "sha256:377666e6b724ad052909ca5c7bbebaa22d45683939c65bffce4358d63e87b77e",
+          "https://placket.tech/crossing/0.1": {
+            "accord": "sha256:fdb4c6101b33876a56e9501d756b0905671a9a44c726e599c9a7a76270aab1df",
             "to": "ed25519:a80586279ba17c5360b029018bf025be0169fdb02087e77301774c99eed92117"
           }
         },
         "parts": [],
-        "role": "ROLE_AGENT"
+        "role": "ROLE_USER"
       },
       "op": "give"
     },
@@ -362,35 +362,35 @@
       "as": "proposer",
       "at": "2026-11-12T09:04:00Z",
       "envelope": {
-        "hash": "sha256:fb5f862428764a472b73b9473c66f5ba6d4911debd5c2bfdeab0a12ef030bf0e",
+        "hash": "sha256:b7e447f830c7a8208ad244da39c47ca1a9f1ec576fb95b75e9aceb3c4ffb0e79",
         "seq": 1,
-        "sig": "4f2b93cb6c5872c8df2d4611f447e7d4507c90f77e1f3f9b93ac51bd5844144fb967bd52ee4f3cc7021e19c6685742555ca2f56338400f20b3db9dc75716c90f"
+        "sig": "c8ac2198088645e1939fbd97a9054e547c4b46305e5a1c210339ba6710e0b6d7e8406a9e4e584ad39c2a668709d8cfeec405236b849dcdd9533d8178ded6fd04"
       },
       "expect": {
         "rejection": "one-body"
       },
       "message": {
         "extensions": [
-          "https://placket.dev/crossing/0.1"
+          "https://placket.tech/crossing/0.1"
         ],
         "messageId": "defect-e",
         "metadata": {
-          "https://placket.dev/crossing/0.1": {
-            "accord": "sha256:377666e6b724ad052909ca5c7bbebaa22d45683939c65bffce4358d63e87b77e",
+          "https://placket.tech/crossing/0.1": {
+            "accord": "sha256:fdb4c6101b33876a56e9501d756b0905671a9a44c726e599c9a7a76270aab1df",
             "to": "ed25519:a80586279ba17c5360b029018bf025be0169fdb02087e77301774c99eed92117"
           }
         },
         "parts": [
           {
             "metadata": {
-              "https://placket.dev/crossing/0.1": {
+              "https://placket.tech/crossing/0.1": {
                 "kind": "note",
-                "salt": "672a6d8747462bb4b8674ddfbe764ad5"
+                "salt": "672a6d8747462bb4b8674ddfbe764ad5a427408d44b386eeb71cd1259d67d0e3"
               }
             }
           }
         ],
-        "role": "ROLE_AGENT"
+        "role": "ROLE_USER"
       },
       "op": "give"
     },
@@ -398,28 +398,28 @@
       "as": "proposer",
       "at": "2026-11-12T09:05:00Z",
       "envelope": {
-        "hash": "sha256:8bdef3cd4d00eeddcd35293a767b0fa35835d2816310bfafc494004631aae62b",
+        "hash": "sha256:3da078ba507d7b14bcfd5aef749b8b17c7662375d94961ff08bf73c81bc00128",
         "seq": 1,
-        "sig": "07cf11f0189113e8ab9c3bd9e6dc0b070b98d440f3f3d94f72b16233a5cd6c6fed41b0a2330d1b1220c574d9c6db6626507e354cc2e61b6b4efbd7199a0d8908"
+        "sig": "6a81cd6e7ffa03156c9ceb9401201fbf2b2cd8da9144c24a4a565096da6076378b8fca1a6f15d1686e686460ea9fedaf83e1a4310e1c7c778f73fc0d4a54ec0b"
       },
       "expect": {
         "rejection": "part-metadata"
       },
       "message": {
         "extensions": [
-          "https://placket.dev/crossing/0.1"
+          "https://placket.tech/crossing/0.1"
         ],
         "messageId": "defect-f",
         "metadata": {
-          "https://placket.dev/crossing/0.1": {
-            "accord": "sha256:377666e6b724ad052909ca5c7bbebaa22d45683939c65bffce4358d63e87b77e",
+          "https://placket.tech/crossing/0.1": {
+            "accord": "sha256:fdb4c6101b33876a56e9501d756b0905671a9a44c726e599c9a7a76270aab1df",
             "to": "ed25519:a80586279ba17c5360b029018bf025be0169fdb02087e77301774c99eed92117"
           }
         },
         "parts": [
           {
             "metadata": {
-              "https://placket.dev/crossing/0.1": {
+              "https://placket.tech/crossing/0.1": {
                 "kind": "note",
                 "salt": "94209705eb215255"
               }
@@ -427,30 +427,30 @@
             "text": "Defective."
           }
         ],
-        "role": "ROLE_AGENT"
+        "role": "ROLE_USER"
       },
       "op": "give"
     },
     {
       "as": "proposer",
       "at": "2026-11-12T09:06:00Z",
-      "envelopeHex": "7b2268617368223a227368613235363a39353037376431656162303866663534393165373562376538373633333334386335393565656535346365373135333962376334613761626363333032336233222c22736571223a312c22736967223a223634383165643464616534653233336433353066353936653635383964616231366230663939383835646631303230653636396233623764386631323935373430623362656238386664396437333931386139396133343633643533623162393532653539323966323239323562306132666566663630383766346365643036227d",
+      "envelopeHex": "7b2268617368223a227368613235363a63666635313164623461343365346433353331373336346639336662303437333630303066663032303835656234306264656663666138303966656330313261222c22736571223a312c22736967223a223433343439383137393131306163663930663339626534636264373963373230303930393839383335326632316261303666336232636430616430316564656165626636616661646263633763623338623833346139326231356139643634613938383765653865616365643630383633623437613434393665363166623064227d",
       "expect": {
         "reason": "ok",
         "receipt": {
-          "payload": "eyJfdHlwZSI6Imh0dHBzOi8vaW4tdG90by5pby9TdGF0ZW1lbnQvdjEiLCJwcmVkaWNhdGUiOnsiYWNjb3JkIjoic2hhMjU2OjM3NzY2NmU2YjcyNGFkMDUyOTA5Y2E1YzdiYmViYWEyMmQ0NTY4MzkzOWM2NWJmZmNlNDM1OGQ2M2U4N2I3N2UiLCJhdCI6IjIwMjYtMTEtMTJUMDk6MDY6MDBaIiwiY2FyZCI6InNoYTI1Njo2OTBlNWRiYjY3NzA0YjYwZmM0NzUxMmNkOGYwMjE0M2E3ODc2ZTg4NWNmODY1ZTRiZGU3OWVkN2ZiZTVjMzU2IiwiZW52ZWxvcGUiOnsiaGFzaCI6InNoYTI1Njo5NTA3N2QxZWFiMDhmZjU0OTFlNzViN2U4NzYzMzM0OGM1OTVlZWU1NGNlNzE1MzliN2M0YTdhYmNjMzAyM2IzIiwic2VuZGVyIjoiZWQyNTUxOTo3Y2YzNWIzNmI5ZDU3YzYyYjlmM2Q1YmUyZWI0ZDM5MTQ3YWZhMWI3NjI1Y2QwMDMyNDQzNTIzMjU0ZGYzYmVhIiwic2VxIjoxfSwiZnJvbSI6ImVkMjU1MTk6N2NmMzViMzZiOWQ1N2M2MmI5ZjNkNWJlMmViNGQzOTE0N2FmYTFiNzYyNWNkMDAzMjQ0MzUyMzI1NGRmM2JlYSIsImtpbmQiOiJjcm9zc2luZyIsIm1lZGlhdG9yIjoiZWQyNTUxOTo4NDI1NGY5ZDU5M2IwZjc4MTFiMThjMDBiNjU2YTcwZmUxYTk1OTVlZDM1M2M3MzI4NmVhODNkMzAwMjI2ZWQzIiwicmVhc29uIjoib2siLCJzZXEiOjEsInRvIjoiZWQyNTUxOTphODA1ODYyNzliYTE3YzUzNjBiMDI5MDE4YmYwMjViZTAxNjlmZGIwMjA4N2U3NzMwMTc3NGM5OWVlZDkyMTE3IiwidmVyZGljdCI6InBhc3MifSwicHJlZGljYXRlVHlwZSI6Imh0dHBzOi8vcGxhY2tldC5kZXYvcmVjZWlwdC8wLjEiLCJzdWJqZWN0IjpbeyJkaWdlc3QiOnsic2FsdGVkLXNoYTI1NiI6IjVjODgwMDUzMjAyZDNiOGI1ODcxNDNlYmZmYzlhM2Y5ZjQ1OGRjMDI0ZGMzZGI4ZmYyNzgwZmE5YjY1MDBkMjAifSwibmFtZSI6Im5vdGUifV19",
+          "payload": "eyJfdHlwZSI6Imh0dHBzOi8vaW4tdG90by5pby9TdGF0ZW1lbnQvdjEiLCJwcmVkaWNhdGUiOnsiYWNjb3JkIjoic2hhMjU2OmZkYjRjNjEwMWIzMzg3NmE1NmU5NTAxZDc1NmIwOTA1NjcxYTlhNDRjNzI2ZTU5OWM5YTdhNzYyNzBhYWIxZGYiLCJhdCI6IjIwMjYtMTEtMTJUMDk6MDY6MDBaIiwiY2FyZCI6InNoYTI1Njo2OTBlNWRiYjY3NzA0YjYwZmM0NzUxMmNkOGYwMjE0M2E3ODc2ZTg4NWNmODY1ZTRiZGU3OWVkN2ZiZTVjMzU2IiwiZW52ZWxvcGUiOnsiaGFzaCI6InNoYTI1NjpjZmY1MTFkYjRhNDNlNGQzNTMxNzM2NGY5M2ZiMDQ3MzYwMDBmZjAyMDg1ZWI0MGJkZWZjZmE4MDlmZWMwMTJhIiwic2VuZGVyIjoiZWQyNTUxOTo3Y2YzNWIzNmI5ZDU3YzYyYjlmM2Q1YmUyZWI0ZDM5MTQ3YWZhMWI3NjI1Y2QwMDMyNDQzNTIzMjU0ZGYzYmVhIiwic2VxIjoxfSwiZnJvbSI6ImVkMjU1MTk6N2NmMzViMzZiOWQ1N2M2MmI5ZjNkNWJlMmViNGQzOTE0N2FmYTFiNzYyNWNkMDAzMjQ0MzUyMzI1NGRmM2JlYSIsImtpbmQiOiJjcm9zc2luZyIsIm1lZGlhdG9yIjoiZWQyNTUxOTo4NDI1NGY5ZDU5M2IwZjc4MTFiMThjMDBiNjU2YTcwZmUxYTk1OTVlZDM1M2M3MzI4NmVhODNkMzAwMjI2ZWQzIiwicmVhc29uIjoib2siLCJzZXEiOjEsInRvIjoiZWQyNTUxOTphODA1ODYyNzliYTE3YzUzNjBiMDI5MDE4YmYwMjViZTAxNjlmZGIwMjA4N2U3NzMwMTc3NGM5OWVlZDkyMTE3IiwidmVyZGljdCI6InBhc3MifSwicHJlZGljYXRlVHlwZSI6Imh0dHBzOi8vcGxhY2tldC50ZWNoL3JlY2VpcHQvMC4xIiwic3ViamVjdCI6W3siZGlnZXN0Ijp7InNhbHRlZC1zaGEyNTYiOiJhM2YyYjc4ZmQwMzNkMTE2Y2EzYTQ0NzEzODJhZDAxYjg5ZTkwZWM1OTNiOThhYTg1NDlhNzA1NzVhNmM5ZjdkIn0sIm5hbWUiOiJub3RlIn1dfQ==",
           "payloadType": "application/vnd.in-toto+json",
           "signatures": [
             {
               "keyid": "ed25519:84254f9d593b0f7811b18c00b656a70fe1a9595ed353c73286ea83d300226ed3",
-              "sig": "xBQixG4FUze85geYjfr6J1BSPbMVaMypGYUWqZgLREGR1jbB7s9nSNQygC6aAUcf4hHfzgENsyVY7/Z/qM/ODQ=="
+              "sig": "Q2Dq4M6Nwj/m6ib4n7ncd4yEhigDrO4YF5ne0/oOYHgb1olwhP8jypmsR3/spE5uhvaKS7kUzDJbjtHvdzcXBA=="
             }
           ]
         },
-        "receiptId": "sha256:a64d5a2fdf71430ac3f8360bbcf14bbd53d00ecaeef406f81800b6f4fd318128",
+        "receiptId": "sha256:dcf6dff22f4355fd37924d42f92881d84b83eba8303b8882b44a9cff88bf3b85",
         "verdict": "pass"
       },
-      "messageHex": "7b22657874656e73696f6e73223a5b2268747470733a2f2f706c61636b65742e6465762f63726f7373696e672f302e31225d2c226d6573736167654964223a226e6f74652d31222c226d65746164617461223a7b2268747470733a2f2f706c61636b65742e6465762f63726f7373696e672f302e31223a7b226163636f7264223a227368613235363a33373736363665366237323461643035323930396361356337626265626161323264343536383339333963363562666663653433353864363365383762373765222c22746f223a22656432353531393a61383035383632373962613137633533363062303239303138626630323562653031363966646230323038376537373330313737346339396565643932313137227d7d2c227061727473223a5b7b226d65746164617461223a7b2268747470733a2f2f706c61636b65742e6465762f63726f7373696e672f302e31223a7b226b696e64223a226e6f7465222c2273616c74223a223837313264326338373837393030333235663862333665653735633565383361227d7d2c2274657874223a22476f6f642e227d5d2c22726f6c65223a22524f4c455f4147454e54227d",
+      "messageHex": "7b22657874656e73696f6e73223a5b2268747470733a2f2f706c61636b65742e746563682f63726f7373696e672f302e31225d2c226d6573736167654964223a226e6f74652d31222c226d65746164617461223a7b2268747470733a2f2f706c61636b65742e746563682f63726f7373696e672f302e31223a7b226163636f7264223a227368613235363a66646234633631303162333338373661353665393530316437353662303930353637316139613434633732366535393963396137613736323730616162316466222c22746f223a22656432353531393a61383035383632373962613137633533363062303239303138626630323562653031363966646230323038376537373330313737346339396565643932313137227d7d2c227061727473223a5b7b226d65746164617461223a7b2268747470733a2f2f706c61636b65742e746563682f63726f7373696e672f302e31223a7b226b696e64223a226e6f7465222c2273616c74223a2238373132643263383738373930303332356638623336656537356335653833616263666564653832336464306230616633386436333664313730656533626633227d7d2c2274657874223a22476f6f642e227d5d2c22726f6c65223a22524f4c455f55534552227d",
       "op": "give"
     }
   ],

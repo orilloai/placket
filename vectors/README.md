@@ -101,6 +101,8 @@ A change to a frozen format, the vector format included, carries a note here and
 - 0.1, before release: the register gains the answer call, the door's signed call that accepts or changes an answer, which parties keep beside the delivery it came with (`spec/frozen-formats.md`). No vector holds one, and no vector changes.
 - 0.1, before release: a principal per party (`spec/frozen-formats.md`). A founding set's policy lists each principal with the roles it may grant, and each binding names the typed hash of the policy it was signed for; founding gains `binding-role` and `binding-policy`, and the vector format's list of founding codes gains them too. Every group was written again: every founding set, binding and Accord id changed, and so did every scenario vector's receipts, ids and hashes that follow from them. No code, verdict, reason or step of a scenario changed.
 
+- 0.1, before release: one host, one protocol number and 32-byte salts (`spec/frozen-formats.md`, decision record 0020). Every vector's type URIs, predicate type and crossing extension are under `https://placket.tech/`, every salt is 32 bytes, a `resolve` step's `salt` included, and every message a member gives has `role` `ROLE_USER`. Every group was written again, once: every signature, receipt, id and hash changed. The vector `signatures/registration-reserved` is gone with the reserved type, and vectors were added for a URI under the old host for each signed kind, a give in the agent's role and a card of another `spec`. No other code, verdict, reason or step changed.
+
 The vector format is at version 0.1 as written. The coverage list is this directory's own record, not a frozen format; its `tests` and `rest` members were added with the first vectors.
 
 ## Known limits

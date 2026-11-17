@@ -259,7 +259,15 @@ func (w *world) client(t testing.TB, name string) *local.Client {
 	return &local.Client{Socket: w.socket, Key: key(t, name), Accord: w.accord, Now: w.clock.Now, Rand: w.nonces, Timeout: 30 * time.Second}
 }
 
-// message is a crossing message of one part from a member, of the body given as name and value.
+// saltOf returns s's bytes as a salt of SaltBytes: cut, or padded with zero bytes.
+func saltOf(s string) []byte {
+	b := make([]byte, mediator.SaltBytes)
+	copy(b, s)
+	return b
+}
+
+// message is a crossing message of one part from a member, in ROLE_USER, of the body given as name
+// and value.
 func (w *world) message(t testing.TB, id, to, kind string, name string, value any, re string) []byte {
 	t.Helper()
 	ext := map[string]any{"accord": w.accord, "to": to}
@@ -267,10 +275,10 @@ func (w *world) message(t testing.TB, id, to, kind string, name string, value an
 		ext["re"] = re
 	}
 	m := map[string]any{
-		"messageId": id, "role": mediator.RoleAgent, "extensions": []any{mediator.Extension},
+		"messageId": id, "role": mediator.RoleUser, "extensions": []any{mediator.Extension},
 		"metadata": map[string]any{mediator.Extension: ext},
 		"parts": []any{map[string]any{name: value, "metadata": map[string]any{mediator.Extension: map[string]any{
-			"kind": kind, "salt": hex.EncodeToString([]byte("a salt of sixteen " + id)[:16]),
+			"kind": kind, "salt": hex.EncodeToString(saltOf("a salt of 32 bytes " + id)),
 		}}}},
 	}
 	b, _ := json.Marshal(m)

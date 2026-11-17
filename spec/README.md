@@ -28,7 +28,7 @@ The reserved ids, and why each is reserved:
 |---|---|
 | `signing-3` | Never used. The signing requirements are numbered 1, 2 and 4, and 3 stays empty so the others keep their numbers. |
 | `maybe-2` | A question put to its answerers as a Model Context Protocol elicitation request. It comes after this version, with the door that would carry it. |
-| `forbidden-check-1` to `forbidden-check-8` | The forbidden check and the registration of what it looks for. They come after this version. Until then a card loads no check, the term's `checks` and the reason `check:<name>` are reserved slots, and the type URI of a registration is reserved (signing-4). |
+| `forbidden-check-1` to `forbidden-check-8` | The forbidden check and the registration of what it looks for. They come after this version. Until then a card loads no check, the term's `checks` and the reason `check:<name>` are reserved slots. A registration has no type URI in this version (signing-4). |
 
 ## Changing the protocol
 

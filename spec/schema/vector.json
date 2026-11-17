@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://placket.dev/schema/0.1/vector.json",
+  "$id": "https://placket.tech/schema/0.1/vector.json",
   "title": "Conformance vector",
   "description": "One conformance vector (conformance-vectors-1 to conformance-vectors-11). Every object is closed. The header is vector, spec and tests; operation says what the vector runs and which other members it holds.",
   "type": "object",

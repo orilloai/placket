@@ -5,4 +5,4 @@ package local
 const callType = "application/vnd.placket.call+json"
 
 // A URI only this file holds.
-const other = "https://placket.dev/door/0.1"
+const other = "https://placket.tech/door/0.1"

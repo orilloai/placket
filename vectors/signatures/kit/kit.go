@@ -196,16 +196,22 @@ func PAE(t string, payload []byte) []byte {
 	return []byte("DSSEv1 " + strconv.Itoa(len(t)) + " " + t + " " + strconv.Itoa(len(payload)) + " " + string(payload))
 }
 
+// Root is the host every placket URI is under, and Spec the one protocol number each carries: the
+// card's spec (setup-contract-4).
+const (
+	Root = "https://placket.tech/"
+	Spec = "0.1"
+)
+
 // The type URIs of signing-4, and the other fixed strings of the formats.
 const (
-	TypeDeclaration  = "https://placket.dev/declaration/0.1"
-	TypeBinding      = "https://placket.dev/binding/0.1"
-	TypeEnvelope     = "https://placket.dev/envelope/0.1"
-	TypeRegistration = "https://placket.dev/registration/0.1"
-	Extension        = "https://placket.dev/crossing/0.1"
-	PayloadType      = "application/vnd.in-toto+json"
-	StatementType    = "https://in-toto.io/Statement/v1"
-	PredicateType    = "https://placket.dev/receipt/0.1"
+	TypeDeclaration = Root + "declaration/" + Spec
+	TypeBinding     = Root + "binding/" + Spec
+	TypeEnvelope    = Root + "envelope/" + Spec
+	Extension       = Root + "crossing/" + Spec
+	PayloadType     = "application/vnd.in-toto+json"
+	StatementType   = "https://in-toto.io/Statement/v1"
+	PredicateType   = Root + "receipt/" + Spec
 )
 
 // Unsigned returns o without its sig member.
@@ -387,7 +393,7 @@ func Write(dir, group string, vs []Vector) error {
 		}
 	}
 	for _, v := range vs {
-		o := Obj{"vector": v.Name, "spec": "0.1", "tests": v.Tests, "operation": v.Operation}
+		o := Obj{"vector": v.Name, "spec": Spec, "tests": v.Tests, "operation": v.Operation}
 		for k, m := range v.Members {
 			o[k] = m
 		}

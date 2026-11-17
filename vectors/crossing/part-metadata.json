@@ -15,7 +15,7 @@
         "roles": [
           "decider"
         ],
-        "sig": "1033a979f6884fbea987be8044b90a286e22b397005c5d84829d0b1ed78def26540dea9755f4018fc188c37ccf8b1eb09fd601baae46ce3d2fbb8e2856526808",
+        "sig": "88bd79d04722ef3e1db729e5a23580769c3ca83485ebeb8eb62e785c92445a45661d0aa0cf28525f3ad6d4b54da4ba02ab6204c377d23282c13bd67207e4790b",
         "until": "2027-11-12T00:00:00Z"
       },
       {
@@ -26,7 +26,7 @@
         "roles": [
           "proposer"
         ],
-        "sig": "ca0af443f35dafb99510fb4765905a8b46b17dba00f900ef4b13b5f0ac188241a43cacf765f30cb6ef31bf2758131733e98c69c1a102beca2ec62f36c3ae7204",
+        "sig": "0dcb40da9be0ad7dea514b37a1606b26ed83eee35f65e3e15fffecb36a78359509d2b51184f0cb19da12a1699eb244bc66f916d95919b270bb96f2256cbaac04",
         "until": "2027-11-12T00:00:00Z"
       },
       {
@@ -37,7 +37,7 @@
         "roles": [
           "applier"
         ],
-        "sig": "7e58eb490b4e969502b33f083581ee8f6bc9d75560e6019f1e16395d0dbd1048de4da5f3aec20d39bad108d3e1bddfe8e2d187bceb3ca70341e3a65816e2c809",
+        "sig": "8e1ddf94618df7d7460d2a20d3a03f594de9c03b25f2dc8efc88c2a3571934b953559d412ca585708b6d4ee9c760c55bc51c5b368923b3e775b152b7a0c52a04",
         "until": "2027-11-12T00:00:00Z"
       }
     ],
@@ -53,7 +53,7 @@
     "declarations": [
       {
         "actor": "ed25519:375dea8c4519dbae84fc9eb513e97eb4b693968ef37d52ac10da7b79250c6a22",
-        "sig": "316c890d952df9fddbb2b50ea255bf2fb584d32cc8cf73d0226eff87cce4036f500277b2469c875a9037adbb901ceac72354874b93e4774d75103b7e8fccc00e",
+        "sig": "55642d296e6f6b5086f3157132eb5fe5b36001b7141b8812f41a8b9ecd0bfa031e8c34dc7bb5a88ff54a11cc392f08a3c2260d83d9e9911e7166f667cf83bb06",
         "terms": [
           {
             "dir": "give",
@@ -73,7 +73,7 @@
       },
       {
         "actor": "ed25519:7cf35b36b9d57c62b9f3d5be2eb4d39147afa1b7625cd0032443523254df3bea",
-        "sig": "2f0b765521a0114cf2c7a6c534c2fdee936383adb5ae306e129909efa045fd86884e8de2fc6440f3528303cde34e47808f71b6d9867b0cc9098f49c80e138102",
+        "sig": "d6859290e0f713addea89f5d7d54cf5161fa13a42b24d337785f7111c6486421cc9e5c4d51653a5ade8be2e6b7697d6ad13d43121a0f1ebce9c3a56bb9699a07",
         "terms": [
           {
             "dir": "give",
@@ -122,7 +122,7 @@
       },
       {
         "actor": "ed25519:a80586279ba17c5360b029018bf025be0169fdb02087e77301774c99eed92117",
-        "sig": "a8de4390b6d13517b7304fca7faa74223a4a244d96a6b2f0f3d0c65931c308c385f89f5c0b5ef6e119d1e183526631bd0ff955287e885826a53dc0c64ca1850f",
+        "sig": "8620748e7e658b3e7759ccc3471449096cd76c93a3cb77e74537c30ada0df811ab77ae2133ee229da2867ef318a78a23697c562ea25df35de333a1f5c1f86c06",
         "terms": [
           {
             "dir": "get",
@@ -190,36 +190,36 @@
       "as": "proposer",
       "at": "2026-11-12T09:00:00Z",
       "envelope": {
-        "hash": "sha256:89fa65a4da973772f7503317c3674144c2412d1518f9d5cd0df12527345a8e78",
+        "hash": "sha256:efe09a98a9396f0e8517757301f9bfb5f1fdbbe2f0dc593b0808a8e559efbdbb",
         "seq": 1,
-        "sig": "b15b473c65dff0fd84068ed195debe0b46ecebf9738a3f68614b85be2cadd2502cadc26983090284593a7ff162d8605027702f6206e5d67ca912d89e47871503"
+        "sig": "85eee9a6a0b151c10f00f4dd4b49053054c61b754b120b6a73eb1bcc7c64f5bfd417cdc3058a13026704fed164b63de5f51f71ac2fb99f32cc9deaa52899af0f"
       },
       "expect": {
         "rejection": "part-metadata"
       },
       "message": {
         "extensions": [
-          "https://placket.dev/crossing/0.1"
+          "https://placket.tech/crossing/0.1"
         ],
         "messageId": "meta-a",
         "metadata": {
-          "https://placket.dev/crossing/0.1": {
-            "accord": "sha256:377666e6b724ad052909ca5c7bbebaa22d45683939c65bffce4358d63e87b77e",
+          "https://placket.tech/crossing/0.1": {
+            "accord": "sha256:fdb4c6101b33876a56e9501d756b0905671a9a44c726e599c9a7a76270aab1df",
             "to": "ed25519:a80586279ba17c5360b029018bf025be0169fdb02087e77301774c99eed92117"
           }
         },
         "parts": [
           {
             "metadata": {
-              "https://placket.dev/crossing/0.1": {
+              "https://placket.tech/crossing/0.1": {
                 "kind": "note",
-                "salt": "10988178d7b17a897ecd72d5d0bced"
+                "salt": "10988178d7b17a897ecd72d5d0bced41b8138134f8f49e8a90ce77150d8465"
               }
             },
             "text": "A part."
           }
         ],
-        "role": "ROLE_AGENT"
+        "role": "ROLE_USER"
       },
       "op": "give"
     },
@@ -227,36 +227,36 @@
       "as": "proposer",
       "at": "2026-11-12T09:01:00Z",
       "envelope": {
-        "hash": "sha256:e5c9c4adbd58406a7278f1b1acd03c82d0be6e4b901d0f69a83c50e14fd0e77b",
+        "hash": "sha256:69e5f0a5698ed72b61b9060a8abe5c0e1e0de6ea6378c924d0622cacdf2f5d92",
         "seq": 1,
-        "sig": "acf1546cadb5d0e2fb3a86f52739315bc57e9f093f238f21f83459885787744dceee9ee2ea549167e8db46d3e79317e62bb61d3d30813f5053b18d380781810b"
+        "sig": "2226ec25408ce69e9d69092331f061b23240e5ce5a2ac0e31440f326027ff32bf8597c3082801f0cd289ab40a74ad2cdf0c4b6840b46540b971d19aef812c807"
       },
       "expect": {
         "rejection": "part-metadata"
       },
       "message": {
         "extensions": [
-          "https://placket.dev/crossing/0.1"
+          "https://placket.tech/crossing/0.1"
         ],
         "messageId": "meta-b",
         "metadata": {
-          "https://placket.dev/crossing/0.1": {
-            "accord": "sha256:377666e6b724ad052909ca5c7bbebaa22d45683939c65bffce4358d63e87b77e",
+          "https://placket.tech/crossing/0.1": {
+            "accord": "sha256:fdb4c6101b33876a56e9501d756b0905671a9a44c726e599c9a7a76270aab1df",
             "to": "ed25519:a80586279ba17c5360b029018bf025be0169fdb02087e77301774c99eed92117"
           }
         },
         "parts": [
           {
             "metadata": {
-              "https://placket.dev/crossing/0.1": {
+              "https://placket.tech/crossing/0.1": {
                 "kind": "note",
-                "salt": "102876FC36E9AD0B8CBDB661264B3183"
+                "salt": "648be5e13fb242fb1068de2f60127194c1d247ddb459b3a4256b3dd4eb4fc7a0d5"
               }
             },
             "text": "A part."
           }
         ],
-        "role": "ROLE_AGENT"
+        "role": "ROLE_USER"
       },
       "op": "give"
     },
@@ -264,35 +264,36 @@
       "as": "proposer",
       "at": "2026-11-12T09:02:00Z",
       "envelope": {
-        "hash": "sha256:b2a819e41a616ac1f33e2d3d63aebfe90ca983db359d686203433275db8e666c",
+        "hash": "sha256:31405a9c2198852ce123fc1b045654d10bce2ecc20d177196bcd077c438bb63c",
         "seq": 1,
-        "sig": "d3f9925e2e30885decb3a588ada12d7f33ae1b7333b0625c233c719b17083c12c08ab3ed635515be0f5032687d528a27ae0585ffa82d7a3ede301a18ba8cb707"
+        "sig": "e960ef4dcce546663c3b3add3ed148f57d47aad4a88eee8b34fae1ff2d0f43777dac96f4c298332c782a08d2a8e7a614396c938c049d8e0f7ca3d2fb5a9d2700"
       },
       "expect": {
         "rejection": "part-metadata"
       },
       "message": {
         "extensions": [
-          "https://placket.dev/crossing/0.1"
+          "https://placket.tech/crossing/0.1"
         ],
         "messageId": "meta-c",
         "metadata": {
-          "https://placket.dev/crossing/0.1": {
-            "accord": "sha256:377666e6b724ad052909ca5c7bbebaa22d45683939c65bffce4358d63e87b77e",
+          "https://placket.tech/crossing/0.1": {
+            "accord": "sha256:fdb4c6101b33876a56e9501d756b0905671a9a44c726e599c9a7a76270aab1df",
             "to": "ed25519:a80586279ba17c5360b029018bf025be0169fdb02087e77301774c99eed92117"
           }
         },
         "parts": [
           {
             "metadata": {
-              "https://placket.dev/crossing/0.1": {
-                "salt": "3f337f4ab4404bfa8bac4b0afbbc9c91"
+              "https://placket.tech/crossing/0.1": {
+                "kind": "note",
+                "salt": "375aa570cdb7caca3f28fbde8f895953"
               }
             },
             "text": "A part."
           }
         ],
-        "role": "ROLE_AGENT"
+        "role": "ROLE_USER"
       },
       "op": "give"
     },
@@ -300,36 +301,36 @@
       "as": "proposer",
       "at": "2026-11-12T09:03:00Z",
       "envelope": {
-        "hash": "sha256:c58de5e0dbdce45c9f699575fbb4124e5ac8d5bd7d627d7e6c3b376c7f0753ec",
+        "hash": "sha256:813d578d719e1b8919b15af1aa2501fde7ea6419b122b60a311f64f3a843cc8b",
         "seq": 1,
-        "sig": "2181eca21e8ea11f82018193dc5e48b2730d76d6862307d84c95e3e0d4605929ef69dfe7f910666ba37b72029366ddc329e3338520bc617a84ca4fc2d1839208"
+        "sig": "a564cd5c3deb7418b7c3b26442ae0fc1e1247c3931d1876b73e20df69539157fc82bc2650d6362298a513be7581105f2948bdb68bb3f7f53270d9156ca01850b"
       },
       "expect": {
         "rejection": "part-metadata"
       },
       "message": {
         "extensions": [
-          "https://placket.dev/crossing/0.1"
+          "https://placket.tech/crossing/0.1"
         ],
         "messageId": "meta-d",
         "metadata": {
-          "https://placket.dev/crossing/0.1": {
-            "accord": "sha256:377666e6b724ad052909ca5c7bbebaa22d45683939c65bffce4358d63e87b77e",
+          "https://placket.tech/crossing/0.1": {
+            "accord": "sha256:fdb4c6101b33876a56e9501d756b0905671a9a44c726e599c9a7a76270aab1df",
             "to": "ed25519:a80586279ba17c5360b029018bf025be0169fdb02087e77301774c99eed92117"
           }
         },
         "parts": [
           {
             "metadata": {
-              "https://placket.dev/crossing/0.1": {
-                "kind": "Note",
-                "salt": "0d3c7806cfcbe93168cee72d37caa1c0"
+              "https://placket.tech/crossing/0.1": {
+                "kind": "note",
+                "salt": "102876FC36E9AD0B8CBDB661264B31838A007322FB81EEA4CC3E208E25D7AC97"
               }
             },
             "text": "A part."
           }
         ],
-        "role": "ROLE_AGENT"
+        "role": "ROLE_USER"
       },
       "op": "give"
     },
@@ -337,37 +338,35 @@
       "as": "proposer",
       "at": "2026-11-12T09:04:00Z",
       "envelope": {
-        "hash": "sha256:1e49d2174d5320a872d54cc0e11d48d17237faa44954ede2ceab9aa5ff8e9cb7",
+        "hash": "sha256:08057bacb4efc44d7ae2c3597d0b901cd7545a5513378b8eb2b2d44fc5a93a25",
         "seq": 1,
-        "sig": "94886da9b2ddc6cba47f58f572eae28fe40c901e9961d36753e7ed660da5cb19bfd9093fca3499a73b5ac470deb20d43d406c04a507e54820a79f548fb8ae604"
+        "sig": "47ba7132a8cbacf1f499e46117caddcbf747287dfa29e3a6fc2114163b3933832d815c4fc9099f252ad00bf6c602473b5852b5ceba9d3c27d87eaf620d865502"
       },
       "expect": {
         "rejection": "part-metadata"
       },
       "message": {
         "extensions": [
-          "https://placket.dev/crossing/0.1"
+          "https://placket.tech/crossing/0.1"
         ],
         "messageId": "meta-e",
         "metadata": {
-          "https://placket.dev/crossing/0.1": {
-            "accord": "sha256:377666e6b724ad052909ca5c7bbebaa22d45683939c65bffce4358d63e87b77e",
+          "https://placket.tech/crossing/0.1": {
+            "accord": "sha256:fdb4c6101b33876a56e9501d756b0905671a9a44c726e599c9a7a76270aab1df",
             "to": "ed25519:a80586279ba17c5360b029018bf025be0169fdb02087e77301774c99eed92117"
           }
         },
         "parts": [
           {
             "metadata": {
-              "https://placket.dev/crossing/0.1": {
-                "kind": "note",
-                "salt": "ea46b4396c47045777fda7bf35f36fac",
-                "topic": "x"
+              "https://placket.tech/crossing/0.1": {
+                "salt": "ea46b4396c47045777fda7bf35f36fac20c43cd07104d30c306cbfa06c182423"
               }
             },
             "text": "A part."
           }
         ],
-        "role": "ROLE_AGENT"
+        "role": "ROLE_USER"
       },
       "op": "give"
     },
@@ -375,21 +374,96 @@
       "as": "proposer",
       "at": "2026-11-12T09:05:00Z",
       "envelope": {
-        "hash": "sha256:876c089aba031aede44a2dde87617d08cf9ad2702a084f89c7aaf22c3b55557c",
+        "hash": "sha256:56d1ff893b4bad475693f8f59c1da4d64dc936ad11d64b0cef80d0fe032db6f2",
         "seq": 1,
-        "sig": "4c7d622b3ebc0b4c900da2306b2223fdf50d397a352638cece634ddb7a9f80600918f9f5e7e176d95ce53385217d5f62ebed6bf97bc4f44f5591e9cb6fa28902"
+        "sig": "f41ae8eb58a16f186c77d1634fcac525e5606179d85b1813f588fdc2fc4cb916a1da6a1988e9de1d4c27a9a7dcddf39504f06237abeb31ec4483b441ba25440f"
       },
       "expect": {
         "rejection": "part-metadata"
       },
       "message": {
         "extensions": [
-          "https://placket.dev/crossing/0.1"
+          "https://placket.tech/crossing/0.1"
+        ],
+        "messageId": "meta-f",
+        "metadata": {
+          "https://placket.tech/crossing/0.1": {
+            "accord": "sha256:fdb4c6101b33876a56e9501d756b0905671a9a44c726e599c9a7a76270aab1df",
+            "to": "ed25519:a80586279ba17c5360b029018bf025be0169fdb02087e77301774c99eed92117"
+          }
+        },
+        "parts": [
+          {
+            "metadata": {
+              "https://placket.tech/crossing/0.1": {
+                "kind": "Note",
+                "salt": "439d60be6a01c3db3b815cb396da0397db2a196b9947e1fd826cf5f88eee61e3"
+              }
+            },
+            "text": "A part."
+          }
+        ],
+        "role": "ROLE_USER"
+      },
+      "op": "give"
+    },
+    {
+      "as": "proposer",
+      "at": "2026-11-12T09:06:00Z",
+      "envelope": {
+        "hash": "sha256:15cc9b18e6b9116902ad70dd0fa053c4bb84642b963bc0c560c38181e489e271",
+        "seq": 1,
+        "sig": "cb0d174d245334f1d5e63f376710090b9b3dc8a7632e80ebb047bab505a389d8223f0acb346e38e88affcc6495728ed541c843708c0a9942e02b37a11f321a00"
+      },
+      "expect": {
+        "rejection": "part-metadata"
+      },
+      "message": {
+        "extensions": [
+          "https://placket.tech/crossing/0.1"
+        ],
+        "messageId": "meta-g",
+        "metadata": {
+          "https://placket.tech/crossing/0.1": {
+            "accord": "sha256:fdb4c6101b33876a56e9501d756b0905671a9a44c726e599c9a7a76270aab1df",
+            "to": "ed25519:a80586279ba17c5360b029018bf025be0169fdb02087e77301774c99eed92117"
+          }
+        },
+        "parts": [
+          {
+            "metadata": {
+              "https://placket.tech/crossing/0.1": {
+                "kind": "note",
+                "salt": "b3d83c58aec6342981d27c8edc2fa2141b0aadab29e08543dcad100dba3074da",
+                "topic": "x"
+              }
+            },
+            "text": "A part."
+          }
+        ],
+        "role": "ROLE_USER"
+      },
+      "op": "give"
+    },
+    {
+      "as": "proposer",
+      "at": "2026-11-12T09:07:00Z",
+      "envelope": {
+        "hash": "sha256:abb0d5330602b3ade691f86f430ef8b7f62bafd10319e081ef8aab5f40528780",
+        "seq": 1,
+        "sig": "8123ebda9d708091db7cb0de75c4b728db17939bbe814d541db185ed2ae6e7dda4df9abc0558d97cbf816a2e00d3fd2c63cd08ff26645bd2aebcc64258daa503"
+      },
+      "expect": {
+        "rejection": "part-metadata"
+      },
+      "message": {
+        "extensions": [
+          "https://placket.tech/crossing/0.1"
         ],
         "messageId": "meta-none",
         "metadata": {
-          "https://placket.dev/crossing/0.1": {
-            "accord": "sha256:377666e6b724ad052909ca5c7bbebaa22d45683939c65bffce4358d63e87b77e",
+          "https://placket.tech/crossing/0.1": {
+            "accord": "sha256:fdb4c6101b33876a56e9501d756b0905671a9a44c726e599c9a7a76270aab1df",
             "to": "ed25519:a80586279ba17c5360b029018bf025be0169fdb02087e77301774c99eed92117"
           }
         },
@@ -398,11 +472,11 @@
             "text": "A part."
           }
         ],
-        "role": "ROLE_AGENT"
+        "role": "ROLE_USER"
       },
       "op": "give"
     }
   ],
-  "tests": "crossing-2: a 15-byte salt, an uppercase salt, a missing or malformed kind, an unlisted member and no metadata are part-metadata",
+  "tests": "crossing-2: a salt of 31, 33 or 16 bytes, an uppercase salt, a missing or malformed kind, an unlisted member and no metadata are part-metadata",
   "vector": "crossing/part-metadata"
 }

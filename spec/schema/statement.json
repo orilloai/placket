@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://placket.dev/schema/0.1/statement.json",
+  "$id": "https://placket.tech/schema/0.1/statement.json",
   "title": "Receipt statement",
   "description": "The payload of a receipt: an in-toto Statement v1 whose one subject is the part judged, named by its kind, with its salted digest in lowercase hex, and whose predicate is placket's (receipt-1, receipt-2).",
   "type": "object",
@@ -40,7 +40,7 @@
       }
     },
     "predicateType": {
-      "const": "https://placket.dev/receipt/0.1"
+      "const": "https://placket.tech/receipt/0.1"
     },
     "predicate": {
       "$ref": "predicate.json"

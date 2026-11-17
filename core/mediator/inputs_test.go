@@ -31,14 +31,14 @@ func TestGiveDependsOnEachInput(t *testing.T) {
 		}
 		return out.Receipt
 	}
-	salt := hex.EncodeToString([]byte("a salt of sixteen"))
+	salt := hex.EncodeToString(saltOf("a salt of 32 bytes"))
 	base := give("2026-11-12T09:00:00Z", salt)
 	if !bytes.Equal(base, give("2026-11-12T09:00:00Z", salt)) {
 		t.Fatal("the same inputs wrote two receipts")
 	}
 	for name, got := range map[string][]byte{
 		"time": give("2026-11-12T09:00:01Z", salt),
-		"salt": give("2026-11-12T09:00:00Z", hex.EncodeToString([]byte("another salt, too"))),
+		"salt": give("2026-11-12T09:00:00Z", hex.EncodeToString(saltOf("another salt, too"))),
 	} {
 		if bytes.Equal(got, base) {
 			t.Fatalf("a changed %s left the receipt as it was", name)
@@ -62,13 +62,13 @@ func TestResolveDependsOnEachInput(t *testing.T) {
 		}
 		return [][]byte{outs[0].Receipt, outs[1].Receipt}
 	}
-	base := resolve("2026-11-12T09:01:00Z", salt16)
-	if again := resolve("2026-11-12T09:01:00Z", salt16); !bytes.Equal(base[0], again[0]) || !bytes.Equal(base[1], again[1]) {
+	base := resolve("2026-11-12T09:01:00Z", answerSalt)
+	if again := resolve("2026-11-12T09:01:00Z", answerSalt); !bytes.Equal(base[0], again[0]) || !bytes.Equal(base[1], again[1]) {
 		t.Fatal("the same inputs wrote other receipts")
 	}
 	for name, got := range map[string][][]byte{
-		"time": resolve("2026-11-12T09:01:01Z", salt16),
-		"salt": resolve("2026-11-12T09:01:00Z", []byte("another answer's salt")),
+		"time": resolve("2026-11-12T09:01:01Z", answerSalt),
+		"salt": resolve("2026-11-12T09:01:00Z", saltOf("another answer's salt")),
 	} {
 		if bytes.Equal(got[0], base[0]) {
 			t.Fatalf("a changed %s left the resolution receipt as it was", name)

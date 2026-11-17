@@ -27,11 +27,11 @@ func scene(set kit.Obj) *kit.Scene {
 }
 
 func note(id, text string) kit.Obj {
-	return kit.Message(id, kit.HashOf(askAndLog), kit.Applier, kit.TextPart("note", kit.Salt("crossing "+id, 16), text))
+	return kit.Message(id, kit.HashOf(askAndLog), kit.Applier, kit.TextPart("note", kit.Salt("crossing "+id, 32), text))
 }
 
 func of(set kit.Obj, id, kind string) kit.Obj {
-	return kit.Message(id, kit.HashOf(set), kit.Applier, kit.TextPart(kind, kit.Salt("crossing "+id, 16), "The "+kind+" "+id+"."))
+	return kit.Message(id, kit.HashOf(set), kit.Applier, kit.TextPart(kind, kit.Salt("crossing "+id, 32), "The "+kind+" "+id+"."))
 }
 
 // signedBy returns the message and its envelope at seq, signed by the key, as JSON values.
@@ -70,7 +70,7 @@ func main() {
 	}
 	{
 		s := scene(askAndLog)
-		m := kit.Message("stranger-1", kit.HashOf(askAndLog), kit.Applier, kit.TextPart("note", kit.Salt("stranger", 16), "From nobody."))
+		m := kit.Message("stranger-1", kit.HashOf(askAndLog), kit.Applier, kit.TextPart("note", kit.Salt("stranger", 32), "From nobody."))
 		msg, env := signedBy(m, 1, kit.Stranger)
 		s.Reject(at(0), kit.Stranger, "not-a-member", msg, env)
 		s.GetRejected(kit.Stranger, "not-a-member")
@@ -78,7 +78,7 @@ func main() {
 	}
 	{
 		s := scene(askAndLog)
-		m := kit.Message("mediator-1", kit.HashOf(askAndLog), kit.Applier, kit.TextPart("note", kit.Salt("mediator", 16), "From the mediator."))
+		m := kit.Message("mediator-1", kit.HashOf(askAndLog), kit.Applier, kit.TextPart("note", kit.Salt("mediator", 32), "From the mediator."))
 		msg, env := signedBy(m, 1, kit.Mediator)
 		s.Reject(at(0), kit.Mediator, "not-a-member", msg, env)
 		s.GetRejected(kit.Mediator, "not-a-member")
@@ -162,8 +162,10 @@ func main() {
 	{
 		s := scene(askAndLog)
 		cases := []func(meta kit.Obj){
-			func(meta kit.Obj) { meta["salt"] = kit.Salt("short", 15) },
-			func(meta kit.Obj) { meta["salt"] = strings.ToUpper(kit.Salt("upper", 16)) },
+			func(meta kit.Obj) { meta["salt"] = kit.Salt("short", 31) },
+			func(meta kit.Obj) { meta["salt"] = kit.Salt("long", 33) },
+			func(meta kit.Obj) { meta["salt"] = kit.Salt("sixteen", 16) },
+			func(meta kit.Obj) { meta["salt"] = strings.ToUpper(kit.Salt("upper", 32)) },
 			func(meta kit.Obj) { delete(meta, "kind") },
 			func(meta kit.Obj) { meta["kind"] = "Note" },
 			func(meta kit.Obj) { meta["topic"] = "x" },
@@ -177,8 +179,8 @@ func main() {
 		m := note("meta-none", "A part.")
 		delete(kit.PartOf(m), "metadata")
 		msg, env := signedBy(m, 1, kit.Proposer)
-		s.Reject(at(5), kit.Proposer, "part-metadata", msg, env)
-		add("part-metadata", "crossing-2: a 15-byte salt, an uppercase salt, a missing or malformed kind, an unlisted member and no metadata are part-metadata", s, askAndLog)
+		s.Reject(at(len(cases)), kit.Proposer, "part-metadata", msg, env)
+		add("part-metadata", "crossing-2: a salt of 31, 33 or 16 bytes, an uppercase salt, a missing or malformed kind, an unlisted member and no metadata are part-metadata", s, askAndLog)
 	}
 	{
 		s := scene(askAndLog)
@@ -234,7 +236,7 @@ func main() {
 		s := scene(askAndLog)
 		m := note("two-defects", "Elsewhere, twice.")
 		kit.Ext(m)["accord"] = kit.HashOf(compose)
-		m["parts"] = append(m["parts"].([]any), kit.TextPart("note", kit.Salt("second", 16), "Second."))
+		m["parts"] = append(m["parts"].([]any), kit.TextPart("note", kit.Salt("second", 32), "Second."))
 		msg, env := signedBy(m, 1, kit.Proposer)
 		s.Reject(at(0), kit.Proposer, "accord-mismatch", msg, env)
 		add("two-content-defects", "crossing-6: a message naming another Accord with two parts is accord-mismatch, the earlier row", s, askAndLog)
@@ -286,21 +288,40 @@ func main() {
 	}
 	{
 		s := scene(askAndLog)
-		raw := kit.Message("raw-1", kit.HashOf(askAndLog), kit.Applier, kit.RawPart("note", kit.Salt("raw", 16), []byte{0x00, 0xff, 0x10, 'n'}))
+		raw := kit.Message("raw-1", kit.HashOf(askAndLog), kit.Applier, kit.RawPart("note", kit.Salt("raw", 32), []byte{0x00, 0xff, 0x10, 'n'}))
 		data := kit.Message("data-1", kit.HashOf(askAndLog), kit.Applier,
-			kit.DataPart("note", kit.Salt("data", 24), kit.Obj{"z": []any{1, "two", true}, "a": kit.Obj{}}))
-		user := note("user-1", "As a user.")
-		user["role"] = "ROLE_USER"
+			kit.DataPart("note", kit.Salt("data", 32), kit.Obj{"z": []any{1, "two", true}, "a": kit.Obj{}}))
 		re := note("re-1", "In reply.")
 		kit.Ext(re)["re"] = kit.HashOf("an earlier receipt")
 		kit.Ext(re)["topic"] = "replies"
 		s.Give(at(0), kit.Proposer, 1, raw, kit.Applier, "pass", "ok")
 		s.Give(at(1), kit.Proposer, 2, data, kit.Applier, "pass", "ok")
-		s.Give(at(2), kit.Proposer, 3, user, kit.Applier, "pass", "ok")
-		s.Give(at(3), kit.Proposer, 4, re, kit.Applier, "pass", "ok")
+		s.Give(at(2), kit.Proposer, 3, re, kit.Applier, "pass", "ok")
 		s.Get(kit.Applier)
 		s.Get(kit.Applier)
-		add("bodies-roles-and-replies", "crossing-1, crossing-2, crossing-3: raw and data bodies, ROLE_USER and a re with a topic cross; a delivery carries re and no topic", s, askAndLog)
+		add("bodies-roles-and-replies", "crossing-1, crossing-2, crossing-3: raw and data bodies, each with a 32-byte salt, and a re with a topic cross; a delivery carries re and no topic", s, askAndLog)
+	}
+	{
+		s := scene(askAndLog)
+		agent := note("agent-1", "In the agent's role.")
+		agent["role"] = "ROLE_AGENT"
+		msg, env := signedBy(agent, 1, kit.Proposer)
+		s.Reject(at(0), kit.Proposer, "extension-missing", msg, env)
+		s.Give(at(1), kit.Proposer, 1, note("agent-1", "In the agent's role."), kit.Applier, "pass", "ok")
+		add("a-give-in-the-agents-role", "crossing-1: a member's give with role ROLE_AGENT is extension-missing; the same give with ROLE_USER passes", s, askAndLog)
+	}
+	{
+		s := scene(askAndLog)
+		m := note("old-1", "Under the old host.")
+		const old = "https://placket.dev/crossing/0.1"
+		m["extensions"] = []any{old}
+		for _, meta := range []kit.Obj{m["metadata"].(kit.Obj), kit.PartOf(m)["metadata"].(kit.Obj)} {
+			meta[old] = meta[kit.Extension]
+			delete(meta, kit.Extension)
+		}
+		msg, env := signedBy(m, 1, kit.Proposer)
+		s.Reject(at(0), kit.Proposer, "extension-missing", msg, env)
+		add("the-old-crossing-extension", "crossing-1: a give whose extension and metadata are under the crossing extension's URI on another host is extension-missing, and nothing is written", s, askAndLog)
 	}
 	{
 		s := scene(askAndLog)
@@ -331,7 +352,7 @@ func main() {
 			// Rows 9 and 10: two parts, the first with no body.
 			{"one-part", 2, false, func(m kit.Obj) {
 				delete(kit.PartOf(m), "text")
-				m["parts"] = append(m["parts"].([]any), kit.TextPart("note", kit.Salt("second", 16), "Second."))
+				m["parts"] = append(m["parts"].([]any), kit.TextPart("note", kit.Salt("second", 32), "Second."))
 			}},
 			// Rows 10 and 11: a url body beside a member the part does not list.
 			{"one-body", 2, false, func(m kit.Obj) {
@@ -394,7 +415,7 @@ func main() {
 		set := kit.AnswerUnderMaybe().Build()
 		s := scene(set)
 		q := s.Give(at(0), kit.Proposer, 1, of(set, "proposal-1", "proposal"), kit.Applier, "escalate", "maybe")
-		s.Resolve(kit.Answer{At: at(1), Question: q, Action: "accepted", Text: "accepted", Salt: kit.Salt("crossing answer-1", 16),
+		s.Resolve(kit.Answer{At: at(1), Question: q, Action: "accepted", Text: "accepted", Salt: kit.Salt("crossing answer-1", 32),
 			By: kit.Decider, Verdict: kit.Verdict{Verdict: "block", Reason: "maybe"}})
 		s.Get(kit.Proposer)
 		add("an-answer-that-meets-a-maybe-term", "composition-5: an accept decided from the decider to a proposer that gets answers under a maybe term is block, maybe; nothing is queued and no question opens", s, set)

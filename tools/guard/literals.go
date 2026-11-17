@@ -49,7 +49,7 @@ func literals(t *tree, dirs ...string) ([]literal, []finding) {
 	return lits, fs
 }
 
-// constants-once: every string literal holding "placket.dev/" or "vnd.placket" in a file built into
+// constants-once: every string literal holding "placket.tech/" or "vnd.placket" in a file built into
 // core/ or adapters/ is in exactly one file. Each file holding a literal that another also holds is
 // named at its first line with it. Two literals are the same when they are written the same, escapes
 // included.
@@ -57,7 +57,7 @@ func constantsOnce(t *tree) []finding {
 	lits, fs := literals(t, "core", "adapters")
 	first := map[string]map[string]int{}
 	for _, l := range lits {
-		if !strings.Contains(l.text, "placket.dev/") && !strings.Contains(l.text, "vnd.placket") {
+		if !strings.Contains(l.text, "placket.tech/") && !strings.Contains(l.text, "vnd.placket") {
 			continue
 		}
 		if first[l.text] == nil {

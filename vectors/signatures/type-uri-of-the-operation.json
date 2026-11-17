@@ -4,7 +4,7 @@
   },
   "input": {
     "actor": "ed25519:7cf35b36b9d57c62b9f3d5be2eb4d39147afa1b7625cd0032443523254df3bea",
-    "sig": "b341d090401b6847e96960168cbac1222562c3c2be30d82c080a503bc7cf415a76bfc11bcd6bd9f3584ab0771897a39e401383051d40b2f979eb6584e053d30f",
+    "sig": "ac80a0cd16fdaca74701b9fc98727ac9e2f6a40a9531eba409d783df87ff44faec3d336bce31213c8eb82f3a01dab91df6d93bfd57a8f7e10d257bf4e8f9f603",
     "terms": [
       {
         "dir": "give",
@@ -24,6 +24,6 @@
   "reference": "ed25519:7cf35b36b9d57c62b9f3d5be2eb4d39147afa1b7625cd0032443523254df3bea",
   "spec": "0.1",
   "tests": "signing-2: a declaration's signature fails under the envelope type URI",
-  "typeUri": "https://placket.dev/envelope/0.1",
+  "typeUri": "https://placket.tech/envelope/0.1",
   "vector": "signatures/type-uri-of-the-operation"
 }

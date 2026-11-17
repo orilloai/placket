@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://placket.dev/schema/0.1/reference.json",
+  "$id": "https://placket.tech/schema/0.1/reference.json",
   "title": "Actor reference",
   "description": "An Ed25519 public key named as ed25519: and its 32 bytes in lowercase hex (signing-1).",
   "type": "string",

@@ -2,7 +2,7 @@
 package a
 
 // Crossing is a fixture's URI.
-const Crossing = "https://placket.dev/fixture/0.1"
+const Crossing = "https://placket.tech/fixture/0.1"
 
 // Again names it a second time in the same file, which is allowed.
-var Again = "https://placket.dev/fixture/0.1"
+var Again = "https://placket.tech/fixture/0.1"

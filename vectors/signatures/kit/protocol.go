@@ -12,7 +12,7 @@ const (
 // its name, no judges and no checks (setup-contract-4).
 func Card() Obj {
 	return Obj{
-		"spec":   "0.1",
+		"spec":   Spec,
 		"kernel": Obj{"version": "0.1.0", "hash": HashOf("placket reference decision module 0.1")},
 		"judges": []any{},
 		"checks": []any{},
@@ -175,12 +175,12 @@ func part(kind, salt, body string, value any) Obj {
 	return Obj{body: value, "metadata": Obj{Extension: Obj{"kind": kind, "salt": salt}}}
 }
 
-// Message builds a crossing message of one part, from a member, to a receiver under an Accord
-// (crossing-1).
+// Message builds a crossing message of one part, given by a member in ROLE_USER, to a receiver
+// under an Accord (crossing-1).
 func Message(id, accord string, to Key, p Obj) Obj {
 	return Obj{
 		"messageId":  id,
-		"role":       "ROLE_AGENT",
+		"role":       "ROLE_USER",
 		"parts":      []any{p},
 		"extensions": []any{Extension},
 		"metadata":   Obj{Extension: Obj{"accord": accord, "to": to.Ref}},

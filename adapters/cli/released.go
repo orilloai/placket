@@ -2,7 +2,6 @@ package cli
 
 import (
 	"bytes"
-	"encoding/hex"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -199,7 +198,7 @@ func fileCrossed(d *state.Dir, body []byte) ([]crossed, error) {
 	var out []crossed
 	for _, c := range all {
 		for _, s := range salts[c.st.ID] {
-			if salt, err := hex.DecodeString(s); err == nil && receipts.Digest(salt, body) == c.st.Subject.Digest {
+			if salt, ok := saltBytes(s); ok && receipts.Digest(salt, body) == c.st.Subject.Digest {
 				c.body = body
 				out = append(out, c)
 				break
@@ -235,8 +234,8 @@ func keptCrossed(d *state.Dir) ([]crossed, error) {
 			continue
 		}
 		c, has := byID[k.ReceiptID]
-		salt, err := hex.DecodeString(k.Salt)
-		if !has || err != nil || c.st.Subject.Name != k.Kind {
+		salt, ok := saltBytes(k.Salt)
+		if !has || !ok || c.st.Subject.Name != k.Kind {
 			continue
 		}
 		if body := k.bytes(); receipts.Digest(salt, body) == c.st.Subject.Digest {

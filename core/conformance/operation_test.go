@@ -17,7 +17,7 @@ func TestAVectorWithNoStringOperationFails(t *testing.T) {
 		}
 	}
 	spec["schema/vector.json"] = &fstest.MapFile{Data: []byte(`{"$schema":"https://json-schema.org/draft/2020-12/schema",` +
-		`"$id":"https://placket.dev/schema/0.1/vector.json","type":"object"}`)}
+		`"$id":"https://placket.tech/schema/0.1/vector.json","type":"object"}`)}
 	for _, op := range []string{``, `,"operation":1`} {
 		vectors := fstest.MapFS{
 			"coverage.json": {Data: []byte(`{"canonical-1":{"vectors":["founding/no-operation"],` +

@@ -2,6 +2,8 @@ package crossing
 
 import (
 	"bytes"
+	"encoding/hex"
+	"strings"
 	"testing"
 )
 
@@ -31,21 +33,30 @@ func TestBodyReadsEachForm(t *testing.T) {
 	}
 }
 
-// TestSaltReadsLowercaseHex reads a salt of 16 bytes and more, and refuses a short one, uppercase
-// hex, odd length and a value that is not a string (crossing-2).
+// TestSaltReadsLowercaseHex reads a salt of exactly 32 bytes, and refuses one of 16, 31 or 33 bytes,
+// uppercase hex, odd length and a value that is not a string (crossing-2).
 func TestSaltReadsLowercaseHex(t *testing.T) {
 	t.Parallel()
+	seq := func(n int) []byte {
+		b := make([]byte, n)
+		for i := range b {
+			b[i] = byte(i)
+		}
+		return b
+	}
+	thirtyTwo := hex.EncodeToString(seq(32))
 	for _, c := range []struct {
 		name string
 		v    any
 		want []byte
 		ok   bool
 	}{
-		{"16 bytes", "000102030405060708090a0b0c0d0e0f", []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}, true},
-		{"17 bytes", "000102030405060708090a0b0c0d0e0fff", []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 0xff}, true},
-		{"15 bytes", "000102030405060708090a0b0c0d0e", nil, false},
-		{"uppercase", "000102030405060708090A0B0C0D0E0F", nil, false},
-		{"odd length", "000102030405060708090a0b0c0d0e0f0", nil, false},
+		{"32 bytes", thirtyTwo, seq(32), true},
+		{"16 bytes", "000102030405060708090a0b0c0d0e0f", nil, false},
+		{"31 bytes", thirtyTwo[:62], nil, false},
+		{"33 bytes", thirtyTwo + "20", nil, false},
+		{"uppercase", strings.ToUpper(thirtyTwo), nil, false},
+		{"odd length", thirtyTwo + "0", nil, false},
 		{"not a string", 16.0, nil, false},
 	} {
 		got, ok := Salt(c.v)

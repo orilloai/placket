@@ -13,7 +13,7 @@
         "roles": [
           "decider"
         ],
-        "sig": "96e17a0cf73aab7ca33d8a7c80fa3ab8ff17396b60627ac8c6ece7bdb1ddc8657790b96a993894c2e4959ea138ad7d329f568845135a82bcde212281ce628209",
+        "sig": "ae978dfb4a7d5cdb0f7f60c80e017b8a56f1e0df2c4acc7def13f38769e16699ddab432d3e05665b49701d3ae2f4abf0fc9c42f926bf2eea196bc1088f32a70e",
         "until": "2027-11-12T00:00:00Z"
       },
       {
@@ -24,7 +24,7 @@
         "roles": [
           "proposer"
         ],
-        "sig": "da521603bab7943496fa105df277b67ca13d713e8163c2b5840b731b20ac66662f3bb7760292c41a1341082804c303acfe1296777c8f6c9ffe1fa13de092db0e",
+        "sig": "64ecd7ef8422a2444b04db0d2b3159c4c0f1fa0cb9d84c5a292a9ff6e7bbfb83b809e64de4a018ab3a3595df7f97b04173647bef8f66210511c9cb05ed97680b",
         "until": "2027-11-12T00:00:00Z"
       },
       {
@@ -35,7 +35,7 @@
         "roles": [
           "applier"
         ],
-        "sig": "dce41eab0df7daed6b2595e61673f386bd529b06d5b03df79d04c6203558c2979f32074021b44542e13e022addee9affbaf6a28df74e6e89beb017b1dfef9a03",
+        "sig": "cff106fb316fb12e8ebdb80b3c5f7164ac198a8b7fb6f1037ebdcb8410808663522fac670d045c98c257e12af01b9543ce1b9db759347030015f177a54ab2902",
         "until": "2027-11-12T00:00:00Z"
       }
     ],
@@ -51,7 +51,7 @@
     "declarations": [
       {
         "actor": "ed25519:375dea8c4519dbae84fc9eb513e97eb4b693968ef37d52ac10da7b79250c6a22",
-        "sig": "316c890d952df9fddbb2b50ea255bf2fb584d32cc8cf73d0226eff87cce4036f500277b2469c875a9037adbb901ceac72354874b93e4774d75103b7e8fccc00e",
+        "sig": "55642d296e6f6b5086f3157132eb5fe5b36001b7141b8812f41a8b9ecd0bfa031e8c34dc7bb5a88ff54a11cc392f08a3c2260d83d9e9911e7166f667cf83bb06",
         "terms": [
           {
             "dir": "give",
@@ -71,7 +71,7 @@
       },
       {
         "actor": "ed25519:7cf35b36b9d57c62b9f3d5be2eb4d39147afa1b7625cd0032443523254df3bea",
-        "sig": "2f0b765521a0114cf2c7a6c534c2fdee936383adb5ae306e129909efa045fd86884e8de2fc6440f3528303cde34e47808f71b6d9867b0cc9098f49c80e138102",
+        "sig": "d6859290e0f713addea89f5d7d54cf5161fa13a42b24d337785f7111c6486421cc9e5c4d51653a5ade8be2e6b7697d6ad13d43121a0f1ebce9c3a56bb9699a07",
         "terms": [
           {
             "dir": "give",
@@ -120,7 +120,7 @@
       },
       {
         "actor": "ed25519:a80586279ba17c5360b029018bf025be0169fdb02087e77301774c99eed92117",
-        "sig": "a8de4390b6d13517b7304fca7faa74223a4a244d96a6b2f0f3d0c65931c308c385f89f5c0b5ef6e119d1e183526631bd0ff955287e885826a53dc0c64ca1850f",
+        "sig": "8620748e7e658b3e7759ccc3471449096cd76c93a3cb77e74537c30ada0df811ab77ae2133ee229da2867ef318a78a23697c562ea25df35de333a1f5c1f86c06",
         "terms": [
           {
             "dir": "get",

@@ -10,13 +10,13 @@
     "roles": [
       "proposer"
     ],
-    "sig": "d084364fcfbf70a98a1ddaa9e4f727fc7dbdb6aac95a3b0e93008deb7a106f8020388f966fff74b3b94257560c7bd058e917264855157628ecd837d34759780a",
+    "sig": "7827f053156b1dfff8a42185444737905baf27137b3dbe9ad892d1b2cd85509818d8b1b9ffa181ec8b5f08a63e691bc521286bc495f21933f3aceff6d65c9304",
     "until": "2027-11-12T00:00:00Z"
   },
   "operation": "verify-signature",
   "reference": "ed25519:7953e3ee4311c21f4990662dbe506689868533db6fb93a77351351e8d6119574",
   "spec": "0.1",
   "tests": "signing-2: a binding signed under the declaration type URI fails under the binding's",
-  "typeUri": "https://placket.dev/binding/0.1",
+  "typeUri": "https://placket.tech/binding/0.1",
   "vector": "signatures/binding-under-declaration-uri"
 }

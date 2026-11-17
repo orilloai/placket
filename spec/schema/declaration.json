@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://placket.dev/schema/0.1/declaration.json",
+  "$id": "https://placket.tech/schema/0.1/declaration.json",
   "title": "Declaration",
-  "description": "An actor's own terms, signed by that actor under https://placket.dev/declaration/0.1 (setup-contract-1, signing-2).",
+  "description": "An actor's own terms, signed by that actor under https://placket.tech/declaration/0.1 (setup-contract-1, signing-2).",
   "type": "object",
   "properties": {
     "actor": {

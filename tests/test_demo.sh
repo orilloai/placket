@@ -2,7 +2,7 @@
 # The worked example's test: it runs scripts/demo.sh, the script behind make demo, in a new
 # directory, and checks that each of its ten steps printed what the step says, in order. Then it
 # verifies the demo journal committed under scripts/demo/, the one the README shows a receipt of,
-# with the binary the run built.
+# with the binary the run built, and checks that its card names that binary's module.
 set -u
 
 root=$(cd "$(dirname "$0")/.." && pwd)
@@ -121,6 +121,16 @@ if "$tmp/run/placket" verify --mediator "$(cat "$demo/mediator.ref")" --receipts
 		echo "FAIL the committed demo journal's members are not three under one principal"
 		sed 's/^/    | /' "$tmp/verify"
 		failed=1
+	fi
+	# The README's command names no other build's module: the committed journal is founded under the
+	# card this build prints. A change to the kernel hash or a frozen format writes the journal again,
+	# and quotes the README's first receipt again, in its own change.
+	if grep -q "is not this build's decision module" "$tmp/verify"; then
+		echo "FAIL the committed demo journal's card names another build's module"
+		sed 's/^/    | /' "$tmp/verify"
+		failed=1
+	else
+		echo "ok   the committed demo journal's card names this build's module"
 	fi
 else
 	echo "FAIL the committed demo journal does not verify"

@@ -38,13 +38,13 @@ var checksCases = []tcase{
 	// A lower package, an import named only in a comment, and code under testdata/ pass.
 	{name: "independent-allowed", fixture: "independent-allowed"},
 
-	// constants-once: each placket.dev/ or vnd.placket literal is in one non-test file of core/ and
+	// constants-once: each placket.tech/ or vnd.placket literal is in one non-test file of core/ and
 	// adapters/, named at its first line in each file that holds it; a second use in the same file, a
 	// test file and a comment pass.
 	{name: "constants-twice", fixture: "constants-twice", refuse: []string{"constants-once"}, lines: []string{
 		`adapters/local/local.go:5: "application/vnd.placket.call+json" is also in core/b/b.go`,
-		`core/a/a.go:5: "https://placket.dev/fixture/0.1" is also in core/b/b.go`,
-		`core/b/b.go:5: "https://placket.dev/fixture/0.1" is also in core/a/a.go`,
+		`core/a/a.go:5: "https://placket.tech/fixture/0.1" is also in core/b/b.go`,
+		`core/b/b.go:5: "https://placket.tech/fixture/0.1" is also in core/a/a.go`,
 		`core/b/b.go:8: "application/vnd.placket.call+json" is also in adapters/local/local.go`,
 	}},
 

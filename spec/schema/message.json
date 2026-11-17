@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://placket.dev/schema/0.1/message.json",
+  "$id": "https://placket.tech/schema/0.1/message.json",
   "title": "Crossing message",
-  "description": "An A2A message (A2A protocol 1.0) carrying exactly one part and the crossing extension, https://placket.dev/crossing/0.1 (crossing-1). The extension names the Accord, the receiver, and optionally the receipt the message answers (re), a topic, and the reserved gate, read for shape only.",
+  "description": "A message of the closed profile of the A2A protocol 1.0 Message that placket uses, carrying exactly one part and the crossing extension, https://placket.tech/crossing/0.1 (crossing-1). Its role is ROLE_USER for a part a member gives and ROLE_AGENT for one the mediator forms; the door refuses a member's give with ROLE_AGENT, and the schema allows both. The extension names the Accord, the receiver, and optionally the receipt the message answers (re), a topic, and the reserved gate, read for shape only.",
   "type": "object",
   "properties": {
     "messageId": {
@@ -28,13 +28,13 @@
       "minItems": 1,
       "maxItems": 1,
       "items": {
-        "const": "https://placket.dev/crossing/0.1"
+        "const": "https://placket.tech/crossing/0.1"
       }
     },
     "metadata": {
       "type": "object",
       "properties": {
-        "https://placket.dev/crossing/0.1": {
+        "https://placket.tech/crossing/0.1": {
           "type": "object",
           "properties": {
             "accord": {
@@ -62,7 +62,7 @@
         }
       },
       "required": [
-        "https://placket.dev/crossing/0.1"
+        "https://placket.tech/crossing/0.1"
       ],
       "additionalProperties": false
     }

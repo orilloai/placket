@@ -26,7 +26,7 @@ func secretsIn(values ...string) []string {
 func TestAnswerErrorTextQuotesNoInput(t *testing.T) {
 	t.Parallel()
 	const text, version, body = "the planted answer text", "the planted version text", "the planted body text"
-	salt := []byte("the planted salt of the answer")
+	salt := []byte("the planted salt of the answer!!") // SaltBytes long
 	seed := sha256.Sum256([]byte("placket vectors: key mediator"))
 	secrets := secretsIn(text, version, body, string(salt), string(seed[:]))
 	m := found(t)

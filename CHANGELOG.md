@@ -10,6 +10,8 @@ This file covers the tool and its Go API. Changes to the protocol's frozen forma
 
 ### Added
 
+- `mediator.SaltBytes`, 32: the length of every salt (decision record 0020).
+- `docs/adr/0020`: every placket URI under `placket.tech` with one protocol number, salts of exactly 32 bytes, and A2A's meaning of role.
 - `placket version` prints which build a binary is: its version as Go stamped it, the commit and its time, the Go release and the decision module; `--json` prints the same as one object.
 - `docs/adr/0016` to `0019`: verified receipts, the door's own code, releases and `placket version`, and `Reload`'s order.
 - The door replies `door-internal` under its `door` member when it fails itself (its salt source, encoding a reply, or an error the mediator does not type), never the mediator's `internal`.
@@ -23,6 +25,10 @@ This file covers the tool and its Go API. Changes to the protocol's frozen forma
 
 ### Changed
 
+- Every placket URI is under `https://placket.tech/`: every schema `$id`, the type URIs of declarations, bindings and envelopes, the receipt's predicate type and the crossing extension. Journals, state and receipts made under `https://placket.dev/` are refused like any foreign one.
+- A salt is exactly 32 bytes, and placket mints 32: `give`, the window's answers, and every salt a give, an answer, a reloaded delivery, `get`, `released` and `log --kept` read.
+- `placket give` writes `ROLE_USER`.
+- A give with `role` `ROLE_AGENT` is refused with `extension-missing`.
 - `placket key` writes a key file atomically: to a temporary file, synced, then linked into place, so a crash never leaves half a key. It still never overwrites an existing file.
 - `bind` requires `--policy FILE`, and an Accord's policy gives each principal the roles it may grant (decision record 0014).
 - Text and flags that are not valid UTF-8 are refused, never repaired: `give`, `answer` and `change --text` give tool error `text`, `decline` and `change --comment` give `comment`, and `give --to`, `--kind`, `--re` and `--topic`, `--question` on `answer`, `change`, `decline`, `cancel` and `result`, and `bind --actor`, `--role` and `--mediator` give `usage`.
@@ -37,3 +43,11 @@ This file covers the tool and its Go API. Changes to the protocol's frozen forma
 - A state error's text is `state: <code>`; the path is no longer in it.
 - A refusal from a check of `make ci` now ends by linking the rule's heading, `(docs/rules/<file>.md#<rule>)`, in place of `(AGENTS.md, <rule>)`.
 - `AGENTS.md` is a short entry file that points to the rules.
+
+### Deprecated
+
+- `mediator.MinSaltBytes`, now equal to `mediator.SaltBytes`; removed at the release.
+
+### Removed
+
+- The reserved registration type URI and `signing.TypeRegistration`: placket signs objects of three kinds.

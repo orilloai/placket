@@ -33,7 +33,7 @@
       }
     ]
   },
-  "typeUri": "https://placket.dev/declaration/0.1",
+  "typeUri": "https://placket.tech/declaration/0.1",
   "reference": "ed25519:810950cac0d0a30abe5ced6fdf42b93bb3da913b29d142a20ef043ca9691cd31",
   "expect": {
     "valid": true

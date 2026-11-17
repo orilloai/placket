@@ -33,16 +33,23 @@ func found(t testing.TB) *mediator.Mediator {
 	return m
 }
 
-const extension = "https://placket.dev/crossing/0.1"
+const extension = "https://placket.tech/crossing/0.1"
 
-// message builds a crossing message of one text part from a member to a receiver.
+// saltOf returns s's bytes as a salt of SaltBytes: cut, or padded with zero bytes.
+func saltOf(s string) []byte {
+	b := make([]byte, mediator.SaltBytes)
+	copy(b, s)
+	return b
+}
+
+// message builds a crossing message of one text part from a member, in ROLE_USER, to a receiver.
 func message(t testing.TB, accord, id, to, kind, text string, change func(m map[string]any)) []byte {
 	t.Helper()
 	m := map[string]any{
-		"messageId": id, "role": "ROLE_AGENT", "extensions": []any{extension},
+		"messageId": id, "role": mediator.RoleUser, "extensions": []any{extension},
 		"metadata": map[string]any{extension: map[string]any{"accord": accord, "to": to}},
 		"parts": []any{map[string]any{"text": text, "metadata": map[string]any{extension: map[string]any{
-			"kind": kind, "salt": hex.EncodeToString([]byte("a salt of 16 b " + id)[:16]),
+			"kind": kind, "salt": hex.EncodeToString(saltOf("a salt of 32 bytes " + id)),
 		}}}},
 	}
 	if change != nil {

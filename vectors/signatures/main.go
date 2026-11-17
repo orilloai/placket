@@ -49,7 +49,7 @@ func binding(t string) kit.Obj {
 
 func envelope(signer kit.Key) kit.Obj {
 	m := kit.Canon(kit.Message("note-1", kit.HashOf(kit.AskAndLog().Build()), kit.Applier,
-		kit.TextPart("note", kit.Salt("signatures note", 16), "A note.")))
+		kit.TextPart("note", kit.Salt("signatures note", 32), "A note.")))
 	return kit.Envelope(1, m, signer)
 }
 
@@ -118,8 +118,6 @@ func main() {
 	malleated := kit.Copy(d).(kit.Obj)
 	malleated["sig"] = kit.HexOf(plusL(kit.FromHex(d["sig"].(string))))
 
-	registration := kit.Signed(kit.Unsigned(d), kit.TypeRegistration, kit.Proposer)
-
 	spaced := strings.Replace(string(kit.Canon(d)), ",", " ,\n ", -1)
 
 	vs := []kit.Vector{
@@ -146,6 +144,8 @@ func main() {
 			binding(kit.TypeBinding), kit.TypeBinding, kit.Principal.Ref, true),
 		verify("binding-under-declaration-uri", "signing-2: a binding signed under the declaration type URI fails under the binding's",
 			binding(kit.TypeDeclaration), kit.TypeBinding, kit.Principal.Ref, false),
+		verify("a-binding-under-the-old-domain", "signing-2, signing-4: a binding signed under the binding type URI on another host fails under the binding's",
+			binding("https://placket.dev/binding/0.1"), kit.TypeBinding, kit.Principal.Ref, false),
 		verify("envelope-verifies", "signing-2: an envelope verifies under the envelope type URI by its sender",
 			envelope(kit.Proposer), kit.TypeEnvelope, kit.Proposer.Ref, true),
 		verify("envelope-by-another-key", "signing-2: an envelope signed by another key fails under the caller's",
@@ -160,8 +160,6 @@ func main() {
 			kit.Unsigned(d), kit.TypeDeclaration, ref, false),
 		verify("canonical-form-is-signed", "signing-2: the signing bytes are over the canonical form, so whitespace in the input changes nothing",
 			spaced, kit.TypeDeclaration, ref, true),
-		verify("registration-reserved", "signing-4: no object of this version verifies under the reserved registration type URI",
-			registration, kit.TypeRegistration, ref, false),
 		verify("type-uri-of-the-operation", "signing-2: a declaration's signature fails under the envelope type URI",
 			d, kit.TypeEnvelope, ref, false),
 

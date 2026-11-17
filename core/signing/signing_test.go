@@ -136,14 +136,18 @@ func TestNonCanonicalKeysSignNothing(t *testing.T) {
 	}
 }
 
-// TestPayloadSignaturesRefuseTheFourTypeURIs is signing-4's scenario: a payload signature whose
+// registration is the type URI a registration would have under this version, which signs no
+// registration.
+var registration = strings.Replace(TypeDeclaration, "declaration", "registration", 1)
+
+// TestPayloadSignaturesRefuseTheThreeTypeURIs is signing-4's scenario: a payload signature whose
 // payload type is a placket type URI is refused both ways, and no object is signed or verified under
-// a payload type that is not one of them.
-func TestPayloadSignaturesRefuseTheFourTypeURIs(t *testing.T) {
+// a payload type that is not one of them, the registration type URI earlier drafts reserved included.
+func TestPayloadSignaturesRefuseTheThreeTypeURIs(t *testing.T) {
 	t.Parallel()
 	k := testKey(t, "proposer")
 	envelope := []byte(`{"hash":"sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a","seq":1}`)
-	for _, uri := range []string{TypeDeclaration, TypeBinding, TypeEnvelope, TypeRegistration} {
+	for _, uri := range []string{TypeDeclaration, TypeBinding, TypeEnvelope} {
 		sig, err := SignPayload(uri, envelope, k)
 		var se *Error
 		if sig != nil || !errors.As(err, &se) || se.Code != CodeTypeURI {
@@ -164,8 +168,10 @@ func TestPayloadSignaturesRefuseTheFourTypeURIs(t *testing.T) {
 	if _, err := Sign(envelope, intoto, k); !isTypeURI(err) {
 		t.Fatalf("Sign under the payload type %s: got %v, want %s", intoto, err, CodeTypeURI)
 	}
-	if _, err := Sign(envelope, TypeRegistration, k); !isTypeURI(err) {
-		t.Fatalf("Sign under the reserved registration type URI: got %v, want %s", err, CodeTypeURI)
+	// No registration type is reserved: the URI one would have under this version is a type no object
+	// is signed under, like any other.
+	if _, err := Sign(envelope, registration, k); !isTypeURI(err) {
+		t.Fatalf("Sign under %s: got %v, want %s", registration, err, CodeTypeURI)
 	}
 	obj, _ := Sign(envelope, TypeEnvelope, k)
 	signed := []byte(strings.Replace(string(envelope), `"seq":1`, `"seq":1,"sig":"`+obj+`"`, 1))
@@ -252,7 +258,7 @@ func FuzzVerify(f *testing.F) {
 	f.Add(signed, TypeDeclaration, k.Reference())
 	f.Add(signed, TypeEnvelope, k.Reference())
 	f.Add([]byte(`{"sig":7}`), TypeBinding, "ed25519:"+strings.Repeat("0", 64))
-	f.Add([]byte(`[]`), TypeRegistration, "ecdsa:")
+	f.Add([]byte(`[]`), registration, "ecdsa:")
 	f.Add([]byte("\xff"), "", "")
 	for _, in := range seeds.Inputs(f, "signatures") {
 		for _, ty := range seeds.Values(f, "signatures", "typeUri") {
