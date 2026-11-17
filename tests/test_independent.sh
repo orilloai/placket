@@ -3,8 +3,8 @@
 # and no placket code, re-compute every hash and Ed25519 signature the vectors carry that a correct
 # implementation must produce, and check each against the vector.
 #
-# - Typed hashes (canonical-3): canonical vectors' hashes, Accord ids, card hashes, message hashes in
-#   envelopes and receipts, and receipt ids.
+# - Typed hashes (canonical-3): canonical vectors' hashes, Accord ids, card hashes, the policy each
+#   binding of an accepted set names, message hashes in envelopes and receipts, and receipt ids.
 # - Salted digests (crossing-3): every accepted give's part and every delivery, against its receipt;
 #   and every accepted or changed answer of a resolve step, its salt and its text, against its
 #   resolution receipt and, for a change, its release.
@@ -236,11 +236,17 @@ for f in "$V"/*/*.json; do
 		sigcheck "$n: declaration $i" "$g" "$tmp/obj" "$tdecl" "$(jq -r .actor "$tmp/obj")"
 		i=$((i + 1))
 	done
+	# Every binding names the typed hash of the set's policy (setup-contract-2).
+	policy=
+	if rebuilt "$n: the policy" '.policy' "$tmp/set" "$tmp/policy"; then policy=sha256:$(sha "$tmp/policy"); fi
 	nb=$(jq '.bindings | length' "$tmp/set")
 	i=0
 	while [ "$i" -lt "$nb" ]; do
 		jq ".bindings[$i]" "$tmp/set" >"$tmp/obj"
 		sigcheck "$n: binding $i" "$g" "$tmp/obj" "$tbind" "$(jq -r .principal "$tmp/obj")"
+		if [ -n "$policy" ]; then
+			if [ "$(jq -r .policy "$tmp/obj")" = "$policy" ]; then counted "$g"; else bad "$n: binding $i names another policy"; fi
+		fi
 		i=$((i + 1))
 	done
 done

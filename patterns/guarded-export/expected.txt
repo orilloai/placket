@@ -1,6 +1,6 @@
 
 == 1. keys, terms and the founding set
-founding: three parties, roles proposer, approver, receiver
+founding: three parties, roles proposer, approver, receiver, under 2 principals
 
 == 2. the window
 window: started
