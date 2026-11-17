@@ -2,7 +2,6 @@ package setup_test
 
 import (
 	"bytes"
-	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"slices"
@@ -10,24 +9,13 @@ import (
 	"testing"
 
 	"github.com/orilloai/placket/core/canonical"
+	ptesting "github.com/orilloai/placket/core/internal/testing"
 	"github.com/orilloai/placket/core/setup"
 	"github.com/orilloai/placket/core/signing"
 )
 
 // founded is the code a set founds with: none.
 const founded setup.Code = ""
-
-// key is the vectors' key of name: its seed is the SHA-256 of "placket vectors: key " and the name
-// (vectors/README.md).
-func key(t testing.TB, name string) signing.Key {
-	t.Helper()
-	seed := sha256.Sum256([]byte("placket vectors: key " + name))
-	k, err := signing.NewKey(seed[:])
-	if err != nil {
-		t.Fatal(err)
-	}
-	return k
-}
 
 // encode returns the canonical bytes of v.
 func encode(t testing.TB, v any) []byte {
@@ -88,7 +76,7 @@ func base(t testing.TB, name string) (map[string]any, string) {
 // declarationOf returns the declaration in set whose actor is the vectors' key of name.
 func declarationOf(t testing.TB, set map[string]any, name string) map[string]any {
 	t.Helper()
-	ref := key(t, name).Reference()
+	ref := ptesting.Key(t, name).Reference()
 	for _, x := range set["declarations"].([]any) {
 		if d := x.(map[string]any); d["actor"] == ref {
 			return d
@@ -111,7 +99,7 @@ func termsOf(d map[string]any) []map[string]any {
 // signature good.
 func sign(t testing.TB, d map[string]any, name string) {
 	t.Helper()
-	sig, err := signing.Sign(encode(t, d), signing.TypeDeclaration, key(t, name))
+	sig, err := signing.Sign(encode(t, d), signing.TypeDeclaration, ptesting.Key(t, name))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -193,7 +181,7 @@ func TestOperatorIsAnActorReference(t *testing.T) {
 		operator any
 		want     setup.Code
 	}{
-		{"another actor", key(t, "other-mediator").Reference(), founded},
+		{"another actor", ptesting.Key(t, "other-mediator").Reference(), founded},
 		{"a name", "operator", setup.InvalidShape},
 		{"a prefix alone", signing.ReferencePrefix, setup.InvalidShape},
 		{"a number", json.Number("7"), setup.InvalidShape},
@@ -343,7 +331,7 @@ func TestRolesAreTheBindings(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		got := a.Roles(key(t, "proposer").Reference())
+		got := a.Roles(ptesting.Key(t, "proposer").Reference())
 		if want := []string{"proposer", "decider"}; !slices.Equal(got, want) {
 			t.Fatalf("the proposer holds %q, want %q", got, want)
 		}
@@ -358,7 +346,7 @@ func TestRolesAreTheBindings(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		got := a.Roles(key(t, "applier").Reference())
+		got := a.Roles(ptesting.Key(t, "applier").Reference())
 		if want := []string{"applier"}; !slices.Equal(got, want) {
 			t.Fatalf("the applier holds %q, want %q", got, want)
 		}

@@ -3,6 +3,7 @@ package mediator_test
 import (
 	"testing"
 
+	ptesting "github.com/orilloai/placket/core/internal/testing"
 	"github.com/orilloai/placket/core/mediator"
 	"github.com/orilloai/placket/core/receipts"
 )
@@ -21,7 +22,7 @@ func written(t *testing.T, m *mediator.Mediator, before int, err error) {
 	if err != nil && len(m.Receipts()) != before {
 		t.Fatal("a refused call wrote a receipt")
 	}
-	if _, err := receipts.Verify(key(t, "mediator").Reference(), m.Receipts()); err != nil {
+	if _, err := receipts.Verify(ptesting.Key(t, "mediator").Reference(), m.Receipts()); err != nil {
 		t.Fatalf("the receipts do not verify: %v", err)
 	}
 }
@@ -30,7 +31,7 @@ func written(t *testing.T, m *mediator.Mediator, before int, err error) {
 // never panics; a refusal writes nothing, and every receipt written verifies (core-no-panic).
 func FuzzResolve(f *testing.F) {
 	_, q := opened(f)
-	d, p := key(f, "decider").Reference(), key(f, "proposer").Reference()
+	d, p := ptesting.Key(f, "decider").Reference(), ptesting.Key(f, "proposer").Reference()
 	f.Add(d, q, "accepted", "accepted", []byte("an answer's salt"), true, "2026-11-12T09:01:00Z")
 	f.Add(d, q, "changed", "A version.", []byte("an answer's salt"), true, "2026-11-12T09:01:00Z")
 	f.Add(d, q, "changed", "", []byte("an answer's salt"), false, "2026-11-12T09:01:00Z")
@@ -47,7 +48,7 @@ func FuzzResolve(f *testing.F) {
 			t.Fatalf("an answer wrote %d receipts for %d outcomes", len(m.Receipts())-before, len(outs))
 		}
 		for _, n := range []string{"proposer", "applier", "decider"} {
-			_, _ = m.Get(key(t, n).Reference())
+			_, _ = m.Get(ptesting.Key(t, n).Reference())
 		}
 	})
 }
@@ -90,8 +91,8 @@ func FuzzTick(f *testing.F) {
 // FuzzTheReads reads any id as any caller with Answerers, Queued and Result. None panics.
 func FuzzTheReads(f *testing.F) {
 	m, q := opened(f)
-	f.Add(key(f, "proposer").Reference(), q)
-	f.Add(key(f, "decider").Reference(), string(m.Receipts()[0][:8]))
+	f.Add(ptesting.Key(f, "proposer").Reference(), q)
+	f.Add(ptesting.Key(f, "decider").Reference(), string(m.Receipts()[0][:8]))
 	f.Add("", "")
 	f.Fuzz(func(t *testing.T, caller, id string) {
 		m, _ := opened(t)
@@ -105,7 +106,7 @@ func FuzzTheReads(f *testing.F) {
 // changed, at any time. It never panics, and a mediator it returns holds receipts that verify.
 func FuzzReload(f *testing.F) {
 	m, q := opened(f)
-	d := key(f, "decider").Reference()
+	d := ptesting.Key(f, "decider").Reference()
 	if _, err := m.Resolve(d, q, accept(true), "2026-11-12T09:01:00Z"); err != nil {
 		f.Fatal(err)
 	}
@@ -124,7 +125,7 @@ func FuzzReload(f *testing.F) {
 	f.Add(set, foundedAt, uint8(9), []byte(nil), q2, "2026-11-12T10:02:00Z", "", queued[1].To, queued[1].Delivery, "2026-11-12T10:00:00Z")
 	f.Add(set, foundedAt, uint8(3), list[1], q, "x", "decider", "", []byte(`{}`), "2026-11-12T11:00:00Z")
 	f.Add([]byte(`{}`), "", uint8(0), []byte(`{}`), "", "", "", "", []byte(nil), "")
-	med := key(f, "mediator")
+	med := ptesting.Key(f, "mediator")
 	f.Fuzz(func(t *testing.T, founding []byte, foundedAt string, at uint8, receipt []byte, question, deadline, role, to string, delivery []byte, reloadAt string) {
 		l := append([][]byte(nil), list...)
 		if int(at) < len(l) {

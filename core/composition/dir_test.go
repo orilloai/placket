@@ -2,7 +2,6 @@ package composition_test
 
 import (
 	"bytes"
-	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"os"
@@ -10,6 +9,7 @@ import (
 
 	"github.com/orilloai/placket/core/canonical"
 	"github.com/orilloai/placket/core/composition"
+	ptesting "github.com/orilloai/placket/core/internal/testing"
 	"github.com/orilloai/placket/core/setup"
 	"github.com/orilloai/placket/core/signing"
 )
@@ -37,11 +37,7 @@ func withTerms(t *testing.T, added map[string][]map[string]any) *setup.Accord {
 		t.Fatal(err)
 	}
 	for name, terms := range added {
-		seed := sha256.Sum256([]byte("placket vectors: key " + name))
-		k, err := signing.NewKey(seed[:])
-		if err != nil {
-			t.Fatal(err)
-		}
+		k := ptesting.Key(t, name)
 		found := false
 		for _, x := range set["declarations"].([]any) {
 			decl := x.(map[string]any)
@@ -93,7 +89,7 @@ func TestATermMatchesOnlyInItsDirection(t *testing.T) {
 		// receiver's side.
 		"applier": {term("give", "memo", "proposer")},
 	})
-	p, ap := ref("proposer"), ref("applier")
+	p, ap := ptesting.Key(t, "proposer").Reference(), ptesting.Key(t, "applier").Reference()
 	for name, c := range map[string]composition.Crossing{
 		"a sender with only a get":    {From: ap, To: p, Kind: "note"},
 		"a receiver with only a give": {From: p, To: ap, Kind: "memo"},

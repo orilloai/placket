@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/orilloai/placket/core/canonical"
+	ptesting "github.com/orilloai/placket/core/internal/testing"
 	"github.com/orilloai/placket/core/receipts"
 	"github.com/orilloai/placket/core/signing"
 )
@@ -112,8 +113,8 @@ func digestOf(n byte) string {
 // questionParties are the references the question tests use: the asker, the receiver, the answerer
 // and a stranger.
 func questionParties(t testing.TB) (asker, receiver, answerer, stranger string) {
-	return key(t, "proposer").Reference(), key(t, "applier").Reference(), key(t, "decider").Reference(),
-		key(t, "stranger").Reference()
+	return ptesting.Key(t, "proposer").Reference(), ptesting.Key(t, "applier").Reference(), ptesting.Key(t, "decider").Reference(),
+		ptesting.Key(t, "stranger").Reference()
 }
 
 // predicateOf is a predicate of one kind, pair, verdict and reason, echoing env.
@@ -129,7 +130,7 @@ func predicateOf(kind, from, to, verdict, reason string, env receipts.Envelope) 
 // id; a receipt that breaks either fails chain at its index, and pairs chain apart.
 func TestChainsPerPair(t *testing.T) {
 	t.Parallel()
-	med := key(t, "mediator")
+	med := ptesting.Key(t, "mediator")
 	from, to, other, _ := questionParties(t)
 	link := func(n byte, from, to string, seq int64, prev string) []byte {
 		p := predicateOf(receipts.KindCrossing, from, to, "pass", "ok", receipts.Envelope{Sender: from, Seq: seq, Hash: mhash})
@@ -184,7 +185,7 @@ func TestChainsPerPair(t *testing.T) {
 // verify, each receipt in its place.
 func TestReleaseForm(t *testing.T) {
 	t.Parallel()
-	med := key(t, "mediator")
+	med := ptesting.Key(t, "mediator")
 	asker, receiver, answerer, stranger := questionParties(t)
 	env := receipts.Envelope{Sender: asker, Seq: 1, Hash: mhash}
 	asked := receipts.Subject{Name: "proposal", Digest: digestOf(1)}
@@ -288,7 +289,7 @@ func TestReleaseForm(t *testing.T) {
 // second question, not the first.
 func TestAQuestionKeyAfterItsQuestionClosed(t *testing.T) {
 	t.Parallel()
-	med := key(t, "mediator")
+	med := ptesting.Key(t, "mediator")
 	asker, receiver, answerer, _ := questionParties(t)
 	env := receipts.Envelope{Sender: asker, Seq: 1, Hash: mhash}
 	first := receipts.Subject{Name: "proposal", Digest: digestOf(1)}
@@ -330,7 +331,7 @@ func withPaddingBit(t testing.TB, s string) string {
 // entry fails signature at that receipt's index, though a lenient decoder reads the same bytes.
 func TestBase64InItsOneEncoding(t *testing.T) {
 	t.Parallel()
-	med := key(t, "mediator")
+	med := ptesting.Key(t, "mediator")
 	from, to, _, _ := questionParties(t)
 	// The second receipt's payload must end in padding; the subject's name sets its length.
 	var list [][]byte
@@ -410,7 +411,7 @@ func TestBase64InItsOneEncoding(t *testing.T) {
 // values fails statement-type at its index, the statement written as given.
 func TestStatementShape(t *testing.T) {
 	t.Parallel()
-	med := key(t, "mediator")
+	med := ptesting.Key(t, "mediator")
 	from, to, answerer, other := questionParties(t)
 	prior := journal(t, med, []entry{{receipts.Subject{Name: "note", Digest: digestOf(1)},
 		predicateOf(receipts.KindCrossing, other, to, "pass", "ok", receipts.Envelope{Sender: other, Seq: 1, Hash: mhash})}})
@@ -509,7 +510,7 @@ func TestStatementShape(t *testing.T) {
 // receipt follows an ask: a crossing one is a give of its own, a resolution one the ask's closing.
 func TestVerdictsAndReasons(t *testing.T) {
 	t.Parallel()
-	med := key(t, "mediator")
+	med := ptesting.Key(t, "mediator")
 	asker, receiver, answerer, _ := questionParties(t)
 	env := receipts.Envelope{Sender: asker, Seq: 1, Hash: mhash}
 	asked := receipts.Subject{Name: "proposal", Digest: digestOf(1)}
@@ -589,7 +590,7 @@ func TestVerdictsAndReasons(t *testing.T) {
 // each fail kept with the party and the receipt's index in the party's list.
 func TestReconcileReadsAccordCardAndKept(t *testing.T) {
 	t.Parallel()
-	med := key(t, "mediator")
+	med := ptesting.Key(t, "mediator")
 	from, to, _, _ := questionParties(t)
 	const otherCard = "sha256:4444444444444444444444444444444444444444444444444444444444444444"
 	give := func(seq int64, crd string) entry {
@@ -614,7 +615,7 @@ func TestReconcileReadsAccordCardAndKept(t *testing.T) {
 	// Row 3 reads rows 1 to 5 of a kept receipt, not its chain.
 	otherMediator := func() []byte {
 		e := give(2, card)
-		e.pred.Mediator, e.pred.Seq, e.pred.Prev = key(t, "other-mediator").Reference(), 2, mhash
+		e.pred.Mediator, e.pred.Seq, e.pred.Prev = ptesting.Key(t, "other-mediator").Reference(), 2, mhash
 		r, _ := signed(t, med, statementOf(e.sub, e.pred))
 		return r
 	}
@@ -628,7 +629,7 @@ func TestReconcileReadsAccordCardAndKept(t *testing.T) {
 		}()})[1],
 		"a kept receipt to another party": journal(t, med, []entry{give(1, card), func() entry {
 			e := give(2, card)
-			e.pred.To = key(t, "stranger").Reference()
+			e.pred.To = ptesting.Key(t, "stranger").Reference()
 			return e
 		}()})[1],
 	} {

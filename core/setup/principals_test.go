@@ -4,6 +4,7 @@ import (
 	"slices"
 	"testing"
 
+	ptesting "github.com/orilloai/placket/core/internal/testing"
 	"github.com/orilloai/placket/core/setup"
 )
 
@@ -22,9 +23,9 @@ func TestEachPartyItsOwnPrincipal(t *testing.T) {
 		roles     []string
 		principal string
 	}{
-		key(t, "proposer").Reference(): {[]string{"proposer"}, key(t, "principal").Reference()},
-		key(t, "applier").Reference():  {[]string{"applier"}, key(t, "principal").Reference()},
-		key(t, "decider").Reference():  {[]string{"decider"}, key(t, "other-principal").Reference()},
+		ptesting.Key(t, "proposer").Reference(): {[]string{"proposer"}, ptesting.Key(t, "principal").Reference()},
+		ptesting.Key(t, "applier").Reference():  {[]string{"applier"}, ptesting.Key(t, "principal").Reference()},
+		ptesting.Key(t, "decider").Reference():  {[]string{"decider"}, ptesting.Key(t, "other-principal").Reference()},
 	}
 	if len(a.Members()) != len(want) {
 		t.Fatalf("%d members, want %d", len(a.Members()), len(want))
@@ -41,7 +42,7 @@ func TestEachPartyItsOwnPrincipal(t *testing.T) {
 			t.Fatalf("%s is bound by %s, want %s", m, got, w.principal)
 		}
 	}
-	if got := a.Principal(key(t, "stranger").Reference()); got != "" {
+	if got := a.Principal(ptesting.Key(t, "stranger").Reference()); got != "" {
 		t.Fatalf("a stranger's principal is %q, want none", got)
 	}
 }
@@ -56,7 +57,7 @@ func TestOnePrincipalForEveryParty(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, m := range a.Members() {
-		if got, want := a.Principal(m), key(t, "principal").Reference(); got != want {
+		if got, want := a.Principal(m), ptesting.Key(t, "principal").Reference(); got != want {
 			t.Fatalf("%s is bound by %s, want %s", m, got, want)
 		}
 	}

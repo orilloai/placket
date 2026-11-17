@@ -11,19 +11,10 @@ import (
 	"strings"
 	"testing"
 
+	ptesting "github.com/orilloai/placket/core/internal/testing"
 	"github.com/orilloai/placket/core/receipts"
 	"github.com/orilloai/placket/core/signing"
 )
-
-func key(t testing.TB, name string) signing.Key {
-	t.Helper()
-	seed := sha256.Sum256([]byte("placket vectors: key " + name))
-	k, err := signing.NewKey(seed[:])
-	if err != nil {
-		t.Fatal(err)
-	}
-	return k
-}
 
 const (
 	accord = "sha256:1111111111111111111111111111111111111111111111111111111111111111"
@@ -34,7 +25,7 @@ const (
 // chain builds n crossing receipts of one pair, each chained to the one before.
 func chain(t testing.TB, med signing.Key, n int) ([][]byte, []string) {
 	t.Helper()
-	from, to := key(t, "proposer").Reference(), key(t, "applier").Reference()
+	from, to := ptesting.Key(t, "proposer").Reference(), ptesting.Key(t, "applier").Reference()
 	var out [][]byte
 	var ids []string
 	prev := ""
@@ -60,14 +51,14 @@ func chain(t testing.TB, med signing.Key, n int) ([][]byte, []string) {
 // verified; verifying tells them apart.
 func TestAForgedReceiptShowsAsARealOne(t *testing.T) {
 	t.Parallel()
-	med := key(t, "mediator")
+	med := ptesting.Key(t, "mediator")
 	real, _ := chain(t, med, 1)
 	var r map[string]any
 	if err := json.Unmarshal(real[0], &r); err != nil {
 		t.Fatal(err)
 	}
 	payload, _ := base64.StdEncoding.DecodeString(r["payload"].(string))
-	forger := key(t, "stranger")
+	forger := ptesting.Key(t, "stranger")
 	sig, _ := signing.SignPayload(receipts.PayloadType, payload, forger)
 	r["signatures"].([]any)[0].(map[string]any)["sig"] = base64.StdEncoding.EncodeToString(sig)
 	forged, _ := json.Marshal(r)
@@ -97,7 +88,7 @@ func isCode(err error, c receipts.Code, index int) bool {
 // again, and verifies: signature, at that receipt's index (receipt-6).
 func TestOneByteOfTheSignatureFails(t *testing.T) {
 	t.Parallel()
-	med := key(t, "mediator")
+	med := ptesting.Key(t, "mediator")
 	list, _ := chain(t, med, 3)
 	for i := range list {
 		for _, at := range []int{0, 31, 32, 63} {
@@ -124,8 +115,8 @@ func TestOneByteOfTheSignatureFails(t *testing.T) {
 // receipt-10).
 func TestBuildDependsOnEachInput(t *testing.T) {
 	t.Parallel()
-	med := key(t, "mediator")
-	from := key(t, "proposer").Reference()
+	med := ptesting.Key(t, "mediator")
+	from := ptesting.Key(t, "proposer").Reference()
 	sub := receipts.Subject{Name: "note", Digest: strings.Repeat("ab", 32)}
 	pred := receipts.Predicate{
 		Accord: accord, Card: card, Kind: receipts.KindCrossing, From: from, To: from, Seq: 1,
@@ -147,7 +138,9 @@ func TestBuildDependsOnEachInput(t *testing.T) {
 	for name, c := range map[string]func() ([]byte, receipts.Verified, error){
 		"time":    func() ([]byte, receipts.Verified, error) { return receipts.Build(sub, at, med) },
 		"subject": func() ([]byte, receipts.Verified, error) { return receipts.Build(salted, pred, med) },
-		"key":     func() ([]byte, receipts.Verified, error) { return receipts.Build(sub, pred, key(t, "other-mediator")) },
+		"key": func() ([]byte, receipts.Verified, error) {
+			return receipts.Build(sub, pred, ptesting.Key(t, "other-mediator"))
+		},
 	} {
 		r, i, err := c()
 		if err != nil || bytes.Equal(r, base) || (name != "key" && i.Statement().ID == id) {
@@ -160,8 +153,8 @@ func TestBuildDependsOnEachInput(t *testing.T) {
 // link, and gets no receipt.
 func TestBuildRefusesWhatAVerifierRefuses(t *testing.T) {
 	t.Parallel()
-	med := key(t, "mediator")
-	from := key(t, "proposer").Reference()
+	med := ptesting.Key(t, "mediator")
+	from := ptesting.Key(t, "proposer").Reference()
 	good := receipts.Predicate{
 		Accord: accord, Card: card, Kind: receipts.KindCrossing, From: from, To: from, Seq: 1,
 		At: "2026-11-12T09:00:00Z", Envelope: receipts.Envelope{Sender: from, Seq: 1, Hash: mhash}, Verdict: "pass", Reason: "ok",
@@ -171,7 +164,7 @@ func TestBuildRefusesWhatAVerifierRefuses(t *testing.T) {
 		"block with ok":       func(p *receipts.Predicate) { p.Verdict = "block" },
 		"a resolution reason": func(p *receipts.Predicate) { p.Verdict, p.Reason = "block", "declined" },
 		"a leap second":       func(p *receipts.Predicate) { p.At = "2026-11-12T23:59:60Z" },
-		"another sender":      func(p *receipts.Predicate) { p.Envelope.Sender = key(t, "applier").Reference() },
+		"another sender":      func(p *receipts.Predicate) { p.Envelope.Sender = ptesting.Key(t, "applier").Reference() },
 		"a prev at seq 1":     func(p *receipts.Predicate) { p.Prev = mhash },
 		"no prev at seq 2":    func(p *receipts.Predicate) { p.Seq = 2 },
 		"seq 0":               func(p *receipts.Predicate) { p.Seq = 0 },
@@ -191,13 +184,13 @@ func TestBuildRefusesWhatAVerifierRefuses(t *testing.T) {
 // the index and, for kept, the party's reference (error-text-no-content).
 func TestErrorTextQuotesNoInput(t *testing.T) {
 	t.Parallel()
-	med := key(t, "mediator")
+	med := ptesting.Key(t, "mediator")
 	const secret = "s3cr3t-body-salt-seed-key-payload"
 	list, _ := chain(t, med, 2)
 	withSecret := func(r []byte) []byte {
 		return bytes.Replace(r, []byte(`"payloadType":`), []byte(`"`+secret+`":1,"payloadType":`), 1)
 	}
-	applier := key(t, "applier").Reference()
+	applier := ptesting.Key(t, "applier").Reference()
 	for _, c := range []struct {
 		err  error
 		text string
@@ -207,7 +200,7 @@ func TestErrorTextQuotesNoInput(t *testing.T) {
 		{verifyErr(receipts.Verify(med.Reference(), [][]byte{[]byte(`{"payloadType":"` + secret + `"}`)})), "receipts: payload-type at index 0"},
 		{verifyErr(receipts.Verify(med.Reference(), [][]byte{list[0], withSecret(list[1])})), "receipts: signature at index 1"},
 		{verifyErr(receipts.Verify(med.Reference(), [][]byte{list[1]})), "receipts: chain at index 0"},
-		{verifyErr(receipts.Verify(key(t, "proposer").Reference(), list)), "receipts: signature at index 0"},
+		{verifyErr(receipts.Verify(ptesting.Key(t, "proposer").Reference(), list)), "receipts: signature at index 0"},
 		{reconcileErr(receipts.Reconcile(med.Reference(), mhash, card, list, nil)), "receipts: presented at index 0"},
 		{reconcileErr(receipts.Reconcile(med.Reference(), accord, card, list[:1],
 			[]receipts.Kept{{Actor: applier, Delivered: [][]byte{withSecret(list[1])}}})), "receipts: kept at index 0 of " + applier},
@@ -229,7 +222,7 @@ func reconcileErr(_ receipts.Report, err error) error { return err }
 // TestVerifyYieldsTheStatements verifies a chain and reads back what was built.
 func TestVerifyYieldsTheStatements(t *testing.T) {
 	t.Parallel()
-	med := key(t, "mediator")
+	med := ptesting.Key(t, "mediator")
 	list, ids := chain(t, med, 3)
 	verified, err := receipts.Verify(med.Reference(), list)
 	if err != nil || len(verified) != 3 {
@@ -253,7 +246,7 @@ func TestVerifyYieldsTheStatements(t *testing.T) {
 // FuzzVerify verifies any receipt after a valid one, under any mediator reference, and reads it
 // without verifying. It never panics.
 func FuzzVerify(f *testing.F) {
-	med := key(f, "mediator")
+	med := ptesting.Key(f, "mediator")
 	list, _ := chain(f, med, 2)
 	f.Add(list[1], med.Reference())
 	f.Add([]byte(`{"payloadType":"application/vnd.in-toto+json","payload":"e30=","signatures":[]}`), med.Reference())
@@ -272,8 +265,8 @@ func FuzzVerify(f *testing.F) {
 
 // FuzzBuild builds a receipt of any strings. It never panics, and what it builds verifies.
 func FuzzBuild(f *testing.F) {
-	med := key(f, "mediator")
-	from := key(f, "proposer").Reference()
+	med := ptesting.Key(f, "mediator")
+	from := ptesting.Key(f, "proposer").Reference()
 	f.Add("note", strings.Repeat("ab", 32), from, "crossing", "pass", "ok", "2026-11-12T09:00:00Z")
 	f.Add("answer", "", "", "resolution", "escalate", "maybe", "")
 	f.Fuzz(func(t *testing.T, name, digest, party, kind, verdict, reason, at string) {
@@ -294,8 +287,8 @@ func FuzzBuild(f *testing.F) {
 // for one receipt, as Verified, and the statement a caller reads is a copy it cannot write back.
 func TestVerifiedIsWhatWasChecked(t *testing.T) {
 	t.Parallel()
-	med := key(t, "mediator")
-	from := key(t, "proposer").Reference()
+	med := ptesting.Key(t, "mediator")
+	from := ptesting.Key(t, "proposer").Reference()
 	r, built, err := receipts.Build(receipts.Subject{Name: "note", Digest: strings.Repeat("ab", 32)}, receipts.Predicate{
 		Accord: accord, Card: card, Kind: receipts.KindCrossing, From: from, To: from, Seq: 1,
 		At: "2026-11-12T09:00:00Z", Envelope: receipts.Envelope{Sender: from, Seq: 1, Hash: mhash}, Verdict: "pass", Reason: "ok",

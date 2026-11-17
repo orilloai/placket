@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/orilloai/placket/core/canonical"
+	ptesting "github.com/orilloai/placket/core/internal/testing"
 	"github.com/orilloai/placket/core/receipts"
 )
 
@@ -17,9 +18,9 @@ import (
 // 9, receipt-7).
 func TestReconcileReadsPartiesInReferenceOrder(t *testing.T) {
 	t.Parallel()
-	med := key(t, "mediator")
-	sender := key(t, "proposer").Reference()
-	parties := []string{key(t, "applier").Reference(), key(t, "decider").Reference(), key(t, "stranger").Reference()}
+	med := ptesting.Key(t, "mediator")
+	sender := ptesting.Key(t, "proposer").Reference()
+	parties := []string{ptesting.Key(t, "applier").Reference(), ptesting.Key(t, "decider").Reference(), ptesting.Key(t, "stranger").Reference()}
 	sort.Slice(parties, func(i, j int) bool { return canonical.Less(parties[i], parties[j]) })
 	first, second := parties[0], parties[1]
 	give := func(seq int64, to string) entry {

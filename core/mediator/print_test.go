@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	ptesting "github.com/orilloai/placket/core/internal/testing"
 	"github.com/orilloai/placket/core/mediator"
 )
 
@@ -18,7 +19,7 @@ import (
 func TestMediatorNeverPrints(t *testing.T) {
 	t.Parallel()
 	m := found(t)
-	p, ap := key(t, "proposer"), key(t, "applier")
+	p, ap := ptesting.Key(t, "proposer"), ptesting.Key(t, "applier")
 	const body = "the body of a queued part"
 	note := message(t, m.Accord(), "n", ap.Reference(), "note", body, nil)
 	if _, err := m.Give(p.Reference(), note, envelope(t, 1, note, p), "2026-11-12T09:00:00Z"); err != nil {

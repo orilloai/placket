@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"testing"
 
+	ptesting "github.com/orilloai/placket/core/internal/testing"
 	"github.com/orilloai/placket/core/mediator"
 )
 
@@ -16,7 +17,7 @@ import (
 // same bytes (inputs-as-parameters).
 func TestGiveDependsOnEachInput(t *testing.T) {
 	t.Parallel()
-	p, ap := key(t, "proposer"), key(t, "applier")
+	p, ap := ptesting.Key(t, "proposer"), ptesting.Key(t, "applier")
 	give := func(at, salt string) []byte {
 		t.Helper()
 		m := found(t)
@@ -54,7 +55,7 @@ func TestResolveDependsOnEachInput(t *testing.T) {
 		t.Helper()
 		m := found(t)
 		q := ask(t, m, 1, "p-1", "2026-11-12T09:00:00Z")
-		outs, err := m.Resolve(key(t, "decider").Reference(), q,
+		outs, err := m.Resolve(ptesting.Key(t, "decider").Reference(), q,
 			mediator.Resolution{Action: mediator.Accepted, Answer: "accepted", Salt: salt, Release: true}, at)
 		if err != nil || len(outs) != 2 {
 			t.Fatalf("the answer: %d outcomes, %v", len(outs), err)

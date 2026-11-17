@@ -71,9 +71,11 @@ const (
 // changes nothing (crossing-7). It carries nothing of the input.
 type Rejection struct{ Code RejectionCode }
 
+// Error returns the package and the code, and nothing of the input.
 func (r *Rejection) Error() string { return "mediator: rejected: " + string(r.Code) }
 
-// ErrorCode says what the caller's program did wrong, or that the mediator failed.
+// ErrorCode says what the caller's program did wrong, or that the mediator failed
+// (rejection-vs-error, record 0006).
 type ErrorCode string
 
 // The codes of Error. None is a code of the protocol (record 0006, record 0008).
@@ -109,6 +111,7 @@ type Error struct {
 	Err   error
 }
 
+// Error returns the package, the code and the index, and nothing of the input.
 func (e *Error) Error() string {
 	if e.Index < 0 {
 		return "mediator: " + string(e.Code)
@@ -126,7 +129,8 @@ func failure(code ErrorCode) *Error { return &Error{Code: code, Index: -1} }
 // no set is wrong for that, so it is not a founding code (setup-contract-7).
 var ErrOtherMediator = errors.New("mediator: the set names another mediator")
 
-// An Outcome is a receipt the mediator wrote: its verdict, reason, id and bytes.
+// An Outcome is a receipt the mediator wrote: its verdict, reason, id and bytes (receipt-1,
+// record 0006).
 type Outcome struct {
 	Verdict   string
 	Reason    string
@@ -219,7 +223,8 @@ func (m *Mediator) Card() string {
 	return m.accord.Card()
 }
 
-// Receipts returns every receipt the mediator wrote, in order, as copies.
+// Receipts returns every receipt the mediator wrote, in order, as copies (results-are-copies,
+// record 0006).
 func (m *Mediator) Receipts() [][]byte {
 	out := make([][]byte, len(m.receipts))
 	for i, r := range m.receipts {

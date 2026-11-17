@@ -30,7 +30,7 @@ const (
 // ReferencePrefix starts every actor reference (signing-1).
 const ReferencePrefix = "ed25519:"
 
-// Code says how a caller misused this package. None is a code of the protocol.
+// Code says how a caller misused this package. None is a code of the protocol (record 0005).
 type Code string
 
 // The codes of Error.
@@ -44,12 +44,13 @@ const (
 	CodeObject Code = "object"
 )
 
-// Error is a misuse of this package by its caller.
+// Error is a misuse of this package by its caller (record 0005).
 type Error struct{ Code Code }
 
+// Error returns the package and the code, and nothing of the input.
 func (e *Error) Error() string { return "signing: " + string(e.Code) }
 
-// A Key is an actor's private key (signing-1, signing-2; docs/adr/0005-the-core-packages.md). It
+// A Key is an actor's private key (signing-1, signing-2, record 0005). It
 // prints as a fixed text under every format verb, so no key reaches a log by accident. It holds the
 // key behind a function: fmt does not call Format on a value inside another struct's unexported
 // field, and prints a function there as an address under every verb. A pointer to the key would not
@@ -66,7 +67,7 @@ func (k Key) bytes() ed25519.PrivateKey {
 	return k.private()
 }
 
-// NewKey makes the key whose Ed25519 seed is seed, 32 bytes (RFC 8032).
+// NewKey makes the key whose Ed25519 seed is seed, 32 bytes (RFC 8032; signing-1, record 0005).
 func NewKey(seed []byte) (Key, error) {
 	if len(seed) != ed25519.SeedSize {
 		return Key{}, &Error{Code: CodeSeed}
@@ -84,13 +85,13 @@ func (k Key) Reference() string {
 	return ReferencePrefix + hex.EncodeToString(private.Public().(ed25519.PublicKey))
 }
 
-// Format prints the Key as a fixed text, whatever the verb.
+// Format prints the Key as a fixed text, whatever the verb (secrets-never-print, record 0005).
 func (k Key) Format(f fmt.State, _ rune) { _, _ = f.Write([]byte("signing.Key")) }
 
-// GoString prints the Key as a fixed text.
+// GoString prints the Key as a fixed text (secrets-never-print, record 0005).
 func (k Key) GoString() string { return "signing.Key" }
 
-// String prints the Key as a fixed text.
+// String prints the Key as a fixed text (secrets-never-print, record 0005).
 func (k Key) String() string { return "signing.Key" }
 
 // ParseReference reads ref as an actor reference: ed25519: and 64 lowercase hex digits (signing-1).

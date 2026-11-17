@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/orilloai/placket/core/canonical"
+	ptesting "github.com/orilloai/placket/core/internal/testing"
 	"github.com/orilloai/placket/core/mediator"
 	"github.com/orilloai/placket/core/signing"
 )
@@ -58,7 +59,7 @@ func signed(t testing.TB, o map[string]any, typeURI string, k signing.Key) map[s
 // binding names the typed hash of that policy (setup-contract-2).
 func buildSet(t testing.TB, roles []string, parties ...party) []byte {
 	t.Helper()
-	med, op, pr := key(t, "mediator"), key(t, "operator"), key(t, "principal")
+	med, op, pr := ptesting.Key(t, "mediator"), ptesting.Key(t, "operator"), ptesting.Key(t, "principal")
 	grants := append([]string{}, roles...)
 	for _, p := range parties {
 		for _, r := range p.roles {
@@ -80,7 +81,7 @@ func buildSet(t testing.TB, roles []string, parties ...party) []byte {
 	}
 	var entries []entry
 	for _, p := range parties {
-		k := key(t, p.name)
+		k := ptesting.Key(t, p.name)
 		terms := make([]any, len(p.terms))
 		for i, x := range p.terms {
 			terms[i] = x
@@ -142,7 +143,7 @@ var askAndLogRoles = []string{"proposer", "applier", "decider"}
 // foundSet founds a set a test built, at the founding time of the vectors.
 func foundSet(t testing.TB, s []byte) *mediator.Mediator {
 	t.Helper()
-	m, err := mediator.Found(s, key(t, "mediator"), "2026-11-12T08:00:00Z")
+	m, err := mediator.Found(s, ptesting.Key(t, "mediator"), "2026-11-12T08:00:00Z")
 	if err != nil {
 		t.Fatalf("the test's set does not found: %v", err)
 	}

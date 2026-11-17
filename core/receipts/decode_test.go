@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	ptesting "github.com/orilloai/placket/core/internal/testing"
 	"github.com/orilloai/placket/core/receipts"
 )
 
@@ -16,7 +17,7 @@ import (
 // included, reaches the lines Show writes.
 func TestDecodeRefusesAnUnplacedPredicate(t *testing.T) {
 	t.Parallel()
-	med := key(t, "mediator")
+	med := ptesting.Key(t, "mediator")
 	from, to, _, _ := questionParties(t)
 	statement := func(seq int64, prev string) map[string]any {
 		p := predicateOf(receipts.KindCrossing, from, to, "pass", "ok", receipts.Envelope{Sender: from, Seq: 1, Hash: mhash})

@@ -5,6 +5,8 @@ import (
 	"runtime"
 	"testing"
 	"weak"
+
+	ptesting "github.com/orilloai/placket/core/internal/testing"
 )
 
 // TestAFetchedDeliveryIsNotKept gives three notes to the applier and fetches them one by one: once
@@ -12,7 +14,7 @@ import (
 // included, while the deliveries after it stay queued in order (crossing-3).
 func TestAFetchedDeliveryIsNotKept(t *testing.T) {
 	m := found(t)
-	p, ap := key(t, "proposer"), key(t, "applier")
+	p, ap := ptesting.Key(t, "proposer"), ptesting.Key(t, "applier")
 	ids := []string{"n-1", "n-2", "n-3"}
 	for i, id := range ids {
 		msg := message(t, m.Accord(), id, ap.Reference(), "note", "The note "+id+".", nil)

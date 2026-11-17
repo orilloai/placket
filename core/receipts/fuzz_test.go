@@ -8,13 +8,14 @@ import (
 	"testing"
 
 	"github.com/orilloai/placket/core/canonical"
+	ptesting "github.com/orilloai/placket/core/internal/testing"
 	"github.com/orilloai/placket/core/receipts"
 )
 
 // receiptSeeds are receipt bytes of each form a reader meets: a real receipt, one edited, one of
 // another statement type, and bytes that are no receipt.
 func receiptSeeds(f *testing.F) [][]byte {
-	list, _ := chain(f, key(f, "mediator"), 2)
+	list, _ := chain(f, ptesting.Key(f, "mediator"), 2)
 	return [][]byte{
 		list[0], list[1],
 		[]byte(`{"payloadType":"application/vnd.in-toto+json","payload":"e30=","signatures":[]}`),
@@ -54,9 +55,9 @@ func FuzzDecode(f *testing.F) {
 // envelope, under any mediator, Accord and card. It never panics; a refusal is an Error, and a report
 // names only parties that kept a record.
 func FuzzReconcile(f *testing.F) {
-	med := key(f, "mediator")
+	med := ptesting.Key(f, "mediator")
 	list, _ := chain(f, med, 2)
-	party := key(f, "applier").Reference()
+	party := ptesting.Key(f, "applier").Reference()
 	f.Add(med.Reference(), accord, card, list[1], list[1], party, int64(2), mhash)
 	f.Add(med.Reference(), accord, card, list[1], list[0], party, int64(1), mhash)
 	f.Add("mediator", "", "", []byte(`{}`), []byte("\xff"), "", int64(-1), "")
