@@ -58,7 +58,8 @@ It ends `release-check: ok`, or `release-check: refused: <file>: <reason>`. It c
 
    ```sh
    gh attestation verify placket_0.1.0_linux_amd64.tar.gz --repo orilloai/placket \
-     --signer-workflow orilloai/placket/.github/workflows/release.yml \
+     --cert-identity https://github.com/orilloai/placket/.github/workflows/release.yml@refs/heads/main \
+     --cert-oidc-issuer https://token.actions.githubusercontent.com \
      --source-ref refs/heads/main --deny-self-hosted-runners
    ```
 
@@ -66,17 +67,18 @@ It ends `release-check: ok`, or `release-check: refused: <file>: <reason>`. It c
 
 ### Rebuild
 
-A rebuild needs a git clone at the tag, since Go reads the version from git; a source tarball has no git information and builds `(devel)`. It needs the Go that `go.mod`'s `toolchain` line names, which the `go` command fetches by itself unless `GOTOOLCHAIN` says otherwise. Build to a directory outside the clone, so the tree stays clean and Go stamps no `+dirty`:
+A rebuild needs a git clone at the tag, since Go reads the version from git; a source tarball has no git information and builds `(devel)`. It needs exactly the Go that `go.mod`'s `toolchain` line names. That line is only a minimum: a newer Go installed locally would build with itself and give other bytes. So the build sets `GOTOOLCHAIN` to that line's version, and the `go` command fetches that Go when it is not the one installed. Build to a directory outside the clone, so the tree stays clean and Go stamps no `+dirty`:
 
 ```sh
 git clone --branch v0.1.0 https://github.com/orilloai/placket.git
 cd placket
 OUT=$(mktemp -d)
-CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -ldflags="-s -w" -o "$OUT/placket" ./cmd/placket
+TOOLCHAIN=$(sed -n 's/^toolchain //p' go.mod)
+GOTOOLCHAIN=$TOOLCHAIN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -ldflags="-s -w" -o "$OUT/placket" ./cmd/placket
 tar -xzOf ../placket-v0.1.0/placket_0.1.0_linux_amd64.tar.gz placket | cmp - "$OUT/placket"
 ```
 
-`cmp` prints nothing when the two are the same bytes. Set `GOOS` and `GOARCH` for the archive to compare against: `linux` or `darwin`, `amd64` or `arm64`. The archive itself is rebuilt by the release tooling at the tag, `goreleaser release --snapshot --clean --skip=sign` with the version of GoReleaser the release workflow pins: every time inside an archive is the commit's. A snapshot's archives are named `placket_<version>-SNAPSHOT-<commit>_<os>_<arch>.tar.gz`, not `placket_<version>_<os>_<arch>.tar.gz`, so compare the hashes platform by platform, not the lines of the two `checksums.txt`:
+`cmp` prints nothing when the two are the same bytes. Set `GOOS` and `GOARCH` for the archive to compare against: `linux` or `darwin`, `amd64` or `arm64`. The archive itself is rebuilt by the release tooling at the tag, `GOTOOLCHAIN=$TOOLCHAIN goreleaser release --snapshot --clean --skip=sign`, with the version of GoReleaser the release workflow pins: every time inside an archive is the commit's. A snapshot's archives are named `placket_<version>-SNAPSHOT-<commit>_<os>_<arch>.tar.gz`, not `placket_<version>_<os>_<arch>.tar.gz`, so compare the hashes platform by platform, not the lines of the two `checksums.txt`:
 
 ```sh
 for p in linux_amd64 linux_arm64 darwin_amd64 darwin_arm64; do
@@ -103,6 +105,8 @@ Approving it is the decision to release, the register's change included. Once it
 5. The draft is published.
 
 A run that failed is re-run from the Actions tab. It resumes at step 3: the tag is there and the release is a draft or missing, so it replaces the draft and carries on. The archives are reproducible, so signing again changes nothing they hold.
+
+A push that release-detect refuses publishes nothing, and merging a fix to its section's date later does not help: that push adds no new section, so it is not a release push. To release the version after a refusal, for a date more than a day from the merge or a repository that was private, take it out and put it back: a pull request that moves the section's entries back under `Unreleased`, then a new release PR dated the day it merges. Or release the next version instead.
 
 A `v*` tag pushed by hand starts nothing, and since no `v*` tag can be moved or deleted, its version number is used up: a release PR for it is refused as "a tag at another commit".
 

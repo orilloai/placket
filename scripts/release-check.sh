@@ -13,8 +13,8 @@
 #               checksums.txt, as signed by placket's release workflow on main
 #   checksums   every line of checksums.txt names a file of DIR whose SHA-256 it is, and every archive
 #               and SBOM in DIR has its line
-#   provenance  (--release) gh attestation verify finds each archive's build provenance from that
-#               workflow on main, built on GitHub's own runners
+#   provenance  (--release) gh attestation verify finds each archive's build provenance, signed by
+#               exactly the identity the signature has, built on GitHub's own runners
 #   archives    four archives, linux and darwin on amd64 and arm64, each holding exactly placket,
 #               LICENSE and README.md
 #   version     the binary for this machine's platform runs `placket version`, and its version is not
@@ -88,7 +88,8 @@ say "checksums: ok, $lines files"
 if [ "$mode" = release ]; then
 	for f in "$dir"/*.tar.gz; do
 		[ -e "$f" ] || continue
-		gh attestation verify "$f" --repo orilloai/placket --signer-workflow "$workflow" \
+		gh attestation verify "$f" --repo orilloai/placket \
+			--cert-identity "$identity" --cert-oidc-issuer "$issuer" \
 			--source-ref refs/heads/main --deny-self-hosted-runners >"$tmp/log" 2>&1 ||
 			refuse "$(basename "$f")" provenance
 		: >"$tmp/log"

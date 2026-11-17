@@ -110,6 +110,21 @@ edited=$(commit 'An edit under a released section')
 expect "a push that edits a released section is not a release push" 0 "not a release push" \
 	--before "$next" --after "$edited" --today 2026-12-08 --release-state none
 
+# A second release, above the first: its notes stop at the first release's heading.
+release_section 0.2.0 2026-12-09
+second=$(commit 'Release 0.2.0')
+rm -f "$notes"
+if expect "a second release above the first is a release" 0 "release 0.2.0" \
+	--before "$edited" --after "$second" --today 2026-12-09 --release-state none --notes "$notes"; then
+	if ! cmp -s "$notes" "$tmp/want-notes"; then
+		echo "FAIL the second release's notes are not its own section's body"
+		diff "$tmp/want-notes" "$notes" | sed 's/^/    | /'
+		failed=1
+	else
+		echo "ok   the second release's notes stop at the first release's heading"
+	fi
+fi
+
 # D4: the refusals.
 fresh
 before=$(g rev-parse HEAD)

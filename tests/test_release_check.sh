@@ -107,6 +107,20 @@ grep -v 'linux_arm64.tar.gz$' "$dir/checksums.txt" >"$tmp/checksums"
 mv "$tmp/checksums" "$dir/checksums.txt"
 expect "three archives are refused" 1 "release-check: refused: $dir: 3 archives, not 4" "$dir"
 
+# Four archives, two of them for linux_amd64 and none for darwin_arm64: the first platform with
+# more than one archive is refused, before the one with none.
+build "$dir" "$version"
+mv "$dir/placket_0.0.0-SNAPSHOT-${head}_darwin_arm64.tar.gz" "$dir/placket_0.0.0-SNAPSHOT-${head}-copy_linux_amd64.tar.gz"
+mv "$dir/placket_0.0.0-SNAPSHOT-${head}_darwin_arm64.tar.gz.sbom.json" "$dir/placket_0.0.0-SNAPSHOT-${head}-copy_linux_amd64.tar.gz.sbom.json"
+sums "$dir"
+expect "two archives for one platform are refused" 1 "release-check: refused: $dir: no one archive for linux_amd64" "$dir"
+
+# checksums.txt written in binary mode, each name after a '*'.
+build "$dir" "$version"
+sed 's/  / */' "$dir/checksums.txt" >"$tmp/checksums"
+mv "$tmp/checksums" "$dir/checksums.txt"
+expect "checksums.txt in binary mode passes" 0 "release-check: ok" "$dir"
+
 # A dirty build of HEAD, and a build of another commit.
 build "$dir" "$version+dirty"
 expect "a dirty build is refused" 1 "release-check: refused: placket: dirty build" "$dir"
@@ -157,7 +171,8 @@ if expect_release "a release whose signature, provenance and version hold passes
 			"--certificate-oidc-issuer https://token.actions.githubusercontent.com $dir/checksums.txt"
 		for p in darwin_amd64 darwin_arm64 linux_amd64 linux_arm64; do
 			echo "gh attestation verify $dir/placket_0.1.0_$p.tar.gz --repo orilloai/placket" \
-				"--signer-workflow orilloai/placket/.github/workflows/release.yml" \
+				"--cert-identity https://github.com/orilloai/placket/.github/workflows/release.yml@refs/heads/main" \
+				"--cert-oidc-issuer https://token.actions.githubusercontent.com" \
 				"--source-ref refs/heads/main --deny-self-hosted-runners"
 		done
 	} >"$tmp/want-calls"
