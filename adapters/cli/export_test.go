@@ -1,10 +1,14 @@
 package cli
 
 import (
+	"bytes"
 	"flag"
 	"io"
+	"runtime/debug"
 	"sort"
 	"strings"
+
+	"github.com/orilloai/placket/core/composition"
 )
 
 // Commands are the names of the commands, sorted.
@@ -29,4 +33,17 @@ func Flags(words ...string) []string {
 	var names []string
 	r.fs.VisitAll(func(f *flag.Flag) { names = append(names, f.Name) })
 	return names
+}
+
+// Version is what version prints on standard output for the build info bi, which may be nil, with
+// or without --json.
+func Version(bi *debug.BuildInfo, asJSON bool) string {
+	var out bytes.Buffer
+	r := &run{env: Env{Terminal: isTerminal}, stdin: strings.NewReader(""), stdout: &out, stderr: io.Discard, realOut: &out, rep: newReport()}
+	r.setJSON(asJSON)
+	r.version(bi, composition.KernelVersion, composition.KernelHash())
+	if asJSON {
+		r.printJSON(ExitOK)
+	}
+	return out.String()
 }
