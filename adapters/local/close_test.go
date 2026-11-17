@@ -27,7 +27,7 @@ func closeRun(t *testing.T, w *world) ([]local.Event, error) {
 	return events, err
 }
 
-// TestWindowCloseLocked is fork 1's guard (U23): a close of a journal a running window holds is
+// TestWindowCloseLocked is the guard of a running window (U23): a close of a journal a running window holds is
 // journal-locked and writes nothing; once the window stops, the close writes the closings and the
 // close in one write, emits closed, and returns without making a socket.
 func TestWindowCloseLocked(t *testing.T) {
