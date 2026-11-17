@@ -135,3 +135,79 @@ func TestAQuestionsReplyLeavesOutWhatItsSizeCannotHold(t *testing.T) {
 		}
 	}
 }
+
+// pathOfLength returns a path of exactly n bytes whose last element is base, in a new directory
+// under /tmp, or the test's temporary directory where /tmp cannot be used, removed after the test.
+func pathOfLength(t *testing.T, n int, base string) string {
+	t.Helper()
+	root, err := os.MkdirTemp("/tmp", "pl")
+	if err != nil {
+		root = t.TempDir()
+	} else {
+		t.Cleanup(func() { _ = os.RemoveAll(root) })
+	}
+	pad := n - len(root) - len("/") - len("/") - len(base)
+	if pad < 1 {
+		t.Skipf("the temporary directory %s leaves no room for a path of %d bytes", root, n)
+	}
+	dir := filepath.Join(root, strings.Repeat("d", pad))
+	if err := os.Mkdir(dir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(dir, base)
+	if len(path) != n {
+		t.Fatalf("a path of %d bytes, not %d", len(path), n)
+	}
+	return path
+}
+
+// TestASocketPathAtTheLimitIsBound listens at paths of exactly MaxSocketPath bytes, which CheckSocket
+// takes, with last elements of 4 to 40 bytes: each is bound, at a path no longer than its own, and
+// answers at its path.
+func TestASocketPathAtTheLimitIsBound(t *testing.T) {
+	t.Parallel()
+	for _, base := range []string{"w.so", "w.sock", "placket.sock", strings.Repeat("s", 29), strings.Repeat("s", 40)} {
+		t.Run(base, func(t *testing.T) {
+			t.Parallel()
+			path := pathOfLength(t, MaxSocketPath, base)
+			if err := CheckSocket(path); err != nil {
+				t.Fatalf("CheckSocket: %v", err)
+			}
+			var seen string
+			l, err := listen(path, func(bound string) { seen = bound })
+			if err != nil {
+				t.Fatalf("listen at %d bytes: %v", len(path), err)
+			}
+			defer l.Close()
+			if want := min(len(path), len(path)-len(base)+29); len(seen) != want {
+				t.Fatalf("bound at %d bytes, not %d", len(seen), want)
+			}
+			go func() {
+				if c, err := l.Accept(); err == nil {
+					_ = c.Close()
+				}
+			}()
+			c, err := net.Dial("unix", path)
+			if err != nil {
+				t.Fatalf("dial the path: %v", err)
+			}
+			_ = c.Close()
+		})
+	}
+}
+
+// TestABoundPathOverTheLimitIsSocketPath listens at a path of MaxSocketPath bytes whose last element
+// has 2 bytes, so the path it would be bound at is a byte over the limit: listen is CodeSocketPath,
+// never CodeSocket, and leaves nothing beside the path.
+func TestABoundPathOverTheLimitIsSocketPath(t *testing.T) {
+	t.Parallel()
+	path := pathOfLength(t, MaxSocketPath, "ws")
+	_, err := listen(path, func(string) { t.Error("bound") })
+	var le *Error
+	if !errors.As(err, &le) || le.Code != CodeSocketPath {
+		t.Fatalf("listen: %v", err)
+	}
+	if left, err := os.ReadDir(filepath.Dir(path)); err != nil || len(left) != 0 {
+		t.Fatalf("left beside the path: %v, %v", left, err)
+	}
+}

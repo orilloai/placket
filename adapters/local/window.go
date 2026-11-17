@@ -3,6 +3,7 @@ package local
 import (
 	"bufio"
 	"context"
+	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -95,7 +96,8 @@ type request struct {
 }
 
 // Run runs a window until ctx is done, then returns nil having written nothing more. A socket path
-// too long is CodeSocketPath before anything else is done. Otherwise it opens the journal and takes
+// too long is CodeSocketPath before anything else is done; so is, when it listens, a path within 3
+// bytes of MaxSocketPath whose last element has fewer than 4 bytes (privateBound). Otherwise it opens the journal and takes
 // its lock; founds the Accord at the current second on an empty journal or reloads the journal's, journaling the closings of what a stop left open; removes a stale socket
 // file; and only then listens. Every call is handled by one goroutine, which owns the mediator. A
 // journal write that fails ends Run with that error, and the call it was for gets no reply
@@ -226,6 +228,10 @@ func receiptsOf(outs []mediator.Outcome) [][]byte {
 // to its owner, and so is a path that holds anything but a socket. The listener never removes the
 // file: a window stopped in any way leaves it, and the next start removes it. beforeLink, when not
 // nil, is called with the bound socket's path before the socket is linked to path.
+//
+// The socket is bound at a path no longer than path itself whenever path's last element has at least
+// 4 bytes (privateBound), so every such path CheckSocket takes can be bound. When the bound path is
+// longer than MaxSocketPath, listen is CodeSocketPath.
 func listen(path string, beforeLink func(bound string)) (*net.UnixListener, error) {
 	if fi, err := os.Lstat(path); err == nil {
 		if fi.Mode()&fs.ModeSocket == 0 {
@@ -245,13 +251,13 @@ func listen(path string, beforeLink func(bound string)) (*net.UnixListener, erro
 	// The socket is bound in a directory of mode 0700 that this window has just made beside the path,
 	// set to mode 0600, and only then linked to the path. So no other user can connect to it before
 	// its mode is set, on any system, and no process-wide umask is changed. A link, unlike a rename,
-	// never replaces a socket another window bound at the path meanwhile.
-	dir, err := os.MkdirTemp(filepath.Dir(path), ".w-")
+	// never replaces a socket another window bound at the path meanwhile. A window killed before it
+	// removes the directory leaves it beside the path, holding a socket nothing answers on.
+	dir, bound, err := privateBound(path)
 	if err != nil {
-		return nil, &Error{Code: CodeSocket}
+		return nil, err
 	}
 	defer os.RemoveAll(dir)
-	bound := filepath.Join(dir, "s")
 	l, err := net.ListenUnix("unix", &net.UnixAddr{Name: bound, Net: "unix"})
 	if err != nil {
 		return nil, &Error{Code: CodeSocket}
@@ -269,6 +275,30 @@ func listen(path string, beforeLink func(bound string)) (*net.UnixListener, erro
 		return nil, &Error{Code: CodeSocket}
 	}
 	return l, nil
+}
+
+// privateBound makes a directory of mode 0700 beside path and returns it with the path to bind the
+// socket at inside it, <dir>/.<random>/s. The random part has 3 bytes fewer than path's last
+// element, at least 1 and at most 26, so the bound path is exactly as long as path when that element
+// has 4 to 29 bytes, shorter when it has more, and longer by at most 3 bytes when it has fewer. A
+// bound path longer than MaxSocketPath is CodeSocketPath, before anything is made. A name already
+// taken is tried again with another.
+func privateBound(path string) (dir, bound string, err error) {
+	n := min(max(len(filepath.Base(path))-3, 1), 26)
+	for range 10000 {
+		dir = filepath.Join(filepath.Dir(path), "."+rand.Text()[:n])
+		if len(dir)+len("/s") > MaxSocketPath {
+			return "", "", &Error{Code: CodeSocketPath}
+		}
+		err := os.Mkdir(dir, 0o700)
+		if err == nil {
+			return dir, filepath.Join(dir, "s"), nil
+		}
+		if !errors.Is(err, fs.ErrExist) {
+			break
+		}
+	}
+	return "", "", &Error{Code: CodeSocket}
 }
 
 // serve accepts connections, each read on a goroutine of its own, and handles every call on this
