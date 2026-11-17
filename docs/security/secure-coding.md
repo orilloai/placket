@@ -24,7 +24,8 @@ Go cannot reliably wipe a secret from memory: the garbage collector may copy a v
 
 ## Keys and state on disk
 
-- A key file is created mode 0600 with `O_EXCL`, so an existing file is never overwritten ([`keys-on-disk`](../rules/adapters.md#keys-on-disk)). The rule also asks for two things today's code does not do yet: an atomic write, so a crash never leaves half a key (the code writes once, syncs, and removes the file when a write fails), and the refusal of a key file another user can read when it is loaded (`docs/security/threat-model.md`, L14).
+- A key file is written atomically and never overwrites one ([`keys-on-disk`](../rules/adapters.md#keys-on-disk)): the seed goes to a temporary file of mode 0600 in the same directory, which is synced and then linked to the key's name, so a crash leaves either no key file or the whole key, and an existing name is refused (`key-exists`). The temporary name is removed and the directory synced.
+- A key file is refused when it is loaded if any of mode 0077 is set or another user owns it (`key-mode`). A symbolic link is followed and the file it reaches is checked; anything but a regular file is refused before it is opened (`key-read`), and at most 4 KiB is read.
 - The journal and state directories placket makes are created mode 0700, and every file the window writes in them mode 0600; a directory that already exists keeps its mode (`docs/security/threat-model.md`, L14). The window sets its socket to mode 0600, and the client checks the socket's owner before it sends.
 - A write the window promises is synced to disk before it replies ([`journal-synced`](../rules/adapters.md#journal-synced)), and the receipts file is never rewritten ([`journal-is-evidence`](../rules/adapters.md#journal-is-evidence)).
 - A path built from input is joined under a directory placket owns and never follows a name that leaves it.
