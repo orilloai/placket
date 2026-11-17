@@ -211,3 +211,34 @@ func TestABoundPathOverTheLimitIsSocketPath(t *testing.T) {
 		t.Fatalf("left beside the path: %v, %v", left, err)
 	}
 }
+
+// TestAQuestionsReplyCountsTheCommas builds the questions reply for four raw questions whose
+// encodings, without the commas between them, fill MaxReply exactly: the commas leave no room for
+// the fourth, so the reply holds the oldest three, within MaxReply, and the door reports nothing.
+func TestAQuestionsReplyCountsTheCommas(t *testing.T) {
+	t.Parallel()
+	str := func(s string) *string { return &s }
+	q := func(id string) wireAsked {
+		size := 1
+		return wireAsked{Asker: str("a"), Deadline: str("2099-01-01T00:00:00Z"), Form: str("raw"), ID: str(id), Kind: str("proposal"), Size: &size}
+	}
+	empty := []wireAsked{}
+	room := MaxReply - len(encodeReply(wireReply{Questions: &empty}))
+	list := []wireAsked{q(strings.Repeat("a", 1<<20)), q(strings.Repeat("b", 1<<20)), q(strings.Repeat("c", 1<<20))}
+	for _, a := range list {
+		room -= encodedLen(a)
+	}
+	list = append(list, q(strings.Repeat("d", room-encodedLen(q("")))))
+	if encodedLen(list[3]) != room {
+		t.Fatalf("the fourth question takes %d bytes, not %d", encodedLen(list[3]), room)
+	}
+	var ev Event
+	b := questionsReply(list, &ev)
+	if len(b) > MaxReply || ev.Door != "" {
+		t.Fatalf("a reply of %d bytes, door %q", len(b), ev.Door)
+	}
+	var r wireReply
+	if err := json.Unmarshal(b, &r); err != nil || r.Questions == nil || len(*r.Questions) != 3 {
+		t.Fatalf("read as %v, with questions %v", err, r.Questions != nil)
+	}
+}
