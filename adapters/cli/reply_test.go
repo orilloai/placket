@@ -16,11 +16,12 @@ import (
 )
 
 // A fakeWindow listens on a socket and answers every call with the reply it was last given,
-// whatever the call asked.
+// whatever the call asked. It keeps the last call it read.
 type fakeWindow struct {
 	socket string
 	mu     sync.Mutex
 	reply  []byte
+	last   []byte
 }
 
 func newFakeWindow(t testing.TB, dir string) *fakeWindow {
@@ -37,8 +38,9 @@ func newFakeWindow(t testing.TB, dir string) *fakeWindow {
 			if err != nil {
 				return
 			}
-			_, _ = bufio.NewReader(c).ReadBytes('\n')
+			call, _ := bufio.NewReader(c).ReadBytes('\n')
 			f.mu.Lock()
+			f.last = call
 			b := append(append([]byte(nil), f.reply...), '\n')
 			f.mu.Unlock()
 			_, _ = c.Write(b)
@@ -62,6 +64,13 @@ func (f *fakeWindow) set(t testing.TB, o any) {
 	f.mu.Lock()
 	f.reply = c
 	f.mu.Unlock()
+}
+
+// lastCall is the last call the fake window read, as sent.
+func (f *fakeWindow) lastCall() []byte {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return append([]byte(nil), f.last...)
 }
 
 // as is the socket flags of a command run by name against the fake window.

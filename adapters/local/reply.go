@@ -248,7 +248,7 @@ func ParseReply(b []byte) (Reply, bool) {
 	}
 	if w.Salt != nil {
 		s, err := hex.DecodeString(*w.Salt)
-		if err != nil || r.Outcome == nil || !lowerHex(*w.Salt) {
+		if err != nil || r.Outcome == nil || !lowerHex(*w.Salt) || len(s) != mediator.SaltBytes {
 			return Reply{}, false
 		}
 		r.Salt = s

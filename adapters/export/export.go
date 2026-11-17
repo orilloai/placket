@@ -476,7 +476,7 @@ func readFetched(line []byte) (keptPart, []byte, bool) {
 		return keptPart{}, nil, false
 	}
 	salt, err := hex.DecodeString(*k.Salt)
-	if err != nil || len(salt) < mediator.MinSaltBytes {
+	if err != nil || len(salt) != mediator.SaltBytes {
 		return keptPart{}, nil, false
 	}
 	p, body, ok := readBody(line)

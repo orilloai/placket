@@ -90,19 +90,19 @@ func TestBuildRefusesWhatDoesNotVerify(t *testing.T) {
 }
 
 // FuzzReadKept reads any bytes as a kept line, both as a given part and as a fetched one. Neither
-// panics, and a part read from a fetched line names its kind and salt.
+// panics, and a part read from a fetched line names its kind and a salt of 32 bytes.
 func FuzzReadKept(f *testing.F) {
-	msg := base64.StdEncoding.EncodeToString([]byte(`{"metadata":{"https://placket.dev/crossing/0.1":{"topic":"t","re":"r"}},"parts":[{"text":"x","metadata":{"https://placket.dev/crossing/0.1":{"kind":"proposal"}}}]}`))
+	msg := base64.StdEncoding.EncodeToString([]byte(`{"metadata":{"https://placket.tech/crossing/0.1":{"topic":"t","re":"r"}},"parts":[{"text":"x","metadata":{"https://placket.tech/crossing/0.1":{"kind":"proposal"}}}]}`))
 	f.Add([]byte(`{"message":"` + msg + `","receipt":{}}`))
-	f.Add([]byte(`{"kind":"answer","messageId":"m","receipt":{},"receiptId":"r","salt":"00000000000000000000000000000000","text":"yes","answerCall":{"call":"","sig":""}}`))
-	f.Add([]byte(`{"kind":"k","messageId":"m","raw":"AAE=","receipt":{},"salt":"00000000000000000000000000000000"}`))
-	f.Add([]byte(`{"data":{"a":[1]},"kind":"k","messageId":"m","receipt":{},"salt":"00000000000000000000000000000000"}`))
+	f.Add([]byte(`{"kind":"answer","messageId":"m","receipt":{},"receiptId":"r","salt":"0000000000000000000000000000000000000000000000000000000000000000","text":"yes","answerCall":{"call":"","sig":""}}`))
+	f.Add([]byte(`{"kind":"k","messageId":"m","raw":"AAE=","receipt":{},"salt":"0000000000000000000000000000000000000000000000000000000000000000"}`))
+	f.Add([]byte(`{"data":{"a":[1]},"kind":"k","messageId":"m","receipt":{},"salt":"0000000000000000000000000000000000000000000000000000000000000000"}`))
 	for _, in := range seeds.Inputs(f, "questions", "delivery") {
 		f.Add(in)
 	}
 	f.Fuzz(func(t *testing.T, b []byte) {
 		_, _ = readGiven(b)
-		if p, _, ok := readFetched(b); ok && (p.kind == "" && !bytes.Contains(b, []byte(`"kind"`)) || len(p.salt) < 16) {
+		if p, _, ok := readFetched(b); ok && (p.kind == "" && !bytes.Contains(b, []byte(`"kind"`)) || len(p.salt) != 32) {
 			t.Fatalf("read %q", b)
 		}
 		_, _, _ = readKept(b, nil, map[string]int{})

@@ -13,6 +13,7 @@ import (
 	"github.com/orilloai/placket/adapters/local"
 	"github.com/orilloai/placket/core/canonical"
 	"github.com/orilloai/placket/core/composition"
+	"github.com/orilloai/placket/core/mediator"
 	"github.com/orilloai/placket/core/receipts"
 )
 
@@ -73,19 +74,26 @@ func (d delivery) oneBody() bool {
 // about reports whether a delivery is what its receipt says it is, before anything of it is
 // recorded, printed or written: a receipt that decodes (receipts.Decode, which verifies nothing),
 // that passed, to this key under this Accord, of the id and kind the delivery names, whose digest
-// is that of the delivery's salt and its one body. So a delivery's kind is a label and its receipt
-// id a typed hash, whatever window sent it; reconcile and verify, under the mediator's key, are
-// what show the receipt is the mediator's.
+// is that of the delivery's salt, of exactly SaltBytes, and its one body. So a delivery's kind is a
+// label and its receipt id a typed hash, whatever window sent it; reconcile and verify, under the
+// mediator's key, are what show the receipt is the mediator's.
 func (s *session) about(d delivery) bool {
 	st, err := receipts.Decode(d.Receipt)
 	if err != nil {
 		return false
 	}
-	salt, err := hex.DecodeString(d.Salt)
+	salt, ok := saltBytes(d.Salt)
 	p := st.Predicate
-	return err == nil && d.oneBody() && st.ID == d.ReceiptID && st.Subject.Name == d.Kind &&
+	return ok && d.oneBody() && st.ID == d.ReceiptID && st.Subject.Name == d.Kind &&
 		p.Verdict == string(composition.Pass) && p.To == s.key.Reference() && p.Accord == s.client.Accord &&
 		receipts.Digest(salt, d.bytes()) == st.Subject.Digest
+}
+
+// saltBytes decodes a salt written in hex, and reports whether it is exactly SaltBytes long
+// (crossing-2). A salt of any other length matches no receipt.
+func saltBytes(s string) ([]byte, bool) {
+	b, err := hex.DecodeString(s)
+	return b, err == nil && len(b) == mediator.SaltBytes
 }
 
 // fetch gets the next delivery, under the state lock the caller holds, and records it: its receipt

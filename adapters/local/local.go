@@ -29,8 +29,8 @@
 //	                                                question, to its asker: O is {"reason",
 //	                                                "receipt","receiptId","verdict"}, the receipt as
 //	                                                the mediator wrote it; release is the release
-//	                                                receipt's; salt, in lowercase hex, the salt the
-//	                                                door minted for an accept or a change
+//	                                                receipt's; salt, in lowercase hex, the 32-byte
+//	                                                salt the door minted for an accept or a change
 //	{"ok":true,"delivery":D,"answerCall"?:A}        get, with a delivery queued: D the delivery as
 //	                                                the mediator returned it, and beside it A, the
 //	                                                answer call, when D's body is that call's answer

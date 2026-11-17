@@ -88,13 +88,14 @@ func uuid(rand io.Reader) (string, bool) {
 	return h[0:8] + "-" + h[8:12] + "-" + h[12:16] + "-" + h[16:20] + "-" + h[20:], true
 }
 
-// message builds a crossing message of one part (crossing-1, crossing-2).
+// message builds a crossing message of one part, as a member gives it: in ROLE_USER, under a salt of
+// SaltBytes fresh random bytes (crossing-1, crossing-2, crossing-3).
 func (s *session) message(to, kind string, b body, re, topic string) ([]byte, bool) {
 	id, ok := uuid(s.r.env.Rand)
 	if !ok {
 		return nil, false
 	}
-	salt := make([]byte, mediator.MinSaltBytes)
+	salt := make([]byte, mediator.SaltBytes)
 	if _, err := io.ReadFull(s.r.env.Rand, salt); err != nil {
 		return nil, false
 	}
@@ -107,7 +108,7 @@ func (s *session) message(to, kind string, b body, re, topic string) ([]byte, bo
 	}
 	part := map[string]any{b.form: b.value, "metadata": map[string]any{mediator.Extension: map[string]any{"kind": kind, "salt": hex.EncodeToString(salt)}}}
 	m := canonicalJSON(map[string]any{
-		"messageId": id, "role": mediator.RoleAgent, "extensions": []string{mediator.Extension},
+		"messageId": id, "role": mediator.RoleUser, "extensions": []string{mediator.Extension},
 		"metadata": map[string]any{mediator.Extension: ext}, "parts": []any{part},
 	})
 	return m, m != nil

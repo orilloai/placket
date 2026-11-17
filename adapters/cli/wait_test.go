@@ -117,7 +117,7 @@ func TestTwoWaitsEachEndWithTheirOwn(t *testing.T) {
 	// The first wait may fetch the second's changed version before its own answer, and then prints it
 	// as get does.
 	first := regexp.MustCompile(`^ask maybe ` + q1 + `\naccepted ` + receiptID + `\n(delivery ` + receiptID + ` kind changed-version messageId change:` + q2 +
-		` salt [0-9a-f]{32} re ` + q2 + `\n)?$`)
+		` salt [0-9a-f]{64} re ` + q2 + `\n)?$`)
 	if r1.code != 0 || last(r1.stdout) != "One, yes." || !first.MatchString(r1.stderr) {
 		t.Fatalf("the first wait: %v", r1)
 	}

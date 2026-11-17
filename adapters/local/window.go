@@ -704,7 +704,7 @@ func (w *window) resolve(c Call, at string, ev *Event) ([]byte, error) {
 	r := mediator.Resolution{Action: mediator.Action(c.Action), Answer: c.Answer}
 	var salt []byte
 	if r.Action == mediator.Accepted || r.Action == mediator.Changed {
-		salt = make([]byte, mediator.MinSaltBytes)
+		salt = make([]byte, mediator.SaltBytes)
 		if _, err := io.ReadFull(w.cfg.Rand, salt); err != nil {
 			ev.Door = Internal
 			return refusal(byDoor, string(Internal)), nil

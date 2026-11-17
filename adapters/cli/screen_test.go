@@ -33,10 +33,10 @@ func (a *accord) giveAs(t testing.TB, who, to, messageID, text string, seq int64
 	if err != nil {
 		t.Fatal(err)
 	}
-	salt := make([]byte, 16)
+	salt := make([]byte, mediator.SaltBytes)
 	_, _ = rand.Read(salt)
 	m, _ := json.Marshal(map[string]any{
-		"messageId": messageID, "role": mediator.RoleAgent, "extensions": []string{mediator.Extension},
+		"messageId": messageID, "role": mediator.RoleUser, "extensions": []string{mediator.Extension},
 		"metadata": map[string]any{mediator.Extension: map[string]any{"accord": a.id, "to": a.refs[to]}},
 		"parts":    []any{map[string]any{"text": text, "metadata": map[string]any{mediator.Extension: map[string]any{"kind": "note", "salt": hex.EncodeToString(salt)}}}},
 	})
