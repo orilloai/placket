@@ -4,7 +4,7 @@
 //
 // It reads the repository from the directory it runs in and changes nothing. For each rule it prints
 // "<rule>: ok", or a line per fault, each starting "<rule>: <file>[:<line>]: ", and then
-// "<rule>: refused: <why> (AGENTS.md, <rule>)". It exits 1 when a rule refuses and 2 when a name is
+// "<rule>: refused: <why> (docs/rules/<file>.md#<rule>)", which links the rule's heading. It exits 1 when a rule refuses and 2 when a name is
 // not a rule. docs/adr/0007-one-checker.md records why it exists and how a rule is added.
 package main
 

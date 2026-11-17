@@ -1,4 +1,4 @@
-// Command redgreen is the check red-green-tests (AGENTS.md; docs/adr/0013-red-green-tests.md): every
+// Command redgreen is the check red-green-tests (docs/rules/tests.md; docs/adr/0013-red-green-tests.md): every
 // test a change adds or changes fails without the change's code and passes with it, and no test is
 // removed or skipped unexplained.
 //
@@ -8,7 +8,7 @@
 // B with H's test files laid over it, then in one of H, and prints one line per test and a last line:
 //
 //	red-green-tests: ok, <n> red on base, <n> green at head, <n> reported
-//	red-green-tests: refused: <why> (AGENTS.md, red-green-tests)
+//	red-green-tests: refused: <why> (docs/rules/tests.md#red-green-tests)
 //
 // It exits 0 when ok, 1 when refused and 3 when it could not judge (a bad argument, no go or git, a
 // base that is not an ancestor of the head). A tool error is never a pass.
@@ -30,7 +30,7 @@ import (
 
 const (
 	name     = "red-green-tests"
-	why      = "every test the change adds or changes fails without its code and passes with it, and none is removed or skipped unexplained (AGENTS.md, red-green-tests)"
+	why      = "every test the change adds or changes fails without its code and passes with it, and none is removed or skipped unexplained (docs/rules/tests.md#red-green-tests)"
 	usage    = "usage: redgreen [-C dir] <base> [<head>]"
 	exitOK   = 0
 	exitNo   = 1

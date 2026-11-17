@@ -8,6 +8,7 @@ import (
 	"go/token"
 	"io/fs"
 	"os"
+	"os/exec"
 	"path"
 	"path/filepath"
 	"sort"
@@ -23,6 +24,9 @@ type tree struct {
 	reads   map[string][]byte
 	listed  bool
 	entries []entry
+
+	trackedDone bool
+	trackedSet  map[string]bool
 }
 
 // A goFile is a parsed Go file and its lines. When it cannot be parsed, err says why at errLine.
@@ -55,6 +59,43 @@ func (t *tree) read(rel string) ([]byte, bool) {
 	}
 	t.reads[rel] = b
 	return b, b != nil
+}
+
+// tracked is the set of files git tracks in the tree, by path, and true; or nil and false when the
+// root is not the top of a git work tree or git cannot list its files. It is listed once.
+func (t *tree) tracked() (map[string]bool, bool) {
+	if t.trackedDone {
+		return t.trackedSet, t.trackedSet != nil
+	}
+	t.trackedDone = true
+	if _, err := os.Lstat(filepath.Join(t.root, ".git")); err != nil {
+		return nil, false
+	}
+	top, err := exec.Command("git", "-C", t.root, "rev-parse", "--show-toplevel").Output()
+	if err != nil {
+		return nil, false
+	}
+	abs, err := filepath.Abs(t.root)
+	if err != nil {
+		return nil, false
+	}
+	want, err1 := filepath.EvalSymlinks(abs)
+	got, err2 := filepath.EvalSymlinks(strings.TrimRight(string(top), "\n"))
+	if err1 != nil || err2 != nil || want != got {
+		return nil, false
+	}
+	out, err := exec.Command("git", "-C", t.root, "ls-files", "-z", "--cached").Output()
+	if err != nil {
+		return nil, false
+	}
+	set := map[string]bool{}
+	for _, p := range strings.Split(string(out), "\x00") {
+		if p != "" {
+			set[p] = true
+		}
+	}
+	t.trackedSet = set
+	return set, true
 }
 
 // isDir and isFile follow a symbolic link, as the shell's -d and -f do.

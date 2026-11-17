@@ -12,7 +12,7 @@ Placket's core decides what crosses between parties and writes the receipts that
 - Nothing under `core/`, test files included, imports `github.com/orilloai/placket/adapters`, `github.com/orilloai/placket/cmd` or `github.com/orilloai/placket/recipes`, or any package below them.
 - No code built into the core reads the clock, draws randomness, reads the environment, opens a file, touches the network or prints. What the core needs from the world, such as the time, a salt or a key, it takes as a parameter from its caller, an adapter. Test files may use any of these.
 - The core is Go alone: no cgo and no assembly, C or other non-Go source, which could reach the world out of sight of any check of Go. No file under `core/` is a symbolic link, and no import path in it is written with an escape, so what the checks read is what the Go tool builds.
-- `make ci` enforces each of these as a named check: `core-imports`, `core-no-deps` and `core-no-world`. Their names, and what each matches, are in `AGENTS.md`.
+- `make ci` enforces each of these as a named check: `core-imports`, `core-no-deps` and `core-no-world`. Their names, and what each matches, are in `docs/rules/`.
 
 ## Consequences
 

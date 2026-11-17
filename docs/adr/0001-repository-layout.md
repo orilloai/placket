@@ -12,22 +12,22 @@ The repository has these top-level directories. Each is created by the change th
 
 | Directory | What it holds | Created |
 |---|---|---|
-| `core/` | The Go core: a module of its own, `github.com/orilloai/placket/core`, with no dependency (record 0002). One package per protocol capability. | Now, with only `go.mod` and a README; its first package in M1 |
+| `core/` | The Go core: a module of its own, `github.com/orilloai/placket/core`, with no dependency (record 0002). One package per protocol capability. | Now, with only `go.mod` and a README; its first package with the capability packages |
 | `docs/adr/` | Decision records: any decision that spans packages or would be expensive to reverse, written ahead of the change built on it. Named `NNNN-<slug>.md`, numbered from 0001. | Now |
 | `tests/` | The repository's own shell tests, `tests/test_*.sh`, such as the self-tests of the checks in `make ci`. Fixtures under `tests/testdata/`. | Now |
-| `openspec/` | The normative requirement text of the protocol and the process for changing it. | M0 |
-| `spec/` | The frozen formats: their schemas and the register of type URIs, codes and reasons. | M0 |
-| `vectors/` | Conformance vectors, produced by generators independent of the code under test, and the coverage list that maps each requirement to its vectors. | M0 for the format and coverage list; M1 and M2 for the vectors |
-| `review/` | The review passes a reviewer runs over a change. Changed only by the maintainer's own change. | M0 |
-| `adapters/` | The parts that touch the world: the socket door, the journal, key files, an actor's state directory, the log export and the command line, one package each. | M3 |
-| `cmd/placket/` | The binary: `main` only, which parses arguments, builds a client and hands over to `adapters/cli`. | M3 |
-| `scripts/` | Scripts a person runs by hand, such as the end-to-end demo behind `make demo`. | M3 |
+| `openspec/` | The normative requirement text of the protocol and the process for changing it. | With the protocol's first text |
+| `spec/` | The frozen formats: their schemas and the register of type URIs, codes and reasons. | With the protocol's first text |
+| `vectors/` | Conformance vectors, produced by generators independent of the code under test, and the coverage list that maps each requirement to its vectors. | With the protocol's first text for the format and coverage list; with the capability packages, and then questions and release, for the vectors |
+| `review/` | The review passes a reviewer runs over a change. Changed only by the maintainer's own change. | With the protocol's first text |
+| `adapters/` | The parts that touch the world: the socket door, the journal, key files, an actor's state directory, the log export and the command line, one package each. | With the door |
+| `cmd/placket/` | The binary: `main` only, which parses arguments, builds a client and hands over to `adapters/cli`. | With the door |
+| `scripts/` | Scripts a person runs by hand, such as the end-to-end demo behind `make demo`. | With the door |
 | `recipes/<name>/` | One job's templates, agents and plugin, built on the core's exported API alone. | After v1 |
 | `out/` | Working notes a builder leaves on a change's branch for the next round of the same change, removed before the change merges; never on `main`. | Now, on a change's branch |
 
 `.github/workflows/` holds the workflows that run `make ci`. It is the maintainer's: no other change edits it.
 
-The root of the repository holds `Makefile`, `AGENTS.md`, `CONTRIBUTING.md` and `README.md`. In M3 it also becomes a Go module, `github.com/orilloai/placket`, holding `adapters/` and `cmd/`; that module requires the core module and has its own decision record. No `go.work` file is committed.
+The root of the repository holds `Makefile`, `AGENTS.md`, `CONTRIBUTING.md` and `README.md`. With the door it also becomes a Go module, `github.com/orilloai/placket`, holding `adapters/` and `cmd/`; that module requires the core module and has its own decision record. No `go.work` file is committed.
 
 Dependencies point one way: `cmd` uses `adapters`, `adapters` use `core`, and `recipes` use `core`. Nothing lower uses anything higher.
 
@@ -36,6 +36,6 @@ Dependencies point one way: `cmd` uses `adapters`, `adapters` use `core`, and `r
 ## Consequences
 
 - A builder can tell from the path alone whether a file is core, adapter, binary, recipe, text, format or vector, and the checks in `make ci` can rely on it: a check on `core/` does not need to guess where the core ends.
-- Directories that later milestones add are empty promises until then. A change that adds a directory not named here, or puts something in the wrong one, needs a new record first.
+- Directories that later changes add are empty promises until then. A change that adds a directory not named here, or puts something in the wrong one, needs a new record first.
 - Fixtures for any check live under a `testdata/` directory, which Go's tools and `make ci` both skip, so a planted fault never breaks the real build.
 - The core stays a module with no dependency even after the root module exists, so a verifier that needs only the core never pulls in an adapter.

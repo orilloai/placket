@@ -137,5 +137,5 @@ done
 [ -f "$tmp/checked" ] && checked=$(grep -c ok "$tmp/checked")
 say "$checked faults planted"
 [ "$checked" -gt 0 ] || failed=1
-if [ "$failed" -ne 0 ]; then say "refused: a vector depends on the code it tests (AGENTS.md, vectors-independent)"; exit 1; fi
+if [ "$failed" -ne 0 ]; then say "refused: a vector depends on the code it tests (docs/rules/tests.md#vectors-independent)"; exit 1; fi
 say ok

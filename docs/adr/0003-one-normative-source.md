@@ -4,7 +4,7 @@ Status: accepted. Date: 2026-11-12.
 
 ## Context
 
-Placket is built by many hands over several milestones: the core's capability packages, then questions and release, then the door, the journal and the command line. Each needs to know exactly what placket does, and so do the people who write the conformance vectors, who must derive every code, offset and verdict by hand, and the third parties who check a receipt holding only the mediator's public key. If what placket does is spread over code, comments, design notes and pull requests, each reader assembles a different answer, and the vectors end up stating whatever the code happened to do.
+Placket is built by many hands in several stages: the core's capability packages, then questions and release, then the door, the journal and the command line. Each needs to know exactly what placket does, and so do the people who write the conformance vectors, who must derive every code, offset and verdict by hand, and the third parties who check a receipt holding only the mediator's public key. If what placket does is spread over code, comments, design notes and pull requests, each reader assembles a different answer, and the vectors end up stating whatever the code happened to do.
 
 Record 0001 laid out the repository before any of this text existed. It named two places for it: an `openspec/` directory for the requirement text and a process for changing it, and `spec/` for the frozen formats. One place is simpler to read, to check and to keep in step with the formats, and the requirement text needs no process of its own beyond the repository's.
 

@@ -1,10 +1,11 @@
 # `make ci` is placket's one entry point for checks; GitHub runs it on every pull request and every push to main.
 #
-# Every step is a target of its own, named for the rule it enforces (AGENTS.md) or for what it does.
+# Every step is a target of its own, named for the rule it enforces (docs/rules/) or for what it does.
 # The output contract:
 # - A check of the tree prints "<rule>: ok" when it passes. When it refuses, every line it prints
 #   starts "<rule>: <file>", with ":<line>" where the fault has a line, or is an indented detail line
-#   under one, and its last line is "<rule>: refused: <why> (AGENTS.md, <rule>)". schemas-hold first
+#   under one, and its last line is "<rule>: refused: <why> (docs/rules/<file>.md#<rule>)", which links
+#   the rule's heading. schemas-hold first
 #   prints one count line per schema that holds, "schemas-hold: <schema>: ok, <n> accepted, <n> refused".
 # - A toolchain step prints "<step>: ok", or "<step>: <module>: refused" after the tool's own output.
 # - Every step then prints its time on a line of its own, "time: <step>: <n>s", whether it passed or
@@ -21,12 +22,12 @@
 .DEFAULT_GOAL := ci
 CHECKS = core-no-deps core-imports core-no-world core-no-panic specs-name-behaviour schemas-hold \
 	vectors-independent constants-once product-words-once claims-stop-at-crossing main-is-thin root-module \
-	machine-rules-in-ci ci-stays-fast
+	machine-rules-in-ci ci-stays-fast no-hidden-text agents-md-short
 TOOLCHAIN = vet lint vulnerabilities secrets race fuzz-seeds coverage-reported
 .PHONY: ci build guard $(CHECKS) modules $(TOOLCHAIN) tests runner-no-silent-pass scripts
 ci: build guard core-no-deps core-imports core-no-world core-no-panic specs-name-behaviour schemas-hold \
 	vectors-independent constants-once product-words-once claims-stop-at-crossing main-is-thin root-module \
-	machine-rules-in-ci ci-stays-fast modules vet lint vulnerabilities secrets tests race fuzz-seeds \
+	machine-rules-in-ci ci-stays-fast no-hidden-text agents-md-short modules vet lint vulnerabilities secrets tests race fuzz-seeds \
 	coverage-reported runner-no-silent-pass scripts
 
 # ci-stays-fast, the marker: make ci exports PLACKET_IN_CI=1 to every step. A make whose goals include
@@ -37,7 +38,7 @@ ci: export PLACKET_IN_CI = 1
 ifneq ($(filter ci,$(or $(MAKECMDGOALS),ci)),)
 ifneq ($(PLACKET_IN_CI),)
 $(info ci-stays-fast: refused: make ci inside make ci)
-$(error PLACKET_IN_CI is set, so a make ci is already running above this one (AGENTS.md, ci-stays-fast))
+$(error PLACKET_IN_CI is set, so a make ci is already running above this one (docs/rules/changes.md#ci-stays-fast))
 endif
 # ci-stays-fast, the jobs: make ci runs its steps side by side, CI_JOBS at a time (by default the
 # host's processor count, and at least 2), each step's output held back and printed whole when the
@@ -139,7 +140,7 @@ secrets: build
 	@$(START) set -e; r=$$(mktemp); trap 'rm -f "$$r"' EXIT; \
 		if go run $(GITLEAKS) dir --no-banner --redact --log-level error --report-format json --report-path "$$r" . ; then echo "$@: ok"; exit 0; fi; \
 		if [ -s "$$r" ]; then jq -r '.[] | "$@: \(.File | sub("^[.]/"; "")):\(.StartLine): \(.RuleID)"' "$$r"; fi; \
-		echo "$@: refused: no secret is committed (AGENTS.md, machine-rules-in-ci)"; exit 1 $(END)
+		echo "$@: refused: no secret is committed (docs/rules/changes.md#machine-rules-in-ci)"; exit 1 $(END)
 
 # tests: one test run per module with packages, with the race detector and coverage, which also runs
 # every fuzz test on its seed corpus (the f.Add seeds and testdata/fuzz/), as go test does without
@@ -211,7 +212,7 @@ runner-no-silent-pass: build
 		out=$$(mktemp); trap 'rm -f "$$out"' EXIT; \
 		if (cd core/conformance && go test -count=1 -run '^TestVectors$$') >"$$out" 2>&1; then \
 			grep '^$@: ' "$$out"; echo "$@: ok"; exit 0; fi; \
-		cat "$$out"; echo "$@: refused: a green run means every vector ran and passed (AGENTS.md, $@)"; exit 1 $(END)
+		cat "$$out"; echo "$@: refused: a green run means every vector ran and passed (docs/rules/tests.md#$@)"; exit 1 $(END)
 
 # The repository's own shell tests, side by side. Each one's output is printed whole, in the tests'
 # order, under "== <test>", once every test has ended; the step fails when any test failed, naming
@@ -234,7 +235,7 @@ demo:
 	@sh scripts/demo.sh
 
 # red-green-tests: every test the change adds or changes fails without its code and passes with it,
-# and no test is removed or skipped unexplained (AGENTS.md, red-green-tests). Not a step of ci: it
+# and no test is removed or skipped unexplained (docs/rules/tests.md#red-green-tests). Not a step of ci: it
 # needs main and scratch worktrees. It judges the commits from the merge base of BASE and HEAD to
 # HEAD, so commit first; uncommitted changes are not read. The workflow runs the same program, built
 # from main's copy (docs/adr/0013-red-green-tests.md). It exits 0 when ok, 1 when refused and 3 when

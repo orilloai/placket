@@ -3,7 +3,7 @@
 # own, that each target runs the rule it is named for and no other, and that every step prints its
 # time. The rules themselves are proved by the checker's Go tests.
 #
-# In one copy of the repository, without its tests/test_*.sh, it plants one fault for each rule at
+# In one copy of the repository's tracked files, without its tests/test_*.sh, it plants one fault for each rule at
 # once, lays the fixture tests/testdata/wiring/ for those a file can hold, and runs
 # `make -k guard <every rule> modules` once. Each rule must print a refusal naming its own fault and
 # nothing else, then its closing "refused:" line and its time; modules must still list the core (the
@@ -28,11 +28,21 @@ bad() {
 }
 
 mkdir "$repo"
-for f in "$root"/* "$root"/.[!.]*; do
-	[ -e "$f" ] || continue
-	[ "${f##*/}" = .git ] && continue
-	cp -R "$f" "$repo/"
-done
+# The copy holds the files git tracks, as a clean checkout does, so a file only the writer's checkout
+# holds, such as a binary built there, plays no part. Outside a work tree, it holds every file.
+if [ "$(git -C "$root" rev-parse --show-toplevel 2>/dev/null)" = "$(cd "$root" && pwd -P)" ]; then
+	git -C "$root" -c core.quotePath=false ls-files --cached | (
+		cd "$root" && while IFS= read -r f; do
+			if [ -e "$f" ] || [ -L "$f" ]; then printf '%s\n' "$f"; fi
+		done | tar -cf - -T -
+	) | tar -C "$repo" -xf -
+else
+	for f in "$root"/* "$root"/.[!.]*; do
+		[ -e "$f" ] || continue
+		[ "${f##*/}" = .git ] && continue
+		cp -R "$f" "$repo/"
+	done
+fi
 rm -f "$repo"/tests/test_*.sh
 cp -R "$root/tests/testdata/wiring/." "$repo/"
 
@@ -60,6 +70,10 @@ schema=${example#spec/schema/testdata/}
 schema=${schema%%/*}
 mv "$example" "spec/schema/testdata/$schema/accepted/"
 moved=spec/schema/testdata/$schema/accepted/${example##*/}
+# agents-md-short: the entry file over its 150 lines.
+i=0; while [ "$i" -lt 151 ]; do echo x; i=$((i + 1)); done >>AGENTS.md
+# no-hidden-text: a bidi control character in a Markdown file.
+printf 'An \342\200\256 override\n' >docs/hidden.md
 # machine-rules-in-ci: secrets left out of ci's prerequisites.
 awk '/^ci:/ && !/=/ { on = 1 } on { line = $0; gsub(/ secrets( |$)/, " ", line); print line; if ($0 !~ /\\$/) on = 0; next } { print }' Makefile >Makefile.new
 mv Makefile.new Makefile
@@ -79,7 +93,9 @@ claims-stop-at-crossing adapters/wiring/say.go
 main-is-thin cmd/placket/main.go
 root-module go.mod
 machine-rules-in-ci Makefile
-ci-stays-fast scripts/clear.sh'
+ci-stays-fast scripts/clear.sh
+no-hidden-text docs/hidden.md
+agents-md-short AGENTS.md'
 rules=$(printf '%s\n' "$expect" | awk '{ print $1 }')
 
 name="one fault per rule"
@@ -105,7 +121,7 @@ while read -r rule files; do
 	# Its closing line, and on the next line its time.
 	if ! awk -v r="$rule" '
 		prev { if ($0 ~ "^time: " r ": [0-9]+s$") found = 1; prev = 0 }
-		index($0, r ": refused: ") == 1 && / [(]AGENTS[.]md, / { prev = 1 }
+		index($0, r ": refused: ") == 1 && / [(]docs[/]rules[/][a-z]+[.]md#/ { prev = 1 }
 		END { exit !found }' "$out"; then fail="$rule's closing line is not followed by its time"; fi
 done <"$tmp/expect"
 if [ -z "$fail" ]; then
