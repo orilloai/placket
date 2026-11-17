@@ -23,6 +23,7 @@ const (
 	WordCancelled     = string(answer.Cancelled)
 	WordTimeout       = receipts.ReasonTimeout
 	WordUndeliverable = receipts.ReasonUndeliverable
+	WordClosed        = receipts.ReasonClosed
 	WordBlocked       = export.AnswerBlocked
 	WordOpen          = export.AnswerOpen
 )
@@ -35,6 +36,7 @@ const (
 	wordMissing    = "missing"
 	wordFounded    = "founded"
 	wordReloaded   = local.EventReloaded
+	wordClosed     = local.EventClosed
 	wordFetched    = "fetched"
 	lineQuestions  = "questions closed %d open %d"
 	lineReleases   = "releases %d blocked releases %d"
@@ -56,6 +58,8 @@ const (
 	LineNoValue         = "no release holds this value at this path"
 	LineNoKept          = "no part this key kept matches"
 	LineNoKeptValue     = "no part this key kept holds this value at this path"
+	// LineTornClose says what to run when a window finds a close cut short (close-1).
+	LineTornClose = "the journal holds a close cut short: run placket window close to complete it"
 )
 
 // The lines verify prints (commands-8, verify-1 to verify-4), each verb filled in order; under
@@ -68,6 +72,8 @@ const (
 	LineNotConform         = "does not conform: %s at receipts.jsonl line %d"
 	LineNotComplete        = "complete: not claimed: this Accord has no close receipt"
 	LineSubsetNotComplete  = "complete: not claimed: only a subset was given"
+	LineComplete           = "complete: against close receipt %s; not claimed: that the mediator signed no other log for this Accord"
+	LinePinnedComplete     = "complete: against close receipt %s, which successor accord %s pins; not claimed: that the mediator signed no other log for this Accord"
 	LineCustody            = "custody: operator %s is principal of %d of %d members"
 	LineSupersedes         = "supersedes accord %s close %s"
 	LineChainStart         = "chain %s to %s not checked before seq %d"
@@ -77,6 +83,7 @@ const (
 	LineByJudge            = "%s judge: the mediator says judge %s of the card decided"
 	LineByDeadline         = "%s mediator: the deadline passed"
 	LineByUndeliverable    = "%s mediator: nobody could be reached to answer"
+	LineByClose            = "%s mediator: the Accord was closed"
 	LineOutsideSubset      = "%d decisions not checked: their question is not in the subset"
 	LineTermsDecided       = "terms decided %d"
 	LineUnmatched          = "answer calls matching no receipt %d"
@@ -103,6 +110,7 @@ const (
 	ClaimAnswerBlocked = "claim: a key holding the answering role answered. The part named here was refused for the reason shown."
 	ClaimNoYes         = "claim: the question closed without a yes. The receipt names the first holder of the answering role."
 	ClaimNobody        = "claim: nobody answered. The question closed for the reason shown."
+	ClaimClose         = "claim: the mediator closed this Accord. Each chain named here ends at the receipt named; each delivery named was not yet fetched."
 	ClaimVerified      = "claim: each receipt is this mediator's signed decision about one part under this Accord's terms."
 	ClaimReleased      = "claim: these bytes, under the salt they were fetched with, are the part this receipt let cross to this key."
 	ClaimReleasedValue = "claim: these bytes are the value at this path inside the part this receipt let cross to this key."
@@ -142,7 +150,7 @@ func claim(p receipts.Predicate) string {
 		return ClaimAnswered
 	case p.Reason == receipts.ReasonDeclined || p.Reason == receipts.ReasonCancelled:
 		return ClaimNoYes
-	case p.Reason == receipts.ReasonTimeout || p.Reason == receipts.ReasonUndeliverable:
+	case p.Reason == receipts.ReasonTimeout || p.Reason == receipts.ReasonUndeliverable || p.Reason == receipts.ReasonClosed:
 		return ClaimNobody
 	}
 	return ClaimAnswerBlocked

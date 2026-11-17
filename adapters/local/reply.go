@@ -72,7 +72,8 @@ func (Asked) Format(f fmt.State, _ rune) { _, _ = f.Write([]byte("local.Asked"))
 
 // A Reply is a reply as a client read it. Exactly one of its kinds is set: outcomes (Outcome, with
 // Release where the reply has one), a delivery (Delivery, the answer call inside it when an answer
-// queued it), the questions (Questions, with IsQuestions, and More when the window left some out to
+// queued it), the Accord's close receipt (Close, to a get on a closed Accord whose caller has nothing
+// queued, close-3, and beside the empty questions of a closed Accord), the questions (Questions, with IsQuestions, and More when the window left some out to
 // keep the reply under MaxReply), a refusal (Rejection, Error or Door), or none of them, a plain ok.
 type Reply struct {
 	Outcome, Release *mediator.Outcome
@@ -93,6 +94,9 @@ type Reply struct {
 	Rejection   mediator.RejectionCode
 	Error       mediator.ErrorCode
 	Door        DoorCode
+	// Close is the close receipt a get on a closed Accord returns once the caller's queue is empty
+	// (close-3, docs/adr/0022-the-close.md).
+	Close []byte
 }
 
 // Format prints the Reply as a fixed text, whatever the verb: it may hold a body or a salt
@@ -125,6 +129,7 @@ type wireReply struct {
 	Outcome   *wireOutcome    `json:"outcome,omitempty"`
 	Release   *wireOutcome    `json:"release,omitempty"`
 	Delivery  json.RawMessage `json:"delivery,omitempty"`
+	Close     json.RawMessage `json:"close,omitempty"`
 	Questions *[]wireAsked    `json:"questions,omitempty"`
 	More      *bool           `json:"more,omitempty"`
 	Rejection *string         `json:"rejection,omitempty"`
@@ -265,7 +270,8 @@ func asked(q wireAsked) (Asked, bool) {
 // ParseReply reads a reply's bytes, its line feed removed. It reads what the reply names for its
 // form, since a client cannot tell what window it reached and what a reply names reaches a person's
 // terminal: a refusal's code is a label, and an outcome's receipt id, verdict and reason are those
-// of its receipt, which must decode (receipts.Decode, which verifies nothing); an open question's
+// of its receipt, which must decode (receipts.Decode, which verifies nothing); a close receipt must
+// decode as one (receipts.DecodeClose, which verifies nothing either); an open question's
 // id is a typed hash, its asker an actor reference, its kind a label, its form text, raw or data with
 // that body, and its receipt and salt of their forms.
 func ParseReply(b []byte) (Reply, bool) {
@@ -303,6 +309,16 @@ func ParseReply(b []byte) (Reply, bool) {
 			return Reply{}, false
 		}
 		r.Delivery = d
+	}
+	if len(w.Close) > 0 {
+		c, err := canonical.Form(w.Close)
+		if err != nil || w.Close[0] != '{' || r.Outcome != nil || r.Delivery != nil || (w.Questions != nil && len(*w.Questions) > 0) {
+			return Reply{}, false
+		}
+		if _, err := receipts.DecodeClose(c); err != nil {
+			return Reply{}, false
+		}
+		r.Close = c
 	}
 	if w.More != nil && (!*w.More || w.Questions == nil) {
 		return Reply{}, false
@@ -357,7 +373,7 @@ func (c *Client) Call(op string, args map[string]any) (Reply, error) {
 // Send sends the bytes of one call, as given, and reads the reply. A socket path too long is
 // CodeSocketPath, and one that is not a socket of this user's is CodeSocket; nothing is sent. A reply
 // longer than MaxReply is CodeReply, read no further, and so is a reply whose outcome or release has
-// a receipt under another Accord than the client's.
+// a receipt under another Accord than the client's, or whose close closes another Accord.
 func (c *Client) Send(line []byte) (Reply, error) {
 	timeout := c.Timeout
 	if timeout == 0 {
@@ -398,6 +414,11 @@ func (c *Client) Send(line []byte) (Reply, error) {
 			continue
 		}
 		if st, err := receipts.Decode(o.Receipt); err != nil || st.Predicate.Accord != c.Accord {
+			return Reply{}, &Error{Code: CodeReply}
+		}
+	}
+	if r.Close != nil {
+		if cl, err := receipts.DecodeClose(r.Close); err != nil || cl.Accord != c.Accord {
 			return Reply{}, &Error{Code: CodeReply}
 		}
 	}

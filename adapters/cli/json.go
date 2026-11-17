@@ -41,6 +41,8 @@ const (
 	memberCard       = "card"
 	memberOperator   = "operator"
 	memberMatches    = "matches"
+	memberClose      = "close"
+	memberClosings   = "closings"
 )
 
 // A report is the object a command builds: the members put so far, and the object members go into

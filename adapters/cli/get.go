@@ -116,6 +116,9 @@ func (s *session) fetch(keep bool) (*delivery, []byte, int) {
 		return nil, nil, code
 	}
 	if rep.Delivery == nil {
+		if rep.Close != nil {
+			return nil, nil, s.keepClose(rep.Close)
+		}
 		return nil, nil, 0
 	}
 	var d delivery
@@ -135,6 +138,24 @@ func (s *session) fetch(keep bool) (*delivery, []byte, int) {
 		}
 	}
 	return &d, kl, 0
+}
+
+// keepClose keeps the close receipt a fetch was handed on a closed Accord, whose queue is empty
+// (close-3): in close.json, once, and in the object as close; it prints `close <id>`. ParseReply has
+// read it as a close, and Send under this Accord. A close.json that holds another is the state
+// directory's error.
+func (s *session) keepClose(receipt []byte) int {
+	c, err := receipts.DecodeClose(receipt)
+	if err != nil {
+		return s.r.tool(codeReply)
+	}
+	if err := s.dir.KeepClose(receipt); err != nil {
+		return s.r.failed(err)
+	}
+	s.closed = c.ID
+	fmt.Fprintln(s.r.stderr, memberClose+" "+c.ID)
+	s.r.put(memberClose, map[string]any{memberReceiptID: c.ID, memberReceipt: json.RawMessage(receipt)})
+	return 0
 }
 
 // keptLine is a fetched delivery's line of kept.jsonl: the delivery as it came, the answer call
@@ -232,7 +253,7 @@ func getCommand(r *run, args []string) int {
 	for n := 0; ; n++ {
 		d, kept, code := s.fetch(*keep || *all)
 		if d == nil {
-			if code == 0 && n == 0 {
+			if code == 0 && n == 0 && s.closed == "" {
 				fmt.Fprintln(r.stderr, LineNoDelivery)
 			}
 			return code
