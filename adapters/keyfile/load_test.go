@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"syscall"
 	"testing"
@@ -157,4 +158,68 @@ func TestNewNeverReplacesALink(t *testing.T) {
 	if _, err := os.Lstat(target); !os.IsNotExist(err) {
 		t.Fatalf("the link's target was made: %v", err)
 	}
+}
+
+// TestNewReturnsNoKeyItDidNotWrite gets the zero key with the error from a write refused as
+// key-exists or key-write: a caller that drops the error has no key that was never saved.
+func TestNewReturnsNoKeyItDidNotWrite(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	path := filepath.Join(dir, "k.key")
+	if _, err := keyfile.New(path, bytes.NewReader(bytes.Repeat([]byte{7}, 32))); err != nil {
+		t.Fatal(err)
+	}
+	k, err := keyfile.New(path, bytes.NewReader(bytes.Repeat([]byte{8}, 32)))
+	if code(err) != keyfile.CodeExists || k.Reference() != "" {
+		t.Fatalf("over a key: got %v and a key with reference %q, want key-exists and the zero key", err, k.Reference())
+	}
+	k, err = keyfile.New(filepath.Join(dir, "none", "k.key"), bytes.NewReader(bytes.Repeat([]byte{8}, 32)))
+	if code(err) != keyfile.CodeWrite || k.Reference() != "" {
+		t.Fatalf("no directory: got %v and a key with reference %q, want key-write and the zero key", err, k.Reference())
+	}
+}
+
+// TestReadReadsAtMostFourKiB reads a key file of 256 MiB, a hole the system reads as zeros: Read
+// refuses it as key, having read no more than its cap. The bytes read come from the process's
+// own count, so the test runs alone, and only where /proc gives that count.
+func TestReadReadsAtMostFourKiB(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "big.key")
+	f, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY, 0o600)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := f.Truncate(256 << 20); err != nil {
+		t.Fatal(err)
+	}
+	if err := f.Close(); err != nil {
+		t.Fatal(err)
+	}
+	before, ok := readBytes(t)
+	if !ok {
+		t.Skip("no /proc/self/io here")
+	}
+	_, err = keyfile.Read(path)
+	after, _ := readBytes(t)
+	if code(err) != keyfile.CodeKey {
+		t.Fatalf("a file of 256 MiB: got %v, want key", err)
+	}
+	if after-before > 1<<20 {
+		t.Fatalf("Read read %d bytes of a file of 256 MiB", after-before)
+	}
+}
+
+// readBytes is the bytes this process has read so far, from /proc/self/io's rchar.
+func readBytes(t *testing.T) (int64, bool) {
+	t.Helper()
+	b, err := os.ReadFile("/proc/self/io")
+	if err != nil {
+		return 0, false
+	}
+	for _, l := range strings.Split(string(b), "\n") {
+		if v, ok := strings.CutPrefix(l, "rchar: "); ok {
+			n, err := strconv.ParseInt(v, 10, 64)
+			return n, err == nil
+		}
+	}
+	return 0, false
 }

@@ -9,6 +9,7 @@ import (
 	"errors"
 	"io"
 	"os"
+	"syscall"
 )
 
 // ErrNotRegular is a path that names something other than a regular file.
@@ -79,7 +80,9 @@ func Open(path string) (*os.File, error) {
 	if !fi.Mode().IsRegular() {
 		return nil, ErrNotRegular
 	}
-	f, err := os.Open(path)
+	// O_NONBLOCK: should a FIFO take the path's place after the check, the open does not wait for a
+	// writer, and the check of the opened file below refuses it.
+	f, err := os.OpenFile(path, os.O_RDONLY|syscall.O_NONBLOCK, 0)
 	if err != nil {
 		return nil, err
 	}

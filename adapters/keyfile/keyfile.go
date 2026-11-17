@@ -85,7 +85,9 @@ func Read(path string) (signing.Key, error) {
 	if err := private(fi); err != nil {
 		return signing.Key{}, err
 	}
-	f, err := os.Open(path)
+	// O_NONBLOCK: should a FIFO take the path's place after the check, the open does not wait for a
+	// writer, and the check of the opened file below refuses it.
+	f, err := os.OpenFile(path, os.O_RDONLY|syscall.O_NONBLOCK, 0)
 	if err != nil {
 		return signing.Key{}, &Error{Code: CodeRead}
 	}
@@ -143,7 +145,10 @@ func New(path string, rand io.Reader) (signing.Key, error) {
 	defer clear(line)
 	hex.Encode(line, seed)
 	line[2*seedBytes] = '\n'
-	return k, write(path, line)
+	if err := write(path, line); err != nil {
+		return signing.Key{}, err
+	}
+	return k, nil
 }
 
 // write puts line in a new file at path, atomically: it writes a temporary file of mode 0600 in the
