@@ -45,7 +45,7 @@ func showCommand(r *run, args []string) int {
 	}
 	for name, v := range map[string]any{
 		"verified": false, memberReceiptID: st.ID, memberWord: word(p.Verdict), memberReason: p.Reason, "kind": st.Subject.Name,
-		"at": p.At, "from": p.From, "to": p.To, "module": module, memberClaim: claim(p), memberNotClaimed: Scope, "shown": lines,
+		"at": p.At, "from": p.From, "to": p.To, LabelModule: module, memberClaim: claim(p), memberNotClaimed: Scope, "shown": lines,
 	} {
 		r.put(name, v)
 	}
