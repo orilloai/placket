@@ -44,7 +44,7 @@ func TestNoCommandPrintsASeed(t *testing.T) {
 	}
 	add(must(t, "key", "new", "--out", filepath.Join(s.dir, "new.key")))
 	add(must(t, "declare", "--key", s.key("proposer"), "--terms", filepath.Join(s.dir, "proposer.terms")))
-	add(must(t, "bind", "--key", s.key("principal"), "--actor", s.refs["proposer"], "--role", "proposer", "--mediator", s.refs["mediator"], "--until", "2099-01-01T00:00:00Z"))
+	add(must(t, "bind", "--key", s.key("principal"), "--actor", s.refs["proposer"], "--role", "proposer", "--mediator", s.refs["mediator"], "--until", "2099-01-01T00:00:00Z", "--policy", filepath.Join(s.dir, "policy.json")))
 	decider := must(t, s.as("decider", "questions")...)
 	add(decider)
 	for _, who := range []string{"proposer", "applier"} {
