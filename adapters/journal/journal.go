@@ -616,11 +616,14 @@ func (j *Journal) TakeHeld(receiptID string) ([]byte, error) {
 // ReadReceipts reads the receipts of the journal directory dir, one per whole line of
 // receipts.jsonl, in file order, as verify, reconcile and log read them. It takes no lock and
 // writes nothing. A directory with no receipts.jsonl is no journal: CodeJournal, naming the file,
-// since every window writes one when it founds, and so is one that is not a regular file. A line
-// longer than maxLine is CodeJournal at that line. A last line with no line feed is left out, with one
-// line on stderr saying the file was cut there.
+// since every window writes one when it founds, and so is one that is not a regular file, where
+// errors.Is also finds lines.ErrNotRegular. A line longer than maxLine is CodeJournal at that line.
+// A last line with no line feed is left out, with one line on stderr saying the file was cut there.
 func ReadReceipts(dir string, stderr io.Writer) ([][]byte, error) {
 	f, err := lines.Read(filepath.Join(dir, FileReceipts), maxLine)
+	if errors.Is(err, lines.ErrNotRegular) {
+		return nil, lines.NotRegular(&Error{Code: CodeJournal, File: FileReceipts})
+	}
 	if err != nil {
 		return nil, &Error{Code: CodeJournal, File: FileReceipts}
 	}

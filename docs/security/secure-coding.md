@@ -41,7 +41,7 @@ Go cannot reliably wipe a secret from memory: the garbage collector may copy a v
 
 - Every decoder the door runs has a size limit, set before it reads a byte ([`parse-strict`](../rules/core.md#parse-strict)). An `io.Reader` from outside is wrapped in `io.LimitReader`, or read with a bounded buffer, never with `io.ReadAll` alone.
 - The requirement text bounds some sizes and not others; where it is silent, the door's cap is the bound (`docs/security/threat-model.md`, known limits). A client reads at most `MaxReply` of a reply.
-- A journal handed to `verify`, `log` or `reconcile`, and a state directory's files, are read only when they are regular files, so a FIFO or a device cannot hold a command, and a line at a time, each line capped (`adapters/internal/lines`). A key file is read only when it is a regular file, at most 4 KiB. Every other file named on the command line is read whole with no such check, a known limit (`docs/security/threat-model.md`, L1).
+- A journal handed to `verify`, `log` or `reconcile`, and a state directory's files, are read only when they are regular files (otherwise tool error `file`), so a FIFO or a device cannot hold a command, and a line at a time, each line capped (`adapters/internal/lines`). A key file is read only when it is a regular file, at most 4 KiB. Every other file named on the command line is read whole with no such check, a known limit (`docs/security/threat-model.md`, L1).
 
 ## Fuzzing
 

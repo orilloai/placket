@@ -130,7 +130,7 @@ func Open(path, actor string, stderr io.Writer) (*Dir, error) {
 			return nil, err
 		}
 	case err != nil:
-		return nil, &Error{Code: CodeState, File: FileActor}
+		return nil, readErr(FileActor, err)
 	case string(b) != actor+"\n":
 		return nil, &Error{Code: CodeActor, File: FileActor}
 	}
@@ -141,7 +141,10 @@ func Open(path, actor string, stderr io.Writer) (*Dir, error) {
 // writes nothing.
 func Read(path string) (*Dir, error) {
 	b, err := readSmall(filepath.Join(path, FileActor))
-	if err != nil || len(b) < 2 || b[len(b)-1] != '\n' || bytes.ContainsAny(b[:len(b)-1], "\n\r") {
+	if err != nil {
+		return nil, readErr(FileActor, err)
+	}
+	if len(b) < 2 || b[len(b)-1] != '\n' || bytes.ContainsAny(b[:len(b)-1], "\n\r") {
 		return nil, &Error{Code: CodeState, File: FileActor}
 	}
 	return &Dir{path: path, actor: string(b[:len(b)-1]), stderr: io.Discard}, nil
@@ -231,7 +234,7 @@ func (d *Dir) Seq() (int64, error) {
 		return 0, nil
 	}
 	if err != nil {
-		return 0, &Error{Code: CodeState, File: FileSeq}
+		return 0, readErr(FileSeq, err)
 	}
 	n, ok := ParseSeq(b)
 	if !ok {
@@ -467,7 +470,10 @@ func (d *Dir) lines(name string) ([][]byte, error) {
 	if errors.Is(err, fs.ErrNotExist) {
 		return [][]byte{}, nil
 	}
-	if err != nil || f.Long > 0 {
+	if err != nil {
+		return nil, readErr(name, err)
+	}
+	if f.Long > 0 {
 		return nil, &Error{Code: CodeState, File: name}
 	}
 	if f.Lines == nil {
@@ -482,6 +488,16 @@ const maxLine = 4 << 20
 
 // maxSmall is the most read of the actor and seq files, each one short line.
 const maxSmall = 4 << 10
+
+// readErr is CodeState for the file name, whose read failed with err. Where the file is not a regular
+// file, errors.Is also finds lines.ErrNotRegular in it.
+func readErr(name string, err error) error {
+	e := &Error{Code: CodeState, File: name}
+	if errors.Is(err, lines.ErrNotRegular) {
+		return lines.NotRegular(e)
+	}
+	return e
+}
 
 // readSmall reads the actor or seq file at path, which must be a regular file of at most maxSmall
 // bytes.

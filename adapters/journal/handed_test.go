@@ -2,6 +2,7 @@ package journal_test
 
 import (
 	"bytes"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -9,13 +10,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/orilloai/placket/adapters/internal/lines"
 	"github.com/orilloai/placket/adapters/journal"
 	"github.com/orilloai/placket/adapters/local"
 )
 
 // TestReadReceiptsReadsOnlyARegularFile hands ReadReceipts a journal whose receipts.jsonl is a FIFO,
-// and one that is a directory: each is code journal, naming the file, and the FIFO is never waited
-// on.
+// and one that is a directory: each is code journal, naming the file, in which errors.Is finds
+// lines.ErrNotRegular, and the FIFO is never waited on.
 func TestReadReceiptsReadsOnlyARegularFile(t *testing.T) {
 	t.Parallel()
 	fifo := t.TempDir()
@@ -30,8 +32,8 @@ func TestReadReceiptsReadsOnlyARegularFile(t *testing.T) {
 		stop := unblock(filepath.Join(d, journal.FileReceipts))
 		_, err := journal.ReadReceipts(d, &bytes.Buffer{})
 		stop()
-		if e := jerr(err); e == nil || e.Code != journal.CodeJournal || e.File != journal.FileReceipts || e.Line != 0 {
-			t.Fatalf("got %v, want journal: receipts.jsonl", err)
+		if e := jerr(err); e == nil || e.Code != journal.CodeJournal || e.File != journal.FileReceipts || e.Line != 0 || !errors.Is(err, lines.ErrNotRegular) {
+			t.Fatalf("got %v, want journal: receipts.jsonl, not a regular file", err)
 		}
 	}
 }

@@ -15,6 +15,14 @@ import (
 // ErrNotRegular is a path that names something other than a regular file.
 var ErrNotRegular = errors.New("lines: not a regular file")
 
+// NotRegular returns err, a package's own error for the file at a path that is not a regular file,
+// so that errors.As still finds err in it and errors.Is finds ErrNotRegular too. Its text is err's.
+func NotRegular(err error) error { return notRegular{err} }
+
+type notRegular struct{ error }
+
+func (n notRegular) Unwrap() []error { return []error{n.error, ErrNotRegular} }
+
 // A File is what Read found in a file: its whole lines, without their line feeds, in order.
 type File struct {
 	Lines [][]byte

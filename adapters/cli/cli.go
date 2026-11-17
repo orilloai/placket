@@ -33,6 +33,7 @@ import (
 	"time"
 
 	"github.com/orilloai/placket/adapters/export"
+	"github.com/orilloai/placket/adapters/internal/lines"
 	"github.com/orilloai/placket/adapters/journal"
 	"github.com/orilloai/placket/adapters/keyfile"
 	"github.com/orilloai/placket/adapters/local"
@@ -172,13 +173,18 @@ func (r *run) tool(code string, detail ...string) int {
 	return ExitTool
 }
 
-// failed prints what an error from a package says, as a tool error.
+// failed prints what an error from a package says, as a tool error. A journal or state file it was
+// handed that is not a regular file is error file, naming the file.
 func (r *run) failed(err error) int {
 	var ke *keyfile.Error
 	var se *state.Error
 	var je *journal.Error
 	var le *local.Error
 	switch {
+	case errors.Is(err, lines.ErrNotRegular) && errors.As(err, &se):
+		return r.tool(codeFile, se.File)
+	case errors.Is(err, lines.ErrNotRegular) && errors.As(err, &je):
+		return r.tool(codeFile, je.File)
 	case errors.As(err, &ke):
 		return r.tool(string(ke.Code))
 	case errors.As(err, &se):

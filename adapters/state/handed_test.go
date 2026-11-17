@@ -3,6 +3,7 @@ package state_test
 import (
 	"bytes"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -11,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/orilloai/placket/adapters/internal/lines"
 	"github.com/orilloai/placket/adapters/local"
 	"github.com/orilloai/placket/adapters/state"
 )
@@ -67,9 +69,9 @@ func TestStateErrorsQuoteNothing(t *testing.T) {
 }
 
 // TestStateReadsOnlyRegularFiles reads a state directory whose kept.jsonl is a FIFO, and one whose
-// actor file is: each is refused with code state, without waiting on the FIFO, and a kept.jsonl line
-// longer than local.MaxReply, 4 MiB, is refused too, while one of MaxReply is read, so the cap
-// follows the most a window replies with.
+// actor file is: each is refused with code state, in which errors.Is finds lines.ErrNotRegular,
+// without waiting on the FIFO. A kept.jsonl line longer than local.MaxReply, 4 MiB, is refused too,
+// while one of MaxReply is read, so the cap follows the most a window replies with.
 func TestStateReadsOnlyRegularFiles(t *testing.T) {
 	t.Parallel()
 	path := filepath.Join(t.TempDir(), "s")
@@ -80,7 +82,7 @@ func TestStateReadsOnlyRegularFiles(t *testing.T) {
 	stop := unblock(filepath.Join(path, state.FileKept))
 	_, err := d.Kept()
 	stop()
-	if err == nil || err.Error() != "state: state" {
+	if err == nil || err.Error() != "state: state" || !errors.Is(err, lines.ErrNotRegular) {
 		t.Fatalf("a FIFO kept.jsonl: got %v", err)
 	}
 	other := filepath.Join(t.TempDir(), "s")
@@ -93,7 +95,7 @@ func TestStateReadsOnlyRegularFiles(t *testing.T) {
 	stop = unblock(filepath.Join(other, state.FileActor))
 	_, err = state.Read(other)
 	stop()
-	if err == nil || err.Error() != "state: state" {
+	if err == nil || err.Error() != "state: state" || !errors.Is(err, lines.ErrNotRegular) {
 		t.Fatalf("a FIFO actor file: got %v", err)
 	}
 	long := filepath.Join(t.TempDir(), "s")
