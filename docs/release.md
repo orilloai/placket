@@ -1,8 +1,6 @@
 # Releases
 
-**Status: a plan.** No release has been made yet, and the release workflow, `.github/workflows/release.yml`, is not in the repository: it comes in a workflow change of its own. What exists today is `placket version`, `.goreleaser.yaml`, `scripts/release-detect.sh` and `scripts/release-check.sh`. This page says how a release will be cut, checked and rebuilt once the workflow lands; `docs/adr/0018-releases-and-version.md` records why.
-
-A placket release will be a GitHub release of the tag `vX.Y.Z`. It will hold:
+A placket release is a GitHub release of the tag `vX.Y.Z`. It holds:
 
 - `placket` for Linux and macOS, on amd64 and arm64, one `.tar.gz` archive per platform, each holding the binary, `LICENSE` and `README.md`;
 - one SBOM per archive, in SPDX JSON, `<archive>.sbom.json`;
@@ -10,7 +8,7 @@ A placket release will be a GitHub release of the tag `vX.Y.Z`. It will hold:
 - `checksums.txt.sigstore.json`, the cosign bundle that signs `checksums.txt`;
 - build provenance for every archive and for `checksums.txt`, kept by GitHub.
 
-Signing and provenance will use the release workflow's own GitHub identity: there is no key. Anyone can check that an archive came from placket's release workflow on `main`, and rebuild the binary and its archive to the same bytes. The SBOMs carry their own creation time, so they are signed, through `checksums.txt`, but a rebuild does not reproduce them.
+Signing and provenance use the release workflow's own GitHub identity: there is no key. Anyone can check that an archive came from placket's release workflow on `main`, and rebuild the binary and its archive to the same bytes. The SBOMs carry their own creation time, so they are signed, through `checksums.txt`, but a rebuild does not reproduce them.
 
 `placket version` says which release a binary is:
 
@@ -98,7 +96,7 @@ A release PR does two things only:
 - it moves `CHANGELOG.md`'s `Unreleased` section under the new version, `## [X.Y.Z] - YYYY-MM-DD`, dated the day it merges;
 - it marks the formats in `spec/frozen-formats.md` released at that version.
 
-Approving it is the decision to release, the register's change included. The steps below are the plan for the release workflow, `.github/workflows/release.yml`, which is not in the repository yet. Once it lands, it will do the rest in one run on the push to `main`:
+Approving it is the decision to release, the register's change included. Once it merges, the release workflow, `.github/workflows/release.yml`, does the rest in one run on the push to `main`:
 
 1. `scripts/release-detect.sh` reads the push. It prints `release X.Y.Z` when the push added exactly one version section and `vX.Y.Z` is not a tag; `resume X.Y.Z` when `vX.Y.Z` is a tag at the push and its release is missing or a draft; `not a release push` otherwise, and the run ends there. It refuses two new sections, a version not above the latest tag, a version tagged at another commit, a section dated more than a day from the run, and any release while the repository is private.
 2. For a release, `make ci` runs at the commit, and the workflow pushes the annotated tag `vX.Y.Z` at it.
@@ -114,11 +112,11 @@ A `v*` tag pushed by hand starts nothing, and since no `v*` tag can be moved or 
 
 A release can be withdrawn from GitHub, but its signature in the public transparency log and its provenance records stay.
 
-On every pull request, the workflow will also build a snapshot twice without signing, check that the two builds' archives are the same bytes, and run `scripts/release-check.sh --snapshot` on it. It will not be a required check.
+On every pull request, the workflow also builds a snapshot twice without signing, checks that the two builds' archives are the same bytes, and runs `scripts/release-check.sh --snapshot` on it. It is not a required check.
 
 ### Versions
 
 - Tags are `vMAJOR.MINOR.PATCH`, for the binary and the root module alike. The first release is `v0.1.0`.
 - The protocol's version and each frozen format's version are their own, in the register `spec/frozen-formats.md` (`format-change-noted`); each release's notes name them.
 - Go's version is set in two places that change together: the `toolchain` line of `go.mod`, which the release workflow builds with, and `GO_VERSION` in `.github/workflows/loom.yml`, which `make ci` runs with.
-- GoReleaser, cosign and syft will be pinned by version in the release workflow; a change of any of them may change the archives' bytes, so it lands in its own pull request.
+- GoReleaser, cosign and syft are pinned by version in the release workflow; a change of any of them may change the archives' bytes, so it lands in its own pull request.
