@@ -1,0 +1,16 @@
+{
+  "mediators": [
+    {
+      "accord": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "key": "proposer.key",
+      "founding": "founding.json",
+      "socket": "/run/p/a.sock"
+    },
+    {
+      "accord": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "key": "proposer.key",
+      "founding": "founding.json",
+      "socket": "/run/p/b.sock"
+    }
+  ]
+}

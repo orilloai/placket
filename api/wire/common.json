@@ -1,0 +1,174 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://placket.tech/api/0.1/wire/common.json",
+  "title": "The pieces of the door's calls and replies",
+  "description": "Definitions the call and reply schemas name by $ref. This document validates nothing on its own.",
+  "$defs": {
+    "actor": {
+      "description": "An actor reference: ed25519: and the public key in 64 lowercase hex digits.",
+      "type": "string",
+      "pattern": "^ed25519:[0-9a-f]{64}$"
+    },
+    "hash": {
+      "description": "A typed hash: sha256: and 64 lowercase hex digits. An Accord id, a receipt id and a question id are typed hashes.",
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "timestamp": {
+      "description": "A time in whole seconds, UTC, with Z: 2026-11-18T09:00:00Z.",
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"
+    },
+    "nonce": {
+      "description": "16 random bytes in lowercase hex, never sent twice within 120 seconds.",
+      "type": "string",
+      "pattern": "^[0-9a-f]{32}$"
+    },
+    "base64": {
+      "description": "Standard base64, with padding, of exact bytes.",
+      "type": "string",
+      "pattern": "^([A-Za-z0-9+/]{4})*([A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$"
+    },
+    "sig": {
+      "description": "The call's signature: standard base64 of the 64-byte Ed25519 signature over the DSSE pre-authentication encoding of the payload type application/vnd.placket.call+json and the call's canonical bytes.",
+      "type": "string",
+      "pattern": "^[A-Za-z0-9+/]{86}==$"
+    },
+    "wait": {
+      "description": "How many whole seconds the door may hold the call until it has something to return; absent or 0, it replies at once.",
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 60
+    },
+    "cursor": {
+      "description": "An opaque value a questions reply carries. Passed back as after, it asks only for the questions opened after the last one that reply carried.",
+      "type": "string",
+      "pattern": "^[a-z0-9.-]{1,128}$"
+    },
+    "code": {
+      "description": "A code: lowercase letters and digits in words joined by single hyphens.",
+      "type": "string",
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+      "maxLength": 64
+    },
+    "receipt": {
+      "description": "A receipt, as the mediator signed it: a frozen format (spec/schema/), carried here as the door carries it.",
+      "type": "object"
+    },
+    "outcome": {
+      "description": "One receipt the call made: its verdict, reason and id, and the receipt.",
+      "type": "object",
+      "required": [
+        "reason",
+        "receipt",
+        "receiptId",
+        "verdict"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "reason": {
+          "$ref": "https://placket.tech/api/0.1/wire/common.json#/$defs/code"
+        },
+        "receipt": {
+          "$ref": "https://placket.tech/api/0.1/wire/common.json#/$defs/receipt"
+        },
+        "receiptId": {
+          "$ref": "https://placket.tech/api/0.1/wire/common.json#/$defs/hash"
+        },
+        "verdict": {
+          "enum": [
+            "pass",
+            "block",
+            "escalate"
+          ]
+        }
+      }
+    },
+    "refusal": {
+      "description": "A call refused: by the mediator, rejection, what the caller did wrong, or error, what the caller's program did wrong; or by the door, door, a code about the call itself. Exactly one of the three.",
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [
+            "ok",
+            "rejection"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "ok": {
+              "const": false
+            },
+            "rejection": {
+              "$ref": "https://placket.tech/api/0.1/wire/common.json#/$defs/code"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "ok",
+            "error"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "ok": {
+              "const": false
+            },
+            "error": {
+              "$ref": "https://placket.tech/api/0.1/wire/common.json#/$defs/code"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "ok",
+            "door"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "ok": {
+              "const": false
+            },
+            "door": {
+              "$ref": "https://placket.tech/api/0.1/wire/common.json#/$defs/code"
+            }
+          }
+        }
+      ]
+    },
+    "empty": {
+      "description": "Nothing to return: get with nothing queued, or result while the question is open.",
+      "type": "object",
+      "required": [
+        "ok"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "ok": {
+          "const": true
+        }
+      }
+    },
+    "outcomes": {
+      "description": "The receipts the call made, or a closed question's: outcome, and release, the release's, when the answer had one.",
+      "type": "object",
+      "required": [
+        "ok",
+        "outcome"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "ok": {
+          "const": true
+        },
+        "outcome": {
+          "$ref": "https://placket.tech/api/0.1/wire/common.json#/$defs/outcome"
+        },
+        "release": {
+          "$ref": "https://placket.tech/api/0.1/wire/common.json#/$defs/outcome"
+        }
+      }
+    }
+  }
+}

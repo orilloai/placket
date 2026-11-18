@@ -3,6 +3,7 @@ package cli
 import (
 	"encoding/json"
 
+	"github.com/orilloai/placket/adapters/client"
 	"github.com/orilloai/placket/adapters/local"
 )
 
@@ -10,7 +11,7 @@ func init() {
 	commands["questions"] = questionsCommand
 }
 
-// questionsCommand is `questions`, with the socket flags: the open questions this key may answer,
+// questionsCommand is `questions [--wait N]`, with the socket flags: the open questions this key may answer,
 // one JSON object per line, {"asker","deadline","form","id","kind"} and the part: a text part's
 // text or a data part's canonical JSON in message, a raw part's size in bytes in size, never its
 // bytes. Under --json each question also has receiptId and receipt, the ask's, and never the part's
@@ -18,36 +19,29 @@ func init() {
 // local.MaxReply, the oldest come first and the rest show once those close. Each question is printed
 // only when it is the part its ask's receipt names (asked); when one is not, it is left out and the
 // command ends in tool error asked after the others. On a terminal the line is escaped, which
-// leaves it the same JSON.
+// leaves it the same JSON. It reads no seq and writes nothing, so it holds no lock (state-lock); with
+// --wait the door holds the call, at most N seconds, until there is a question to show.
 func questionsCommand(r *run, args []string) int {
 	fs := flags("questions")
-	keyPath, socket, accord, stateDir := socketFlags(fs)
-	if !r.parse(fs, args, "key", "socket", "accord") {
+	so := socketFlags(fs)
+	wait := fs.Int("wait", 0, "seconds to wait for a question, at most 60")
+	if !r.parseSocket(fs, args, so) || *wait < 0 || *wait > local.MaxWait {
 		return r.tool(codeUsage)
 	}
-	s, code := r.open(*keyPath, *socket, *accord, *stateDir)
+	s, code := r.open(so)
 	if s == nil {
 		return code
 	}
-	if err := s.dir.Lock(); err != nil {
-		return r.failed(err)
-	}
-	defer s.dir.Unlock()
-	rep, err := s.client.Call(local.OpQuestions, nil)
+	shown, err := s.c.Questions(r.env.Context, *wait, "")
 	if err != nil {
 		return r.failed(err)
 	}
-	if code, refused := r.refusal(rep); refused {
+	if code, refused := r.refusal(shown.Reply); refused {
 		return code
 	}
 	list := []any{}
 	defer func() { r.put("questions", list) }()
-	misstated := false
-	for _, q := range rep.Questions {
-		if !s.asked(q) {
-			misstated = true
-			continue
-		}
+	for _, q := range shown.Questions {
 		o := map[string]any{"id": q.ID, "asker": q.Asker, "kind": q.Kind, "deadline": q.Deadline, "form": q.Form}
 		switch {
 		case q.Message != nil:
@@ -62,8 +56,8 @@ func questionsCommand(r *run, args []string) int {
 		}
 		list = append(list, j)
 	}
-	if misstated {
-		return r.tool(codeAsked)
+	if len(shown.Misstated) > 0 {
+		return r.tool(string(client.CodeAsked))
 	}
 	return ExitOK
 }

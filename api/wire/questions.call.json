@@ -1,0 +1,61 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://placket.tech/api/0.1/wire/questions.call.json",
+  "title": "questions: the call",
+  "description": "Lists the open questions the caller may answer, oldest first. With after, a cursor of an earlier reply of this window's start, it lists only those opened since; any other after is taken for none. With wait, the door holds the call until there is one to list or the wait ends.",
+  "type": "object",
+  "required": [
+    "call",
+    "sig"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "call": {
+      "description": "What is signed: the call's canonical bytes.",
+      "type": "object",
+      "required": [
+        "accord",
+        "args",
+        "at",
+        "caller",
+        "nonce",
+        "op"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "op": {
+          "const": "questions"
+        },
+        "caller": {
+          "$ref": "https://placket.tech/api/0.1/wire/common.json#/$defs/actor"
+        },
+        "accord": {
+          "$ref": "https://placket.tech/api/0.1/wire/common.json#/$defs/hash",
+          "description": "The Accord id the caller expects the window to serve."
+        },
+        "at": {
+          "$ref": "https://placket.tech/api/0.1/wire/common.json#/$defs/timestamp",
+          "description": "The caller's clock; the door refuses a call more than 60 seconds from its own (stale)."
+        },
+        "nonce": {
+          "$ref": "https://placket.tech/api/0.1/wire/common.json#/$defs/nonce"
+        },
+        "args": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "after": {
+              "$ref": "https://placket.tech/api/0.1/wire/common.json#/$defs/cursor"
+            },
+            "wait": {
+              "$ref": "https://placket.tech/api/0.1/wire/common.json#/$defs/wait"
+            }
+          }
+        }
+      }
+    },
+    "sig": {
+      "$ref": "https://placket.tech/api/0.1/wire/common.json#/$defs/sig"
+    }
+  }
+}

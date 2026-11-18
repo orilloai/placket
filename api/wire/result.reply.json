@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://placket.tech/api/0.1/wire/result.reply.json",
+  "title": "result: the reply",
+  "description": "The closing receipt and, when the answer had one, the release's, to the asker of a question that closed; nothing while it is open, or to another member; or a refusal.",
+  "oneOf": [
+    {
+      "$ref": "https://placket.tech/api/0.1/wire/common.json#/$defs/empty"
+    },
+    {
+      "$ref": "https://placket.tech/api/0.1/wire/common.json#/$defs/outcomes"
+    },
+    {
+      "$ref": "https://placket.tech/api/0.1/wire/common.json#/$defs/refusal"
+    }
+  ]
+}

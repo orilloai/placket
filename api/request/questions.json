@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://placket.tech/api/0.1/request/questions.json",
+  "title": "questions: the request",
+  "description": "Lists the open questions the key may answer. With after, the cursor of an earlier result, only those opened since; with wait, it waits until there is one.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "after": {
+      "description": "The cursor of an earlier questions result.",
+      "type": "string",
+      "pattern": "^[a-z0-9.-]{1,128}$"
+    },
+    "wait": {
+      "description": "How many whole seconds the mediator may hold the call until it has something to return; absent or 0, it returns at once.",
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 60
+    }
+  }
+}

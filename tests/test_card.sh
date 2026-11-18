@@ -20,7 +20,7 @@ fail() {
 # The build of this tree, and of a copy whose kernel has one more line.
 (cd "$root" && go build -o "$tmp/this" ./cmd/placket) || { echo "FAIL this tree does not build"; exit 1; }
 mkdir "$tmp/copy"
-cp -R "$root/go.mod" "$root/core" "$root/adapters" "$root/cmd" "$tmp/copy/"
+cp -R "$root/go.mod" "$root/core" "$root/adapters" "$root/api" "$root/cmd" "$tmp/copy/"
 printf '\n// Another kernel.\n' >>"$tmp/copy/core/composition/composition.go"
 (cd "$tmp/copy" && go build -o "$tmp/other" ./cmd/placket) || { echo "FAIL the changed copy does not build"; exit 1; }
 

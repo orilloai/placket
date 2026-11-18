@@ -9,6 +9,7 @@ A pattern is a runnable template for one caller's job: a proposer, an approver, 
 One line per pattern: its directory, the job it does, and the Placket version it was last checked against.
 
 - `guarded-export`: a receiver's guard exports a value only when exactly that value was released to it. Checked against placket main@6620793.
+- `notifier`: each new question an approver may answer runs one command, with its label and id, as it opens. Checked against placket 75a6493.
 - `shadow-judge`: a judge reads each part the terms ask a person about and decides nothing, beside the person's answer. Checked against placket e3972d6.
 
 ## What a pattern is made of

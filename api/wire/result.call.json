@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://placket.tech/api/0.1/wire/result.call.json",
+  "title": "result: the call",
+  "description": "Asks how a question the caller asked closed. With wait, the door holds the call until it closes or the wait ends.",
+  "type": "object",
+  "required": [
+    "call",
+    "sig"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "call": {
+      "description": "What is signed: the call's canonical bytes.",
+      "type": "object",
+      "required": [
+        "accord",
+        "args",
+        "at",
+        "caller",
+        "nonce",
+        "op"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "op": {
+          "const": "result"
+        },
+        "caller": {
+          "$ref": "https://placket.tech/api/0.1/wire/common.json#/$defs/actor"
+        },
+        "accord": {
+          "$ref": "https://placket.tech/api/0.1/wire/common.json#/$defs/hash",
+          "description": "The Accord id the caller expects the window to serve."
+        },
+        "at": {
+          "$ref": "https://placket.tech/api/0.1/wire/common.json#/$defs/timestamp",
+          "description": "The caller's clock; the door refuses a call more than 60 seconds from its own (stale)."
+        },
+        "nonce": {
+          "$ref": "https://placket.tech/api/0.1/wire/common.json#/$defs/nonce"
+        },
+        "args": {
+          "type": "object",
+          "required": [
+            "question"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "question": {
+              "description": "The question's id.",
+              "type": "string"
+            },
+            "wait": {
+              "$ref": "https://placket.tech/api/0.1/wire/common.json#/$defs/wait"
+            }
+          }
+        }
+      }
+    },
+    "sig": {
+      "$ref": "https://placket.tech/api/0.1/wire/common.json#/$defs/sig"
+    }
+  }
+}

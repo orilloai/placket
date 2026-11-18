@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://placket.tech/api/0.1/wire/resolve.call.json",
+  "title": "resolve: the call",
+  "description": "Answers a question with the answerer's signed answer call, or withdraws it, the asker's cancel. For an accept or a change, the answer's text and the salt the answerer minted travel beside the call.",
+  "type": "object",
+  "required": [
+    "call",
+    "sig"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "call": {
+      "description": "What is signed: the call's canonical bytes.",
+      "type": "object",
+      "required": [
+        "accord",
+        "args",
+        "at",
+        "caller",
+        "nonce",
+        "op"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "op": {
+          "const": "resolve"
+        },
+        "caller": {
+          "$ref": "https://placket.tech/api/0.1/wire/common.json#/$defs/actor"
+        },
+        "accord": {
+          "$ref": "https://placket.tech/api/0.1/wire/common.json#/$defs/hash",
+          "description": "The Accord id the caller expects the window to serve."
+        },
+        "at": {
+          "$ref": "https://placket.tech/api/0.1/wire/common.json#/$defs/timestamp",
+          "description": "The caller's clock; the door refuses a call more than 60 seconds from its own (stale)."
+        },
+        "nonce": {
+          "$ref": "https://placket.tech/api/0.1/wire/common.json#/$defs/nonce"
+        },
+        "args": {
+          "type": "object",
+          "required": [
+            "answer"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "answer": {
+              "description": "The answer call, as the answerer signed it: a frozen format (spec/frozen-formats.md), carried as an object of its canonical bytes.",
+              "type": "object"
+            },
+            "text": {
+              "description": "For an accept or a change: the answer's text, whose salted digest the call signs.",
+              "type": "string"
+            },
+            "salt": {
+              "description": "For an accept or a change: the answer's salt, 32 bytes in lowercase hex.",
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            }
+          }
+        }
+      }
+    },
+    "sig": {
+      "$ref": "https://placket.tech/api/0.1/wire/common.json#/$defs/sig"
+    }
+  }
+}

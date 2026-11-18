@@ -1,0 +1,67 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://placket.tech/api/0.1/wire/give.call.json",
+  "title": "give: the call",
+  "description": "Gives one part: the message and the envelope the giver signed, each as standard base64 of its exact bytes. The door hands the mediator the bytes as decoded. A give has no wait; with a judge it may take up to 20 seconds.",
+  "type": "object",
+  "required": [
+    "call",
+    "sig"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "call": {
+      "description": "What is signed: the call's canonical bytes.",
+      "type": "object",
+      "required": [
+        "accord",
+        "args",
+        "at",
+        "caller",
+        "nonce",
+        "op"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "op": {
+          "const": "give"
+        },
+        "caller": {
+          "$ref": "https://placket.tech/api/0.1/wire/common.json#/$defs/actor"
+        },
+        "accord": {
+          "$ref": "https://placket.tech/api/0.1/wire/common.json#/$defs/hash",
+          "description": "The Accord id the caller expects the window to serve."
+        },
+        "at": {
+          "$ref": "https://placket.tech/api/0.1/wire/common.json#/$defs/timestamp",
+          "description": "The caller's clock; the door refuses a call more than 60 seconds from its own (stale)."
+        },
+        "nonce": {
+          "$ref": "https://placket.tech/api/0.1/wire/common.json#/$defs/nonce"
+        },
+        "args": {
+          "type": "object",
+          "required": [
+            "envelope",
+            "message"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "message": {
+              "$ref": "https://placket.tech/api/0.1/wire/common.json#/$defs/base64",
+              "description": "The crossing message: one part in ROLE_USER, under placket's extension, its kind and salt in the part's metadata."
+            },
+            "envelope": {
+              "$ref": "https://placket.tech/api/0.1/wire/common.json#/$defs/base64",
+              "description": "The envelope, {\"hash\",\"seq\",\"sig\"}, signed by the giver over the message's typed hash and its next seq."
+            }
+          }
+        }
+      }
+    },
+    "sig": {
+      "$ref": "https://placket.tech/api/0.1/wire/common.json#/$defs/sig"
+    }
+  }
+}

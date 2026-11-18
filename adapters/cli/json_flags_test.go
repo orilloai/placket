@@ -69,6 +69,7 @@ var (
 		"socket": {input, "the one window the run calls", nil},
 		"accord": {input, "the one Accord the run speaks under", nil},
 		"state":  {input, "the one state directory the run records in", nil},
+		"label":  {input, "the one mediator of the labels config the run calls, in place of key, socket and accord", nil},
 	}
 	questionUse = flagUse{input, "the one question the run is about", nil}
 )
@@ -132,7 +133,8 @@ var commandFlags = []commandRow{
 		"keep":  {form, "keeps the part it gives in kept.jsonl", []string{"--keep"}},
 		"wait":  {more, "waits for the question's closing, its release, the answer and every delivery fetched on the way", []string{"--wait"}}})},
 	{words: []string{"result"}, play: playResult, base: "the closing, the release, the answer and every other delivery it fetches",
-		flags: withSocket(map[string]flagUse{"question": questionUse})},
+		flags: withSocket(map[string]flagUse{"question": questionUse,
+			"wait": {input, "how long the one result call waits for the closing", nil}})},
 	{words: []string{"answer"}, play: playAnswer, base: "the answer's outcome and its release",
 		flags: withSocket(map[string]flagUse{"question": questionUse, "text": {input, "the one answer's text", nil},
 			"no-release": {input, "asks the one answer for no release", nil},
@@ -151,8 +153,18 @@ var commandFlags = []commandRow{
 	{words: []string{"get"}, play: playGet, flags: withSocket(map[string]flagUse{
 		"all":  {more, "fetches every delivery waiting", []string{"--all"}},
 		"out":  {form, "writes each body to a file of the directory, its path in place of its body", []string{"--out", "{out}"}},
-		"keep": {form, "keeps each delivery in kept.jsonl", []string{"--keep"}}})},
-	{words: []string{"questions"}, flags: withSocket(nil)},
+		"keep": {form, "keeps each delivery in kept.jsonl", []string{"--keep"}},
+		"wait": {input, "how long the first fetch waits for a delivery queued; it takes none while it waits", nil}})},
+	{words: []string{"questions"}, flags: withSocket(map[string]flagUse{
+		"wait": {input, "how long the one questions call waits for a question to show", nil}})},
+	{words: []string{"mediators"}, flags: map[string]flagUse{"json": jsonFlag}},
+	{words: []string{"watch"}, flags: map[string]flagUse{
+		"json":  {input, "prints each question it shows as one object on a line of its own; it makes nothing", nil},
+		"label": {input, "each mediator whose questions it shows; it fetches nothing and signs nothing", nil},
+		"count": {input, "how many questions it shows before it exits; each is a read, as questions' list is", nil}}},
+	{words: []string{"mcp"}, flags: map[string]flagUse{
+		"label":           {input, "each mediator it serves; the results of its tools go to the MCP client, not to an object", nil},
+		"allow-answering": {input, "serves a label whose key answers questions too", nil}}},
 	{words: []string{"show"}, flags: map[string]flagUse{
 		"json": jsonFlag, "receipt": {input, "the one receipt it shows", nil}}},
 	{words: []string{"verify"}, flags: map[string]flagUse{

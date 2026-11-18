@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://placket.tech/api/0.1/request/result.json",
+  "title": "result: the request",
+  "description": "How a question the key asked closed: the closing, the release, and after an accept or a change, the answer or the version. With wait, it waits for the closing.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "question": {
+      "description": "The question's id, a typed hash.",
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "wait": {
+      "description": "How many whole seconds the mediator may hold the call until it has something to return; absent or 0, it returns at once.",
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 60
+    }
+  },
+  "required": [
+    "question"
+  ]
+}

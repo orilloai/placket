@@ -3,7 +3,11 @@ package local
 import (
 	"bufio"
 	"context"
+	"crypto/aes"
+	"crypto/cipher"
 	"crypto/rand"
+	"crypto/subtle"
+	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -12,6 +16,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -67,10 +72,22 @@ type Window struct {
 	// Budget is how long a give's decide judges have together, and each advise run; zero is
 	// judge.Budget.
 	Budget time.Duration
+	// CursorRand is read once at each start for the key of the cursors the questions replies carry,
+	// so a cursor shows nothing of the position it holds, and one from before a restart is never taken
+	// for one of this start's; nil is crypto/rand.
+	CursorRand io.Reader
+	// Deadline is how long a connection may take to send its call and read its reply, when the call
+	// does not wait; one that waits has its wait plus WaitSlack, when that is longer. Zero is 30
+	// seconds.
+	Deadline time.Duration
 	// replyLimit is the most bytes a reply that carries the close may have; zero is MaxReply. Only
 	// a test sets it, to reach the bound without a queue that long.
 	replyLimit int
 }
+
+// WaitSlack is how much longer than its wait a connection whose call waits may stay open: the call
+// is answered at the end of its wait at the latest.
+const WaitSlack = 10 * time.Second
 
 // What an Event is.
 const (
@@ -146,6 +163,15 @@ type window struct {
 	judges map[string]judge.Configured
 	reach  []Reach
 	busy   map[string]bool
+	// The calls parked until they have something to return or their wait ends, oldest first; the
+	// deliveries queued for each member, as the journal holds them, so a get that waits learns of
+	// one without taking it; and, for the cursors, this start's key, the number of asks journaled
+	// since the start, and the position of each among them.
+	parked []*parked
+	queued map[string]int
+	curKey cipher.Block
+	asks   int
+	askAt  map[string]int
 	// What the judge runs need of serve: the context that stops them, the group that waits for
 	// them, the channel their results come back on, and serve's end.
 	runs    context.Context
@@ -178,6 +204,16 @@ type request struct {
 	line     []byte
 	tooLarge bool
 	reply    chan []byte
+	// extend sets the connection's deadline to d after it was accepted, for a call that waits.
+	extend func(d time.Duration)
+}
+
+// A parked call waits for something to return, until its wait ends: the call, the reply channel
+// its connection waits on, and the end of its wait, on the system's monotonic clock.
+type parked struct {
+	call  Call
+	reply chan []byte
+	until time.Time
 }
 
 // Run runs a window until ctx is done, then returns nil having written nothing more. A socket path
@@ -224,7 +260,20 @@ func Run(ctx context.Context, cfg Window) error {
 	if cfg.Budget == 0 {
 		cfg.Budget = judge.Budget
 	}
-	w := &window{cfg: cfg, j: j, nonces: map[string]time.Time{}, busy: map[string]bool{}}
+	if cfg.Deadline == 0 {
+		cfg.Deadline = readDeadline
+	}
+	if cfg.CursorRand == nil {
+		cfg.CursorRand = rand.Reader
+	}
+	w := &window{cfg: cfg, j: j, nonces: map[string]time.Time{}, busy: map[string]bool{}, queued: map[string]int{}, askAt: map[string]int{}}
+	key := make([]byte, 16)
+	if _, err := io.ReadFull(cfg.CursorRand, key); err != nil {
+		return &Error{Code: CodeCursor}
+	}
+	if w.curKey, err = aes.NewCipher(key); err != nil {
+		return &Error{Code: CodeCursor}
+	}
 	founded, err := w.start()
 	if err != nil {
 		return err
@@ -282,6 +331,7 @@ func (w *window) start() (bool, error) {
 	if err != nil {
 		return false, reloadError(err, rec)
 	}
+	w.count(rec.Queued)
 	if m.Card() != rec.Card {
 		return false, &journal.Error{Code: journal.CodeJournal, File: journal.FileAccord, Line: 1, Core: "card"}
 	}
@@ -353,6 +403,7 @@ func (w *window) close(rec *journal.Record, at string) error {
 		}
 		return reloadError(err, rec)
 	}
+	w.count(rec.Queued)
 	if m.Card() != rec.Card {
 		return &journal.Error{Code: journal.CodeJournal, File: journal.FileAccord, Line: 1, Core: "card"}
 	}
@@ -381,10 +432,12 @@ func (w *window) close(rec *journal.Record, at string) error {
 const CoreCloseSize = "close-size"
 
 // closeReply is the largest reply that carries the close receipt c: the questions reply of a closed
-// Accord, the close beside an empty list. A get's reply, the close alone, is shorter.
+// Accord, the close beside an empty list and a cursor, which always has cursorLen bytes. A get's
+// reply, the close alone, is shorter.
 func closeReply(c []byte) []byte {
 	empty := []wireAsked{}
-	return encodeReply(wireReply{Questions: &empty, Close: c})
+	cur := strings.Repeat("0", cursorLen)
+	return encodeReply(wireReply{Questions: &empty, Close: c, Cursor: &cur})
 }
 
 // reloadError names the file and line of what Reload refused.
@@ -419,6 +472,22 @@ func reloadError(err error, rec *journal.Record) error {
 		}
 	}
 	return e
+}
+
+// count notes the deliveries the journal held at the start, by the member each is queued for.
+func (w *window) count(list []mediator.Queued) {
+	for _, q := range list {
+		w.queued[q.To]++
+	}
+}
+
+// putHeld journals a delivery for its member, and counts it.
+func (w *window) putHeld(q mediator.Queued) error {
+	if err := w.j.PutHeld(q.To, q.Delivery); err != nil {
+		return err
+	}
+	w.queued[q.To]++
+	return nil
 }
 
 func receiptsOf(outs []mediator.Outcome) [][]byte {
@@ -566,7 +635,8 @@ func (w *window) serve(ctx context.Context, l *net.UnixListener) error {
 			pause = 0
 			// The deadline is set before the connection is registered, so the shutdown's deadline of
 			// now, set to every registered connection, is never overwritten by a later one.
-			_ = c.SetDeadline(time.Now().Add(readDeadline))
+			accepted := time.Now()
+			_ = c.SetDeadline(accepted.Add(w.cfg.Deadline))
 			mu.Lock()
 			if closed {
 				mu.Unlock()
@@ -578,7 +648,7 @@ func (w *window) serve(ctx context.Context, l *net.UnixListener) error {
 			mu.Unlock()
 			go func() {
 				defer wg.Done()
-				read(c, reqs, done)
+				read(c, reqs, done, func(d time.Duration) { _ = c.SetDeadline(accepted.Add(d)) })
 				mu.Lock()
 				delete(conns, c)
 				mu.Unlock()
@@ -587,6 +657,10 @@ func (w *window) serve(ctx context.Context, l *net.UnixListener) error {
 	}()
 	tick := time.NewTicker(w.cfg.Idle)
 	defer tick.Stop()
+	// The end of the soonest wait of a parked call: a timer this goroutine owns, stopped on return.
+	ends := time.NewTimer(time.Hour)
+	ends.Stop()
+	defer ends.Stop()
 	for {
 		select {
 		case <-ctx.Done():
@@ -597,12 +671,18 @@ func (w *window) serve(ctx context.Context, l *net.UnixListener) error {
 			if err := w.tick(Stamp(w.cfg.Now()), EventTick); err != nil {
 				return err
 			}
+		case <-ends.C:
+			// A wait ends: the time passes first, as for a call, so the reply is the one the call would
+			// get now.
+			if err := w.tick(Stamp(w.cfg.Now()), EventTick); err != nil {
+				return err
+			}
 		case r := <-reqs:
 			reply, err := w.handle(r)
 			if err != nil {
 				return err
 			}
-			// A give with a judge has no reply yet: its result brings it.
+			// A give with a judge, or a call parked, has no reply yet: its result or the wake brings it.
 			if reply != nil {
 				r.reply <- reply
 			}
@@ -626,7 +706,56 @@ func (w *window) serve(ctx context.Context, l *net.UnixListener) error {
 			w.cfg.Event(ev)
 			res.reply <- reply
 		}
+		// Whatever changed, every parked call is looked at again, by this goroutine
+		// (one-mediator-goroutine), and the timer is set for the soonest wait left.
+		w.wake(time.Now())
+		ends.Stop()
+		if len(w.parked) > 0 {
+			soonest := w.parked[0].until
+			for _, p := range w.parked[1:] {
+				if p.until.Before(soonest) {
+					soonest = p.until
+				}
+			}
+			ends.Reset(time.Until(soonest))
+		}
 	}
+}
+
+// wake answers every parked call that now has something to return, and every one whose wait has
+// ended by now with the reply it gets at this moment; it keeps the others parked, in their order.
+func (w *window) wake(now time.Time) {
+	kept := w.parked[:0]
+	for _, p := range w.parked {
+		ev := Event{Kind: EventCall, Op: p.call.Op, Caller: p.call.Caller, Release: -1}
+		reply, has := w.waiting(p.call, &ev)
+		if !has && now.Before(p.until) {
+			kept = append(kept, p)
+			continue
+		}
+		w.cfg.Event(ev)
+		p.reply <- reply
+	}
+	for i := len(kept); i < len(w.parked); i++ {
+		w.parked[i] = nil
+	}
+	w.parked = kept
+	w.prune()
+}
+
+// prune drops the positions of asks no longer open, once they outnumber the open ones.
+func (w *window) prune() {
+	open := w.m.Pending()
+	if len(w.askAt) <= 2*len(open)+16 {
+		return
+	}
+	at := make(map[string]int, len(open))
+	for _, id := range open {
+		if n, ok := w.askAt[id]; ok {
+			at[id] = n
+		}
+	}
+	w.askAt = at
 }
 
 // The pauses between tries of an accept that failed for a while.
@@ -642,18 +771,20 @@ func temporary(err error) bool {
 	return errors.Is(err, syscall.EMFILE) || errors.Is(err, syscall.ENFILE) || (errors.As(err, &ne) && ne.Timeout())
 }
 
-// readDeadline is how long a connection may take to send its call and read its reply, and
-// replyMargin how long it has to read the reply once the window writes it. judge.Budget and
-// replyMargin together are below readDeadline, so a judged give's reply is written in time.
+// readDeadline is how long a connection may take to send its call and read its reply, when the
+// window's Deadline is zero and the call does not wait, and replyMargin how long it has to read the
+// reply once the window writes it. judge.Budget and replyMargin together are below readDeadline, so
+// a judged give's reply is written in time.
 const (
 	readDeadline = 30 * time.Second
 	replyMargin  = 5 * time.Second
 )
 
 // read reads one call from c, hands it to the window, and writes the reply, if one comes. Its
-// deadline is set before it starts, and the reply's write has a deadline of its own, replyMargin,
-// so a call that was slow to arrive does not shorten the reply's time.
-func read(c net.Conn, reqs chan<- request, done <-chan struct{}) {
+// deadline is set before it starts, and the window lengthens it, with extend, for a call that waits;
+// the reply's write has a deadline of its own, replyMargin, so a call that was slow to arrive does
+// not shorten the reply's time.
+func read(c net.Conn, reqs chan<- request, done <-chan struct{}, extend func(time.Duration)) {
 	defer c.Close()
 	br := bufio.NewReaderSize(c, 64<<10)
 	var line []byte
@@ -673,7 +804,7 @@ func read(c net.Conn, reqs chan<- request, done <-chan struct{}) {
 			return
 		}
 	}
-	r := request{line: line, tooLarge: tooLarge, reply: make(chan []byte, 1)}
+	r := request{line: line, tooLarge: tooLarge, reply: make(chan []byte, 1), extend: extend}
 	select {
 	case reqs <- r:
 	case <-done:
@@ -748,6 +879,9 @@ func (w *window) handle(r request) ([]byte, error) {
 	if err := w.tick(at, EventTick); err != nil {
 		return nil, err
 	}
+	if c.Wait > 0 && r.extend != nil {
+		r.extend(max(w.cfg.Deadline, time.Duration(c.Wait)*time.Second+WaitSlack))
+	}
 	ev := Event{Kind: EventCall, Op: c.Op, Caller: c.Caller, Release: -1}
 	reply, err := w.op(c, at, &ev, r.reply)
 	if err != nil || reply == nil {
@@ -780,14 +914,44 @@ func (w *window) op(c Call, at string, ev *Event, reply chan []byte) ([]byte, er
 	case OpGive:
 		return w.give(c, at, ev, reply)
 	case OpGet:
-		return w.get(c, ev)
-	case OpQuestions:
-		return w.questions(c, ev), nil
+		if c.Wait == 0 {
+			return w.get(c, ev)
+		}
 	case OpResolve:
 		return w.resolve(c, at, ev)
-	default:
-		return w.result(c, ev), nil
 	}
+	// questions, result, and a get that waits: the reply now, unless the call waits and has nothing
+	// to return yet, when it is parked, and the wake answers it.
+	b, has := w.waiting(c, ev)
+	if has || c.Wait == 0 {
+		return b, nil
+	}
+	w.parked = append(w.parked, &parked{call: c, reply: reply, until: time.Now().Add(time.Duration(c.Wait) * time.Second)})
+	return nil, nil
+}
+
+// waiting is the reply to a questions, a result or a get that waits, as it would be now, and
+// whether it has something to return: a refusal, a question, a closing, a delivery queued or the
+// close. A get that waits never takes a delivery: its reply says one is queued.
+func (w *window) waiting(c Call, ev *Event) ([]byte, bool) {
+	switch c.Op {
+	case OpQuestions:
+		return w.questions(c, ev)
+	case OpResult:
+		return w.result(c, ev)
+	}
+	if _, _, err := w.m.Result(c.Caller, ""); err != nil {
+		// No question has the empty id, so the read answers with its membership row, as get's would.
+		return refused(err, ev), true
+	}
+	if w.queued[c.Caller] > 0 {
+		t := true
+		return encodeReply(wireReply{Queued: &t}), true
+	}
+	if cl, ok := w.m.Closed(); ok {
+		return encodeReply(wireReply{Close: cl.Receipt}), true
+	}
+	return encodeReply(wireReply{}), false
 }
 
 // give asks the core which judges the give would reach (composition-7). With no decide judge it
@@ -868,7 +1032,7 @@ func (w *window) decide(c Call, at string, ev *Event, judgment *composition.Judg
 	switch out.Verdict {
 	case string(composition.Pass):
 		if q, ok := w.m.Queued(out.ReceiptID); ok {
-			if err := w.j.PutHeld(q.To, q.Delivery); err != nil {
+			if err := w.putHeld(q); err != nil {
 				return nil, err
 			}
 		}
@@ -881,6 +1045,8 @@ func (w *window) decide(c Call, at string, ev *Event, judgment *composition.Judg
 			if err := w.j.AddQuestion(mediator.Open{Question: q.ID, Deadline: q.Deadline, Roles: q.Roles}); err != nil {
 				return nil, err
 			}
+			w.asks++
+			w.askAt[q.ID] = w.asks
 		}
 	}
 	if err := w.j.AddReceipts([][]byte{out.Receipt}); err != nil {
@@ -969,41 +1135,94 @@ func (w *window) get(c Call, ev *Event) ([]byte, error) {
 	if err := w.j.TakeHeld(head.ReceiptID); err != nil {
 		return nil, err
 	}
+	if w.queued[c.Caller]--; w.queued[c.Caller] <= 0 {
+		delete(w.queued, c.Caller)
+	}
 	ev.Fetched = head.ReceiptID
 	return encodeReply(wireReply{Delivery: d}), nil
 }
 
-// questions answers a questions call with the open questions the caller may answer. The core says
-// first whether the caller is a member: no question has the empty id, so the read answers with its
-// membership row. The mediator's own reference reads every open question, for the journal; it is
-// never handed to the read for a call, and a call it signs is shown none (maybe-1).
-func (w *window) questions(c Call, ev *Event) []byte {
+// questions answers a questions call with the open questions the caller may answer, oldest first,
+// and reports whether the reply has something to return: a refusal, the close or a question. The
+// core says first whether the caller is a member: no question has the empty id, so the read answers
+// with its membership row. The mediator's own reference reads every open question, for the journal;
+// it is never handed to the read for a call, and a call it signs is shown none (maybe-1).
+//
+// A call whose after is a cursor of this start's is shown only the questions asked after the last
+// one that cursor's reply carried; any other after is taken for none. Every reply carries a cursor:
+// the position of the last question it carries, or, when it carries none, after's own. So a reply
+// with no question hands back what it was given, and passing it back still asks for the questions
+// opened after the last one this caller was shown.
+func (w *window) questions(c Call, ev *Event) ([]byte, bool) {
 	if _, _, err := w.m.Question(c.Caller, ""); err != nil {
-		return refused(err, ev)
+		return refused(err, ev), true
 	}
+	after, _ := w.cursorAt(c.After)
 	list := []wireAsked{}
 	if c.Caller == w.cfg.Key.Reference() {
-		return encodeReply(wireReply{Questions: &list})
+		cur := w.cursor(after)
+		return encodeReply(wireReply{Questions: &list, Cursor: &cur}), false
 	}
 	// A closed Accord has no open question; the reply says why, with the close (close-3), so an
 	// answerer's command learns the Accord is closed before it signs anything.
 	if cl, ok := w.m.Closed(); ok {
-		return encodeReply(wireReply{Questions: &list, Close: cl.Receipt})
+		cur := w.cursor(after)
+		return encodeReply(wireReply{Questions: &list, Close: cl.Receipt, Cursor: &cur}), true
 	}
+	var at []int
 	for _, id := range w.m.Pending() {
+		if w.askAt[id] <= after {
+			continue
+		}
 		q, ok, err := w.m.Question(c.Caller, id)
 		var rj *mediator.Rejection
 		switch {
 		case errors.As(err, &rj) && rj.Code == mediator.NotAnAnswerer:
 			continue
 		case err != nil:
-			return refused(err, ev)
+			return refused(err, ev), true
 		case !ok:
 			continue
 		}
 		list = append(list, wireAskedOf(q))
+		at = append(at, w.askAt[id])
 	}
-	return questionsReply(list, ev)
+	return w.questionsReply(list, at, after, ev)
+}
+
+// cursorLen is the length of every cursor a window mints: one AES block in lowercase hex.
+const cursorLen = 2 * aes.BlockSize
+
+// cursor is the cursor of the position n among this start's asks: n's eight bytes, big-endian, then
+// eight zero bytes, as one AES block under this start's key, in lowercase hex. Only this start's
+// window can read it back.
+func (w *window) cursor(n int) string {
+	var b [aes.BlockSize]byte
+	binary.BigEndian.PutUint64(b[:8], uint64(n))
+	w.curKey.Encrypt(b[:], b[:])
+	return hex.EncodeToString(b[:])
+}
+
+// cursorAt reads a cursor of this start's: its position, and true. Anything else, a cursor of
+// another start's or one no window minted, is position 0, as no after at all.
+func (w *window) cursorAt(s string) (int, bool) {
+	if len(s) != cursorLen {
+		return 0, false
+	}
+	b, err := hex.DecodeString(s)
+	if err != nil || hex.EncodeToString(b) != s {
+		return 0, false
+	}
+	w.curKey.Decrypt(b, b)
+	var zero [8]byte
+	if subtle.ConstantTimeCompare(b[8:], zero[:]) != 1 {
+		return 0, false
+	}
+	n := binary.BigEndian.Uint64(b[:8])
+	if n > uint64(w.asks) {
+		return 0, false
+	}
+	return int(n), true
 }
 
 // wireAskedOf is an open question as the questions reply names it to an answerer (maybe-1): its
@@ -1030,11 +1249,14 @@ func wireAskedOf(q mediator.Question) wireAsked {
 // questionsReply encodes the questions reply in at most MaxReply bytes, so a client reads every
 // reply the window sends, however many questions are open and however large their parts. Each
 // question goes whole, oldest first, while the reply fits; the first that does not fit is left out
-// with every one after it, and the reply says more, so the client answers and asks again.
-func questionsReply(list []wireAsked, ev *Event) []byte {
+// with every one after it, and the reply says more, so the client answers and asks again. Its cursor
+// is the position, in at, of the last question kept, or after when it keeps none; it reports whether
+// it keeps one.
+func (w *window) questionsReply(list []wireAsked, at []int, after int, ev *Event) ([]byte, bool) {
 	t := true
 	empty := []wireAsked{}
-	used := len(encodeReply(wireReply{Questions: &empty, More: &t}))
+	cur := w.cursor(after)
+	used := len(encodeReply(wireReply{Questions: &empty, More: &t, Cursor: &cur}))
 	var more *bool
 	for i := range list {
 		n := encodedLen(list[i])
@@ -1047,12 +1269,15 @@ func questionsReply(list []wireAsked, ev *Event) []byte {
 		}
 		used += n
 	}
-	b := encodeReply(wireReply{Questions: &list, More: more})
+	if len(list) > 0 {
+		cur = w.cursor(at[len(list)-1])
+	}
+	b := encodeReply(wireReply{Questions: &list, More: more, Cursor: &cur})
 	if len(b) > MaxReply {
 		ev.Door = Internal
-		return refusal(byDoor, string(Internal))
+		return refusal(byDoor, string(Internal)), true
 	}
-	return b
+	return b, len(list) > 0
 }
 
 // encodedLen is the length of a question's canonical bytes in a reply.
@@ -1081,7 +1306,7 @@ func (w *window) resolve(c Call, at string, ev *Event) ([]byte, error) {
 	}
 	for _, o := range outs {
 		if q, ok := w.m.Queued(o.ReceiptID); ok {
-			if err := w.j.PutHeld(q.To, q.Delivery); err != nil {
+			if err := w.putHeld(q); err != nil {
 				return nil, err
 			}
 		}
@@ -1098,17 +1323,19 @@ func (w *window) resolve(c Call, at string, ev *Event) ([]byte, error) {
 	return encodeReply(reply), nil
 }
 
-func (w *window) result(c Call, ev *Event) []byte {
+// result answers a result call with the question's closing, and its release, to its asker, and
+// reports whether it has something to return: a refusal or a closing.
+func (w *window) result(c Call, ev *Event) ([]byte, bool) {
 	outs, ok, err := w.m.Result(c.Caller, c.Question)
 	if err != nil {
-		return refused(err, ev)
+		return refused(err, ev), true
 	}
 	if !ok {
-		return encodeReply(wireReply{})
+		return encodeReply(wireReply{}), false
 	}
 	reply := wireReply{Outcome: wire(outs[0])}
 	if len(outs) > 1 {
 		reply.Release = wire(outs[1])
 	}
-	return encodeReply(reply)
+	return encodeReply(reply), true
 }

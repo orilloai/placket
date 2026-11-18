@@ -3,19 +3,17 @@ package cli
 import (
 	"bytes"
 	"crypto/sha256"
-	"encoding/json"
 	"os"
 	"path/filepath"
 	"testing"
 
 	"github.com/orilloai/placket/adapters/internal/seeds"
-	"github.com/orilloai/placket/adapters/local"
 	"github.com/orilloai/placket/adapters/state"
 	"github.com/orilloai/placket/core/signing"
 )
 
-// The parsers here read bytes a window sent or a party handed over: a delivery, a kept.jsonl line, a
-// founding set's card. Their fuzz tests are seeded from the vectors' messages, deliveries and sets,
+// The parsers here read bytes a window sent or a party handed over: a kept.jsonl line, a founding
+// set's card; adapters/client fuzzes the delivery. Their fuzz tests are seeded from the vectors' messages, deliveries and sets,
 // and from hand-written lines (fuzz-parsers).
 
 func fuzzKey(t testing.TB) signing.Key {
@@ -26,31 +24,6 @@ func fuzzKey(t testing.TB) signing.Key {
 		t.Fatal(err)
 	}
 	return k
-}
-
-// FuzzDelivery reads any bytes as a delivery a window sent, as get reads it: it decodes, checks it
-// against its receipt, reads its body and writes its kept.jsonl line. It never panics.
-func FuzzDelivery(f *testing.F) {
-	f.Add([]byte(`{"kind":"note","messageId":"m","receipt":{},"receiptId":"sha256:00","salt":"00","text":"a"}`))
-	f.Add([]byte(`{"raw":"AP8=","text":"a"}`))
-	f.Add([]byte(`{"data":null}`))
-	for _, group := range []string{"crossing", "questions"} {
-		for _, in := range seeds.Inputs(f, group, "delivery", "message") {
-			f.Add(in)
-		}
-	}
-	k := fuzzKey(f)
-	s := &session{key: k, client: &local.Client{Key: k, Accord: "sha256:" + string(bytes.Repeat([]byte("0"), 64))}}
-	f.Fuzz(func(t *testing.T, b []byte) {
-		_ = keptLine(b)
-		var d delivery
-		if json.Unmarshal(b, &d) != nil {
-			return
-		}
-		_ = d.oneBody()
-		_ = d.bytes()
-		_ = s.about(d)
-	})
 }
 
 // FuzzKernelOf reads any bytes as a founding set and its card, as the window and verify read them.

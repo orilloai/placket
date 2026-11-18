@@ -22,9 +22,12 @@ func init() {
 	commands["window"] = windowCommand
 }
 
-// windowCommand is `window --key F --founding S --socket P --journal DIR`: it runs the mediator of
-// the Accord S founds, behind its door on the socket, with its journal in DIR, until it is
-// interrupted. It prints the Accord id, the card hash and the operator, then one line per event:
+// windowCommand is `window --key F --founding S [--socket P] [--journal DIR]`: it runs the mediator
+// of the Accord S founds, behind its door on the socket, with its journal in DIR, until it is
+// interrupted. With no --socket it listens on the Accord's default socket, and with no --journal it
+// writes to the Accord's default journal (local.DefaultSocketWith, local.DefaultJournalWith); with
+// neither an absolute XDG_STATE_HOME nor an absolute HOME there is none, and no --journal is tool
+// error usage. It prints the Accord id, the card hash and the operator, then one line per event:
 // ids, words and codes, never a body, a salt, a seed, a key or a question's part. A founding set
 // whose card names another module than this build's is tool error founding kernel, after a line
 // that names both (docs/adr/0012-the-kernel-hash.md).
@@ -47,7 +50,7 @@ func windowCommand(r *run, args []string) int {
 	socket, dir := fs.String("socket", "", "socket"), fs.String("journal", "", "journal directory")
 	var judges many
 	fs.Var(&judges, "judge", "a judge's config, once per judge the card lists")
-	if !r.parse(fs, args, "key", "founding", "socket", "journal") {
+	if !r.parse(fs, args, "key", "founding") {
 		return r.tool(codeUsage)
 	}
 	loaded, code := r.judgeConfigs(judges)
@@ -69,6 +72,29 @@ func windowCommand(r *run, args []string) int {
 		if l := otherModule(k); l != "" {
 			fmt.Fprintln(r.stderr, l)
 			return r.tool(codeFound, detailKernel)
+		}
+	}
+	// With no --socket or --journal the window takes the Accord's defaults: its socket under the
+	// user's runtime directory, made mode 0700, and its journal under the user's state directory.
+	if *socket == "" || *dir == "" {
+		id, err := canonical.TypedHash(set)
+		if err != nil {
+			return r.tool(codeFound, string(setup.NotCanonical))
+		}
+		if *dir == "" {
+			// With no state directory to put it under, the journal must be named.
+			if *dir = local.DefaultJournalWith(r.getenv, id); *dir == "" {
+				return r.tool(codeUsage)
+			}
+		}
+		if *socket == "" {
+			*socket = local.DefaultSocketWith(r.getenv, id)
+			if err := local.CheckSocket(*socket); err != nil {
+				return r.failed(err)
+			}
+			if err := local.MakeSocketDir(*socket); err != nil {
+				return r.failed(err)
+			}
 		}
 	}
 	operator := memberString(set, "mediator", "operator")

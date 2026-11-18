@@ -8,6 +8,7 @@ import (
 	"os"
 	"slices"
 
+	"github.com/orilloai/placket/adapters/client"
 	"github.com/orilloai/placket/adapters/internal/pointer"
 	"github.com/orilloai/placket/adapters/internal/strict"
 	"github.com/orilloai/placket/adapters/state"
@@ -198,7 +199,7 @@ func fileCrossed(d *state.Dir, body []byte) ([]crossed, error) {
 	var out []crossed
 	for _, c := range all {
 		for _, s := range salts[c.st.ID] {
-			if salt, ok := saltBytes(s); ok && receipts.Digest(salt, body) == c.st.Subject.Digest {
+			if salt, ok := client.SaltBytes(s); ok && receipts.Digest(salt, body) == c.st.Subject.Digest {
 				c.body = body
 				out = append(out, c)
 				break
@@ -230,15 +231,15 @@ func keptCrossed(d *state.Dir) ([]crossed, error) {
 	var out []crossed
 	for _, l := range kept {
 		var k keptDelivery
-		if !strict.Decode(l, &k) || !k.oneBody() {
+		if !strict.Decode(l, &k) || !k.OneBody() {
 			continue
 		}
 		c, has := byID[k.ReceiptID]
-		salt, ok := saltBytes(k.Salt)
+		salt, ok := client.SaltBytes(k.Salt)
 		if !has || !ok || c.st.Subject.Name != k.Kind {
 			continue
 		}
-		if body := k.bytes(); receipts.Digest(salt, body) == c.st.Subject.Digest {
+		if body := k.Bytes(); receipts.Digest(salt, body) == c.st.Subject.Digest {
 			c.body, c.re = body, k.Re
 			out = append(out, c)
 		}

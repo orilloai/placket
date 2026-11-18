@@ -1,0 +1,9 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://placket.tech/api/0.1/request/mediators.json",
+  "title": "mediators: the request",
+  "description": "Lists the mediators of the labels config, and whether each is served. It takes no member, and is no door call.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {}
+}

@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://placket.tech/api/0.1/request/give.json",
+  "title": "give: the request",
+  "description": "Gives one part to a member: the client builds the message, mints its id and salt, and signs the envelope at the key's next seq. Returns the receipt; when the part is asked about, the question's id, at once.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "to": {
+      "description": "The receiver: a member's actor reference.",
+      "type": "string",
+      "pattern": "^ed25519:[0-9a-f]{64}$"
+    },
+    "kind": {
+      "description": "The part's kind.",
+      "type": "string",
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+      "maxLength": 64
+    },
+    "text": {
+      "description": "The body, as text.",
+      "type": "string"
+    },
+    "data": {
+      "description": "The body, as any JSON value."
+    },
+    "re": {
+      "description": "What the part is about, such as a question's id.",
+      "type": "string",
+      "minLength": 1
+    },
+    "topic": {
+      "description": "The part's topic.",
+      "type": "string",
+      "minLength": 1
+    }
+  },
+  "required": [
+    "kind",
+    "to"
+  ],
+  "oneOf": [
+    {
+      "required": [
+        "text"
+      ]
+    },
+    {
+      "required": [
+        "data"
+      ]
+    }
+  ]
+}

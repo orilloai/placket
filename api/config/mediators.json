@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://placket.tech/api/0.1/config/mediators.json",
+  "title": "The labels config",
+  "description": "mediators.json in placket's config directory ($XDG_CONFIG_HOME/placket, else ~/.config/placket): the mediators one user reaches. A label is a local, human name, never signed. Relative paths are taken under the config directory. Entries must not collide: no two have one label, no two of different Accords use one socket, no two use one state directory, and no two of one Accord are both unlabelled; those checks are the client's, not this schema's.",
+  "type": "object",
+  "required": [
+    "mediators"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "mediators": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "accord",
+          "founding",
+          "key"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "accord": {
+            "description": "The Accord id.",
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{64}$"
+          },
+          "key": {
+            "description": "The party's key file. Its state directory is <key>.state/<the Accord id's hex>/.",
+            "type": "string",
+            "minLength": 1
+          },
+          "founding": {
+            "description": "The founding set's path, from which placket mcp reads the key's roles.",
+            "type": "string",
+            "minLength": 1
+          },
+          "socket": {
+            "description": "The window's socket; absent, the Accord's default socket.",
+            "type": "string",
+            "minLength": 1
+          },
+          "label": {
+            "description": "1 to 63 of a-z, 0-9 and -, starting with a letter or a digit.",
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9-]{0,62}$"
+          }
+        }
+      }
+    }
+  }
+}

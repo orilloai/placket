@@ -77,6 +77,10 @@ const (
 	LineAdvised = "advise %s %s %s"
 )
 
+// LineMisstated is what watch says of a question the window showed that is not the part its ask's
+// receipt names: the label and the question's id; it prints nothing else of it.
+const LineMisstated = "misstated %s %s: not the part its ask's receipt names, left out"
+
 // The lines verify prints (commands-8, verify-1 to verify-4), each verb filled in order; under
 // --json each is also its member.
 const (

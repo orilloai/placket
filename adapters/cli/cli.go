@@ -14,9 +14,10 @@
 // What another party wrote is escaped on its way to a terminal (screen.go). With --json, every
 // command prints its result as one JSON object on standard output instead (json.go).
 //
-// Every socket command takes --key, --socket and --accord, and --state for the actor's state
-// directory, by default <key file>.state/<the Accord id's hex>/. The words a person reads are in
-// words.go.
+// Every socket command takes --key, --socket and --accord, or --label, naming an entry of the labels
+// config (client.ReadConfig) in their place, and --state for the actor's state directory, by default
+// <key file>.state/<the Accord id's hex>/. Each calls the mediator through adapters/client. The words
+// a person reads are in words.go.
 package cli
 
 import (
@@ -32,6 +33,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/orilloai/placket/adapters/client"
 	"github.com/orilloai/placket/adapters/export"
 	"github.com/orilloai/placket/adapters/internal/lines"
 	"github.com/orilloai/placket/adapters/journal"
@@ -40,7 +42,6 @@ import (
 	"github.com/orilloai/placket/adapters/state"
 	"github.com/orilloai/placket/core/canonical"
 	"github.com/orilloai/placket/core/mediator"
-	"github.com/orilloai/placket/core/signing"
 )
 
 // The exit codes.
@@ -70,19 +71,11 @@ const (
 	// successor whose supersedes does not pin this log's close (close-4).
 	codeClosed       = string(mediator.CodeClosed)
 	detailSuperseded = "superseded"
-	// codeAsked: the window does not show the question, or what it shows is not the part its ask's
-	// receipt names, so the command signs no answer to it.
-	codeAsked = "asked"
 	// codeDelivery: verify's --delivery is not a delivery, or its receipt is none of the receipts.
 	codeDelivery = "delivery"
 	codeAccord   = string(export.CodeAccord)
 	codeCard     = string(export.CodeCard)
-	codeRand     = "rand"
 	codePath     = "path"
-	// codeReply: the window's reply is not what the call asked for.
-	codeReply = "reply"
-	// codeEnvelope: an envelope could not be signed.
-	codeEnvelope = "envelope"
 	// codeInternal: a failure no other code names.
 	codeInternal = "internal"
 	// detailKept follows error file when a fetched body could not be written and was kept instead.
@@ -114,8 +107,10 @@ type Env struct {
 	// Terminal reports whether a writer is a terminal, so that another party's bytes are escaped on
 	// it; nil takes a character device for one.
 	Terminal func(w io.Writer) bool
-	// Getenv reads the environment, for the judges' key only, once when a window starts; nil is no
-	// key. The command line never reads the environment another way (docs/adr/0023-judges.md).
+	// Getenv reads the environment: the judges' key, once when a window starts
+	// (docs/adr/0023-judges.md), and the directories of the labels config and of a window's default
+	// socket and journal (HOME and the XDG_ variables, TMPDIR); nil is an empty environment. The
+	// command line never reads the environment another way.
 	Getenv func(string) string
 }
 
@@ -196,7 +191,14 @@ func (r *run) failed(err error) int {
 	var se *state.Error
 	var je *journal.Error
 	var le *local.Error
+	var ce *client.Error
 	switch {
+	case errors.As(err, &ce):
+		d := make([]string, len(ce.Entries))
+		for i, n := range ce.Entries {
+			d[i] = strconv.Itoa(n)
+		}
+		return r.tool(string(ce.Code), d...)
 	case errors.Is(err, lines.ErrNotRegular) && errors.As(err, &se):
 		return r.tool(codeFile, se.File)
 	case errors.Is(err, lines.ErrNotRegular) && errors.As(err, &je):
@@ -266,13 +268,18 @@ func flags(name string) *flag.FlagSet {
 func (r *run) parse(fs *flag.FlagSet, args []string, required ...string) bool {
 	r.fs = fs
 	err := fs.Parse(args)
-	if err == nil {
-		r.setJSON(fs.Lookup(flagJSON).Value.String() == "true")
+	if f := fs.Lookup(flagJSON); err == nil && f != nil {
+		r.setJSON(f.Value.String() == "true")
 	}
 	if err != nil || fs.NArg() != 0 {
 		fmt.Fprintln(r.stderr, "usage: placket "+fs.Name()+": bad flags")
 		return false
 	}
+	return r.required(fs, required...)
+}
+
+// required reports whether every flag required was given, and prints the first that was not.
+func (r *run) required(fs *flag.FlagSet, required ...string) bool {
 	for _, n := range required {
 		if f := fs.Lookup(n); f == nil || f.Value.String() == "" {
 			fmt.Fprintln(r.stderr, "usage: placket "+fs.Name()+": --"+n+" is required")
@@ -322,47 +329,82 @@ func canonicalJSON(v any) []byte {
 	return c
 }
 
-// A session is a socket command's key, client and state directory.
+// A session is a socket command's client of one mediator.
 type session struct {
-	r      *run
-	key    signing.Key
-	client *local.Client
-	dir    *state.Dir
+	r *run
+	c *client.Client
 	// handed is the close receipt a fetch was handed in place of a delivery, once the Accord is
 	// closed and the queue is empty (close-3). Only get keeps it.
 	handed []byte
 }
 
+// socketOpts are the flags every socket command takes: --key, --socket and --accord, or --label in
+// their place, and --state.
+type socketOpts struct{ key, socket, accord, state, label *string }
+
 // socketFlags adds the flags every socket command takes.
-func socketFlags(fs *flag.FlagSet) (key, socket, accord, stateDir *string) {
-	return fs.String("key", "", "key file"), fs.String("socket", "", "the window's socket"),
-		fs.String("accord", "", "the Accord id"), fs.String("state", "", "state directory")
+func socketFlags(fs *flag.FlagSet) *socketOpts {
+	return &socketOpts{key: fs.String("key", "", "key file"), socket: fs.String("socket", "", "the window's socket"),
+		accord: fs.String("accord", "", "the Accord id"), state: fs.String("state", "", "state directory"),
+		label: fs.String("label", "", "a mediator of the labels config, by its label or Accord id")}
 }
 
-// open reads the key and opens the state directory; it prints the failure and returns its code. An
-// accord that is not an Accord id, a typed hash, is error usage before any path is built from it;
-// then a socket path too long is refused, error socket-path limit N, before anything is read.
-func (r *run) open(keyPath, socket, accord, stateDir string) (*session, int) {
-	if !accordID(accord) {
-		fmt.Fprintln(r.stderr, "usage: placket: --accord is not an Accord id")
-		return nil, r.tool(codeUsage)
+// parseSocket parses a socket command's flags, as parse does: without --label, --key, --socket and
+// --accord are required, ahead of the others required; with it, none of the three may be given.
+func (r *run) parseSocket(fs *flag.FlagSet, args []string, so *socketOpts, required ...string) bool {
+	if !r.parse(fs, args) {
+		return false
 	}
-	if err := local.CheckSocket(socket); err != nil {
-		return nil, r.failed(err)
+	if *so.label == "" {
+		return r.required(fs, append([]string{"key", "socket", "accord"}, required...)...)
 	}
-	k, err := keyfile.Read(keyPath)
-	if err != nil {
-		return nil, r.failed(err)
+	if *so.key != "" || *so.socket != "" || *so.accord != "" {
+		fmt.Fprintln(r.stderr, "usage: placket "+fs.Name()+": --label takes the place of --key, --socket and --accord")
+		return false
 	}
-	if stateDir == "" {
-		stateDir = state.DefaultPath(keyPath, accord)
-	}
-	d, err := state.Open(stateDir, k.Reference(), r.stderr)
-	if err != nil {
-		return nil, r.failed(err)
-	}
-	return &session{r: r, key: k, dir: d, client: &local.Client{Socket: socket, Key: k, Accord: accord, Now: r.env.Now, Rand: r.env.Rand}}, 0
+	return r.required(fs, required...)
 }
+
+// open opens the session's client; it prints the failure and returns its code. With --label it
+// reads the labels config and names its entry, by label or Accord id; a config that is refused, or
+// a name no entry has, is its client error. Otherwise an accord that is not an Accord id, a typed
+// hash, is error usage before any path is built from it; then a socket path too long is refused,
+// error socket-path limit N, before anything is read. --state overrides the state directory.
+func (r *run) open(so *socketOpts) (*session, int) {
+	var m client.Mediator
+	if *so.label != "" {
+		cfg, err := r.config()
+		if err != nil {
+			return nil, r.failed(err)
+		}
+		if m, err = cfg.Find(*so.label); err != nil {
+			return nil, r.failed(err)
+		}
+	} else {
+		if !accordID(*so.accord) {
+			fmt.Fprintln(r.stderr, "usage: placket: --accord is not an Accord id")
+			return nil, r.tool(codeUsage)
+		}
+		m = client.Mediator{Accord: *so.accord, Key: *so.key, Socket: *so.socket}
+	}
+	m.State = *so.state
+	c, err := client.Open(m, client.Options{Now: r.env.Now, Rand: r.env.Rand, Stderr: r.stderr})
+	if err != nil {
+		return nil, r.failed(err)
+	}
+	return &session{r: r, c: c}, 0
+}
+
+// getenv reads the environment as Env.Getenv does, nil being an empty one.
+func (r *run) getenv(name string) string {
+	if r.env.Getenv == nil {
+		return ""
+	}
+	return r.env.Getenv(name)
+}
+
+// config reads the labels config.
+func (r *run) config() (client.Config, error) { return client.ReadConfig(r.getenv) }
 
 // outcome prints an outcome's line, <word> <reason> <receipt id>, with released for a release that
 // passed, and the receipt on standard output, escaped on a terminal; and puts it under name.

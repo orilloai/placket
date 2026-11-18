@@ -33,7 +33,7 @@ func changeCommand(r *run, args []string) int {
 	if s == nil {
 		return code
 	}
-	defer s.dir.Unlock()
+	defer s.c.Unlock()
 	if !utf8.ValidString(*text) {
 		return r.tool(codeText)
 	}
@@ -51,17 +51,17 @@ func changeCommand(r *run, args []string) int {
 	if version == "" {
 		return r.tool(codeChanged)
 	}
-	rep, signed, code := s.resolve(answering{question: question, action: answer.Changed, text: version, release: !*noRelease, keep: *keep})
+	rep, signed, code := s.resolve(answering{Question: question, Action: answer.Changed, Text: version, Release: !*noRelease, Keep: *keep})
 	if rep == nil {
 		return code
 	}
 	if *keep && rep.Outcome.Verdict == string(composition.Pass) {
 		k := canonicalJSON(map[string]any{
 			"receipt": json.RawMessage(rep.Outcome.Receipt), "receiptId": rep.Outcome.ReceiptID,
-			"messageId": changeMessage + question, "kind": receipts.NameChanged, "salt": hex.EncodeToString(signed.salt),
-			"re": question, "text": version, "answer": json.RawMessage(signed.call),
+			"messageId": changeMessage + question, "kind": receipts.NameChanged, "salt": hex.EncodeToString(signed.Salt),
+			"re": question, "text": version, "answer": json.RawMessage(signed.Call),
 		})
-		if err := s.dir.Keep(k); err != nil {
+		if err := s.c.Dir().Keep(k); err != nil {
 			return r.failed(err)
 		}
 	}
