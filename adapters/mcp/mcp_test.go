@@ -47,7 +47,9 @@ func newWorld(t *testing.T) *world {
 	if err != nil {
 		t.Fatal(err)
 	}
-	var ks struct{ Keys map[string]struct{ Seed, Actor string } }
+	var ks struct {
+		Keys map[string]struct{ Seed, Actor string }
+	}
 	if err := json.Unmarshal(b, &ks); err != nil {
 		t.Fatal(err)
 	}
