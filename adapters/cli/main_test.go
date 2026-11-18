@@ -447,6 +447,25 @@ func (a *accord) opens() []string {
 // serves, is accepted so too.
 func (a *accord) acceptancesOf(t testing.TB, setPath string) string {
 	t.Helper()
+	return a.acceptWith(t, setPath, setPath+".acceptances", func(p string) string { return p })
+}
+
+// falseAcceptances are the Accord's acceptances, but for who's, which signs the view of whose, and
+// returns the path of their file.
+func (a *accord) falseAcceptances(t testing.TB, who, whose string) string {
+	t.Helper()
+	return a.acceptWith(t, a.founding(), filepath.Join(a.dir, "false.acceptances"), func(p string) string {
+		if p == who {
+			return whose
+		}
+		return p
+	})
+}
+
+// acceptWith writes to out the acceptances of the set at setPath, each party signing the view of the
+// party viewOf names.
+func (a *accord) acceptWith(t testing.TB, setPath, out string, viewOf func(string) string) string {
+	t.Helper()
 	set, err := os.ReadFile(setPath)
 	if err != nil {
 		t.Fatal(err)
@@ -465,7 +484,7 @@ func (a *accord) acceptancesOf(t testing.TB, setPath string) string {
 	}
 	var list [][]byte
 	for _, p := range a.parties {
-		v, err := founding.View(acc, a.refs[p])
+		v, err := founding.View(acc, a.refs[viewOf(p)])
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -483,9 +502,8 @@ func (a *accord) acceptancesOf(t testing.TB, setPath string) string {
 	if err != nil {
 		t.Fatal(err)
 	}
-	path := setPath + ".acceptances"
-	if err := os.WriteFile(path, append(b, '\n'), 0o600); err != nil {
+	if err := os.WriteFile(out, append(b, '\n'), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	return path
+	return out
 }

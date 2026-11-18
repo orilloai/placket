@@ -391,6 +391,7 @@ Every code `placket mcp` can return, by where it comes from: a code in a door re
 | `adapters/client` | `rand` | The source of randomness failed; call again. |
 | `adapters/client` | `reply` | The window's reply is not what the call asked for; check the socket reaches this Accord's window. |
 | `adapters/client` | `unknown-mediator` | No mediator served has that name; name one by its label, or by its Accord id when it has none, as mediators lists them. |
+| `adapters/client` | `view` | The key keeps no view of this Accord to accept; run placket view first. |
 | `adapters/keyfile` | `key` | The key file does not hold a key; give the path of a key placket key new made. |
 | `adapters/keyfile` | `key-exists` | A file is already at the key's path; choose another path. |
 | `adapters/keyfile` | `key-mode` | The key file can be read by others; make it mode 0600. |
@@ -411,6 +412,7 @@ Every code `placket mcp` can return, by where it comes from: a code in a door re
 | `door` | `bad-signature` | The call's signature does not verify under its caller's key; sign it with the key it names. |
 | `door` | `door-internal` | The window failed after the call passed its checks; call again, and see the window's log if it fails again. |
 | `door` | `judge-busy` | The caller's last give is still with a judge; wait for its reply, then give again. |
+| `door` | `not-founded` | The Accord is proposed, not founded: every member must view and accept its view first; run placket view and placket accept. |
 | `door` | `replayed` | The window has seen the call's nonce already; call again with a fresh nonce. |
 | `door` | `stale` | The call's time is more than 60 seconds from the window's clock; set the clock right and call again. |
 | `door` | `too-large` | The call is longer than the door reads; send a smaller part. |

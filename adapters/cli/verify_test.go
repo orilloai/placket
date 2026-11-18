@@ -393,3 +393,85 @@ func TestVerifyNamesWhatThePolicySupersedes(t *testing.T) {
 		t.Fatalf("verify: %v", v)
 	}
 }
+
+// TestVerifyWithoutTheOpenings is U4 and U18 at the command line (setup-contract-16, verify-1):
+// verify with the founding set and its acceptances and no opening founds as any party can, prints
+// that the terms were not checked and that the receipts conform as far as the sealed terms let it
+// say, and exits 0; it prints no seal and no view line. With no acceptances.json beside the set and
+// none given it is error file acceptances.
+func TestVerifyWithoutTheOpenings(t *testing.T) {
+	t.Parallel()
+	a, _ := accepted(t)
+	r := run(t, env(), "verify", "--receipts", a.journal(), "--accord", a.id, "--founding", a.founding(), "--acceptances", a.acceptances())
+	l := r.lines()
+	if r.code != 0 || !slices.Contains(l, cli.LineTermsNotChecked) || !slices.Contains(l, fmt.Sprintf(cli.LineValid, 3, a.refs["mediator"])) ||
+		!slices.Contains(l, cli.LineConformSealed) || slices.ContainsFunc(l, func(s string) bool { return strings.HasPrefix(s, "seal ") || strings.HasPrefix(s, "view ") }) {
+		t.Fatalf("verify without openings: %v", r)
+	}
+	if o := object(t, run(t, env(), "verify", "--receipts", a.journal(), "--accord", a.id, "--founding", a.founding(), "--json")); string(o["terms"]) != `"`+cli.LineTermsNotChecked+`"` ||
+		string(o["seals"]) != "[]" || string(o["views"]) != "[]" {
+		t.Fatalf("verify --json: %v", o)
+	}
+	moved := filepath.Join(t.TempDir(), "founding.json")
+	b, _ := os.ReadFile(a.founding())
+	if err := os.WriteFile(moved, b, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if r := run(t, env(), "verify", "--receipts", a.journal(), "--accord", a.id, "--founding", moved); r.code != cli.ExitTool || r.stderr != "error file acceptances\n" {
+		t.Fatalf("verify with no acceptances: %v", r)
+	}
+}
+
+// TestVerifyOpensASeal is U15 (setup-contract-13, setup-contract-16): with one member's opening,
+// verify prints that its seal opens and that its view was not checked, since a view reads every
+// member's terms; with every opening, that each seal opens and each view matches its acceptance,
+// that the terms were checked, and that the log conforms. An opening whose salt is another is error
+// founding seal-mismatch; acceptances in which a member accepted a view other than its own pass
+// without the openings and are error founding acceptance-view with every opening.
+func TestVerifyOpensASeal(t *testing.T) {
+	t.Parallel()
+	a, _ := accepted(t)
+	base := []string{"verify", "--receipts", a.journal(), "--accord", a.id, "--founding", a.founding()}
+	one := filepath.Join(a.openings(), cli.OpeningName(a.refs["decider"]))
+	r := must(t, append(base, "--open", one)...)
+	l := r.lines()
+	if !slices.Contains(l, fmt.Sprintf(cli.LineSealOpens, a.refs["decider"])) || !slices.Contains(l, fmt.Sprintf(cli.LineViewNotChecked, a.refs["decider"])) ||
+		!slices.Contains(l, cli.LineTermsNotChecked) || slices.Contains(l, fmt.Sprintf(cli.LineSealOpens, a.refs["proposer"])) {
+		t.Fatalf("verify with one opening: %v", r)
+	}
+	r = must(t, append(base, a.opens()...)...)
+	l = r.lines()
+	for _, p := range a.parties {
+		if !slices.Contains(l, fmt.Sprintf(cli.LineSealOpens, a.refs[p])) || !slices.Contains(l, fmt.Sprintf(cli.LineViewMatches, a.refs[p])) {
+			t.Fatalf("verify with every opening, %s: %v", p, r)
+		}
+	}
+	if !slices.Contains(l, cli.LineTermsChecked) || !slices.Contains(l, cli.LineConforms) {
+		t.Fatalf("verify with every opening: %v", r)
+	}
+
+	// An opening whose salt is another opens nothing.
+	b, _ := os.ReadFile(one)
+	var op map[string]json.RawMessage
+	if err := json.Unmarshal(b, &op); err != nil {
+		t.Fatal(err)
+	}
+	op["salt"] = json.RawMessage(`"` + strings.Repeat("00", 32) + `"`)
+	bad := filepath.Join(t.TempDir(), "bad.opening.json")
+	nb, _ := json.Marshal(op)
+	if err := os.WriteFile(bad, nb, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if r := run(t, env(), append(base, "--open", bad)...); r.code != cli.ExitTool || r.stderr != "error founding seal-mismatch\n" {
+		t.Fatalf("an opening of another salt: %v", r)
+	}
+
+	// The applier accepted the decider's view: only the openings show it.
+	false_ := a.falseAcceptances(t, "applier", "decider")
+	if r := run(t, env(), append(base, "--acceptances", false_)...); r.code != 0 {
+		t.Fatalf("a false view without the openings: %v", r)
+	}
+	if r := run(t, env(), append(append(base, "--acceptances", false_), a.opens()...)...); r.code != cli.ExitTool || r.stderr != "error founding acceptance-view\n" {
+		t.Fatalf("a false view with every opening: %v", r)
+	}
+}
