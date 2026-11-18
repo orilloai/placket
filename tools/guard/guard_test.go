@@ -8,6 +8,7 @@ import (
 	"regexp"
 	"sort"
 	"strings"
+	"sync"
 	"testing"
 )
 
@@ -52,7 +53,7 @@ func copyTree(t *testing.T, src string) string {
 	t.Helper()
 	dst := t.TempDir()
 	skip := map[string]bool{".git": true, "tests/testdata": true, "tools/guard/testdata": true}
-	tracked, ok := newTree(src).tracked()
+	tracked, ok := trackedIn(src)
 	err := filepath.WalkDir(src, func(p string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
@@ -78,6 +79,23 @@ func copyTree(t *testing.T, src string) string {
 		t.Fatalf("copying the repository: %v", err)
 	}
 	return dst
+}
+
+// trackedSets keeps the files git tracks in each tree copyTree has copied, by its path, listed once
+// for every case that copies it, since the tree does not change while the tests run.
+var trackedSets sync.Map
+
+type trackedSet struct {
+	once sync.Once
+	set  map[string]bool
+	ok   bool
+}
+
+func trackedIn(src string) (map[string]bool, bool) {
+	v, _ := trackedSets.LoadOrStore(src, &trackedSet{})
+	s := v.(*trackedSet)
+	s.once.Do(func() { s.set, s.ok = newTree(src).tracked() })
+	return s.set, s.ok
 }
 
 // lay copies the fixture testdata/<name>/ over dir.
