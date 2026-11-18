@@ -1,7 +1,8 @@
 #!/bin/sh
 # The worked example's test: it runs scripts/demo.sh, the script behind make demo, in a new
 # directory, and checks that each of its ten steps printed what the step says, in order. Then it
-# verifies the demo journal committed under scripts/demo/, the one the README shows a receipt of,
+# verifies the demo journal committed under scripts/demo/, the one the README shows a receipt of, as
+# any party can with its terms sealed and then with every opening,
 # with the binary the run built, and checks that its card names that binary's module.
 set -u
 
@@ -25,9 +26,15 @@ want='^== 1\.
 ^module 0\.2\.0 sha256:[0-9a-f]{64}$
 ^accord sha256:[0-9a-f]{64}$
 ^== 2\.
-^window: accord sha256:[0-9a-f]{64} founded$
+^window: accord sha256:[0-9a-f]{64} proposed$
 ^window: card sha256:[0-9a-f]{64}$
 ^window: operator ed25519:[0-9a-f]{64}$
+^proposer: give proposal to ed25519:[0-9a-f]{64} \(applier\): ask, answered by role:decider within 3600 seconds$
+^proposer: accepted view sha256:[0-9a-f]{64}$
+^proposer: the Accord is not founded yet: it waits for every member.s acceptance$
+^decider: answer proposal from ed25519:[0-9a-f]{64} to ed25519:[0-9a-f]{64} within 3600 seconds$
+^decider: the Accord is founded: every member accepted its view$
+^window: accord sha256:[0-9a-f]{64} founded$
 ^== 3 and 4\.
 ^decider: questions: Rename the column total to amount\.$
 ^decider: pass ok sha256:
@@ -79,15 +86,21 @@ want='^== 1\.
 ^verifier: member ed25519:[0-9a-f]{64} roles (proposer|applier|decider) principal ed25519:[0-9a-f]{64}$
 ^verifier: member ed25519:[0-9a-f]{64} roles (proposer|applier|decider) principal ed25519:[0-9a-f]{64}$
 ^verifier: member ed25519:[0-9a-f]{64} roles (proposer|applier|decider) principal ed25519:[0-9a-f]{64}$
+^verifier: terms: not checked: the declarations are sealed
 ^verifier: pass 6 block 3 ask 4$
 ^verifier: questions closed 4 open 0$
 ^verifier: releases 2 blocked releases 0$
 ^verifier: sha256:[0-9a-f]{64} witnessed: signed by key ed25519:[0-9a-f]{64}, which principal ed25519:[0-9a-f]{64} bound to role decider$
 ^verifier: valid: 13 receipts signed by mediator ed25519:[0-9a-f]{64}$
-^verifier: conforms: every decision is one this Accord let its decider make$
+^verifier: conforms: every receipt names this Accord, its card and its members
 ^verifier: complete: not claimed: this Accord has no close receipt$
 ^verifier: claim: each receipt is this mediator.s signed decision about one part under this Accord.s terms\.$
 ^verifier: not claimed: what any party did with a part after it crossed; 
+^operator: seal ed25519:[0-9a-f]{64}: opens: the declaration it seals is its actor.s own$
+^operator: view ed25519:[0-9a-f]{64}: matches its acceptance$
+^operator: terms: checked: every seal opens, and every view is the one its member accepted$
+^operator: valid: 13 receipts signed by mediator ed25519:[0-9a-f]{64}$
+^operator: conforms: every decision is one this Accord let its decider make$
 ^verifier: nothing to reconcile$
 ^verifier: proposal,topic,kind,asked_at,answered_at,answer,released_at,comment,answer_signed,answerer,receipts$
 ^verifier: sha256:[0-9a-f]{64},billing,proposal,[^,]*,[^,]*,accepted,[0-9TZ:-]+,,yes,
@@ -115,10 +128,17 @@ fi
 
 demo=$root/scripts/demo
 accord=$(sed -n 's/^{"accord":"\(sha256:[0-9a-f]*\)".*/\1/p' "$demo/journal/accord")
-if "$tmp/run/placket" verify --accord "$accord" --receipts "$demo/journal" --founding "$demo/founding.json" >"$tmp/verify" 2>&1; then
-	echo "ok   the committed demo journal verifies"
-	# Given only its Accord id, the journal conforms, and its answers.jsonl witnesses the accept.
+if "$tmp/run/placket" verify --accord "$accord" --receipts "$demo/journal" --founding "$demo/founding.json" >"$tmp/verify" 2>&1 &&
+	grep -q '^valid: ' "$tmp/verify" && grep -q '^terms: not checked: the declarations are sealed' "$tmp/verify"; then
+	echo "ok   the committed demo journal verifies, its terms sealed"
+	opens=""
+	for o in "$demo"/openings/*.opening.json; do opens="$opens --open $o"; done
+	# With every opening, its terms are checked, the journal conforms, and its answers.jsonl witnesses
+	# the accept.
+	# shellcheck disable=SC2086
+	"$tmp/run/placket" verify --accord "$accord" --receipts "$demo/journal" --founding "$demo/founding.json" $opens >"$tmp/verify" 2>&1 || :
 	if grep -qx 'conforms: every decision is one this Accord let its decider make' "$tmp/verify" &&
+		grep -qx 'terms: checked: every seal opens, and every view is the one its member accepted' "$tmp/verify" &&
 		grep -qE '^sha256:[0-9a-f]{64} witnessed: signed by key ed25519:[0-9a-f]{64}, which principal ed25519:[0-9a-f]{64} bound to role decider$' "$tmp/verify"; then
 		echo "ok   the committed demo journal conforms, its accept witnessed"
 	else
