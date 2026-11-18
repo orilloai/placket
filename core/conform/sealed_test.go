@@ -37,7 +37,7 @@ func TestConformanceWithTheOpeningsItHolds(t *testing.T) {
 		s.add(t, receipts.Subject{Name: "tests", Digest: strings.Repeat("cd", 32)}, receipts.Predicate{Accord: w.accord,
 			Card: st.Predicate.Card, Kind: receipts.KindCrossing, From: from, To: to, At: "2026-11-12T09:00:00Z",
 			Envelope: receipts.Envelope{Sender: from, Seq: 1, Hash: st.Predicate.Envelope.Hash},
-			Verdict: "pass", Reason: "ok", By: receipts.By{Decider: receipts.ByTerms}})
+			Verdict:  "pass", Reason: "ok", By: receipts.By{Decider: receipts.ByTerms}})
 		return s.list
 	}
 	every.Receipts, none.Receipts = forged(p, ap), forged(p, ap)

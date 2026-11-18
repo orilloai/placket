@@ -322,13 +322,13 @@ type world struct {
 	set         []byte
 	openings    map[string][]byte
 	acceptances []byte
-	accord  string
-	socket  string
-	journal string
-	clock   *clock
-	salts   *counter
-	nonces  *counter
-	seqs    map[string]int64
+	accord      string
+	socket      string
+	journal     string
+	clock       *clock
+	salts       *counter
+	nonces      *counter
+	seqs        map[string]int64
 	// disk is what the world's windows write their journal through; nil is the system's.
 	disk journal.Disk
 }
