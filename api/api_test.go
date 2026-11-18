@@ -189,7 +189,7 @@ func startProxy(t *testing.T, sock, target string) *proxy {
 				p.mu.Lock()
 				p.replies[call.Call.Op] = append(p.replies[call.Call.Op], reply)
 				p.mu.Unlock()
-				_, _ = c.Write(append(reply, '\n'))
+				_, _ = c.Write(append(append([]byte(nil), reply...), '\n'))
 			}
 			_ = c.Close()
 		}
@@ -318,15 +318,16 @@ func TestTheWireSchemasDescribeTheDoor(t *testing.T) {
 		}
 	}
 	for name, b := range got {
+		b = append(append([]byte(nil), b...), '\n')
 		path := filepath.Join(repliesDir, name+".json")
 		if *update {
-			if err := os.WriteFile(path, append(b, '\n'), 0o644); err != nil {
+			if err := os.WriteFile(path, b, 0o644); err != nil {
 				t.Fatal(err)
 			}
 			continue
 		}
 		want, err := os.ReadFile(path)
-		if err != nil || !bytes.Equal(append(b, '\n'), want) {
+		if err != nil || !bytes.Equal(b, want) {
 			t.Errorf("%s: the reply is not the one committed (%v):\n%s", name, err, b)
 		}
 	}

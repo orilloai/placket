@@ -13,7 +13,7 @@ trap 'exit 1' INT TERM
 
 repo=$tmp/repo
 mkdir "$repo"
-cp -R "$root/go.mod" "$root/core" "$root/adapters" "$root/cmd" "$repo/"
+cp -R "$root/go.mod" "$root/core" "$root/adapters" "$root/api" "$root/cmd" "$repo/"
 g() { git -C "$repo" -c user.name=placket -c user.email=placket@example.invalid -c commit.gpgsign=false -c tag.gpgsign=false "$@"; }
 if ! { g init -q && g add -A && g commit -q -m 'a release' && g tag -a v0.0.1-test -m v0.0.1-test; } >"$tmp/out" 2>&1; then
 	echo "FAIL the tagged copy could not be made"

@@ -179,9 +179,7 @@ func alternatives(b *bytes.Buffer, s schema) {
 			names = append(names, n)
 		}
 		sort.Strings(names)
-		for _, n := range names {
-			shape = append(shape, n)
-		}
+		shape = append(shape, names...)
 		if name != "" {
 			fmt.Fprintf(b, "- `{%s}` (%s): %s\n", strings.Join(shape, ","), name, desc)
 		} else {

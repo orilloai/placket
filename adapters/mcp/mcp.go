@@ -305,9 +305,6 @@ func (s *Server) Serve(ctx context.Context, in io.Reader, out io.Writer) error {
 	}
 }
 
-// errTooLong is a line longer than MaxMessage.
-var errTooLong = errors.New("mcp: message too long")
-
 // readLine reads one line, its line feed removed; a line longer than MaxMessage is read to its end
 // and returned as an empty message, which is not JSON.
 func readLine(r *bufio.Reader) ([]byte, error) {

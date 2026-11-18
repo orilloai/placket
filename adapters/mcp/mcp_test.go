@@ -240,8 +240,8 @@ func TestTheToolList(t *testing.T) {
 	}
 }
 
-// TestAnAnsweringKeyIsRefused starts placket mcp with a proposing label and one whose key answers
-// questions: a give on the answering label is answering-key with its sentence, mediators lists it as
+// TestAnAnsweringKeyIsRefused starts placket mcp with a proposing label, one whose key answers
+// questions, and one whose founding set is missing, which is refused founding: a give on the answering label is answering-key with its sentence, mediators lists it as
 // refused, and a give on the proposing label passes; an answering entry it is not started with, whose
 // founding set and key file are missing, is listed and never read. With --allow-answering both are
 // served.
@@ -250,16 +250,19 @@ func TestAnAnsweringKeyIsRefused(t *testing.T) {
 	w := newWorld(t)
 	missing := w.entry("elsewhere", "decider", 1)
 	missing.Founding, missing.Key = filepath.Join(w.dir, "no-founding.json"), filepath.Join(w.dir, "no.key")
-	cfg := client.Config{Mediators: []client.Mediator{w.entry("merge", "proposer", 0), w.entry("approve", "decider", 0), missing}}
-	s := serve(t, &mcp.Server{Config: cfg, Labels: []string{"merge", "approve"}})
+	broken := w.entry("broken", "applier", 0)
+	broken.Founding = filepath.Join(w.dir, "no-founding.json")
+	cfg := client.Config{Mediators: []client.Mediator{w.entry("merge", "proposer", 0), w.entry("approve", "decider", 0), missing, broken}}
+	s := serve(t, &mcp.Server{Config: cfg, Labels: []string{"merge", "approve", "broken"}})
 	want := errtext.Text(errtext.FromMCP, string(mcp.CodeAnsweringKey))
 	if _, e := s.call(t, "give", map[string]any{"mediator": "approve", "to": w.refs["proposer"], "kind": "answer", "text": "No."}); e != want {
 		t.Fatalf("a give on the answering label: %q, want %q", e, want)
 	}
 	o, e := s.call(t, "mediators", map[string]any{})
 	list, _ := o["mediators"].([]any)
-	if e != "" || len(list) != 3 || list[0].(map[string]any)["served"] != true || list[1].(map[string]any)["refused"] != want ||
-		list[2].(map[string]any)["served"] != false || list[2].(map[string]any)["refused"] != nil {
+	if e != "" || len(list) != 4 || list[0].(map[string]any)["served"] != true || list[1].(map[string]any)["refused"] != want ||
+		list[2].(map[string]any)["served"] != false || list[2].(map[string]any)["refused"] != nil ||
+		list[3].(map[string]any)["refused"] != errtext.Text(errtext.FromMCP, string(mcp.CodeFounding)) {
 		t.Fatalf("mediators: %v %s", o, e)
 	}
 	if o, e := s.call(t, "give", map[string]any{"mediator": "merge", "to": w.refs["applier"], "kind": "note", "text": "A note."}); e != "" ||
