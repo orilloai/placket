@@ -316,7 +316,7 @@ func TestReleasedKeptALineChangedAndNothingKept(t *testing.T) {
 	if n := len(keptLines(t, k.state("proposer"))); n != 3 {
 		t.Fatalf("the proposer kept %d lines", n)
 	}
-	if n := len(keptLines(t, k.state("decider"))); n != 1 {
+	if n := len(keptLines(t, k.state("decider"))); n != 2 {
 		t.Fatalf("the decider kept %d lines", n)
 	}
 	b := newAccord(t, "ann", "bob")

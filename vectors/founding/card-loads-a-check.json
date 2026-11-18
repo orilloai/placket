@@ -181,6 +181,6 @@
   },
   "operation": "found",
   "spec": "0.1",
-  "tests": "setup-contract-4: a card whose checks lists one check is invalid-shape",
+  "tests": "setup-contract-4: a card with a checks member, a member the card does not list, is invalid-shape",
   "vector": "founding/card-loads-a-check"
 }

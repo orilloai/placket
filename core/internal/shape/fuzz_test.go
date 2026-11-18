@@ -217,3 +217,16 @@ func FuzzDecode(f *testing.F) {
 		}
 	})
 }
+
+// FuzzMediaType reads any string as a media type without panicking; one it takes has one slash and
+// no uppercase letter (fuzz-parsers, core-no-panic).
+func FuzzMediaType(f *testing.F) {
+	for _, s := range []string{"application/json", "Application/JSON", "json", "a/b/c", ""} {
+		f.Add(s)
+	}
+	f.Fuzz(func(t *testing.T, s string) {
+		if MediaType(s) && (strings.Count(s, "/") != 1 || strings.ToLower(s) != s) {
+			t.Fatalf("MediaType(%q) holds", s)
+		}
+	})
+}

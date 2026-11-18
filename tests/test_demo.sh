@@ -22,7 +22,7 @@ fi
 # after the line the one before it matched.
 want='^== 1\.
 ^card sha256:[0-9a-f]{64}$
-^module 0\.1\.0 sha256:[0-9a-f]{64}$
+^module 0\.2\.0 sha256:[0-9a-f]{64}$
 ^accord sha256:[0-9a-f]{64}$
 ^== 2\.
 ^window: accord sha256:[0-9a-f]{64} founded$
@@ -56,8 +56,8 @@ want='^== 1\.
 ^== 7\.
 ^proposer: ask maybe sha256:
 ^proposer: exit 4$
-^proposer: rejected not-an-answerer$
-^proposer: exit 2$
+^proposer: error asked$
+^proposer: exit 3$
 ^== 8\.
 ^proposer: block no-match sha256:
 ^proposer: exit 1$
@@ -74,22 +74,25 @@ want='^== 1\.
 ^applier: no delivery$
 ^decider: no delivery$
 ^== 10\.
-^verifier: verified 13 receipts$
 ^verifier: operator ed25519:[0-9a-f]{64} runs process$
-^verifier: module 0\.1\.0 sha256:
+^verifier: module 0\.2\.0 sha256:
 ^verifier: member ed25519:[0-9a-f]{64} roles (proposer|applier|decider) principal ed25519:[0-9a-f]{64}$
 ^verifier: member ed25519:[0-9a-f]{64} roles (proposer|applier|decider) principal ed25519:[0-9a-f]{64}$
 ^verifier: member ed25519:[0-9a-f]{64} roles (proposer|applier|decider) principal ed25519:[0-9a-f]{64}$
 ^verifier: pass 6 block 3 ask 4$
 ^verifier: questions closed 4 open 0$
 ^verifier: releases 2 blocked releases 0$
+^verifier: sha256:[0-9a-f]{64} witnessed: signed by key ed25519:[0-9a-f]{64}, which principal ed25519:[0-9a-f]{64} bound to role decider$
+^verifier: valid: 13 receipts signed by mediator ed25519:[0-9a-f]{64}$
+^verifier: conforms: every decision is one this Accord let its decider make$
+^verifier: complete: not claimed: this Accord has no close receipt$
 ^verifier: claim: each receipt is this mediator.s signed decision about one part under this Accord.s terms\.$
 ^verifier: not claimed: what any party did with a part after it crossed; 
 ^verifier: nothing to reconcile$
 ^verifier: proposal,topic,kind,asked_at,answered_at,answer,released_at,comment,answer_signed,answerer,receipts$
 ^verifier: sha256:[0-9a-f]{64},billing,proposal,[^,]*,[^,]*,accepted,[0-9TZ:-]+,,yes,
 ^verifier: sha256:[0-9a-f]{64},billing,proposal,[^,]*,[^,]*,changed,[0-9TZ:-]+,Someone still reads it\.,yes,
-^verifier: sha256:[0-9a-f]{64},billing,proposal,[^,]*,[^,]*,declined,,Invoices are kept for seven years\.,,
+^verifier: sha256:[0-9a-f]{64},billing,proposal,[^,]*,[^,]*,declined,,Invoices are kept for seven years\.,yes,
 ^verifier: sha256:[0-9a-f]{64},billing,proposal,[^,]*,[^,]*,undeliverable,,,,
 ^verifier: error verify signature receipts\.jsonl line 1$
 ^verifier: exit 3$
@@ -111,8 +114,18 @@ if [ "$(grep -Ec '^verifier: sha256:[0-9a-f]{64},' "$out")" -ne 4 ]; then
 fi
 
 demo=$root/scripts/demo
-if "$tmp/run/placket" verify --mediator "$(cat "$demo/mediator.ref")" --receipts "$demo/journal" --founding "$demo/founding.json" >"$tmp/verify" 2>&1; then
+accord=$(sed -n 's/^{"accord":"\(sha256:[0-9a-f]*\)".*/\1/p' "$demo/journal/accord")
+if "$tmp/run/placket" verify --accord "$accord" --receipts "$demo/journal" --founding "$demo/founding.json" >"$tmp/verify" 2>&1; then
 	echo "ok   the committed demo journal verifies"
+	# Given only its Accord id, the journal conforms, and its answers.jsonl witnesses the accept.
+	if grep -qx 'conforms: every decision is one this Accord let its decider make' "$tmp/verify" &&
+		grep -qE '^sha256:[0-9a-f]{64} witnessed: signed by key ed25519:[0-9a-f]{64}, which principal ed25519:[0-9a-f]{64} bound to role decider$' "$tmp/verify"; then
+		echo "ok   the committed demo journal conforms, its accept witnessed"
+	else
+		echo "FAIL the committed demo journal does not conform with its accept witnessed"
+		sed 's/^/    | /' "$tmp/verify"
+		failed=1
+	fi
 	# One principal stands behind all three members: three member lines, one principal among them.
 	if [ "$(grep -cE '^member ed25519:[0-9a-f]{64} roles (proposer|applier|decider) principal ed25519:[0-9a-f]{64}$' "$tmp/verify")" -eq 3 ] &&
 		[ "$(awk '$1 == "member" { print $6 }' "$tmp/verify" | sort -u | wc -l)" -eq 1 ]; then

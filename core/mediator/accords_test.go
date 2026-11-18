@@ -106,7 +106,7 @@ func buildSet(t testing.TB, roles []string, parties ...party) []byte {
 		"policy":   policy,
 		"mediator": map[string]any{"actor": med.Reference(), "operator": op.Reference(), "runs": "process"},
 		"card": map[string]any{"spec": "0.1", "kernel": map[string]any{"version": "0.1.0", "hash": kernel},
-			"judges": []any{}, "checks": []any{}},
+			"judges": []any{}},
 		"declarations": decls,
 		"bindings":     binds,
 	})

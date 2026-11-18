@@ -102,11 +102,11 @@ func TestNoCommandPrintsASeed(t *testing.T) {
 		t.Fatalf("the decider's questions: %v", r)
 	}
 	for q := range asked {
-		must(t, s.as("decider", "cancel", "--question", q)...)
+		must(t, s.as("proposer", "cancel", "--question", q)...)
 	}
 	add(must(t, s.as("proposer", "result", "--question", s.accepted)...))
 	add(run(t, env(), s.as("proposer", "give", "--to", s.refs["applier"], "--kind", "proposal", "--text", "x")...))
-	add(must(t, s.as("decider", "cancel", "--question", q)...))
+	add(must(t, s.as("proposer", "cancel", "--question", q)...))
 	add(must(t, s.as("applier", "get", "--keep")...))
 	add(must(t, "verify", "--mediator", s.refs["mediator"], "--receipts", s.journal(), "--founding", filepath.Join(s.dir, "founding.json")))
 	add(must(t, "log", "--mediator", s.refs["mediator"], "--receipts", s.journal(), "--words", "--kept", s.state("proposer")))

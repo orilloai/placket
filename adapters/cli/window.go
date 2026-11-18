@@ -49,7 +49,7 @@ func windowCommand(r *run, args []string) int {
 	operator := memberString(set, "mediator", "operator")
 	err = local.Run(r.env.Context, local.Window{
 		Key: k, Founding: set, Socket: *socket, Journal: *dir, Disk: r.env.Disk,
-		Now: r.env.Now, Rand: r.env.Rand, Stderr: r.stderr, Ready: r.env.Ready,
+		Now: r.env.Now, Stderr: r.stderr, Ready: r.env.Ready,
 		Event: func(e local.Event) { r.event(e, operator) },
 	})
 	if err == nil {

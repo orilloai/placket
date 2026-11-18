@@ -42,7 +42,6 @@
       }
     ],
     "card": {
-      "checks": [],
       "judges": [],
       "kernel": {
         "hash": "sha256:a8755bef6ff188c2dc6b74377a73c6a49d612fc44915675db9d2795bb5b99475",
@@ -190,14 +189,14 @@
       "as": "proposer",
       "at": "2026-11-12T09:00:00Z",
       "envelope": {
-        "hash": "sha256:d5bf9215743de9bdcad540e914629b0905acc3e89e91f1d94f82aae8305bffcb",
+        "hash": "sha256:ff0de99f92ad6533262779127f449abde2854b7df98b474c64d4aecd9f03dd00",
         "seq": 1,
-        "sig": "6c44a830809b9db6b372335442069fcff679aac560e34ee562d00fcd1ce01e36118c5732881b5e7236a9a17449d97a5997176dada6a7c183c5bda4fa8d117f0d"
+        "sig": "fa4180d45a05367b0635119050cfe4def803ec106ba5affc8cbf896201b51aff47492e7049e04e4bd512e89a8c1f57ab5afeec8dacadb95528adb91608e9d20d"
       },
       "expect": {
         "rejection": "not-canonical"
       },
-      "messageText": "{\"extensions\":[\"https://placket.tech/crossing/0.1\"],\"messageId\":\"topic\",\"metadata\":{\"https://placket.tech/crossing/0.1\":{\"accord\":\"sha256:fdb4c6101b33876a56e9501d756b0905671a9a44c726e599c9a7a76270aab1df\",\"to\":\"ed25519:a80586279ba17c5360b029018bf025be0169fdb02087e77301774c99eed92117\",\"topic\":\"wrong\",\"topic\":\"the-topic\"}},\"parts\":[{\"metadata\":{\"https://placket.tech/crossing/0.1\":{\"kind\":\"note\",\"salt\":\"c2ce9a6d09a077674993c93fa9338ae06b08d6cf25202f767751bc0e4decb0a8\"}},\"text\":\"With a topic.\"}],\"role\":\"ROLE_USER\"}",
+      "messageText": "{\"extensions\":[\"https://placket.tech/crossing/0.1\"],\"messageId\":\"topic\",\"metadata\":{\"https://placket.tech/crossing/0.1\":{\"accord\":\"sha256:04f71f9b99b729d07bc824bcae742abc9f51f31d2b9d59e968a5c169e15b9303\",\"to\":\"ed25519:a80586279ba17c5360b029018bf025be0169fdb02087e77301774c99eed92117\",\"topic\":\"wrong\",\"topic\":\"the-topic\"}},\"parts\":[{\"metadata\":{\"https://placket.tech/crossing/0.1\":{\"kind\":\"note\",\"salt\":\"c2ce9a6d09a077674993c93fa9338ae06b08d6cf25202f767751bc0e4decb0a8\"}},\"text\":\"With a topic.\"}],\"role\":\"ROLE_USER\"}",
       "op": "give"
     }
   ],

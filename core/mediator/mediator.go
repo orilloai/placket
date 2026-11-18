@@ -9,9 +9,11 @@
 // crossing-1 to crossing-4 and crossing-6 (the door's check table, in order), crossing-7 (a rejection
 // changes nothing), crossing-3 (deliveries, queued per receiver and fetched once), maybe-1 (asking:
 // the held part and its question), maybe-3 to maybe-10 (section 6's check table, the three answers,
-// decline, cancel, undeliverable, timeout and release), crossing-5 (every closing and release echoes
-// the question's envelope), receipt-5 (the chain of each pair) and receipt-10 (the same inputs at
-// the same times write the same receipts). Decision record 0006 says what it holds and why, and
+// decline, cancel, undeliverable, timeout and release), maybe-11 and maybe-12 (the signed answer
+// call, checked before anything is written, and carried by every delivery it queues), receipt-11
+// (every receipt names its decider), crossing-5 (every closing and release echoes the question's
+// envelope), receipt-5 (the chain of each pair) and receipt-10 (the same inputs at the same times
+// write the same receipts). Decision record 0006 says what it holds and why, and
 // record 0008 how a reload rebuilds it.
 package mediator
 
@@ -20,6 +22,7 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/orilloai/placket/core/answer"
 	"github.com/orilloai/placket/core/canonical"
 	"github.com/orilloai/placket/core/composition"
 	"github.com/orilloai/placket/core/internal/crossing"
@@ -71,10 +74,17 @@ const (
 	PartMetadata      RejectionCode = "part-metadata"
 )
 
-// Section 6's codes for an answer, after not-a-member (maybe-6, maybe-7).
+// Section 6's codes for an answer, after not-a-member, in the order of its table (maybe-6, maybe-7,
+// maybe-11).
 const (
+	// AnswerCall: the answer call does not read, names another Accord, or is not the caller's.
+	AnswerCall     RejectionCode = RejectionCode(answer.CodeCall)
 	NoOpenQuestion RejectionCode = "no-open-question"
 	NotAnAnswerer  RejectionCode = "not-an-answerer"
+	// AnswerBody: the answer's text and salt do not fit the call: for an accept or a change, a salt
+	// that is not exactly SaltBytes, an empty version, or a text whose salted digest is not the
+	// call's; for a decline or a cancel, any text or salt.
+	AnswerBody RejectionCode = "answer-body"
 )
 
 // Rejection is a rejected operation: the code of the first row that failed. A rejected operation
@@ -94,12 +104,6 @@ const (
 	CodeAt ErrorCode = "at"
 	// CodeInternal: a receipt or delivery the mediator could not write. No input causes it.
 	CodeInternal ErrorCode = "internal"
-	// CodeSalt: an accept or a change whose salt is not exactly SaltBytes (section 6).
-	CodeSalt ErrorCode = "salt"
-	// CodeAnswer: a change with an empty version (maybe-9).
-	CodeAnswer ErrorCode = "answer"
-	// CodeAction: an answer whose action is not one of the four (section 6).
-	CodeAction ErrorCode = "action"
 	// CodeUnfounded: an operation on a Mediator that neither Found nor Reload made.
 	CodeUnfounded ErrorCode = "unfounded"
 	// CodeJournal: a reloaded receipt that does not verify, or that names another Accord or card.
@@ -132,6 +136,17 @@ func (e *Error) Error() string {
 // Unwrap returns the verifier's error a journal error wraps, or nil (record 0008).
 func (e *Error) Unwrap() error { return e.Err }
 
+// The misuse codes of an answer's own inputs, from before the answer was a signed call.
+//
+// Deprecated: nothing returns them. A salt, a version or an action that does not fit is now the
+// rejection AnswerBody or AnswerCall (docs/adr/0021-who-decided-and-the-answer-call.md). They are
+// removed at the release.
+const (
+	CodeSalt   ErrorCode = "salt"
+	CodeAnswer ErrorCode = "answer"
+	CodeAction ErrorCode = "action"
+)
+
 // failure is an Error with no index.
 func failure(code ErrorCode) *Error { return &Error{Code: code, Index: -1} }
 
@@ -163,6 +178,7 @@ type question struct {
 	subject  receipts.Subject
 	roles    []string // the role labels of the rule that may answer it
 	deadline string
+	receipt  []byte // the ask's receipt
 }
 
 // A queued delivery, and the id of the receipt that queued it.
@@ -290,10 +306,12 @@ type give struct {
 
 // Give gives the part the message carries, under the envelope, from caller at the time at. The door
 // runs its rows in order (section 4, crossing-6) and a give that fails one is rejected and changes
-// nothing (crossing-7). A give that passes is decided by composition, and its receipt is written
-// before any state changes: a pass queues the part for its receiver, an escalate holds it as a
-// question (maybe-1), and a block keeps nothing.
-func (m *Mediator) Give(caller string, message, envelope []byte, at string) (Outcome, error) {
+// nothing (crossing-7). A give that passes is decided by composition, with the judgment judge, or
+// none when it is nil (composition-7), and its receipt is written before any state changes, naming
+// the terms or the judge as its decider (receipt-11): a pass queues the part for its receiver, an
+// escalate holds it as a question (maybe-1), and a block keeps nothing. Running a judge is not the
+// mediator's: judge is the judgment its caller settled on.
+func (m *Mediator) Give(caller string, message, envelope []byte, judge *composition.Judgment, at string) (Outcome, error) {
 	if !m.founded() {
 		return Outcome{}, failure(CodeUnfounded)
 	}
@@ -304,7 +322,16 @@ func (m *Mediator) Give(caller string, message, envelope []byte, at string) (Out
 	if code != "" {
 		return Outcome{}, &Rejection{Code: code}
 	}
-	d := composition.Decide(m.accord, composition.Crossing{From: caller, To: g.to, Kind: g.kind})
+	var j *composition.Judgment
+	if judge != nil {
+		c := *judge
+		j = &c
+	}
+	d := composition.Decide(m.accord, composition.Crossing{From: caller, To: g.to, Kind: g.kind, Judge: j})
+	by := receipts.By{Decider: receipts.ByTerms}
+	if d.Judge != "" {
+		by = receipts.By{Decider: receipts.ByJudge, Judge: d.Judge}
+	}
 	pair := [2]string{caller, g.to}
 	last := m.chains[pair]
 	next := link{seq: last.seq + 1}
@@ -312,7 +339,7 @@ func (m *Mediator) Give(caller string, message, envelope []byte, at string) (Out
 		Accord: m.accord.ID(), Card: m.accord.Card(), Kind: receipts.KindCrossing,
 		From: caller, To: g.to, Seq: next.seq, Prev: last.id, At: at,
 		Envelope: receipts.Envelope{Sender: caller, Seq: g.seq, Hash: g.hash},
-		Verdict:  string(d.Verdict), Reason: d.Reason,
+		Verdict:  string(d.Verdict), Reason: d.Reason, By: by,
 	}
 	subject := receipts.Subject{Name: g.kind, Digest: g.digest}
 	receipt, verified, err := receipts.Build(subject, pred, m.key)
@@ -333,7 +360,7 @@ func (m *Mediator) Give(caller string, message, envelope []byte, at string) (Out
 		held = &question{
 			id: id, asker: caller, receiver: g.to, delivery: g.delivery,
 			envelope: pred.Envelope, subject: subject, roles: d.Rule.To,
-			deadline: shape.AddSeconds(at, d.Rule.Timeout),
+			deadline: shape.AddSeconds(at, d.Rule.Timeout), receipt: append([]byte(nil), receipt...),
 		}
 	}
 
@@ -450,7 +477,11 @@ func (m *Mediator) admit(caller string, message, envelope []byte) (give, Rejecti
 			bodies++
 		}
 	}
-	if bodies != 1 || !shape.Only(part, bodyName, "", "metadata") {
+	if bodies != 1 || !shape.Only(part, bodyName, "", "metadata", "mediaType") {
+		return g, OneBody
+	}
+	mediaType, hasMediaType := part["mediaType"].(string)
+	if _, has := part["mediaType"]; has && (!hasMediaType || !shape.MediaType(mediaType)) {
 		return g, OneBody
 	}
 	if bodyName == "url" {
@@ -484,6 +515,9 @@ func (m *Mediator) admit(caller string, message, envelope []byte) (give, Rejecti
 	g.delivery = map[string]any{"messageId": messageID, "kind": kind, "salt": saltHex, bodyName: part[bodyName]}
 	if re != "" {
 		g.delivery["re"] = re
+	}
+	if hasMediaType {
+		g.delivery["mediaType"] = mediaType
 	}
 	return g, ""
 }

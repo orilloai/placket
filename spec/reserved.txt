@@ -1,5 +1,6 @@
 signing-3
 maybe-2
+composition-4
 forbidden-check-1
 forbidden-check-2
 forbidden-check-3

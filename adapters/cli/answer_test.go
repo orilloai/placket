@@ -2,18 +2,16 @@ package cli_test
 
 import (
 	"bytes"
-	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
 	"testing"
-	"time"
 
-	"github.com/orilloai/placket/adapters/keyfile"
-	"github.com/orilloai/placket/adapters/local"
-	"github.com/orilloai/placket/core/mediator"
+	"github.com/orilloai/placket/core/answer"
+	"github.com/orilloai/placket/core/receipts"
 )
 
 // open gives a proposal without waiting and returns its question.
@@ -35,8 +33,8 @@ func (a *accord) receipts(t testing.TB) []byte {
 // TestAnAnswerNeedsItsText refuses a decline with no comment, or an empty one, with tool error
 // comment, and a change with no version, an empty one, or a file that is not UTF-8, with tool error
 // changed: each exits 3, sends no call, and leaves the question open. A change with a comment gives
-// the comment to the asker with re the question; a decline of a closed question is no-open-question,
-// exit 2, and gives no comment (RCP-01, RCP-02, RCP-05, RCP-12).
+// the comment to the asker with re the question; a decline of a closed question, which the window
+// no longer shows, is tool error asked, exit 3, and gives no comment (RCP-01, RCP-02, RCP-05, RCP-12).
 func TestAnAnswerNeedsItsText(t *testing.T) {
 	t.Parallel()
 	a := newAccord(t, "proposer", "applier", "decider")
@@ -75,7 +73,7 @@ func TestAnAnswerNeedsItsText(t *testing.T) {
 		t.Fatalf("the proposer fetched %v", got)
 	}
 	r = run(t, env(), a.as("decider", "decline", "--question", q, "--comment", "Too late.")...)
-	if r.code != 2 || r.stderr != "rejected no-open-question\n" {
+	if r.code != 3 || r.stderr != "error asked\n" {
 		t.Fatalf("a decline of a closed question: %v", r)
 	}
 	if got := a.drain(t, "proposer"); len(got) != 0 {
@@ -107,12 +105,13 @@ func str(r json.RawMessage) string {
 	return s
 }
 
-// TestTheAnswerCallTravelsWithTheAnswer accepts one proposal and changes another, and the asker and
-// the receiver fetch with --keep: every delivery whose body is the answer or the version carries the
-// decider's call beside it, which verifies under the decider's key and says the question, the action
-// and the text; the released proposal carries none. No line of receipts.jsonl holds a call, after
-// the fetch no file of the journal holds one or the version, and log marks both rows answer_signed
-// (answer-call-attached, RCP-17).
+// TestTheAnswerCallTravelsWithTheAnswer accepts one proposal and changes another, each asking for
+// release, and the asker and the receiver fetch with --keep: every delivery an answer queued, the
+// released proposal included, carries the decider's signed call inside it, which reads under the
+// decider's key, names the question and is the one the receipt's by names. The journal's
+// answers.jsonl holds both calls; no line of receipts.jsonl holds a call; after the fetch no file of
+// the journal holds the version; and log marks both rows answer_signed, from the journal or from the
+// kept deliveries alone, and neither once both are gone (answer-call-attached, maybe-12, U8, U30).
 func TestTheAnswerCallTravelsWithTheAnswer(t *testing.T) {
 	t.Parallel()
 	a := newAccord(t, "proposer", "applier", "decider")
@@ -121,172 +120,142 @@ func TestTheAnswerCallTravelsWithTheAnswer(t *testing.T) {
 	must(t, a.as("decider", "answer", "--question", accepted, "--text", "Yes.")...)
 	changed := a.openOne(t, "Drop notes.")
 	must(t, a.as("decider", "change", "--question", changed, "--text", "Hide notes.")...)
-	held, _ := os.ReadDir(filepath.Join(a.journal(), "held"))
-	if len(held) != 4 {
-		t.Fatalf("%d held files before the fetch", len(held))
-	}
 	a.drain(t, "proposer")
 	a.drain(t, "applier")
-	calls := map[string]string{}
+	calls := map[string]bool{}
+	carried := 0
 	for _, who := range []string{"proposer", "applier"} {
 		for _, k := range keptLines(t, a.state(who)) {
-			kind := str(k["kind"])
-			if kind == "" {
+			if str(k["kind"]) == "" || str(k["kind"]) == "note" {
 				continue
 			}
-			ac, has := k["answerCall"]
-			if kind == "proposal" {
-				if has {
-					t.Fatal("the released proposal carries an answer call")
-				}
-				continue
+			st, err := receipts.Decode(k["receipt"])
+			if err != nil || st.Predicate.By.Decider != receipts.ByAnswer {
+				t.Fatalf("%s's %s: its receipt is by %+v, %v", who, str(k["kind"]), st.Predicate.By, err)
 			}
-			sa, ok := local.VerifyAnswerCall(ac, a.refs["decider"])
-			if !has || !ok || sa.Accord != a.id || sa.Question != str(k["re"]) || sa.Answer != str(k["text"]) {
-				t.Fatalf("%s's %s: call %s, %+v, %v", who, kind, ac, sa, ok)
+			c, err := answer.Read(k["answer"])
+			if err != nil || c.From != a.refs["decider"] || c.Accord != a.id || answer.ID(k["answer"]) != st.Predicate.By.Answer ||
+				(c.Question != accepted && c.Question != changed) {
+				t.Fatalf("%s's %s: call %s, %v", who, str(k["kind"]), k["answer"], err)
 			}
-			calls[who+" "+kind] = sa.Action
+			calls[string(k["answer"])] = true
+			carried++
 		}
 	}
-	want := map[string]string{"proposer answer": "accepted", "proposer changed-version": "changed", "applier changed-version": "changed"}
-	if len(calls) != len(want) {
-		t.Fatalf("calls %v", calls)
+	if carried != 4 || len(calls) != 2 {
+		t.Fatalf("%d deliveries carry %d calls, want 4 and 2", carried, len(calls))
 	}
-	for k, v := range want {
-		if calls[k] != v {
-			t.Fatalf("calls %v", calls)
+	jb, err := os.ReadFile(filepath.Join(a.journal(), "answers.jsonl"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for c := range calls {
+		if !bytes.Contains(jb, []byte(c+"\n")) {
+			t.Fatalf("answers.jsonl does not hold %s", c)
 		}
-	}
-	// Each receipt line is a DSSE envelope whose payload is base64: the statement is read decoded.
-	var sigs []string
-	for _, who := range []string{"proposer", "applier"} {
-		for _, k := range keptLines(t, a.state(who)) {
-			var c struct{ Sig string }
-			if ac, has := k["answerCall"]; has && json.Unmarshal(ac, &c) == nil && c.Sig != "" {
-				sigs = append(sigs, c.Sig)
-			}
-		}
-	}
-	if len(sigs) != 3 {
-		t.Fatalf("%d answer calls kept", len(sigs))
 	}
 	for i, l := range strings.Split(strings.TrimSuffix(string(a.receipts(t)), "\n"), "\n") {
-		var env struct{ Payload string }
-		if err := json.Unmarshal([]byte(l), &env); err != nil {
-			t.Fatal(err)
-		}
-		st, err := base64.StdEncoding.DecodeString(env.Payload)
-		if err != nil || len(st) == 0 {
-			t.Fatalf("receipts.jsonl line %d: payload %v", i+1, err)
-		}
-		for _, b := range [][]byte{st, []byte(l)} {
-			if bytes.Contains(b, []byte("answerCall")) || bytes.Contains(b, []byte(`"call"`)) {
+		for c := range calls {
+			var sig struct{ Sig string }
+			_ = json.Unmarshal([]byte(c), &sig)
+			if strings.Contains(l, sig.Sig) || strings.Contains(l, "answerCall") {
 				t.Fatalf("receipts.jsonl line %d holds a call", i+1)
-			}
-			for _, sig := range sigs {
-				if bytes.Contains(b, []byte(sig)) {
-					t.Fatalf("receipts.jsonl line %d holds an answer call's signature", i+1)
-				}
 			}
 		}
 	}
 	_ = filepath.Walk(a.journal(), func(p string, fi os.FileInfo, err error) error {
 		if err == nil && fi.Mode().IsRegular() {
 			b, _ := os.ReadFile(p)
-			if bytes.Contains(b, []byte("answerCall")) || bytes.Contains(b, []byte("Hide notes.")) {
-				t.Fatalf("%s holds the call or the version after the fetch", p)
+			if bytes.Contains(b, []byte("Hide notes.")) {
+				t.Fatalf("%s holds the version after the fetch", p)
 			}
 		}
 		return nil
 	})
-	r := must(t, "log", "--mediator", a.refs["mediator"], "--receipts", a.journal(), "--format", "json", "--kept", a.state("proposer"), "--kept", a.state("applier"))
-	var lg struct {
-		Rows []map[string]any `json:"rows"`
-	}
-	if err := json.Unmarshal([]byte(r.stdout), &lg); err != nil || len(lg.Rows) != 2 {
-		t.Fatalf("log: %v", r)
-	}
-	for _, row := range lg.Rows {
-		if row["answer_signed"] != "yes" {
-			t.Fatalf("a row is not answer_signed: %v", row)
-		}
-	}
-	if r.stderr != "" {
-		t.Fatalf("log noted: %s", r.stderr)
-	}
-
-	// The proposer's kept answer, its call replaced by one that does not verify against the row: the
-	// row is not answer_signed, and log says which call it left out; the changed row still is.
-	call := func(who, accord, question string, action mediator.Action, answer string) []byte {
+	signed := func(journal string, kept ...string) []string {
 		t.Helper()
-		k, err := keyfile.Read(a.key(who))
-		if err != nil {
-			t.Fatal(err)
+		args := []string{"log", "--mediator", a.refs["mediator"], "--receipts", journal, "--format", "json"}
+		for _, k := range kept {
+			args = append(args, "--kept", k)
 		}
-		line, err := local.SignCall(k, local.OpResolve, accord, time.Now(), bytes.Repeat([]byte{9}, 16), local.ResolveArgs(question, action, answer))
-		if err != nil {
-			t.Fatal(err)
-		}
-		c, code := local.ParseCall(line)
-		if code != "" {
-			t.Fatalf("parse: %s", code)
-		}
-		return local.AnswerCall(c)
-	}
-	good := call("decider", a.id, accepted, mediator.Accepted, "Yes.")
-	var sig struct{ Call, Sig string }
-	if err := json.Unmarshal(good, &sig); err != nil {
-		t.Fatal(err)
-	}
-	flipped := []byte(sig.Sig)
-	flipped[0] = map[bool]byte{true: 'B', false: 'A'}[flipped[0] == 'A']
-	badSig, _ := json.Marshal(map[string]string{"call": sig.Call, "sig": string(flipped)})
-	other := "sha256:" + strings.Repeat("0", 64)
-	for _, c := range []struct {
-		name string
-		call []byte
-	}{
-		{"a signature changed", badSig},
-		{"signed by the asker", call("proposer", a.id, accepted, mediator.Accepted, "Yes.")},
-		{"another Accord", call("decider", other, accepted, mediator.Accepted, "Yes.")},
-		{"another question", call("decider", a.id, changed, mediator.Accepted, "Yes.")},
-		{"another action", call("decider", a.id, accepted, mediator.Changed, "Yes.")},
-		{"another text", call("decider", a.id, accepted, mediator.Accepted, "No.")},
-	} {
-		dir := copyDir(t, a.state("proposer"))
-		p := filepath.Join(dir, "kept.jsonl")
-		b, _ := os.ReadFile(p)
-		var out []string
-		id := ""
-		for _, l := range strings.Split(strings.TrimSuffix(string(b), "\n"), "\n") {
-			var o map[string]json.RawMessage
-			if err := json.Unmarshal([]byte(l), &o); err != nil {
-				t.Fatal(err)
-			}
-			if str(o["kind"]) == "answer" {
-				o["answerCall"] = c.call
-				id = str(o["receiptId"])
-				nb, _ := json.Marshal(o)
-				l = string(nb)
-			}
-			out = append(out, l)
-		}
-		if id == "" {
-			t.Fatalf("%s: no kept answer", c.name)
-		}
-		if err := os.WriteFile(p, []byte(strings.Join(out, "\n")+"\n"), 0o600); err != nil {
-			t.Fatal(err)
-		}
-		r := must(t, "log", "--mediator", a.refs["mediator"], "--receipts", a.journal(), "--format", "json", "--kept", dir)
+		r := must(t, args...)
 		var lg struct {
 			Rows []map[string]any `json:"rows"`
 		}
-		if err := json.Unmarshal([]byte(r.stdout), &lg); err != nil || len(lg.Rows) != 2 {
-			t.Fatalf("%s: log: %v", c.name, r)
+		if err := json.Unmarshal([]byte(r.stdout), &lg); err != nil || len(lg.Rows) != 2 || r.stderr != "" {
+			t.Fatalf("log: %v", r)
 		}
-		if lg.Rows[0]["answer_signed"] != "" || lg.Rows[1]["answer_signed"] != "yes" ||
-			r.stderr != "the answer call kept with receipt "+id+" does not verify; left out\n" {
-			t.Fatalf("%s: rows %v; stderr %q", c.name, lg.Rows, r.stderr)
+		return []string{fmt.Sprint(lg.Rows[0]["answer_signed"]), fmt.Sprint(lg.Rows[1]["answer_signed"])}
+	}
+	if got := signed(a.journal()); got[0] != "yes" || got[1] != "yes" {
+		t.Fatalf("from the journal: %v", got)
+	}
+	bare := copyDir(t, a.journal())
+	if err := os.Remove(filepath.Join(bare, "answers.jsonl")); err != nil {
+		t.Fatal(err)
+	}
+	if got := signed(bare); got[0] != "" || got[1] != "" {
+		t.Fatalf("with no answers.jsonl and nothing kept: %v", got)
+	}
+	if got := signed(bare, a.state("proposer")); got[0] != "yes" || got[1] != "yes" {
+		t.Fatalf("from the proposer's kept deliveries: %v", got)
+	}
+}
+
+// TestAnswerSignsOnlyWhatItChecked answers a question a window shows under a salt that does not make
+// the ask's receipt's digest, and then one the window does not show at all: answer is tool error
+// asked and sends no resolve call, its last call the questions it read; questions prints nothing of
+// the misstated part and is tool error asked (U12).
+func TestAnswerSignsOnlyWhatItChecked(t *testing.T) {
+	t.Parallel()
+	a := newAccord(t, "proposer", "applier", "decider")
+	a.start(t)
+	q := a.openOne(t, "Rename total.")
+	ask := bytes.Split(a.receipts(t), []byte("\n"))[0]
+	w := newFakeWindow(t, a.dir)
+	entry := map[string]any{"id": q, "asker": a.refs["proposer"], "kind": "proposal", "deadline": "2099-01-01T00:00:00Z",
+		"form": "text", "text": "Rename total.", "size": 13, "receipt": json.RawMessage(ask), "salt": strings.Repeat("ab", 32)}
+	w.set(t, map[string]any{"ok": true, "questions": []any{entry}})
+	for _, args := range [][]string{{"answer", "--question", q}, {"change", "--question", q, "--text", "Rename it."}, {"decline", "--question", q, "--comment", "No."}} {
+		r := run(t, env(), w.as(a, "decider", args...)...)
+		if r.code != 3 || r.stderr != "error asked\n" || !bytes.Contains(w.lastCall(), []byte(`"op":"questions"`)) {
+			t.Fatalf("%s of a part the window misstates: %v, last call %s", args[0], r, w.lastCall())
 		}
+	}
+	if r := run(t, env(), w.as(a, "decider", "questions")...); r.code != 3 || r.stderr != "error asked\n" || r.stdout != "" {
+		t.Fatalf("questions of a part the window misstates: %v", r)
+	}
+	w.set(t, map[string]any{"ok": true, "questions": []any{}})
+	for _, args := range [][]string{{"answer", "--question", q}, {"change", "--question", q, "--text", "Rename it."}, {"decline", "--question", q, "--comment", "No."}} {
+		r := run(t, env(), w.as(a, "decider", args...)...)
+		if r.code != 3 || r.stderr != "error asked\n" || !bytes.Contains(w.lastCall(), []byte(`"op":"questions"`)) {
+			t.Fatalf("%s of a question the window does not show: %v, last call %s", args[0], r, w.lastCall())
+		}
+	}
+}
+
+// TestAnswerWithNoRelease accepts with --no-release and --keep: the answer passes with no release
+// receipt, the applier is queued nothing, and the decider keeps the call it signed, release false,
+// with the salt its digest was taken under.
+func TestAnswerWithNoRelease(t *testing.T) {
+	t.Parallel()
+	a := newAccord(t, "proposer", "applier", "decider")
+	a.start(t)
+	q := a.openOne(t, "Rename total.")
+	r := must(t, a.as("decider", "answer", "--question", q, "--no-release", "--keep")...)
+	if len(r.lines()) != 1 || !strings.HasPrefix(r.stderr, "pass ok ") {
+		t.Fatalf("answer --no-release: %v", r)
+	}
+	if got := a.drain(t, "applier"); len(got) != 0 {
+		t.Fatalf("the applier fetched %v", got)
+	}
+	k := keptLines(t, a.state("decider"))
+	if len(k) != 1 {
+		t.Fatalf("the decider kept %d lines", len(k))
+	}
+	c, err := answer.Read(k[0]["answer"])
+	salt := strings.Trim(string(k[0]["salt"]), `"`)
+	if err != nil || c.Release || c.Question != q || c.Action != answer.Accepted || len(salt) != 64 {
+		t.Fatalf("the kept call %s, %v", k[0]["answer"], err)
 	}
 }

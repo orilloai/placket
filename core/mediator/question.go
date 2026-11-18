@@ -8,14 +8,17 @@ import (
 
 // A Question is an open question as the mediator holds it (maybe-1, record 0006): its id, the
 // asker, the receiver the part is for, the asked part's kind, the form of its body (text, raw or
-// data), its deadline and the role labels that may answer it, and in Part the body's value as given,
-// without its salt: a text body's bytes, a raw body's decoded bytes, or a data body's canonical bytes.
-// It holds a body, so it prints as a fixed text under every format verb and never prints Part
-// (secrets-never-print).
+// data), its deadline and the role labels that may answer it; in Part the body's value as given: a
+// text body's bytes, a raw body's decoded bytes, or a data body's canonical bytes; in Salt the part's
+// salt; and in Receipt the ask's receipt, whose subject digest is the salted digest of Part under
+// Salt (crossing-3), so an answerer checks what it answers. It holds a body and a salt, so it prints
+// as a fixed text under every format verb and never prints Part or Salt (secrets-never-print).
 type Question struct {
 	ID, Asker, Receiver, Kind, Form, Deadline string
 	Roles                                     []string
 	Part                                      []byte
+	Salt                                      []byte
+	Receipt                                   []byte
 }
 
 // Format prints the Question as a fixed text, whatever the verb.
@@ -62,7 +65,8 @@ func (m *Mediator) Question(caller, id string) (Question, bool, error) {
 // read copies the question out, its body as the digest reads it (crossing-3).
 func (q *question) read() Question {
 	out := Question{ID: q.id, Asker: q.asker, Receiver: q.receiver, Kind: q.subject.Name,
-		Deadline: q.deadline, Roles: append([]string(nil), q.roles...)}
+		Deadline: q.deadline, Roles: append([]string(nil), q.roles...), Receipt: append([]byte(nil), q.receipt...)}
+	out.Salt, _ = crossing.Salt(q.delivery["salt"])
 	for _, form := range crossing.Forms {
 		if v, has := q.delivery[form]; has {
 			out.Form = form

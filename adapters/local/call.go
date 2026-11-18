@@ -1,7 +1,6 @@
 package local
 
 import (
-	"crypto/subtle"
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
@@ -10,7 +9,6 @@ import (
 
 	"github.com/orilloai/placket/adapters/internal/strict"
 	"github.com/orilloai/placket/core/canonical"
-	"github.com/orilloai/placket/core/mediator"
 	"github.com/orilloai/placket/core/signing"
 )
 
@@ -54,7 +52,7 @@ const (
 const Internal DoorCode = "door-internal"
 
 // MaxReply is the most bytes of a reply, before its line feed, a client reads. It is enough for one
-// delivery, whose body came in a call under MaxCall, with its receipt and answer call beside it
+// delivery, whose body came in a call under MaxCall, with its receipt and the answer call inside it
 // (docs/adr/0017-the-doors-own-code.md).
 const MaxReply = 4 * MaxCall
 
@@ -64,10 +62,20 @@ type Call struct {
 	Op, Caller, Accord, At, Nonce string
 	// For give, the message's and envelope's bytes, as decoded.
 	Message, Envelope []byte
-	// For resolve and result.
-	Question, Action, Answer string
-	// HasAnswer is whether a resolve call carries an answer.
-	HasAnswer bool
+	// For result, the question's id.
+	Question string
+	// Action is never set: the action of an answer is inside its signed call.
+	//
+	// Deprecated: read the action from AnswerCall with answer.Read
+	// (docs/adr/0021-who-decided-and-the-answer-call.md). It is removed at the release.
+	Action string
+	// For resolve: the answerer's signed answer call, its canonical bytes as the call carried them;
+	// the answer's text, in Answer, and whether the call carries one; and the answerer's salt, nil
+	// when the call carries none.
+	AnswerCall []byte
+	Answer     string
+	HasAnswer  bool
+	Salt       []byte
 	// Bytes is the call's canonical bytes, and Sig its sig member as received.
 	Bytes []byte
 	Sig   string
@@ -102,9 +110,9 @@ type giveArgs struct {
 }
 
 type resolveArgs struct {
-	Question *string `json:"question"`
-	Action   *string `json:"action"`
-	Answer   *string `json:"answer"`
+	Answer json.RawMessage `json:"answer"`
+	Salt   *string         `json:"salt"`
+	Text   *string         `json:"text"`
 }
 
 type resultArgs struct {
@@ -160,12 +168,19 @@ func ParseCall(line []byte) (Call, DoorCode) {
 		}
 	case OpResolve:
 		var a resolveArgs
-		if !strict.Decode(m.Args, &a) || a.Question == nil || a.Action == nil {
+		if !strict.Decode(m.Args, &a) || len(a.Answer) == 0 || a.Answer[0] != '{' {
 			return Call{}, BadCall
 		}
-		c.Question, c.Action = *a.Question, *a.Action
-		if a.Answer != nil {
-			c.Answer, c.HasAnswer = *a.Answer, true
+		if c.AnswerCall, err = canonical.Form(a.Answer); err != nil {
+			return Call{}, BadCall
+		}
+		if a.Text != nil {
+			c.Answer, c.HasAnswer = *a.Text, true
+		}
+		if a.Salt != nil {
+			if c.Salt, err = hex.DecodeString(*a.Salt); err != nil || !lowerHex(*a.Salt) {
+				return Call{}, BadCall
+			}
 		}
 	case OpResult:
 		var a resultArgs
@@ -243,63 +258,13 @@ func GiveArgs(message, envelope []byte) map[string]any {
 	return map[string]any{"message": base64.StdEncoding.EncodeToString(message), "envelope": base64.StdEncoding.EncodeToString(envelope)}
 }
 
-// ResolveArgs is the args of a resolve call; the answer is sent with an accept or a change.
-func ResolveArgs(question string, action mediator.Action, answer string) map[string]any {
-	a := map[string]any{"question": question, "action": string(action)}
-	if action == mediator.Accepted || action == mediator.Changed {
-		a["answer"] = answer
+// ResolveArgs is the args of a resolve call: the answerer's signed answer call, and for an accept or
+// a change, given with a salt, the answer's text and that salt in hex (maybe-11). The call travels as
+// a JSON object, the canonical bytes it was signed as.
+func ResolveArgs(call []byte, text string, salt []byte) map[string]any {
+	a := map[string]any{"answer": json.RawMessage(call)}
+	if salt != nil {
+		a["text"], a["salt"] = text, hex.EncodeToString(salt)
 	}
 	return a
-}
-
-// AnswerCall is the answer call as the door attaches it to a delivery: {"call","sig"}.
-func AnswerCall(c Call) []byte {
-	b, _ := json.Marshal(map[string]string{"call": base64.StdEncoding.EncodeToString(c.Bytes), "sig": c.Sig})
-	out, _ := canonical.Form(b)
-	return out
-}
-
-// A SignedAnswer is what a verified answer call says.
-type SignedAnswer struct {
-	Accord, Question, Action, Answer string
-}
-
-// Format prints the SignedAnswer as a fixed text, whatever the verb: its answer is a body
-// (secrets-never-print).
-func (SignedAnswer) Format(f fmt.State, _ rune) { _, _ = f.Write([]byte("local.SignedAnswer")) }
-
-// GoString is the fixed text, for %#v.
-func (SignedAnswer) GoString() string { return "local.SignedAnswer" }
-
-// String is the fixed text.
-func (SignedAnswer) String() string { return "local.SignedAnswer" }
-
-// VerifyAnswerCall checks an answer call kept beside a delivery: its form, its signature under the
-// answerer's key, and that it is a resolve call that accepts or changes with an answer. It returns
-// what the call says; whoever reads it checks the rest against the receipts.
-func VerifyAnswerCall(answerCall []byte, answerer string) (SignedAnswer, bool) {
-	var a struct {
-		Call *string `json:"call"`
-		Sig  *string `json:"sig"`
-	}
-	if !strict.Decode(answerCall, &a) || a.Call == nil || a.Sig == nil {
-		return SignedAnswer{}, false
-	}
-	cb, err := b64.DecodeString(*a.Call)
-	if err != nil {
-		return SignedAnswer{}, false
-	}
-	if c, err := canonical.Form(cb); err != nil || subtle.ConstantTimeCompare(c, cb) != 1 {
-		return SignedAnswer{}, false
-	}
-	line, err := json.Marshal(map[string]any{"call": json.RawMessage(cb), "sig": *a.Sig})
-	if err != nil {
-		return SignedAnswer{}, false
-	}
-	c, code := ParseCall(line)
-	if code != "" || c.Caller != answerer || !c.Verified() || c.Op != OpResolve || !c.HasAnswer ||
-		(c.Action != string(mediator.Accepted) && c.Action != string(mediator.Changed)) {
-		return SignedAnswer{}, false
-	}
-	return SignedAnswer{Accord: c.Accord, Question: c.Question, Action: c.Action, Answer: c.Answer}, true
 }

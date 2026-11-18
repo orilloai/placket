@@ -1,0 +1,77 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://placket.tech/schema/0.1/answer.json",
+  "title": "Answer call",
+  "description": "The one signed call by which a member answers a question (maybe-11): accept, change, decline or cancel. accord is the Accord's id, question the question's id, action what the answer does, digest the salted digest of the answer's text under the answerer's salt and release whether it asks for release, both exactly for accepted and changed, from the signer's actor reference, and sig its signature under https://placket.tech/answer/0.1 (signing-2). It holds no text, no salt, no time and no nonce. Whether sig verifies, and whether the call fits its question, are the rows of section 6.",
+  "type": "object",
+  "properties": {
+    "accord": {
+      "$ref": "hash.json"
+    },
+    "question": {
+      "$ref": "hash.json"
+    },
+    "action": {
+      "enum": [
+        "accepted",
+        "changed",
+        "declined",
+        "cancelled"
+      ]
+    },
+    "digest": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "release": {
+      "type": "boolean"
+    },
+    "from": {
+      "$ref": "reference.json"
+    },
+    "sig": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{128}$"
+    }
+  },
+  "required": [
+    "accord",
+    "question",
+    "action",
+    "from",
+    "sig"
+  ],
+  "additionalProperties": false,
+  "if": {
+    "properties": {
+      "action": {
+        "enum": [
+          "accepted",
+          "changed"
+        ]
+      }
+    }
+  },
+  "then": {
+    "required": [
+      "digest",
+      "release"
+    ]
+  },
+  "else": {
+    "not": {
+      "anyOf": [
+        {
+          "required": [
+            "digest"
+          ]
+        },
+        {
+          "required": [
+            "release"
+          ]
+        }
+      ]
+    }
+  }
+}

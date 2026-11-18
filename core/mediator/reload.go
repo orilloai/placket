@@ -142,11 +142,11 @@ func Reload(founding []byte, list [][]byte, open []Open, deliveries []Queued, fo
 		o, ask := given[qi], st[qi]
 		q := &question{id: ask.ID, asker: ask.Predicate.From, receiver: ask.Predicate.To,
 			envelope: ask.Predicate.Envelope, subject: ask.Subject, roles: o.Roles, deadline: o.Deadline}
-		reason, when := receipts.ReasonUndeliverable, at
+		reason, when, by := receipts.ReasonUndeliverable, at, byUndeliverable
 		if o.Deadline <= at {
-			reason, when = receipts.ReasonTimeout, o.Deadline
+			reason, when, by = receipts.ReasonTimeout, o.Deadline, byDeadline
 		}
-		if err := b.close(q, m.firstAnswerer(q.roles), reason, when); err != nil {
+		if err := b.close(q, m.firstAnswerer(q.roles), reason, when, by); err != nil {
 			return nil, nil, err
 		}
 	}

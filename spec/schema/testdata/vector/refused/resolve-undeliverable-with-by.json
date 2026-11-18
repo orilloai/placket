@@ -103,7 +103,6 @@
       }
     ],
     "card": {
-      "checks": [],
       "judges": [],
       "kernel": {
         "hash": "sha256:f6bbbbe1be3180d154b58b431f948409f06502f81e4797d585a4fcfacdadae02",
@@ -304,14 +303,14 @@
       "op": "get"
     },
     {
-      "action": "undeliverable",
+      "op": "resolve",
       "at": "2026-11-12T09:05:00Z",
+      "question": "sha256:b6499fa4068d3595115eee30fd1ab3622c6000804991f643ff2d7303e9a7a528",
+      "undeliverable": true,
       "by": "decider",
       "expect": {
         "rejection": "no-open-question"
-      },
-      "op": "resolve",
-      "question": "sha256:b6499fa4068d3595115eee30fd1ab3622c6000804991f643ff2d7303e9a7a528"
+      }
     },
     {
       "as": "applier",

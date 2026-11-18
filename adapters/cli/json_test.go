@@ -201,7 +201,7 @@ func TestJSONWaitsThatEndWithAnAcceptAndAChange(t *testing.T) {
 	is(t, sub(t, o["release"]), "receiptId", string(released["receiptId"]))
 	is(t, o, "fetched", "true")
 	d := sub(t, o["answer"])
-	members(t, d, "receiptId", "receipt", "messageId", "kind", "salt", "re", "text")
+	members(t, d, "receiptId", "receipt", "messageId", "kind", "salt", "re", "text", "answer")
 	is(t, d, "kind", `"answer"`)
 	is(t, d, "re", quote(q))
 	is(t, d, "text", `"accepted"`)
@@ -489,7 +489,18 @@ func TestJSONAnEmptyQueueAndADelivery(t *testing.T) {
 	plain := must(t, p.as("decider", "questions")...)
 	o = object(t, run(t, env(), p.as("decider", "questions", "--json")...))
 	members(t, o, "exit", "questions")
-	is(t, o, "questions", "["+strings.TrimSuffix(plain.stdout, "\n")+"]")
+	var listed []map[string]json.RawMessage
+	if err := json.Unmarshal(o["questions"], &listed); err != nil || len(listed) != 1 {
+		t.Fatalf("questions %s", o["questions"])
+	}
+	q := listed[0]
+	members(t, q, "id", "asker", "kind", "deadline", "form", "message", "receiptId", "receipt")
+	is(t, q, "receiptId", string(q["id"]))
+	delete(q, "receiptId")
+	delete(q, "receipt")
+	if b, _ := json.Marshal(q); string(b)+"\n" != plain.stdout {
+		t.Fatalf("the question %s, printed as %s", b, plain.stdout)
+	}
 }
 
 // TestJSONAWindowStops runs a window with --json, stops it and starts it again: each object holds
@@ -548,7 +559,8 @@ func TestJSONAShownReceiptAndAVerifiedJournal(t *testing.T) {
 	plain := must(t, "show", "--receipt", p)
 	r := run(t, env(), "show", "--receipt", p, "--json")
 	o := object(t, r)
-	members(t, o, "exit", "verified", "receiptId", "word", "reason", "kind", "at", "from", "to", "module", "claim", "notClaimed", "shown")
+	members(t, o, "exit", "verified", "receiptId", "word", "reason", "kind", "at", "from", "to", "module", "claim", "notClaimed", "shown", "by")
+	is(t, o, "by", `"terms"`)
 	l := plain.lines()
 	at := strings.Fields(l[1])[3]
 	for name, want := range map[string]string{
@@ -568,8 +580,9 @@ func TestJSONAShownReceiptAndAVerifiedJournal(t *testing.T) {
 	plain = must(t, verify...)
 	r = run(t, env(), append(verify, "--json")...)
 	o = object(t, r)
-	members(t, o, "exit", "verified", "mediator", "accord", "card", "operator", "runs", "module", "checks", "members", "counts",
-		"questionsClosed", "questionsOpen", "releases", "blockedReleases", "predicates", "claim", "notClaimed")
+	members(t, o, "exit", "verified", "mediator", "accord", "card", "operator", "runs", "module", "judges", "members", "counts",
+		"questionsClosed", "questionsOpen", "releases", "blockedReleases", "predicates", "claim", "notClaimed",
+		"valid", "conforms", "complete", "decisions", "custody", "starts", "unmatched")
 	ann, bob := `{"actor":`+quote(a.refs["ann"])+`,"principal":`+quote(a.refs["principal"])+`,"roles":["peer"]}`,
 		`{"actor":`+quote(a.refs["bob"])+`,"principal":`+quote(a.refs["principal"])+`,"roles":["peer"]}`
 	if canonical.Less(a.refs["bob"], a.refs["ann"]) {
@@ -578,7 +591,7 @@ func TestJSONAShownReceiptAndAVerifiedJournal(t *testing.T) {
 	for name, want := range map[string]string{
 		"verified": "1", "mediator": quote(a.refs["mediator"]), "accord": quote(a.id), "card": quote(a.card),
 		"operator": quote(a.refs["operator"]), "runs": `"process"`, "members": "[" + ann + "," + bob + "]",
-		"module": `{"hash":"` + composition.KernelHash() + `","version":"` + composition.KernelVersion + `"}`, "checks": "[]",
+		"module": `{"hash":"` + composition.KernelHash() + `","version":"` + composition.KernelVersion + `"}`, "judges": "[]",
 		"counts": `{"ask":0,"block":0,"pass":1}`, "questionsClosed": "0", "questionsOpen": "0", "releases": "0", "blockedReleases": "0",
 		"predicates": "[" + strings.TrimSuffix(plain.stdout, "\n") + "]", "claim": quote(cli.ClaimVerified), "notClaimed": quote(cli.Scope),
 	} {
@@ -589,7 +602,8 @@ func TestJSONAShownReceiptAndAVerifiedJournal(t *testing.T) {
 	}
 	o = object(t, run(t, env(), "verify", "--mediator", a.refs["mediator"], "--receipts", a.journal(), "--json"))
 	members(t, o, "exit", "verified", "mediator", "accord", "card", "counts",
-		"questionsClosed", "questionsOpen", "releases", "blockedReleases", "predicates", "claim", "notClaimed")
+		"questionsClosed", "questionsOpen", "releases", "blockedReleases", "predicates", "claim", "notClaimed",
+		"valid", "conforms", "complete", "decisions", "starts", "unmatched")
 
 	bad := []string{"verify", "--mediator", a.refs["ann"], "--receipts", a.journal()}
 	plain = run(t, env(), bad...)

@@ -11,7 +11,7 @@ import (
 
 // KernelVersion is this decision module's version, the card's kernel version (setup-contract-4,
 // docs/adr/0012-the-kernel-hash.md). It is raised when the verdicts the module returns change.
-const KernelVersion = "0.1.0"
+const KernelVersion = "0.2.0"
 
 // source is the module's logic, as the build compiled it.
 //
@@ -40,8 +40,8 @@ func hashOf(files map[string]string) string {
 // module differs by any byte has another (setup-contract-4, docs/adr/0012-the-kernel-hash.md).
 func KernelHash() string { return kernelHash }
 
-// Card is this module's card in canonical bytes: spec 0.1, its kernel, no judges and no checks, a
-// new slice at each call (setup-contract-4, docs/adr/0012-the-kernel-hash.md).
+// Card is this module's card in canonical bytes: spec 0.1, its kernel and no judges, a new slice at
+// each call (setup-contract-4, docs/adr/0012-the-kernel-hash.md).
 func Card() []byte {
 	type component struct {
 		Version string `json:"version"`
@@ -51,8 +51,7 @@ func Card() []byte {
 		Spec   string    `json:"spec"`
 		Kernel component `json:"kernel"`
 		Judges []any     `json:"judges"`
-		Checks []any     `json:"checks"`
-	}{setup.Spec, component{KernelVersion, kernelHash}, []any{}, []any{}})
+	}{setup.Spec, component{KernelVersion, kernelHash}, []any{}})
 	if err != nil {
 		return nil
 	}

@@ -1,0 +1,28 @@
+{
+  "stance": "maybe",
+  "dir": "give",
+  "with": [
+    "role:applier"
+  ],
+  "select": {
+    "kind": [
+      "proposal"
+    ]
+  },
+  "resolve": {
+    "to": [
+      "role:decider"
+    ],
+    "timeout": 3600,
+    "judges": [
+      {
+        "name": "jev",
+        "use": "decide"
+      },
+      {
+        "name": "lint",
+        "use": "advise"
+      }
+    ]
+  }
+}

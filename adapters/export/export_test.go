@@ -79,11 +79,11 @@ func TestJSONCarriesTheClaim(t *testing.T) {
 func TestBuildRefusesWhatDoesNotVerify(t *testing.T) {
 	t.Parallel()
 	m := "ed25519:" + strings.Repeat("1", 64)
-	_, err := Build(m, [][]byte{[]byte(`{}`)}, nil, func(string) {})
+	_, err := Build(m, [][]byte{[]byte(`{}`)}, nil, nil, func(string) {})
 	if e, ok := err.(*Error); !ok || e.Code != CodeVerify || e.Index != 0 || e.Core != "payload-type" {
 		t.Fatalf("got %v", err)
 	}
-	l, err := Build(m, nil, nil, func(string) {})
+	l, err := Build(m, nil, nil, nil, func(string) {})
 	if err != nil || len(l.Rows) != 0 || l.Accord != "" {
 		t.Fatalf("got %+v, %v", l, err)
 	}

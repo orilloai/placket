@@ -11,6 +11,7 @@ import (
 	"bytes"
 	"encoding/hex"
 
+	"github.com/orilloai/placket/core/answer"
 	"github.com/orilloai/placket/core/canonical"
 	"github.com/orilloai/placket/core/composition"
 	"github.com/orilloai/placket/core/internal/shape"
@@ -81,8 +82,10 @@ func Deliver(part map[string]any, receipt []byte, id string) []byte {
 // Held reads a delivery for the party to, given back to the mediator after a restart, and returns
 // the index in st of the receipt that queued it: a delivery in canonical form with exactly a
 // delivery's members (crossing-3), whose receipt is one of the list, a pass addressed to to,
-// carried as that receipt's bytes, and whose kind, salt and body are the receipt's subject. byID
-// maps each receipt's id to its index. It reads the receipts it is given; it decides nothing.
+// carried as that receipt's bytes, and whose kind, salt and body are the receipt's subject; with a
+// mediaType of a media type's form; and with an answer exactly when the receipt names an answer as
+// its decider, the call whose typed hash it names (maybe-12, receipt-11). byID maps each receipt's
+// id to its index. It reads the receipts it is given; it decides nothing.
 func Held(st []receipts.Statement, list [][]byte, byID map[string]int, to string, delivery []byte) (int, bool) {
 	v, c, err := shape.Decode(delivery)
 	if err != nil || !bytes.Equal(c, delivery) {
@@ -99,7 +102,7 @@ func Held(st []receipts.Statement, list [][]byte, byID map[string]int, to string
 			bodies++
 		}
 	}
-	if bodies != 1 || !shape.Only(o, "receiptId", "receipt", "messageId", "kind", "salt", bodyName, "", "re") {
+	if bodies != 1 || !shape.Only(o, "receiptId", "receipt", "messageId", "kind", "salt", bodyName, "", "re", "mediaType", "answer") {
 		return -1, false
 	}
 	id, _ := o["receiptId"].(string)
@@ -123,6 +126,16 @@ func Held(st []receipts.Statement, list [][]byte, byID map[string]int, to string
 		if r, ok := re.(string); !ok || !shape.Hash(r) {
 			return -1, false
 		}
+	}
+	if mt, has := o["mediaType"]; has {
+		if m, ok := mt.(string); !ok || !shape.MediaType(m) {
+			return -1, false
+		}
+	}
+	call, has := o["answer"]
+	by := s.Predicate.By
+	if has != (by.Decider == receipts.ByAnswer) || (has && answer.ID(shape.Encode(call)) != by.Answer) {
+		return -1, false
 	}
 	salt, ok := Salt(o["salt"])
 	if !ok {

@@ -42,7 +42,6 @@
       }
     ],
     "card": {
-      "checks": [],
       "judges": [],
       "kernel": {
         "hash": "sha256:a8755bef6ff188c2dc6b74377a73c6a49d612fc44915675db9d2795bb5b99475",
@@ -190,9 +189,9 @@
       "as": "stranger",
       "at": "2026-11-12T09:00:00Z",
       "envelope": {
-        "hash": "sha256:100bd21b665b97bd90205e37c1b112cc8fd24ada75a04d7e457f04c93ebf061d",
+        "hash": "sha256:8c2a502685795a70b7f0327877d089bb47b502873bd59ea9c19d4bd5c73325c6",
         "seq": 1,
-        "sig": "8e98bd514a11653ed09b6555c54a976fa63cf95f41f81b8a88464e79de9849e38dcc90b81fafbd8b7b7be7cf5206838d55b2f9bdd5bb0b68eea0b9ca7f6e640b"
+        "sig": "4c292706d96d9983f7f9e79bb4717a892e8227c8e95c7d4557eb5de515934d6966dd1c5e086d76cd26c00efe7f26f30c7db5fcdb9c6a14cdc2f24ac9872c8f03"
       },
       "expect": {
         "rejection": "not-a-member"
@@ -204,7 +203,7 @@
         "messageId": "stranger-1",
         "metadata": {
           "https://placket.tech/crossing/0.1": {
-            "accord": "sha256:fdb4c6101b33876a56e9501d756b0905671a9a44c726e599c9a7a76270aab1df",
+            "accord": "sha256:04f71f9b99b729d07bc824bcae742abc9f51f31d2b9d59e968a5c169e15b9303",
             "to": "ed25519:a80586279ba17c5360b029018bf025be0169fdb02087e77301774c99eed92117"
           }
         },

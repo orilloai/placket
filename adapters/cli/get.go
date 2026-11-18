@@ -11,6 +11,7 @@ import (
 
 	"github.com/orilloai/placket/adapters/internal/strict"
 	"github.com/orilloai/placket/adapters/local"
+	"github.com/orilloai/placket/core/answer"
 	"github.com/orilloai/placket/core/canonical"
 	"github.com/orilloai/placket/core/composition"
 	"github.com/orilloai/placket/core/mediator"
@@ -32,13 +33,16 @@ type delivery struct {
 	Text      *string         `json:"text"`
 	Raw       *string         `json:"raw"`
 	Data      json.RawMessage `json:"data"`
+	MediaType *string         `json:"mediaType"`
+	// Answer is the answer call inside a delivery an answer queued (maybe-12).
+	Answer json.RawMessage `json:"answer"`
 }
 
-// keptDelivery is a line of kept.jsonl for a fetched part: the delivery, with the answer call kept
-// beside it when there is one (keptLine).
+// keptDelivery is a line of kept.jsonl for a fetched part, the delivery as it was fetched. An answer
+// line of kept.jsonl, {"answer","salt"}, reads as one with no receipt id, which no reader takes for a
+// part.
 type keptDelivery struct {
 	delivery
-	AnswerCall json.RawMessage `json:"answerCall"`
 }
 
 // bytes is the delivery's body as get writes it: a text's UTF-8, a raw body's decoded bytes, a data
@@ -84,7 +88,10 @@ func (s *session) about(d delivery) bool {
 	}
 	salt, ok := saltBytes(d.Salt)
 	p := st.Predicate
-	return ok && d.oneBody() && st.ID == d.ReceiptID && st.Subject.Name == d.Kind &&
+	// The answer call inside the delivery is the one its receipt names, when an answer queued it.
+	answered := len(d.Answer) == 0 && p.By.Decider != receipts.ByAnswer ||
+		len(d.Answer) > 0 && p.By.Decider == receipts.ByAnswer && answer.ID(d.Answer) == p.By.Answer
+	return ok && answered && d.oneBody() && st.ID == d.ReceiptID && st.Subject.Name == d.Kind &&
 		p.Verdict == string(composition.Pass) && p.To == s.key.Reference() && p.Accord == s.client.Accord &&
 		receipts.Digest(salt, d.bytes()) == st.Subject.Digest
 }
@@ -97,7 +104,7 @@ func saltBytes(s string) ([]byte, bool) {
 }
 
 // fetch gets the next delivery, under the state lock the caller holds, and records it: its receipt
-// in delivered.jsonl, its salt in salts.jsonl, and the delivery, with its answer call beside it, in kept.jsonl when keep is
+// in delivered.jsonl, its salt in salts.jsonl, and the delivery, the answer call inside it, in kept.jsonl when keep is
 // set. It returns the delivery and its kept.jsonl line, or nil when nothing is queued; a delivery
 // that is not what its receipt says is tool error reply, and nothing of it is recorded.
 func (s *session) fetch(keep bool) (*delivery, []byte, int) {
@@ -121,7 +128,7 @@ func (s *session) fetch(keep bool) (*delivery, []byte, int) {
 	if err := s.dir.AddSalt(d.ReceiptID, d.Salt); err != nil {
 		return nil, nil, s.r.failed(err)
 	}
-	kl := keptLine(rep.Delivery, rep.AnswerCall)
+	kl := keptLine(rep.Delivery)
 	if keep {
 		if err := s.dir.Keep(kl); err != nil {
 			return nil, nil, s.r.failed(err)
@@ -130,14 +137,12 @@ func (s *session) fetch(keep bool) (*delivery, []byte, int) {
 	return &d, kl, 0
 }
 
-// keptLine is a fetched delivery's line of kept.jsonl: the delivery, with its answer call beside it.
-func keptLine(delivery, answerCall []byte) []byte {
+// keptLine is a fetched delivery's line of kept.jsonl: the delivery as it came, the answer call
+// inside it when an answer queued it.
+func keptLine(delivery []byte) []byte {
 	var o map[string]json.RawMessage
 	if !strict.Decode(delivery, &o) {
 		return nil
-	}
-	if answerCall != nil {
-		o["answerCall"] = answerCall
 	}
 	return canonicalJSON(o)
 }

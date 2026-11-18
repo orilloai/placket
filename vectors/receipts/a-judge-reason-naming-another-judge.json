@@ -1,0 +1,25 @@
+{
+  "expect": {
+    "code": "statement-type",
+    "index": 0
+  },
+  "operation": "verify",
+  "receipts": [
+    {
+      "receipt": {
+        "payload": "eyJfdHlwZSI6Imh0dHBzOi8vaW4tdG90by5pby9TdGF0ZW1lbnQvdjEiLCJwcmVkaWNhdGUiOnsiYWNjb3JkIjoic2hhMjU2OjA0ZjcxZjliOTliNzI5ZDA3YmM4MjRiY2FlNzQyYWJjOWY1MWYzMWQyYjlkNTllOTY4YTVjMTY5ZTE1YjkzMDMiLCJhdCI6IjIwMjYtMTEtMTJUMTA6MDA6MDBaIiwiYnkiOnsianVkZ2UiOiJvdGhlciJ9LCJjYXJkIjoic2hhMjU2OmNkZTM5ZGMzZmFlNjEyYjNiOWE1ZmZhNDZhZGExNWVlODJjMmY4M2RjZDlkMzE4YTE1NDY2M2ViOWI5ZmFhYzEiLCJlbnZlbG9wZSI6eyJoYXNoIjoic2hhMjU2OjI2NzBjZjEwZDU1ZGM5MTg2YThlNjgyNTA4YTBlYTA0MGY0OWFkZDczYmEzMjIwMzZlZTY3OGNiNzM0ODRjYmQiLCJzZW5kZXIiOiJlZDI1NTE5OjdjZjM1YjM2YjlkNTdjNjJiOWYzZDViZTJlYjRkMzkxNDdhZmExYjc2MjVjZDAwMzI0NDM1MjMyNTRkZjNiZWEiLCJzZXEiOjF9LCJmcm9tIjoiZWQyNTUxOTo3Y2YzNWIzNmI5ZDU3YzYyYjlmM2Q1YmUyZWI0ZDM5MTQ3YWZhMWI3NjI1Y2QwMDMyNDQzNTIzMjU0ZGYzYmVhIiwia2luZCI6ImNyb3NzaW5nIiwibWVkaWF0b3IiOiJlZDI1NTE5Ojg0MjU0ZjlkNTkzYjBmNzgxMWIxOGMwMGI2NTZhNzBmZTFhOTU5NWVkMzUzYzczMjg2ZWE4M2QzMDAyMjZlZDMiLCJyZWFzb24iOiJqdWRnZTpqZXYiLCJzZXEiOjEsInRvIjoiZWQyNTUxOTphODA1ODYyNzliYTE3YzUzNjBiMDI5MDE4YmYwMjViZTAxNjlmZGIwMjA4N2U3NzMwMTc3NGM5OWVlZDkyMTE3IiwidmVyZGljdCI6ImJsb2NrIn0sInByZWRpY2F0ZVR5cGUiOiJodHRwczovL3BsYWNrZXQudGVjaC9yZWNlaXB0LzAuMSIsInN1YmplY3QiOlt7ImRpZ2VzdCI6eyJzYWx0ZWQtc2hhMjU2IjoiMWE2MzVlMjk2YzMxM2IxNmUzMDI1MmFjZTMyMDFmMjYyNjlkMmIzYjAzYzdlN2MzMmU3NWI4MWNhNjYyM2Y2YyJ9LCJuYW1lIjoibm90ZSJ9XX0=",
+        "payloadType": "application/vnd.in-toto+json",
+        "signatures": [
+          {
+            "keyid": "ed25519:84254f9d593b0f7811b18c00b656a70fe1a9595ed353c73286ea83d300226ed3",
+            "sig": "MmkpiXZnoGxXD20uFxAhBg/Z2OXxFQDGIMhbHfRukNLZUqVMSSDWV3MM9U/JuUVY5GiKwp1mTwUGRAS2mfpfDg=="
+          }
+        ]
+      }
+    }
+  ],
+  "reference": "ed25519:84254f9d593b0f7811b18c00b656a70fe1a9595ed353c73286ea83d300226ed3",
+  "spec": "0.1",
+  "tests": "receipt-11: a block with reason judge:jev whose by names the judge other fails statement-type",
+  "vector": "receipts/a-judge-reason-naming-another-judge"
+}

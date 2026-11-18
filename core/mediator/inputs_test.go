@@ -5,8 +5,10 @@ import (
 	"encoding/hex"
 	"testing"
 
+	"github.com/orilloai/placket/core/answer"
 	ptesting "github.com/orilloai/placket/core/internal/testing"
 	"github.com/orilloai/placket/core/mediator"
+	"github.com/orilloai/placket/core/receipts"
 )
 
 // The key is not varied here: a founding set names its mediator, so Found refuses any other key, and
@@ -25,7 +27,7 @@ func TestGiveDependsOnEachInput(t *testing.T) {
 			part := v["parts"].([]any)[0].(map[string]any)
 			part["metadata"].(map[string]any)[extension].(map[string]any)["salt"] = salt
 		})
-		out, err := m.Give(p.Reference(), msg, envelope(t, 1, msg, p), at)
+		out, err := m.Give(p.Reference(), msg, envelope(t, 1, msg, p), nil, at)
 		if err != nil || out.Verdict != "pass" {
 			t.Fatalf("the give: %+v, %v", out, err)
 		}
@@ -55,8 +57,9 @@ func TestResolveDependsOnEachInput(t *testing.T) {
 		t.Helper()
 		m := found(t)
 		q := ask(t, m, 1, "p-1", "2026-11-12T09:00:00Z")
-		outs, err := m.Resolve(ptesting.Key(t, "decider").Reference(), q,
-			mediator.Resolution{Action: mediator.Accepted, Answer: "accepted", Salt: salt, Release: true}, at)
+		d := ptesting.Key(t, "decider").Reference()
+		call := callBy(t, m, d, q, answer.Accepted, receipts.Digest(salt, []byte("accepted")), true)
+		outs, err := m.Resolve(d, mediator.Resolution{Call: call, Text: "accepted", Salt: salt}, at)
 		if err != nil || len(outs) != 2 {
 			t.Fatalf("the answer: %d outcomes, %v", len(outs), err)
 		}

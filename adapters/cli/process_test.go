@@ -7,11 +7,14 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strings"
 	"sync"
 	"syscall"
 	"testing"
 	"time"
+
+	"github.com/orilloai/placket/adapters/cli"
 )
 
 // TestCommandsAtOnce runs two give processes for one actor at once, and eight actors calling at
@@ -69,7 +72,7 @@ func TestCommandsAtOnce(t *testing.T) {
 	for e := range errs {
 		t.Fatal(e)
 	}
-	if r := must(t, "verify", "--mediator", a.refs["mediator"], "--receipts", a.journal()); !strings.HasPrefix(r.stderr, "verified 26 receipts\n") {
+	if r := must(t, "verify", "--mediator", a.refs["mediator"], "--receipts", a.journal()); !strings.Contains(r.stderr, "\n"+fmt.Sprintf(cli.LineValid, 26, a.refs["mediator"])+"\n") {
 		t.Fatalf("verify: %v", r)
 	}
 
@@ -104,7 +107,7 @@ func TestCommandsAtOnce(t *testing.T) {
 
 // TestAWindowKilled kills a window process with SIGKILL while a question is open and a released
 // proposal is not yet fetched, and starts it again: the question is closed by one receipt, an answer
-// to it is no-open-question, the proposal is fetched once, and verify passes over the journal
+// to it is tool error asked, since the window no longer shows it, the proposal is fetched once, and verify passes over the journal
 // (restart-reproducible, LOG-13, LOG-18).
 func TestAWindowKilled(t *testing.T) {
 	t.Parallel()
@@ -146,14 +149,14 @@ func TestAWindowKilled(t *testing.T) {
 	if r.code != 1 || !regexp.MustCompile(`^undeliverable `+receiptID+`\n$`).MatchString(r.stderr) {
 		t.Fatalf("result: %v", r)
 	}
-	if r := run(t, env(), a.as("decider", "answer", "--question", open)...); r.code != 2 || r.stderr != "rejected no-open-question\n" {
+	if r := run(t, env(), a.as("decider", "answer", "--question", open)...); r.code != 3 || r.stderr != "error asked\n" {
 		t.Fatalf("an answer after the restart: %v", r)
 	}
 	got := a.drain(t, "applier")
 	if len(got) != 1 || got[0].stdout != "Rename total.\n" {
 		t.Fatalf("the applier fetched %v", got)
 	}
-	if r := must(t, "verify", "--mediator", a.refs["mediator"], "--receipts", a.journal()); r.lines()[0] != fmt.Sprintf("verified %d receipts", before+1) {
+	if r := must(t, "verify", "--mediator", a.refs["mediator"], "--receipts", a.journal()); !slices.Contains(r.lines(), fmt.Sprintf(cli.LineValid, before+1, a.refs["mediator"])) {
 		t.Fatalf("verify: %v", r)
 	}
 	if !strings.Contains(logs[1].String(), "reloaded block undeliverable ") {

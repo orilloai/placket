@@ -83,22 +83,41 @@ func TestAJournalRoundTrips(t *testing.T) {
 	if string(q) != `{"deadline":"2026-11-12T10:00:00Z","question":"`+id+`","roles":["decider"]}`+"\n" {
 		t.Fatalf("questions.jsonl holds %q", q)
 	}
-	delivery := []byte(`{"kind":"note","receiptId":"` + id + `","text":"a"}`)
-	call := []byte(`{"call":"e30=","sig":"AA=="}`)
-	if err := j.PutHeld(med, delivery, call); err != nil {
+	call := `{"accord":"` + accord + `","action":"declined","from":"` + med + `","question":"` + id + `","sig":"` + strings.Repeat("ab", 64) + `"}`
+	delivery := []byte(`{"answer":` + call + `,"kind":"note","receiptId":"` + id + `","text":"a"}`)
+	if err := j.PutHeld(med, delivery); err != nil {
 		t.Fatal(err)
 	}
-	if err := j.PutHeld(med, delivery, nil); jerr(err) == nil {
+	if err := j.PutHeld(med, delivery); jerr(err) == nil {
 		t.Fatal("a second held file for one receipt was written")
 	}
 	h, _ := os.ReadFile(filepath.Join(dir, journal.DirHeld, strings.Repeat("e", 64)))
-	to, d, rid, ac, ok := journal.ParseHeld(h)
-	if !ok || to != med || !bytes.Equal(d, delivery) || rid != id || !bytes.Equal(ac, call) {
+	if string(h) != `{"delivery":`+string(delivery)+`,"to":"`+med+`"}` {
 		t.Fatalf("the held file holds %q", h)
 	}
-	got, err := j.TakeHeld(id)
-	if err != nil || !bytes.Equal(got, call) {
-		t.Fatalf("take: %q, %v", got, err)
+	to, d, rid, ok := journal.ParseHeld(h)
+	if !ok || to != med || !bytes.Equal(d, delivery) || rid != id {
+		t.Fatalf("the held file holds %q", h)
+	}
+	if err := j.TakeHeld(id); err != nil {
+		t.Fatalf("take: %v", err)
+	}
+	if err := j.AddAnswer([]byte(call)); err != nil {
+		t.Fatal(err)
+	}
+	if err := j.AddAnswer([]byte(" " + call)); jerr(err) == nil {
+		t.Fatal("a call not in canonical form was written")
+	}
+	a, _ := os.ReadFile(filepath.Join(dir, journal.FileAnswers))
+	if string(a) != call+"\n" {
+		t.Fatalf("answers.jsonl holds %q", a)
+	}
+	calls, err := journal.ReadAnswers(dir, &bytes.Buffer{})
+	if err != nil || len(calls) != 1 || string(calls[0]) != call {
+		t.Fatalf("ReadAnswers: %q, %v", calls, err)
+	}
+	if calls, err := journal.ReadAnswers(t.TempDir(), &bytes.Buffer{}); err != nil || calls == nil || len(calls) != 0 {
+		t.Fatalf("ReadAnswers of no answers.jsonl: %q, %v", calls, err)
 	}
 	if _, err := os.Stat(filepath.Join(dir, journal.DirHeld, strings.Repeat("e", 64))); !errors.Is(err, os.ErrNotExist) {
 		t.Fatal("a taken held file is still there")
@@ -149,6 +168,57 @@ func TestReadRepairsWhatWasNeverWritten(t *testing.T) {
 	qb, _ := os.ReadFile(filepath.Join(dir, journal.FileQuestions))
 	if len(rb) != 0 || string(qb) != line+"\n" {
 		t.Fatalf("receipts %q, questions %q", rb, qb)
+	}
+}
+
+// TestACutAnswerLineIsRepairedAtStart cuts the last line of answers.jsonl, as a crash during its
+// append leaves it: the next start removes the cut line, with one line on stderr, and the call the
+// restarted window appends next is a whole line of its own, which ReadAnswers reads beside the
+// first.
+func TestACutAnswerLineIsRepairedAtStart(t *testing.T) {
+	t.Parallel()
+	dir := filepath.Join(t.TempDir(), "j")
+	j, err := journal.Open(dir, &bytes.Buffer{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := j.Found(accord, card, med, "2026-11-12T09:00:00Z"); err != nil {
+		t.Fatal(err)
+	}
+	call := func(action string) string {
+		return `{"accord":"` + accord + `","action":"` + action + `","from":"` + med + `","question":"` + id + `","sig":"` + strings.Repeat("ab", 64) + `"}`
+	}
+	if err := j.AddAnswer([]byte(call("declined"))); err != nil {
+		t.Fatal(err)
+	}
+	_ = j.Close()
+	path := filepath.Join(dir, journal.FileAnswers)
+	f, err := os.OpenFile(path, os.O_APPEND|os.O_WRONLY, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.WriteString(call("cancelled")[:40]); err != nil {
+		t.Fatal(err)
+	}
+	_ = f.Close()
+	var stderr bytes.Buffer
+	j, err = journal.Open(dir, &stderr)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer j.Close()
+	if _, err := j.Read(); err != nil {
+		t.Fatal(err)
+	}
+	if want := "journal: answers.jsonl line 2 had no line feed and was never answered; removed\n"; stderr.String() != want {
+		t.Fatalf("stderr: %q", stderr.String())
+	}
+	if err := j.AddAnswer([]byte(call("cancelled"))); err != nil {
+		t.Fatal(err)
+	}
+	calls, err := journal.ReadAnswers(dir, &bytes.Buffer{})
+	if err != nil || len(calls) != 2 || string(calls[0]) != call("declined") || string(calls[1]) != call("cancelled") {
+		t.Fatalf("ReadAnswers after the restart: %q, %v", calls, err)
 	}
 }
 
@@ -222,13 +292,14 @@ func FuzzParseQuestion(f *testing.F) {
 func FuzzParseHeld(f *testing.F) {
 	f.Add([]byte(`{"delivery":{"receiptId":"` + id + `"},"to":"` + med + `"}`))
 	f.Add([]byte(`{"answerCall":{"call":"x","sig":"y"},"delivery":{"receiptId":"` + id + `"},"to":"m"}`))
+	f.Add([]byte(`{"delivery":{"answer":{"action":"declined"},"receiptId":"` + id + `"},"to":"m"}`))
 	f.Add([]byte(`{"delivery":[],"to":"m"}`))
 	f.Fuzz(func(t *testing.T, b []byte) {
-		to, d, _, ac, ok := journal.ParseHeld(b)
+		to, d, _, ok := journal.ParseHeld(b)
 		if !ok {
 			return
 		}
-		again, err := journal.HeldFile(to, d, ac)
+		again, err := journal.HeldFile(to, d)
 		if err != nil || !bytes.Equal(again, b) {
 			t.Fatalf("%q wrote back as %q, %v", b, again, err)
 		}
@@ -253,7 +324,7 @@ func TestReadLeavesOpenEntriesWhenReceiptsDoNotVerify(t *testing.T) {
 	from := keyOf("proposer").Reference()
 	forged, _, err := receipts.Build(receipts.Subject{Name: "note", Digest: strings.Repeat("ab", 32)}, receipts.Predicate{
 		Accord: accord, Card: card, Kind: receipts.KindCrossing, From: from, To: from, Seq: 1, At: "2026-11-12T09:00:00Z",
-		Envelope: receipts.Envelope{Sender: from, Seq: 1, Hash: id}, Verdict: "pass", Reason: "ok",
+		Envelope: receipts.Envelope{Sender: from, Seq: 1, Hash: id}, Verdict: "pass", Reason: "ok", By: receipts.By{Decider: receipts.ByTerms},
 	}, other)
 	if err != nil {
 		t.Fatal(err)

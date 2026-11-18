@@ -15,39 +15,29 @@ import (
 	"time"
 
 	"github.com/orilloai/placket/adapters/local"
-	"github.com/orilloai/placket/core/mediator"
+	"github.com/orilloai/placket/core/answer"
 )
 
-// failingRand is a salt source that always fails.
+// failingRand is a source of randomness that always fails.
 type failingRand struct{}
 
 func (failingRand) Read([]byte) (int, error) { return 0, errors.New("no randomness") }
 
-// TestTheDoorsOwnFailureHasItsOwnCode answers an ask while the window's salt source fails: the
-// reply is refused under the door member with door-internal, never as the mediator's internal error,
-// and the event says the same (rejection-vs-error).
-func TestTheDoorsOwnFailureHasItsOwnCode(t *testing.T) {
+// TestAWindowsRandIsReadByNothing answers an ask while the window's Rand fails: the window mints no
+// salt, so the answer, under the answerer's own salt, passes as if Rand worked (door-owns-clock).
+func TestAWindowsRandIsReadByNothing(t *testing.T) {
 	t.Parallel()
 	w := newWorld(t)
 	cfg := w.window(t)
 	cfg.Rand = failingRand{}
-	win := start(t, cfg)
+	start(t, cfg)
 	q := w.give(t, "proposer", "applier", "p-1", "proposal", "Rename total.")
 	if q.Outcome == nil || q.Outcome.Verdict != "escalate" {
 		t.Fatalf("the proposal was not asked: %v", q.Outcome)
 	}
-	rep := w.call(t, "decider", local.OpResolve, local.ResolveArgs(q.Outcome.ReceiptID, mediator.Accepted, "accepted"))
-	if rep.Door != local.Internal || rep.Error != "" || rep.Rejection != "" || rep.Outcome != nil {
-		t.Fatalf("got door %q, error %q, rejection %q, want door %q alone", rep.Door, rep.Error, rep.Rejection, local.Internal)
-	}
-	if string(local.Internal) != "door-internal" {
-		t.Fatalf("the code is %q, want door-internal", local.Internal)
-	}
-	win.mu.Lock()
-	last := (*win.events)[len(*win.events)-1]
-	win.mu.Unlock()
-	if last.Door != local.Internal || last.Error != "" {
-		t.Fatalf("the event says door %q, error %q", last.Door, last.Error)
+	rep := w.call(t, "decider", local.OpResolve, w.answerArgs(t, "decider", q.Outcome.ReceiptID, answer.Accepted, "accepted"))
+	if rep.Outcome == nil || rep.Outcome.Verdict != "pass" || rep.Door != "" {
+		t.Fatalf("got outcome %v, door %q", rep.Outcome, rep.Door)
 	}
 }
 
@@ -97,7 +87,7 @@ func TestAClientReadsNoReplyPastMaxReply(t *testing.T) {
 		t.Fatalf("MaxReply is %d, want %d", local.MaxReply, 4*local.MaxCall)
 	}
 	head := `{"ok":true,"questions":[{"asker":"` + key(t, "decider").Reference() + `","deadline":"2026-01-01T00:00:00Z","form":"text","id":"sha256:` +
-		strings.Repeat("0", 64) + `","kind":"proposal","message":"`
+		strings.Repeat("0", 64) + `","kind":"proposal","receipt":{},"salt":"` + strings.Repeat("0", 64) + `","size":1,"text":"`
 	tail := `"}]}`
 	wellFormed := func(n int) []byte { return []byte(head + strings.Repeat("a", n-len(head)-len(tail)) + tail) }
 	if rep, err := replyFromSocket(t, wellFormed(local.MaxReply)); err != nil || len(rep.Questions) != 1 {
@@ -160,22 +150,11 @@ func TestNoSecretPrintsFromACallReplyOrAsked(t *testing.T) {
 	secret := "SEKRET-BODY"
 	msg := secret
 	for _, v := range []any{
-		local.Call{Message: []byte(secret), Answer: secret, Bytes: []byte(secret)},
+		local.Call{Message: []byte(secret), Answer: secret, Bytes: []byte(secret), Salt: []byte(secret), AnswerCall: []byte(secret)},
 		local.Reply{Salt: []byte(secret), Delivery: []byte(secret), AnswerCall: []byte(secret)},
-		local.Asked{Message: &msg, Kind: secret},
+		local.Asked{Message: &msg, Kind: secret, Salt: []byte(secret), Raw: []byte(secret), Receipt: []byte(secret)},
 	} {
 		noSecretPrints(t, v, secret)
-	}
-}
-
-// TestNoSecretPrintsFromASignedAnswer prints a SignedAnswer every way: its answer never shows.
-func TestNoSecretPrintsFromASignedAnswer(t *testing.T) {
-	t.Parallel()
-	secret := "SEKRET-ANSWER"
-	a := local.SignedAnswer{Accord: "a", Question: "q", Action: "accepted", Answer: secret}
-	noSecretPrints(t, a, secret)
-	if a.String() != "local.SignedAnswer" || a.GoString() != "local.SignedAnswer" {
-		t.Fatalf("String %q, GoString %q", a.String(), a.GoString())
 	}
 }
 
@@ -212,9 +191,9 @@ func TestLocalErrorsQuoteNothing(t *testing.T) {
 	}
 }
 
-// TestAQuestionsReplyFitsMaxReply asks about six text parts of 700 KiB, more than MaxReply holds
-// in full: the answerer's questions call still reads, lists all six, shows the oldest in full while
-// the reply fits, and shows the rest by their size alone, as a raw part is.
+// TestAQuestionsReplyFitsMaxReply asks about six text parts of 700 KiB, more than MaxReply holds:
+// the answerer's questions call still reads, shows the oldest five in full, each with its receipt and
+// salt, and says more, leaving the sixth out until an earlier question closes.
 func TestAQuestionsReplyFitsMaxReply(t *testing.T) {
 	t.Parallel()
 	w := newWorld(t)
@@ -233,14 +212,13 @@ func TestAQuestionsReplyFitsMaxReply(t *testing.T) {
 	if err != nil {
 		t.Fatalf("questions: %v", err)
 	}
-	if len(rep.Questions) != parts {
-		t.Fatalf("got %d questions, want %d", len(rep.Questions), parts)
+	if len(rep.Questions) != parts-1 || !rep.More {
+		t.Fatalf("got %d questions, more %v, want %d and more", len(rep.Questions), rep.More, parts-1)
 	}
 	for i, q := range rep.Questions {
-		full := q.Message != nil && *q.Message == text && q.Size == nil
-		sized := q.Message == nil && q.Size != nil && *q.Size == size
-		if q.ID != ids[i] || q.Form != "text" || full != (i < parts-1) || sized != (i == parts-1) {
-			t.Fatalf("question %d: id %s, form %s, shown in full %v, by size %v", i, q.ID, q.Form, full, sized)
+		if q.ID != ids[i] || q.Form != "text" || q.Message == nil || *q.Message != text || q.Size == nil || *q.Size != size ||
+			len(q.Salt) != 32 || len(q.Receipt) == 0 {
+			t.Fatalf("question %d: id %s, form %s, not shown in full", i, q.ID, q.Form)
 		}
 	}
 }

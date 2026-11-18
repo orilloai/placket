@@ -7,8 +7,10 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/orilloai/placket/core/answer"
 	ptesting "github.com/orilloai/placket/core/internal/testing"
 	"github.com/orilloai/placket/core/mediator"
+	"github.com/orilloai/placket/core/receipts"
 )
 
 // secretsIn are the spellings of a planted value an error text or a print must not hold.
@@ -20,9 +22,9 @@ func secretsIn(values ...string) []string {
 	return out
 }
 
-// TestAnswerErrorTextQuotesNoInput triggers every error of Resolve, Undeliverable, Tick, Result and
-// Reload with a planted answer's text, version, salt, body and key, and reads each error's text: the
-// package, the code and an index alone (error-text-no-content).
+// TestAnswerErrorTextQuotesNoInput triggers every error and rejection of Resolve, Undeliverable,
+// Tick, Result and Reload with a planted answer's text, version, salt, body and key, and reads each
+// error's text: the package, the code and an index alone (error-text-no-content).
 func TestAnswerErrorTextQuotesNoInput(t *testing.T) {
 	t.Parallel()
 	const text, version, body = "the planted answer text", "the planted version text", "the planted body text"
@@ -32,7 +34,7 @@ func TestAnswerErrorTextQuotesNoInput(t *testing.T) {
 	m := found(t)
 	p, d := ptesting.Key(t, "proposer"), ptesting.Key(t, "decider")
 	msg := message(t, m.Accord(), "p-1", ptesting.Key(t, "applier").Reference(), "proposal", body, nil)
-	ask, err := m.Give(p.Reference(), msg, envelope(t, 1, msg, p), "2026-11-12T09:00:00Z")
+	ask, err := m.Give(p.Reference(), msg, envelope(t, 1, msg, p), nil, "2026-11-12T09:00:00Z")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -48,20 +50,40 @@ func TestAnswerErrorTextQuotesNoInput(t *testing.T) {
 		return err
 	}
 	first := func(_ []mediator.Outcome, err error) error { return err }
+	other := "sha256:" + strings.Repeat("ab", 32)
+	// accepted and changed sign the decider's or the proposer's call over the planted text and salt.
+	accepted := func(ref, q, text string) []byte {
+		return callBy(t, m, ref, q, answer.Accepted, receipts.Digest(salt, []byte(text)), true)
+	}
+	changed := func(ref, q, text string) []byte {
+		return callBy(t, m, ref, q, answer.Changed, receipts.Digest(salt, []byte(text)), true)
+	}
+	withBody := func(call any, text string, salt []byte) mediator.Resolution {
+		switch c := call.(type) {
+		case []byte:
+			return mediator.Resolution{Call: c, Text: text, Salt: salt}
+		case mediator.Resolution:
+			return mediator.Resolution{Call: c.Call, Text: text, Salt: salt}
+		}
+		return mediator.Resolution{}
+	}
 	firstOf := func(_ mediator.Outcome, err error) error { return err }
 	result := func(_ []mediator.Outcome, _ bool, err error) error { return err }
 	cases := []struct {
 		want string
 		err  error
 	}{
-		{"mediator: at", first(m.Resolve(d.Reference(), q, mediator.Resolution{Action: mediator.Accepted, Answer: text, Salt: salt}, text))},
-		{"mediator: rejected: not-a-member", first(m.Resolve(text, q, mediator.Resolution{Action: mediator.Changed, Answer: version, Salt: salt}, "2026-11-12T09:01:00Z"))},
-		{"mediator: rejected: no-open-question", first(m.Resolve(d.Reference(), text, mediator.Resolution{Action: mediator.Accepted, Answer: text, Salt: salt}, "2026-11-12T09:01:00Z"))},
-		{"mediator: rejected: not-an-answerer", first(m.Resolve(p.Reference(), q, mediator.Resolution{Action: mediator.Changed, Answer: version, Salt: salt}, "2026-11-12T09:01:00Z"))},
-		{"mediator: salt", first(m.Resolve(d.Reference(), q, mediator.Resolution{Action: mediator.Accepted, Answer: text, Salt: salt[:15]}, "2026-11-12T09:01:00Z"))},
-		{"mediator: answer", first(m.Resolve(d.Reference(), q, mediator.Resolution{Action: mediator.Changed, Salt: salt}, "2026-11-12T09:01:00Z"))},
-		{"mediator: action", first(m.Resolve(d.Reference(), q, mediator.Resolution{Action: mediator.Action(text), Answer: version, Salt: salt}, "2026-11-12T09:01:00Z"))},
-		{"mediator: unfounded", first(z.Resolve(d.Reference(), q, mediator.Resolution{Action: mediator.Accepted, Answer: text, Salt: salt}, "2026-11-12T09:01:00Z"))},
+		{"mediator: at", first(m.Resolve(d.Reference(), withBody(accepted(d.Reference(), q, text), text, salt), text))},
+		{"mediator: rejected: not-a-member", first(m.Resolve(text, withBody(changed(d.Reference(), q, version), version, salt), "2026-11-12T09:01:00Z"))},
+		{"mediator: rejected: answer-call", first(m.Resolve(d.Reference(), mediator.Resolution{Call: []byte(text), Text: text, Salt: salt}, "2026-11-12T09:01:00Z"))},
+		{"mediator: rejected: answer-call", first(m.Resolve(p.Reference(), withBody(accepted(d.Reference(), q, text), text, salt), "2026-11-12T09:01:00Z"))},
+		{"mediator: rejected: no-open-question", first(m.Resolve(d.Reference(), withBody(accepted(d.Reference(), other, text), text, salt), "2026-11-12T09:01:00Z"))},
+		{"mediator: rejected: not-an-answerer", first(m.Resolve(p.Reference(), withBody(changed(p.Reference(), q, version), version, salt), "2026-11-12T09:01:00Z"))},
+		{"mediator: rejected: answer-body", first(m.Resolve(d.Reference(), withBody(accepted(d.Reference(), q, text), text, salt[:15]), "2026-11-12T09:01:00Z"))},
+		{"mediator: rejected: answer-body", first(m.Resolve(d.Reference(), withBody(accepted(d.Reference(), q, text), version, salt), "2026-11-12T09:01:00Z"))},
+		{"mediator: rejected: answer-body", first(m.Resolve(d.Reference(), withBody(changed(d.Reference(), q, ""), "", salt), "2026-11-12T09:01:00Z"))},
+		{"mediator: rejected: answer-body", first(m.Resolve(d.Reference(), withBody(decline(t, m, d.Reference(), q), text, salt), "2026-11-12T09:01:00Z"))},
+		{"mediator: unfounded", first(z.Resolve(d.Reference(), withBody(accepted(d.Reference(), q, text), text, salt), "2026-11-12T09:01:00Z"))},
 		{"mediator: at", firstOf(m.Undeliverable(q, text))},
 		{"mediator: rejected: no-open-question", firstOf(m.Undeliverable(text, "2026-11-12T09:01:00Z"))},
 		{"mediator: unfounded", firstOf(z.Undeliverable(q, "2026-11-12T09:01:00Z"))},
@@ -102,11 +124,11 @@ func TestAZeroValueMediator(t *testing.T) {
 			t.Fatalf("%s: got %v", name, err)
 		}
 	}
-	_, err := z.Give(p, []byte(`{}`), []byte(`{}`), "2026-11-12T09:00:00Z")
+	_, err := z.Give(p, []byte(`{}`), []byte(`{}`), nil, "2026-11-12T09:00:00Z")
 	unfounded("Give", err)
 	_, err = z.Get(p)
 	unfounded("Get", err)
-	_, err = z.Resolve(p, q, accept(true), "2026-11-12T09:00:00Z")
+	_, err = z.Resolve(p, accept(t, &z, p, q, true), "2026-11-12T09:00:00Z")
 	unfounded("Resolve", err)
 	_, err = z.Undeliverable(q, "2026-11-12T09:00:00Z")
 	unfounded("Undeliverable", err)
@@ -135,7 +157,7 @@ func TestResolutionAndQueuedNeverPrint(t *testing.T) {
 	t.Parallel()
 	const text, body = "the answer that must not print", "the body that must not print"
 	salt := []byte("a salt that must not print")
-	r := mediator.Resolution{Action: mediator.Changed, Answer: text, Salt: salt, Release: true}
+	r := mediator.Resolution{Call: []byte(`{"answer":"` + text + `"}`), Text: text, Salt: salt}
 	q := mediator.Queued{To: ptesting.Key(t, "applier").Reference(), Delivery: []byte(`{"text":"` + body + `"}`)}
 	secrets := secretsIn(text, body, string(salt))
 	secrets = append(secrets, fmt.Sprint(salt)[1:20])

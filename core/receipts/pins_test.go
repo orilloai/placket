@@ -58,6 +58,9 @@ func statementOf(s receipts.Subject, p receipts.Predicate) map[string]any {
 		"envelope": map[string]any{"sender": p.Envelope.Sender, "seq": p.Envelope.Seq, "hash": p.Envelope.Hash},
 		"verdict":  p.Verdict, "reason": p.Reason,
 	}
+	if by := byValue(p.By); by != nil {
+		pred["by"] = by
+	}
 	if p.Prev != "" {
 		pred["prev"] = p.Prev
 	}
@@ -117,11 +120,47 @@ func questionParties(t testing.TB) (asker, receiver, answerer, stranger string) 
 		ptesting.Key(t, "stranger").Reference()
 }
 
-// predicateOf is a predicate of one kind, pair, verdict and reason, echoing env.
+// byValue writes a predicate's by as receipt-11 gives it, or nil for the zero By.
+func byValue(b receipts.By) any {
+	switch b.Decider {
+	case receipts.ByTerms:
+		return "terms"
+	case receipts.ByJudge:
+		return map[string]any{"judge": b.Judge}
+	case receipts.ByAnswer:
+		return map[string]any{"answer": b.Answer}
+	case receipts.ByMediator:
+		return map[string]any{"mediator": string(b.Event)}
+	}
+	return nil
+}
+
+// answerBy is the by of every answer's receipt the tests write: one answer call's typed hash.
+var answerBy = receipts.By{Decider: receipts.ByAnswer, Answer: "sha256:" + strings.Repeat("a1", 32)}
+
+// byOf is the by a receipt of a kind, verdict and reason has where nothing else says (receipt-11): a
+// judge's for a judge's block, the mediator's for a timeout or an undeliverable, an answer's on any
+// other resolution receipt, and the terms' on any other crossing receipt.
+func byOf(kind, verdict, reason string) receipts.By {
+	switch {
+	case strings.HasPrefix(reason, "judge:"):
+		return receipts.By{Decider: receipts.ByJudge, Judge: strings.TrimPrefix(reason, "judge:")}
+	case reason == receipts.ReasonTimeout:
+		return receipts.By{Decider: receipts.ByMediator, Event: receipts.EventDeadline}
+	case reason == receipts.ReasonUndeliverable:
+		return receipts.By{Decider: receipts.ByMediator, Event: receipts.EventUndeliverable}
+	case kind == receipts.KindResolution:
+		return answerBy
+	}
+	return receipts.By{Decider: receipts.ByTerms}
+}
+
+// predicateOf is a predicate of one kind, pair, verdict and reason, echoing env, with the by byOf
+// gives it.
 func predicateOf(kind, from, to, verdict, reason string, env receipts.Envelope) receipts.Predicate {
 	return receipts.Predicate{
 		Accord: accord, Card: card, Kind: kind, From: from, To: to, At: "2026-11-12T09:00:00Z",
-		Envelope: env, Verdict: verdict, Reason: reason,
+		Envelope: env, Verdict: verdict, Reason: reason, By: byOf(kind, verdict, reason),
 	}
 }
 
@@ -198,6 +237,7 @@ func TestReleaseForm(t *testing.T) {
 	change := entry{changed, predicateOf(receipts.KindResolution, answerer, asker, "pass", "ok", env)}
 	acceptRelease := func(change func(e *entry)) entry {
 		e := entry{asked, predicateOf(receipts.KindCrossing, asker, receiver, "pass", "ok", env)}
+		e.pred.By = answerBy
 		change(&e)
 		return e
 	}
@@ -428,7 +468,7 @@ func TestStatementShape(t *testing.T) {
 	// resolution makes the receipt a resolution from the answerer, so that the envelope's sender may
 	// differ from its from; with no question before it, it fails release once row 4 passes.
 	resolution := func(s map[string]any) {
-		pred(s)["kind"], pred(s)["from"] = receipts.KindResolution, answerer
+		pred(s)["kind"], pred(s)["from"], pred(s)["by"] = receipts.KindResolution, answerer, byValue(answerBy)
 	}
 
 	t.Run("the base statement", func(t *testing.T) {
@@ -506,8 +546,9 @@ func TestStatementShape(t *testing.T) {
 }
 
 // TestVerdictsAndReasons holds receipt-4 through section 8 row 4: the closed list of reasons, pass
-// with ok, escalate with maybe on crossing receipts only, block with any other reason, and declined,
-// cancelled, timeout and undeliverable on resolution receipts only, of the two kinds alone. Each
+// with ok, escalate with maybe on crossing receipts only, block with any other reason, a judge's
+// block on crossing receipts only, the retired check: reason on none, and declined, cancelled,
+// timeout and undeliverable on resolution receipts only, of the two kinds alone. Each
 // receipt follows an ask: a crossing one is a give of its own, a resolution one the ask's closing.
 func TestVerdictsAndReasons(t *testing.T) {
 	t.Parallel()
@@ -523,14 +564,15 @@ func TestVerdictsAndReasons(t *testing.T) {
 		{receipts.KindCrossing, "pass", "ok", true},
 		{receipts.KindCrossing, "pass", "no-match", false},
 		{receipts.KindCrossing, "pass", "maybe", false},
-		{receipts.KindCrossing, "pass", "check:size", false},
+		{receipts.KindCrossing, "pass", "judge:size", false},
 		{receipts.KindCrossing, "block", "ok", false},
 		{receipts.KindCrossing, "block", "no-match", true},
 		{receipts.KindCrossing, "block", "maybe", true},
-		{receipts.KindCrossing, "block", "check:size", true},
-		{receipts.KindCrossing, "block", "check:max-size", true},
-		{receipts.KindCrossing, "block", "check:", false},
-		{receipts.KindCrossing, "block", "check:Size", false},
+		{receipts.KindCrossing, "block", "judge:size", true},
+		{receipts.KindCrossing, "block", "check:size", false},
+		{receipts.KindCrossing, "block", "judge:max-size", true},
+		{receipts.KindCrossing, "block", "judge:", false},
+		{receipts.KindCrossing, "block", "judge:Size", false},
 		{receipts.KindCrossing, "block", "size", false},
 		{receipts.KindCrossing, "block", "", false},
 		{receipts.KindCrossing, "block", receipts.ReasonDeclined, false},
@@ -550,7 +592,7 @@ func TestVerdictsAndReasons(t *testing.T) {
 		{receipts.KindResolution, "block", "ok", false},
 		{receipts.KindResolution, "block", "no-match", true},
 		{receipts.KindResolution, "block", "maybe", true},
-		{receipts.KindResolution, "block", "check:size", true},
+		{receipts.KindResolution, "block", "judge:size", false},
 		{receipts.KindResolution, "block", "size", false},
 		{receipts.KindResolution, "block", receipts.ReasonDeclined, true},
 		{receipts.KindResolution, "block", receipts.ReasonCancelled, true},

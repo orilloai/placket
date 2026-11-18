@@ -1,6 +1,6 @@
 # The placket protocol, version 0.1
 
-This document is the normative text of the placket protocol. It says what a mediator does at a handoff between parties that do not fully trust each other: how an Accord is founded, how a part is given, judged, held, asked about, answered, released and fetched, what every receipt states, and how a third party who holds only the mediator's public key checks the receipts. `README.md` beside it says how to read `spec/`; the schemas under `schema/` and the register, `frozen-formats.md`, hold the formats this text defines.
+This document is the normative text of the placket protocol. It says what a mediator does at a handoff between parties that do not fully trust each other: how an Accord is founded, how a part is given, judged, held, asked about, answered, released and fetched, what every receipt states and who it says decided, and how a third party who holds only the Accord's id and its founding set checks that the receipts are valid and that every decision was one the Accord let its decider make. `README.md` beside it says how to read `spec/`; the schemas under `schema/` and the register, `frozen-formats.md`, hold the formats this text defines.
 
 ## How to read this document
 
@@ -234,7 +234,7 @@ Row 1 finds the strings of the input by scanning its quotes from the first byte,
 
 ## 2. Actor references and signing
 
-An actor is named by its Ed25519 public key. A declaration, a binding and an envelope each carry a signature by the actor that stands behind it, and a receipt carries the mediator's. Signing has no codes of its own: an operation that checks a signature returns its own code when any row below fails, and the table is the same for each of them.
+An actor is named by its Ed25519 public key. A declaration, a binding, an envelope and an answer call each carry a signature by the actor that stands behind it, and a receipt carries the mediator's. Signing has no codes of its own: an operation that checks a signature returns its own code when any row below fails, and the table is the same for each of them.
 
 | # | Check | Reads | Code |
 |---|---|---|---|
@@ -243,7 +243,7 @@ An actor is named by its Ed25519 public key. A declaration, a binding and an env
 | 3 | Signature form | The object's `sig`: present, a string of 128 lowercase hex | The calling operation's signature code |
 | 4 | Equation | The signing bytes of signing-2, under the type URI the caller names, and the signature | The calling operation's signature code |
 
-The calling operation's signature codes are `declaration-signature` and `binding-signature` in founding (setup-contract-8) and `envelope-signature` at the door (crossing-6). A receipt's signature is checked by the verifier's `signature` row (receipt-6).
+The calling operation's signature codes are `declaration-signature` and `binding-signature` in founding (setup-contract-8), `envelope-signature` at the door (crossing-6) and `answer-call` for an answer (section 6, maybe-11). A receipt's signature is checked by the verifier's `signature` row (receipt-6).
 
 ### signing-1 Actor references and keys that sign nothing
 
@@ -285,13 +285,19 @@ The signing bytes of an object under a type URI are the DSSE 1.0 pre-authenticat
 
 ### signing-4 Type URIs
 
-Placket signs objects of three kinds under three type URIs: `https://placket.tech/declaration/0.1`, `https://placket.tech/binding/0.1` and `https://placket.tech/envelope/0.1`. Each ends in the protocol number setup-contract-4 names. A signature over any other payload, such as a receipt's statement or a message of a door, is a DSSE signature over that payload under its own payload type, and its payload type is never one of the three, so no payload signature can be taken for a placket object's signature, or the reverse. A receipt is signed so, under the payload type `application/vnd.in-toto+json` (receipt-1).
+Placket signs objects of four kinds under four type URIs: `https://placket.tech/declaration/0.1`, `https://placket.tech/binding/0.1`, `https://placket.tech/envelope/0.1` and `https://placket.tech/answer/0.1`, the answer call's (maybe-11). Each ends in the protocol number setup-contract-4 names. A signature over any other payload, such as a receipt's statement or a message of a door, is a DSSE signature over that payload under its own payload type, and its payload type is never one of the four, so no payload signature can be taken for a placket object's signature, or the reverse. A receipt is signed so, under the payload type `application/vnd.in-toto+json` (receipt-1).
 
 #### Scenario: a placket URI as a payload type
 
-- Given a payload signature whose payload type is `https://placket.tech/envelope/0.1`
-- When it is made or checked as a payload signature
-- Then it is refused, and no envelope is signed or verified by that route
+- Given a payload signature whose payload type is `https://placket.tech/envelope/0.1`, and separately one whose payload type is `https://placket.tech/answer/0.1`
+- When each is made or checked as a payload signature
+- Then each is refused, and no envelope or answer call is signed or verified by that route
+
+#### Scenario: an answer call signed and verified
+
+- Given an answer call signed by its answerer under `https://placket.tech/answer/0.1`
+- When it is verified under that type URI by its `from`, by another key, and under the envelope's type URI
+- Then only the first verifies
 
 ## 3. Founding an Accord
 
@@ -304,9 +310,9 @@ Founding reads a founding set and the time it is founded at, and either founds a
 | 3 | One binding per actor | The bindings' `actor` members | `binding-duplicate` |
 | 4 | Actor | The declaration's `actor`, as an actor reference (signing-1) | `actor-reference` |
 | 5 | Declaration signature | The declaration's `sig`, and the declaration, under `https://placket.tech/declaration/0.1` by its `actor` (signing-2) | `declaration-signature` |
-| 6 | Terms | The declaration's `terms` and each term's members, a `resolve` on a term that is not a `maybe` and the form of every `resolve` included, but not whether a `maybe` term has one (setup-contract-1) | `term-invalid` |
+| 6 | Terms | The declaration's `terms` and each term's members, a `resolve` on a term that is not a `maybe` and the form of every `resolve` and of its `judges` included, but not whether a `maybe` term has one (setup-contract-1) | `term-invalid` |
 | 7 | Maybe rule | Each term of stance `maybe`, for the presence of its `resolve` member | `maybe-without-resolve` |
-| 8 | Checks | Each check a term names, against the card's `checks` | `check-unknown` |
+| 8 | Judges | Each judge a term's `resolve.judges` names, against the names of the card's `judges` | `judge-unknown` |
 | 9 | Binding present | A binding whose `actor` is the declaration's | `binding-missing` |
 | 10 | Principal | That binding's `principal`, against the `principal` of each entry of the policy's `principals` | `binding-principal` |
 | 11 | Binding signature | That binding's `sig`, under `https://placket.tech/binding/0.1` by its `principal` (signing-2) | `binding-signature` |
@@ -321,7 +327,7 @@ When every row passes, the Accord is founded: its id is the typed hash of the se
 
 ### setup-contract-1 Declarations
 
-A declaration is an actor's own terms, signed by that actor (`declaration.json`, `term.json`). Its `actor` is the actor's reference, its `terms` a non-empty list of terms, and its `sig` the actor's signature under `https://placket.tech/declaration/0.1`. A term has a `stance` (`need`, `want`, `maybe` or `no`), a `dir` (`give` or `get`), `with`, a non-empty list of distinct role selectors `role:<label>` naming roles the other side must hold, and `select`, an object whose one member `kind` is a non-empty list of distinct kinds. A label and a kind are lowercase letters and digits in words joined by single hyphens, at most 64 characters. A term of stance `maybe` has a `resolve` member: `to`, a non-empty list of distinct role selectors naming who answers, and `timeout`, a whole number of seconds from 1 to 2^53 − 1. A term of any other stance has none. A term may name checks in `checks`, a non-empty list of objects each with a check's `name` and a `corpus` label; this version loads no check, so every named check is `check-unknown`. A term with a member missing, of the wrong type, of the wrong form or not listed is `term-invalid`, and so is a `terms` member that is missing, empty or not a list. Every party of an Accord signs its own terms: founding refuses a declaration signed by any key but its actor's.
+A declaration is an actor's own terms, signed by that actor (`declaration.json`, `term.json`). Its `actor` is the actor's reference, its `terms` a non-empty list of terms, and its `sig` the actor's signature under `https://placket.tech/declaration/0.1`. A term has a `stance` (`need`, `want`, `maybe` or `no`), a `dir` (`give` or `get`), `with`, a non-empty list of distinct role selectors `role:<label>` naming roles the other side must hold, and `select`, an object whose one member `kind` is a non-empty list of distinct kinds. A label and a kind are lowercase letters and digits in words joined by single hyphens, at most 64 characters. A term of stance `maybe` has a `resolve` member: `to`, a non-empty list of distinct role selectors naming who answers, `timeout`, a whole number of seconds from 1 to 2^53 − 1, and optionally `judges`, the judges the term grants, in order: a non-empty list of objects each with exactly a judge's `name`, a label the card's `judges` names, and its `use`, `decide` or `advise`, no two of one name (composition-7). A judge the card does not name is `judge-unknown`. A term of any other stance has no `resolve`. A term holds no other member: a term with a member missing, of the wrong type, of the wrong form or not listed, such as `checks`, is `term-invalid`, and so is a `terms` member that is missing, empty or not a list. Every party of an Accord signs its own terms: founding refuses a declaration signed by any key but its actor's.
 
 #### Scenario: a selector that is not a role
 
@@ -339,7 +345,19 @@ A declaration is an actor's own terms, signed by that actor (`declaration.json`,
 
 - Given a set whose declaration has a term with `checks` `[{"name":"forbidden","corpus":"tests"}]`
 - When it is founded
-- Then it is refused with `check-unknown`, since the card loads no check
+- Then it is refused with `term-invalid`, since a term lists no member `checks`
+
+#### Scenario: a judge the card does not name
+
+- Given a set whose card's `judges` is empty and whose declaration has a maybe term whose `resolve.judges` names `jev` to decide, correctly signed
+- When it is founded
+- Then it is refused with `judge-unknown`
+
+#### Scenario: a judge named twice
+
+- Given a set whose declaration has a maybe term whose `resolve.judges` names `jev` twice, once to decide and once to advise
+- When it is founded
+- Then it is refused with `term-invalid`
 
 #### Scenario: a declaration edited after signing
 
@@ -417,11 +435,17 @@ For each declaration, founding finds the binding whose `actor` is the declaratio
 
 ### setup-contract-4 The card
 
-The card says what can change a verdict under the Accord (`card.json`). Its `spec` is `0.1`, the version of this protocol and the one protocol number every placket URI carries: each type URI (signing-4), the receipt's predicate type (receipt-1) and the crossing extension's URI (crossing-1) end in it, and each schema's `$id` holds it as the segment after `schema/`, as in `https://placket.tech/schema/0.1/card.json`. This version knows one value, `0.1`, and a card whose `spec` is any other is `invalid-shape`. A later version changes every URI and the `spec` together. Its `kernel` names the decision module by a `version` and a `hash`, which the operator writes and founding reads for shape only. Its `judges` is a reserved list, read for shape only: each entry a `name`, a `version` and a `hash`. Its `checks` lists the checks the module loads, each with a `name`, a `version` and a `hash`; in this version it is empty. The card holds no other member. Its typed hash is the card hash, which every receipt carries (receipt-3), so every receipt names the module that judged it.
+The card says what can change a verdict under the Accord (`card.json`). Its `spec` is `0.1`, the version of this protocol and the one protocol number every placket URI carries: each type URI (signing-4), the receipt's predicate type (receipt-1) and the crossing extension's URI (crossing-1) end in it, and each schema's `$id` holds it as the segment after `schema/`, as in `https://placket.tech/schema/0.1/card.json`. This version knows one value, `0.1`, and a card whose `spec` is any other is `invalid-shape`. A later version changes every URI and the `spec` together. Its `kernel` names the decision module by a `version` and a `hash`, which the operator writes and founding reads for shape only. Its `judges` is the ordered list of the judges a term may grant, each entry a `name`, a label, and the `version` and `hash` that pin the judge's build, its configuration included; no two entries share a name, so one name with two versions or hashes is `invalid-shape`. Running a judge is not founding's: founding reads the list for shape. The card holds no other member. Its typed hash is the card hash, which every receipt carries (receipt-3), so every receipt names the module that judged it.
 
 #### Scenario: a card that loads a check
 
-- Given a set whose card's `checks` lists one check
+- Given a set whose card has a member `checks` listing one check
+- When it is founded
+- Then it is refused with `invalid-shape`, since the card lists no member `checks`
+
+#### Scenario: a judge the card names twice
+
+- Given a set whose card's `judges` lists `jev` twice, under two hashes
 - When it is founded
 - Then it is refused with `invalid-shape`
 
@@ -493,7 +517,7 @@ The set's `mediator` names who runs the Accord: `actor`, the mediator's referenc
 
 ### setup-contract-8 The refusal order
 
-Founding runs the rows of the table in order and returns the first that fails: the canonical form, the shape, one binding per actor; then for each declaration in actor-reference order its actor, its signature, its terms, its maybe rules, its checks, and its binding's presence, principal, signature, roles, policy, mediator and time; then a binding with no declaration; then a policy role nobody holds. A refused set founds nothing and yields no id.
+Founding runs the rows of the table in order and returns the first that fails: the canonical form, the shape, one binding per actor; then for each declaration in actor-reference order its actor, its signature, its terms, its maybe rules, its judges, and its binding's presence, principal, signature, roles, policy, mediator and time; then a binding with no declaration; then a policy role nobody holds. A refused set founds nothing and yields no id.
 
 #### Scenario: two defects in one declaration
 
@@ -521,7 +545,7 @@ Founding runs the rows of the table in order and returns the first that fails: t
 
 ### setup-contract-9 The shape of a set
 
-A founding set is an object with exactly `policy`, `mediator`, `card`, `declarations` and `bindings` (`founding.json`). `policy` has exactly `roles`, a list of distinct labels, and `principals`, a non-empty list of entries. Each entry is an object with exactly `principal`, an actor reference, and `roles`, a non-empty list of distinct labels: the roles that principal may grant. No two entries name the same principal; two entries may list the same role. A binding's `policy` is a typed hash. `mediator` is as setup-contract-7 says and `card` as setup-contract-4 says. `declarations` and `bindings` are non-empty lists. Bytes the canonical form refuses are `not-canonical`, before the shape is read, and no id is computed for them. Every defect of shape is `invalid-shape`, except in the members a later row reads: a declaration's `actor` form, its `sig` and its `terms` belong to rows 4 to 8.
+A founding set is an object with exactly `policy`, `mediator`, `card`, `declarations` and `bindings` (`founding.json`). `policy` has exactly `roles`, a list of distinct labels, and `principals`, a non-empty list of entries, and may have `supersedes` (setup-contract-11). Each entry is an object with exactly `principal`, an actor reference, and `roles`, a non-empty list of distinct labels: the roles that principal may grant. No two entries name the same principal; two entries may list the same role. A binding's `policy` is a typed hash. `mediator` is as setup-contract-7 says and `card` as setup-contract-4 says. `declarations` and `bindings` are non-empty lists. Bytes the canonical form refuses are `not-canonical`, before the shape is read, and no id is computed for them. Every defect of shape is `invalid-shape`, except in the members a later row reads: a declaration's `actor` form, its `sig` and its `terms` belong to rows 4 to 8.
 
 #### Scenario: a repeated member name
 
@@ -563,6 +587,22 @@ Actor-reference order is ascending order of references by their UTF-16 code unit
 - When it is founded
 - Then it is refused with `binding-duplicate`
 
+### setup-contract-11 The Accord a policy supersedes
+
+A policy may say that its Accord supersedes an earlier one: `supersedes`, an object with exactly `accord`, the earlier Accord's id, and `close`, the id of that Accord's close receipt, both typed hashes. It is signed through each binding's `policy`, the typed hash of the whole policy, so every principal signs it. Founding reads it for shape only: a `supersedes` of another shape is `invalid-shape`. What it means for the earlier Accord is not this version's to say.
+
+#### Scenario: a policy that supersedes an earlier Accord
+
+- Given a set whose policy has `supersedes` naming an earlier Accord's id and its close receipt's id, every binding signed for that policy
+- When it is founded
+- Then the Accord founds and names both
+
+#### Scenario: a close that is not a typed hash
+
+- Given a set whose policy's `supersedes` has a `close` that is not a typed hash, the bindings signed for that policy
+- When it is founded
+- Then it is refused with `invalid-shape`
+
 ## 4. Giving and getting a part at the door
 
 The door is where a member gives a part to another member and fetches what was queued for it. A give carries two byte strings, the message and the envelope, from an authenticated caller at a time. The door authenticates before it reads the message: it checks that the caller is a member, then the envelope's signature under the caller's key, then the message's canonical bytes, then that the envelope names those bytes and a fresh sequence number, and only then the message's content. A give that fails any row is rejected: it writes nothing and changes nothing (crossing-7). A give that passes every row is decided by composition (section 5), and the mediator writes its receipt.
@@ -578,7 +618,7 @@ The door is where a member gives a part to another member and fetches what was q
 | 7 | Receiver | The extension's `to`: present, an actor reference of a member (crossing-1) | `receiver-unknown` |
 | 8 | Accord | The extension's `accord`: present, this Accord's id | `accord-mismatch` |
 | 9 | One part | The message's `parts`: present, a list of exactly one element | `one-part` |
-| 10 | One body | The part: an object with exactly one of the body members `text`, `raw`, `data` and `url`, a `text` that is a string, a `raw` in standard base64, a `data` that is not `null`, and no member but that body and `metadata` (crossing-2) | `one-body` |
+| 10 | One body | The part: an object with exactly one of the body members `text`, `raw`, `data` and `url`, a `text` that is a string, a `raw` in standard base64, a `data` that is not `null`, a `mediaType` of a media type's form when it has one, and no member but that body, `metadata` and `mediaType` (crossing-2) | `one-body` |
 | 11 | Body form | A `url` body, whatever its value (crossing-2) | `url-unsupported` |
 | 12 | Part metadata | The part's `metadata`: exactly the crossing extension's object, with a `kind` and a `salt` of exactly 32 bytes (crossing-2) | `part-metadata` |
 
@@ -626,7 +666,7 @@ A part crosses in an A2A protocol 1.0 message that carries the crossing extensio
 
 ### crossing-2 The part
 
-The one part has exactly one body and the crossing extension's metadata (`part.json`). The body is `text`, a string; `raw`, bytes in standard base64; or `data`, any JSON value but `null`. A part with no body, with two, or with any member but its body and `metadata` is `one-body`, and so is a `raw` that is not standard base64 in its one encoding. A `url` body is not a body of this version: a part whose one body is `url` is `url-unsupported`, whatever the value. The part's `metadata` holds exactly one member, under the crossing extension's URI, with exactly `kind`, a kind as setup-contract-1 defines it, and `salt`, exactly 32 bytes in lowercase hex, 64 digits; any other is `part-metadata`. The body's bytes are the UTF-8 of `text`, the decoded bytes of `raw`, or the canonical bytes of `data`.
+The one part has exactly one body, the crossing extension's metadata, and optionally `mediaType`, the body's media type (`part.json`). The body is `text`, a string; `raw`, bytes in standard base64; or `data`, any JSON value but `null`. A part with no body, with two, or with any member but its body and `metadata` is `one-body`, and so is a `raw` that is not standard base64 in its one encoding. A `url` body is not a body of this version: a part whose one body is `url` is `url-unsupported`, whatever the value. The part's `metadata` holds exactly one member, under the crossing extension's URI, with exactly `kind`, a kind as setup-contract-1 defines it, and `salt`, exactly 32 bytes in lowercase hex, 64 digits; any other is `part-metadata`. A `mediaType` is a type and a subtype joined by one slash, in lowercase letters, digits and the characters `!#$&^_.+-`, each from 1 to 127 characters and starting with a letter or a digit, with no parameters, such as `application/json`; any other value is `one-body`. No term reads it and no digest covers it; the part's delivery carries it. The body's bytes are the UTF-8 of `text`, the decoded bytes of `raw`, or the canonical bytes of `data`.
 
 #### Scenario: two bodies
 
@@ -646,9 +686,15 @@ The one part has exactly one body and the crossing extension's metadata (`part.j
 - When the door checks each
 - Then each is rejected with `part-metadata`
 
+#### Scenario: a part's media type
+
+- Given a correctly signed give whose part has `mediaType` `application/json`, and separately ones whose `mediaType` is `Application/JSON`, `json`, a type with a parameter, or a number
+- When the door checks each
+- Then the first is decided and its delivery carries `application/json`, and the others are rejected with `one-body`
+
 ### crossing-3 Digests, salts and deliveries
 
-A part is named in a receipt by its kind and its salted digest: the lowercase hex SHA-256 of the salt's bytes followed by the body's bytes. A salt is exactly 32 bytes, so a digest opens as one salt and one body only. The first holder of a part mints its salt, 32 random bytes; the mediator mints the salt of every part it forms, 32 bytes too. No receipt carries a body or a salt. When a part passes, the mediator queues for its receiver a delivery (`delivery.json`): the receipt that passed it and its id, the part's `messageId`, `kind` and `salt`, the message's `re` when it has one, and the body, as `text`, `raw` or `data` as it crossed. A delivery holds nothing else. Its format is frozen because a receiver checks the receipt and the digest with it and every scenario vector compares it member by member (conformance-vectors-5). A door hands a delivery out in a reply of its own format, and where the delivery's body is an answer or a changed version the door may attach beside it the call by which the answerer signed that answer. That call is the door's format, not a member of the delivery: no receipt covers it, and no check of this protocol reads it. Deliveries are queued per receiver in the order of their receipts, and each is handed out once, to its receiver only, by a fetch. The mediator keeps no body or salt of a part that was blocked, or of a delivery once fetched.
+A part is named in a receipt by its kind and its salted digest: the lowercase hex SHA-256 of the salt's bytes followed by the body's bytes. A salt is exactly 32 bytes, so a digest opens as one salt and one body only. The first holder of a part mints its salt, 32 random bytes: the giver of a part it gives, and the answerer of an answer or a version (maybe-8, maybe-9). The mediator mints no salt. No receipt carries a body or a salt. When a part passes, the mediator queues for its receiver a delivery (`delivery.json`): the receipt that passed it and its id, the part's `messageId`, `kind` and `salt`, the message's `re` when it has one, the part's `mediaType` when it had one, the answer call as `answer` when an answer queued it (maybe-12), and the body, as `text`, `raw` or `data` as it crossed. A delivery holds nothing else. Its format is frozen because a receiver checks the receipt and the digest with it and every scenario vector compares it member by member (conformance-vectors-5). A door hands a delivery out in a reply of its own format. Deliveries are queued per receiver in the order of their receipts, and each is handed out once, to its receiver only, by a fetch. The mediator keeps no body or salt of a part that was blocked, or of a delivery once fetched.
 
 #### Scenario: whoever holds the body and salt can show the part
 
@@ -742,17 +788,19 @@ A rejected give writes no receipt, consumes no sequence number, queues nothing a
 
 ## 5. Composition and the verdict
 
-Composition decides a crossing that the door, or an answer (section 6), hands it: a sender, a receiver, the part's kind, and whether the part was given by a member or formed by the mediator from an answer. It reads the two parties' terms and the roles their bindings give them, and returns a verdict and a reason. It refuses nothing: every crossing that reaches it gets a receipt. A term matches when it is the sender's of `dir` `give` or the receiver's of `dir` `get`, its `select.kind` holds the part's kind, and one of its `with` selectors names a role the other party holds (composition-1). The rows run in order, and the first that applies decides.
+Composition decides a crossing that the door, or an answer (section 6), hands it: a sender, a receiver, the part's kind, whether the part was given by a member or formed by the mediator from an answer, and a judge's judgment of it, or none (composition-7). It reads the two parties' terms and the roles their bindings give them, and returns a verdict and a reason, and with them who decided: the terms, or the judge (receipt-11). It refuses nothing: every crossing that reaches it gets a receipt. It runs no judge: a judgment is given to it, a judge's card name and its verdict, pass or block, settled before the crossing is decided. A term matches when it is the sender's of `dir` `give` or the receiver's of `dir` `get`, its `select.kind` holds the part's kind, and one of its `with` selectors names a role the other party holds (composition-1). The rows run in order, and the first that applies decides.
 
 | # | Check | Reads | Verdict and reason |
 |---|---|---|---|
 | 1 | A refusal | Every matching term, for stance `no` (composition-3) | `block`, `no-match` |
 | 2 | Both sides | The matching terms: at least one of the sender's and at least one of the receiver's (composition-2) | `block`, `no-match` |
-| 3 | Checks | Every check a matching term names, each run once (composition-4) | `block`, `check:<name>` of the first that fails |
-| 4 | Formed part | A matching term of stance `maybe`, when the part was formed by the mediator (composition-5) | `block`, `maybe` |
-| 5 | Maybe rules | Every matching term of stance `maybe`: the set of roles its `resolve.to` names, and its `timeout` (composition-5) | `block`, `maybe`, when two differ |
+| 3 | Formed part | A matching term of stance `maybe`, when the part was formed by the mediator (composition-5) | `block`, `maybe` |
+| 4 | Maybe rules | Every matching term of stance `maybe`: the set of roles its `resolve.to` names, and its `timeout`, not its `judges` (composition-5) | `block`, `maybe`, when two differ |
+| 5 | A judge | The judgment given, against the judges both sides consented to, with use `decide` (composition-7) | `pass`, `ok`, or `block`, `judge:<name>`, by the judge |
 | 6 | Ask | A matching term of stance `maybe`, all rules agreeing (composition-5, maybe-1) | `escalate`, `maybe` |
 | 7 | Pass | Everything else | `pass`, `ok` |
+
+Every verdict but row 5's is the terms' decision.
 
 ### composition-1 Matching terms
 
@@ -788,7 +836,7 @@ A crossing with no matching term of the sender, or no matching term of the recei
 
 ### composition-3 A refusal wins
 
-When any matching term, of either party, has stance `no`, the crossing is `block` with reason `no-match`, before any check runs and before any maybe is read.
+When any matching term, of either party, has stance `no`, the crossing is `block` with reason `no-match`, before any maybe is read and before any judgment.
 
 #### Scenario: no beside want
 
@@ -796,19 +844,9 @@ When any matching term, of either party, has stance `no`, the crossing is `block
 - When composition decides the crossing
 - Then it is `block`, `no-match`
 
-### composition-4 Checks
-
-When both parties have a matching term and no matching term refuses, every check any matching term names runs, each distinct check and corpus once, sender's terms first, in term order. The first that fails decides: `block` with reason `check:` followed by the check's name, and no question is opened. In this version a card loads no check, so a founded Accord has no term that names one, and this row never applies.
-
-#### Scenario: no check runs in this version
-
-- Given any Accord this version founds
-- When composition decides any crossing
-- Then no check runs, and no receipt has a reason that starts `check:`
-
 ### composition-5 Maybe
 
-When a matching term has stance `maybe` and no earlier row applied, the crossing is asked about, under the rule the maybe terms agree on. Every matching `maybe` term must name the same set of roles in `resolve.to`, in any order, and the same `timeout`; then the verdict is `escalate` with reason `maybe` and the mediator holds the part as a question (maybe-1). When two of them differ, the crossing is `block` with reason `maybe` and no question is opened: no value a party chooses when it gives can pick which rule applies. A part the mediator formed from an answer that meets a `maybe` term is `block` with reason `maybe`, and no second question is opened.
+When a matching term has stance `maybe` and no earlier row applied, the crossing is asked about, under the rule the maybe terms agree on. Every matching `maybe` term must name the same set of roles in `resolve.to`, in any order, and the same `timeout`; the judges they list are not compared here. Then, unless a judge decides it (composition-7), the verdict is `escalate` with reason `maybe` and the mediator holds the part as a question (maybe-1). When two of them differ, the crossing is `block` with reason `maybe` and no question is opened: no value a party chooses when it gives can pick which rule applies. A part the mediator formed from an answer that meets a `maybe` term is `block` with reason `maybe`, and no second question is opened: a formed part is never judged.
 
 #### Scenario: maybe rules that agree
 
@@ -828,6 +866,12 @@ When a matching term has stance `maybe` and no earlier row applied, the crossing
 - When an accepted answer is decided from the answerer to the asker
 - Then it is `block`, `maybe`, and no question is opened
 
+#### Scenario: maybe rules whose judges differ
+
+- Given a sender's and a receiver's maybe terms that agree on their roles and timeout, one listing `jev` to decide and the other `jev` to advise, or only one of them listing any
+- When composition decides the crossing with `jev`'s pass
+- Then it is `escalate`, `maybe`, by the terms, and no judge is consulted
+
 ### composition-6 Need
 
 A term of stance `need` composes exactly as one of stance `want`.
@@ -838,17 +882,35 @@ A term of stance `need` composes exactly as one of stance `want`.
 - When composition decides the crossing
 - Then it is `pass`, `ok`, as for two `want` terms
 
+### composition-7 A judge decides where the terms would ask
+
+A judge acts only where the terms would ask, and only where both sides consented to it. The judges consented to are those of the agreed rule: they are listed only when every matching term, of both parties, has stance `maybe`, and every one of them lists the same `judges`, the same names in the same order with the same uses. Otherwise no judge is consented to: a `want` or `need` term beside a `maybe` one, a `maybe` term on one side alone, and two `maybe` terms whose judges differ all leave the part to be asked. When the crossing's judgment names a judge consented to with use `decide`, its `pass` decides `pass`, `ok`, and its `block` decides `block`, `judge:` followed by the judge's card name, and the receipt names that judge as its decider (receipt-11). Any other judgment is none: a judge consented to only to advise, a judge not consented to, and a verdict other than pass or block. A part the mediator formed is never judged (composition-5), and neither is a release (maybe-10). Which judge's judgment is given, when several are listed, is settled before the crossing is decided: this text says only what a judgment decides.
+
+#### Scenario: a judge both sides consented to
+
+- Given a sender's and a receiver's maybe terms for a report that both list `jev` with use `decide`
+- When composition decides a report with `jev`'s pass, and then with its block, and then with no judgment
+- Then the first is `pass`, `ok`, by the judge `jev`; the second `block`, `judge:jev`, by `jev`; and the third `escalate`, `maybe`, by the terms
+
+#### Scenario: a judge only one side consented to
+
+- Given a sender's maybe term that lists `jev` to decide and a receiver's maybe term that lists no judge, and separately both listing `jev` to advise, and separately the sender's matching `want` term beside its maybe term
+- When composition decides each with `jev`'s pass
+- Then each is `escalate`, `maybe`, by the terms
+
 ## 6. Questions, the three answers and release
 
-A give that composition decides `escalate` opens a question: the mediator writes the ask's receipt, holds the part, and queues nothing for the receiver (maybe-1). The question's id is the id of that receipt. A question closes exactly once: by an answer, an accept, a change, a decline or a cancel, from a member holding a role it names; by the mediator finding that nobody can be reached to answer it; or by its deadline. An answer is given with the question's id, the action, and for an accept or a change the answer's text and the salt the mediator minted for it, and whether the answer asks for release (maybe-10). It runs these rows in order.
+A give that composition decides `escalate` opens a question: the mediator writes the ask's receipt, holds the part, and queues nothing for the receiver (maybe-1). The question's id is the id of that receipt. A question closes exactly once: by an answer, an accept, a change or a decline from a member holding a role it names, or a cancel by its asker; by the mediator finding that nobody can be reached to answer it; or by its deadline. An answer is one signed call, the answer call (maybe-11), which names the question, the action, and for an accept or a change the salted digest of the answer's text under the answerer's salt and whether it asks for release (maybe-10); for an accept or a change the answer's text and that salt are given beside the call. It runs these rows in order.
 
 | # | Check | Reads | Code |
 |---|---|---|---|
 | 1 | Member | The caller's key (setup-contract-6) | `not-a-member` |
-| 2 | Open question | The question's id: a question that is open, at a time before its deadline (maybe-7) | `no-open-question` |
-| 3 | Answerer | The caller, among the question's answerers (maybe-6) | `not-an-answerer` |
+| 2 | Answer call | The call: canonical bytes, its closed shape (maybe-11), its `accord` this Accord's id, its `from` the caller, and its `sig` under `from` and `https://placket.tech/answer/0.1` (signing-2) | `answer-call` |
+| 3 | Open question | The call's `question`: a question that is open, at a time before its deadline (maybe-7) | `no-open-question` |
+| 4 | Answerer | The call's `from`, by its action: for an accept, a change or a decline, among the question's answerers (maybe-6); for a cancel, the question's asker, of a question with at least one answerer. An asker who is also an answerer cancels as the asker | `not-an-answerer` |
+| 5 | Answer body | For an accept or a change, a salt of exactly 32 bytes and a text, not empty for a change, whose salted digest (crossing-3) is the call's `digest`; for a decline or a cancel, no text and no salt | `answer-body` |
 
-A rejected answer writes nothing and leaves the question as it was. The answer's own inputs are its caller's to get right, and are checked after these rows with no protocol code: an action that is not one of the four, an accept or a change without a salt of exactly 32 bytes, or a change with an empty text, is refused as the caller's misuse, writes nothing and leaves the question open. An answer that passes the rows closes the question and writes its receipts, all of them before any state changes: the resolution receipt first, then the release receipt when one is written. The mediator's own finding that a question cannot be delivered reads only row 2. Its deadline is reached by the passing of time, which reads nothing and refuses nothing (maybe-5).
+A rejected answer writes nothing and leaves the question as it was. An answer that passes the rows closes the question and writes its receipts, all of them before any state changes: the resolution receipt first, then the release receipt when one is written. The mediator's own finding that a question cannot be delivered has no caller and no call, and reads only row 3. Its deadline is reached by the passing of time, which reads nothing and refuses nothing (maybe-5). A question no member can answer is cancelled by nobody: it ends by the mediator's finding or by its deadline (maybe-4).
 
 The answerers of a question are the members whose bindings give them a role its rule names in `resolve.to`, in actor-reference order. The list may be empty: founding checks that the policy's roles are held, not that a rule's are.
 
@@ -856,21 +918,27 @@ The answerers of a question are the members whose bindings give them a role its 
 |---|---|---|---|---|
 | Accept (maybe-3) | The answerer, to the asker | The answer, kind `answer` | As composition decides the answer | The answer, for the asker, on a pass |
 | Change (maybe-9) | The answerer, to the asker | The version, kind `changed-version` | As composition decides the version | The version, for the asker, on a pass |
-| Decline, cancel (maybe-4) | The first answerer, to the asker | The asked part | `block`, `declined` or `cancelled` | Nothing |
+| Decline, cancel (maybe-4) | The first answerer, to the asker, whoever signed the call | The asked part | `block`, `declined` or `cancelled` | Nothing |
 | Undeliverable (maybe-4) | The first answerer, or the mediator when there is none, to the asker | The asked part | `block`, `undeliverable` | Nothing |
 | Timeout (maybe-5) | The first answerer, or the mediator when there is none, to the asker | The asked part | `block`, `timeout` | Nothing |
 
-Every one of these is a resolution receipt that echoes the question's envelope (crossing-5). An accept or a change that passes, and asks for release, then writes a release receipt (maybe-10).
+Every one of these is a resolution receipt that echoes the question's envelope (crossing-5). An accept, a change, a decline and a cancel name the answer call as their decider, and an undeliverable and a timeout the mediator (receipt-11). An accept or a change that passes, and whose call asks for release, then writes a release receipt (maybe-10).
 
 ### maybe-1 Asking
 
-A give decided `escalate` writes a crossing receipt with verdict `escalate` and reason `maybe`, from the giver to the receiver, and holds a question under that receipt's id: the asker, the receiver, the part as it was given, its message's `messageId` and `re`, the envelope, the agreed rule, and the deadline. The deadline is the give's time plus the rule's `timeout` in seconds; a deadline past `9999-12-31T23:59:59Z` is that time. Nothing is queued for the receiver. The held part leaves the mediator only by a release (maybe-10). While the question is open, the part is also shown to the question's answerers, and to no one else, so that an answer is about this exact content; showing it queues nothing and writes nothing.
+A give decided `escalate` writes a crossing receipt with verdict `escalate` and reason `maybe`, from the giver to the receiver, and holds a question under that receipt's id: the asker, the receiver, the part as it was given, its message's `messageId` and `re`, the envelope, the agreed rule, and the deadline. The deadline is the give's time plus the rule's `timeout` in seconds; a deadline past `9999-12-31T23:59:59Z` is that time. Nothing is queued for the receiver. The held part leaves the mediator only by a release (maybe-10). While the question is open, the part is also shown to the question's answerers, and to no one else, so that an answer is about this exact content: its body, in the form it was given, raw bytes included, its salt, and the ask's receipt, so that an answerer checks that the body under the salt is the part the receipt names before it signs an answer. Showing it queues nothing and writes nothing.
 
 #### Scenario: a proposal is asked about
 
 - Given the ask-and-log Accord, whose proposer gives `proposal` to the applier under a maybe term with a timeout of 3600
 - When the proposer gives a proposal at `2026-11-12T09:00:00Z`
 - Then the receipt is `escalate`, `maybe`, a question is open with deadline `2026-11-12T10:00:00Z`, and the applier's fetch returns nothing
+
+#### Scenario: what an answerer is shown
+
+- Given an open question of a text part, one of a raw part and one of a data part
+- When an answerer is shown them, and a member who is not an answerer
+- Then the answerer is shown, for each, the ask's receipt, the part's salt and its body, whose salted digest is the receipt's subject digest, and the other member is shown none
 
 #### Scenario: a deadline past the last time
 
@@ -880,7 +948,7 @@ A give decided `escalate` writes a crossing receipt with verdict `escalate` and 
 
 ### maybe-3 An accepted answer
 
-An accept forms the answer as maybe-8 says and decides it through composition from the answerer to the asker, as a part formed by the mediator. The resolution receipt's verdict and reason are composition's, its subject is the answer, and it echoes the question's envelope. A pass queues the answer for the asker. A block queues nothing, for anyone: the held part is dropped. Every check a term names runs on the answer as on any part.
+An accept forms the answer as maybe-8 says and decides it through composition from the answerer to the asker, as a part formed by the mediator. The resolution receipt's verdict and reason are composition's, its subject is the answer, and it echoes the question's envelope. A pass queues the answer for the asker. A block queues nothing, for anyone: the held part is dropped. The resolution receipt names the answer call as its decider, whatever composition decided: its reason shows what the terms did.
 
 #### Scenario: an accept that passes
 
@@ -896,7 +964,7 @@ An accept forms the answer as maybe-8 says and decides it through composition fr
 
 ### maybe-4 Decline, cancel and undeliverable
 
-A decline and a cancel each close the question with a resolution receipt from the question's first answerer, by actor-reference order, to the asker: `block` with reason `declined` or `cancelled`, naming the asked part by its kind and digest and echoing the question's envelope. The receipt names the first answerer whichever answerer closed it. When the mediator finds that nobody can be reached to answer a question, it closes it the same way with reason `undeliverable`; when the question has no answerer, the receipt is from the mediator's own reference. An undeliverable and a timeout are the only resolution receipts that can be from the mediator. Nothing is queued, and the held part is dropped.
+A decline and a cancel each close the question with a resolution receipt from the question's first answerer, by actor-reference order, to the asker: `block` with reason `declined` or `cancelled`, naming the asked part by its kind and digest, echoing the question's envelope and naming the answer call as its decider. The receipt names the first answerer whichever answerer declined, and when the asker cancelled; only the call names who signed it. When the mediator finds that nobody can be reached to answer a question, it closes it the same way with reason `undeliverable`, naming itself, with the event `undeliverable`, as its decider; when the question has no answerer, the receipt is from the mediator's own reference. An undeliverable and a timeout are the only resolution receipts that can be from the mediator. Nothing is queued, and the held part is dropped.
 
 #### Scenario: a decline
 
@@ -908,11 +976,17 @@ A decline and a cancel each close the question with a resolution receipt from th
 
 - Given a question whose rule names a role no member holds
 - When the mediator closes it as undeliverable
-- Then the receipt is from the mediator's reference to the asker, `block`, `undeliverable`
+- Then the receipt is from the mediator's reference to the asker, `block`, `undeliverable`, by the mediator
+
+#### Scenario: the asker cancels
+
+- Given an open question in the ask-and-log Accord
+- When the proposer, its asker, cancels it with a call it signed
+- Then one receipt is written from the decider, the first answerer, to the proposer, `block`, `cancelled`, naming the asked part and the call as its decider, and nothing is queued
 
 ### maybe-5 Timeout
 
-As time passes the mediator closes, in the order they were opened, every open question whose deadline is at or before the current time, each with a resolution receipt from the first answerer, or the mediator when there is none, to the asker: `block` with reason `timeout`, naming the asked part, echoing the question's envelope, and with `at` the deadline, not the time it was noticed. A passing of time that reaches no deadline writes nothing.
+As time passes the mediator closes, in the order they were opened, every open question whose deadline is at or before the current time, each with a resolution receipt from the first answerer, or the mediator when there is none, to the asker: `block` with reason `timeout`, naming the asked part, echoing the question's envelope, naming the mediator, with the event `deadline`, as its decider, and with `at` the deadline, not the time it was noticed. A passing of time that reaches no deadline writes nothing.
 
 #### Scenario: one receipt at the deadline
 
@@ -928,7 +1002,7 @@ As time passes the mediator closes, in the order they were opened, every open qu
 
 ### maybe-6 Only an answerer answers
 
-An answer from a member that is not among the question's answerers is rejected with `not-an-answerer`, writes nothing, and leaves the question open. The asker may answer its own question when its binding gives it a role the rule names.
+An accept, a change or a decline from a member that is not among the question's answerers is rejected with `not-an-answerer`, writes nothing, and leaves the question open. The asker may answer its own question when its binding gives it a role the rule names. A cancel is the asker's alone: a cancel signed by any other member, an answerer included, is `not-an-answerer`, and so is the asker's cancel of a question that has no answerer, which ends by the mediator's finding or its deadline (maybe-4).
 
 #### Scenario: the proposer answers its own proposal
 
@@ -936,9 +1010,21 @@ An answer from a member that is not among the question's answerers is rejected w
 - When the proposer accepts it
 - Then it is rejected with `not-an-answerer`, nothing is written, and the question stays open
 
+#### Scenario: an answerer cancels
+
+- Given an open question in the ask-and-log Accord
+- When the decider, its answerer, cancels it
+- Then it is rejected with `not-an-answerer`, nothing is written, and the question stays open
+
+#### Scenario: a cancel of a question nobody can answer
+
+- Given an open question whose rule names a role no member holds
+- When its asker cancels it
+- Then it is rejected with `not-an-answerer`, nothing is written, and the question stays open
+
 ### maybe-7 A closed question
 
-An answer, or a finding that a question cannot be delivered, for an id that names no open question, or at a time at or after the question's deadline, is rejected with `no-open-question` and writes nothing. A question closes in the operation that writes its resolution receipt, and its release is written in that same operation, never by a later one. Row 2 comes before row 3, so a member who holds no answering role learns only that no question is open for it.
+An answer, or a finding that a question cannot be delivered, for an id that names no open question, or at a time at or after the question's deadline, is rejected with `no-open-question` and writes nothing. A question closes in the operation that writes its resolution receipt, and its release is written in that same operation, never by a later one. Row 3 comes before row 4, so a member who holds no answering role learns only that no question is open for it. The answer call has no time and no nonce: a call sent again finds its question closed, and is `no-open-question`.
 
 #### Scenario: a second answer
 
@@ -954,17 +1040,17 @@ An answer, or a finding that a question cannot be delivered, for an id that name
 
 ### maybe-8 The answer's message
 
-An accepted answer is a part the mediator forms: `messageId` `answer:` followed by the question's id, kind `answer`, `re` the question's id, a `text` body holding the answer's text, and the salt the mediator minted for it, 32 bytes. Its message's `role` is `ROLE_AGENT`, since the mediator forms it. The answer's text may be any string.
+An accepted answer is a part the mediator forms: `messageId` `answer:` followed by the question's id, kind `answer`, `re` the question's id, a `text` body holding the answer's text, and the salt the answerer minted for it, 32 bytes, so its salted digest is the call's `digest`. Its message's `role` is `ROLE_AGENT`, since the mediator forms it. The answer's text may be any string.
 
 #### Scenario: the delivered answer
 
 - Given an accept of question `sha256:` followed by `ab` repeated 32 times, with text `accepted`, that passed
 - When the asker fetches
-- Then the delivery's `messageId` is `answer:sha256:` followed by `ab` repeated 32 times, its kind `answer`, its `re` the question's id, its `text` `accepted`, and its `salt` the one minted
+- Then the delivery's `messageId` is `answer:sha256:` followed by `ab` repeated 32 times, its kind `answer`, its `re` the question's id, its `text` `accepted`, its `salt` the one the answerer minted, and its `answer` the answer call
 
 ### maybe-9 A changed answer
 
-A change is an answerer's own version of the asked part, as a non-empty text. The mediator forms one part from it: `messageId` `change:` followed by the question's id, kind `changed-version`, `re` the question's id, a `text` body holding the version, and one salt the mediator minted, 32 bytes, with `role` `ROLE_AGENT`. It decides that part from the answerer to the asker as it decides an accepted answer, and the resolution receipt's subject is the version, of kind `changed-version`: that is how a change is recorded. A pass queues the version for the asker. A change with an empty version is the caller's misuse: it is refused with no protocol code, writes nothing and leaves the question open. The asked part is never released after a change.
+A change is an answerer's own version of the asked part, as a non-empty text. The mediator forms one part from it: `messageId` `change:` followed by the question's id, kind `changed-version`, `re` the question's id, a `text` body holding the version, and the one salt the answerer minted, 32 bytes, with `role` `ROLE_AGENT`. It decides that part from the answerer to the asker as it decides an accepted answer, and the resolution receipt's subject is the version, of kind `changed-version`: that is how a change is recorded. A pass queues the version for the asker. A change with an empty version is `answer-body`: it writes nothing and leaves the question open. The asked part is never released after a change.
 
 #### Scenario: a change returned to the asker
 
@@ -976,15 +1062,15 @@ A change is an answerer's own version of the asked part, as a non-empty text. Th
 
 - Given an open question
 - When an answerer changes it with an empty text
-- Then nothing is written and the question stays open
+- Then it is rejected with `answer-body`, nothing is written and the question stays open
 
 ### maybe-10 Release
 
-An answer may ask for release. When it does and its resolution receipt's verdict is `pass`, the mediator judges the part for the question's receiver in the same operation, and writes a release receipt that echoes the question's envelope, after the resolution receipt and before any state changes.
+An answer's call may ask for release. When it does and its resolution receipt's verdict is `pass`, the mediator decides the part for the question's receiver in the same operation, and writes a release receipt that echoes the question's envelope and names the same answer call as its decider, after the resolution receipt and before any state changes. No judge is consulted at a release.
 
-- After an accept, the held part is decided again, as given, from the asker to the receiver, with the checks of that moment. When composition returns `block`, the release receipt is a crossing receipt from the asker to the receiver, `block` with composition's reason, naming the asked part, and nothing is queued for the receiver. On any other verdict the answer stands, and it is the answer that releases: the release receipt is a crossing receipt from the asker to the receiver, `pass`, `ok`, with the asked part's kind and digest unchanged, and the held part is queued for the receiver exactly as it was given. The mediator adds no verdict of its own. In this version the terms are fixed and no check is loaded, so this decision returns `escalate` again and the release passes.
+- After an accept, the held part is decided again, as given and with no judgment, from the asker to the receiver. When composition returns `block`, the release receipt is a crossing receipt from the asker to the receiver, `block` with composition's reason, naming the asked part, and nothing is queued for the receiver. On any other verdict the answer stands, and it is the answer that releases: the release receipt is a crossing receipt from the asker to the receiver, `pass`, `ok`, with the asked part's kind and digest unchanged, and the held part is queued for the receiver exactly as it was given, with the answer call inside its delivery (maybe-12). The mediator adds no verdict of its own. The terms are fixed, so a part a maybe term asked about is decided `escalate` again, and the release passes.
 - After a change, the same version, under the same salt and so with the same digest, is decided from the answerer to the receiver as a part formed by the mediator. The release receipt is a resolution receipt from the answerer to the receiver, of kind `changed-version`, with composition's verdict and reason. A pass queues the version for the receiver. When the receiver is the answerer or the asker, a change releases nothing.
-- A decline, a cancel, an undeliverable, a timeout, an answer whose resolution receipt is `block`, and an answer that does not ask for release write no release receipt and queue nothing for the receiver. The held part is dropped.
+- A decline, a cancel, an undeliverable, a timeout, an answer whose resolution receipt is `block`, and an answer whose call does not ask for release write no release receipt and queue nothing for the receiver. The held part is dropped.
 
 A release receipt consumes no sequence number of any sender. A question has at most one.
 
@@ -992,7 +1078,7 @@ A release receipt consumes no sequence number of any sender. A question has at m
 
 - Given an open question in the ask-and-log Accord, asked with a proposal of digest D
 - When the decider accepts it, asking for release
-- Then two receipts are written in one operation: the resolution from the decider to the proposer, `pass`, `ok`, of kind `answer`; then a crossing receipt from the proposer to the applier, `pass`, `ok`, of kind `proposal` with digest D, echoing the question's envelope; and the applier's fetch returns the proposal as it was given
+- Then two receipts are written in one operation: the resolution from the decider to the proposer, `pass`, `ok`, of kind `answer`; then a crossing receipt from the proposer to the applier, `pass`, `ok`, of kind `proposal` with digest D, echoing the question's envelope; both name the answer call as their decider; and the applier's fetch returns the proposal as it was given, with the call inside its delivery
 
 #### Scenario: a change returned to the asker and released to the receiver under one digest
 
@@ -1006,6 +1092,12 @@ A release receipt consumes no sequence number of any sender. A question has at m
 - When the decider accepts it, asking for release, and the proposal is decided again from the proposer to the applier
 - Then that decision is `escalate` once more, which is not a block, so the release receipt is `pass`, `ok`, the proposal is queued for the applier, and the answer stays queued for the proposer
 
+#### Scenario: a judge never acts at release
+
+- Given an open question of a report whose two sides' maybe terms list `jev` to decide
+- When the decider accepts it, asking for release
+- Then the release is decided with no judgment, `pass`, `ok`, by the answer call, never by `jev`
+
 #### Scenario: a release receipt echoes the question's envelope and counts as an echo for the asker only
 
 - Given a change released to the applier, whose release receipt is addressed to the applier and echoes the proposer's envelope
@@ -1018,18 +1110,45 @@ A release receipt consumes no sequence number of any sender. A question has at m
 - When the decider declines it
 - Then one receipt is written, no release receipt follows, and nothing is queued for the applier
 
+### maybe-11 The answer call
+
+An answer is one signed call, the answer call (`answer.json`): a closed object with exactly `accord`, the Accord's id; `question`, the question's id, the id of its ask's receipt; `action`, `accepted`, `changed`, `declined` or `cancelled`; for `accepted` and `changed` exactly, `digest`, the salted digest (crossing-3) of the answer's text, or the version, under the answerer's salt, and `release`, a boolean, whether it asks for release; `from`, the signer's actor reference; and `sig`, its signature under `https://placket.tech/answer/0.1`, by signing-2. It has no time and no nonce. The answerer mints the answer's salt, exactly 32 bytes, and signs the salted digest, never the text: the text and the salt are given beside the call, never inside it. Its typed hash (canonical-3), over its canonical bytes with `sig`, names it in the receipts its answer writes (receipt-11). The mediator checks the call, by section 6's rows, before it writes anything.
+
+#### Scenario: a call signed by another key
+
+- Given an open question and the decider's accept, whose call names the decider as `from` but was signed by the proposer's key
+- When the decider sends it
+- Then it is rejected with `answer-call`, nothing is written, and the question stays open
+
+#### Scenario: a text the digest does not name
+
+- Given the decider's accept, its call signed over the text `accepted` under its salt, given with the text `accepted.`, or with another salt
+- When the decider sends it
+- Then it is rejected with `answer-body`, nothing is written, and the question stays open; the same call with its own text and salt then closes the question
+
+### maybe-12 The call travels with the answer
+
+The receipts an answer writes name its call: the resolution receipt and the release receipt both have as their decider the call's typed hash (receipt-11). The call travels inside every delivery the answer queues, as the delivery's `answer`: the answer or the version queued for the asker, and the released part or version queued for the receiver. No receipt holds the call itself. A party that fetched one holds the call, and with the answer's text and salt it shows who answered and what; with the receipts alone, the call's hash shows which call it was.
+
+#### Scenario: the call inside both deliveries
+
+- Given an accept asking for release that passes
+- When the proposer and the applier fetch
+- Then each delivery holds the call as `answer`, and both receipts name the call's typed hash as their decider
+
 ## 7. Receipts and their chains
 
 A receipt is the mediator's signed statement of one decision. Writing one refuses nothing: the mediator writes a receipt for every give the door passes and for every closing and release of a question, and for nothing else. This table says which receipt each event writes; every receipt is chained in the pair of its `from` and `to` (receipt-5).
 
-| Event | `kind` | `from`, `to` | Subject | `verdict`, `reason` | Echoed envelope |
-|---|---|---|---|---|---|
-| A give the door passes | `crossing` | The giver, the receiver | The given part | Composition's (section 5) | The give's |
-| An accept or a change | `resolution` | The answerer, the asker | The answer or the version | Composition's | The question's |
-| A decline, a cancel | `resolution` | The first answerer, the asker | The asked part | `block`, `declined` or `cancelled` | The question's |
-| An undeliverable, a timeout | `resolution` | The first answerer or the mediator, the asker | The asked part | `block`, `undeliverable` or `timeout` | The question's |
-| A release after an accept | `crossing` | The asker, the receiver | The asked part | `pass`, `ok`, or composition's block | The question's |
-| A release after a change | `resolution` | The answerer, the receiver | The version | Composition's | The question's |
+| Event | `kind` | `from`, `to` | Subject | `verdict`, `reason` | Echoed envelope | `by` |
+|---|---|---|---|---|---|---|
+| A give the door passes | `crossing` | The giver, the receiver | The given part | Composition's (section 5) | The give's | The terms, or the judge that decided |
+| An accept or a change | `resolution` | The answerer, the asker | The answer or the version | Composition's | The question's | The answer call |
+| A decline, a cancel | `resolution` | The first answerer, the asker | The asked part | `block`, `declined` or `cancelled` | The question's | The answer call |
+| An undeliverable | `resolution` | The first answerer or the mediator, the asker | The asked part | `block`, `undeliverable` | The question's | The mediator, `undeliverable` |
+| A timeout | `resolution` | The first answerer or the mediator, the asker | The asked part | `block`, `timeout` | The question's | The mediator, `deadline` |
+| A release after an accept | `crossing` | The asker, the receiver | The asked part | `pass`, `ok`, or composition's block | The question's | The answer call |
+| A release after a change | `resolution` | The answerer, the receiver | The version | Composition's | The question's | The answer call |
 
 ### receipt-1 The receipt
 
@@ -1053,7 +1172,7 @@ The statement's `subject` is a list of exactly one entry, the part the receipt i
 
 ### receipt-3 What a predicate holds
 
-The predicate (`predicate.json`) has exactly these members: `accord`, the Accord's id; `card`, the card hash; `mediator`, the mediator's reference; `kind`, `crossing` or `resolution`; `from` and `to`, the references of the receipt's two parties; `seq` and `prev`, its place in its chain (receipt-5); `at`, its time (receipt-10); `envelope`, the echoed envelope: `sender`, the reference of the key that signed it, and its `seq` and `hash` (crossing-5); `verdict`; and `reason`. In a crossing receipt the envelope's `sender` is the receipt's `from`: a give's receipt echoes the giver's own envelope, and a release after an accept the asker's, which is the question's. A member a receipt cannot fill is absent, never `null`: `prev` is absent exactly when `seq` is 1, and no other member is ever absent.
+The predicate (`predicate.json`) has exactly these members: `accord`, the Accord's id; `card`, the card hash; `mediator`, the mediator's reference; `kind`, `crossing` or `resolution`; `from` and `to`, the references of the receipt's two parties; `seq` and `prev`, its place in its chain (receipt-5); `at`, its time (receipt-10); `envelope`, the echoed envelope: `sender`, the reference of the key that signed it, and its `seq` and `hash` (crossing-5); `verdict`; `reason`; and `by`, who decided (receipt-11). In a crossing receipt the envelope's `sender` is the receipt's `from`: a give's receipt echoes the giver's own envelope, and a release after an accept the asker's, which is the question's. A member a receipt cannot fill is absent, never `null`: `prev` is absent exactly when `seq` is 1, and no other member is ever absent.
 
 #### Scenario: the first receipt of a pair
 
@@ -1063,7 +1182,7 @@ The predicate (`predicate.json`) has exactly these members: `accord`, the Accord
 
 ### receipt-4 Verdicts and reasons
 
-A crossing receipt's `verdict` is `pass`, `block` or `escalate`; a resolution receipt's is `pass` or `block`. The reasons are a closed list of eight: `ok`, `no-match`, `maybe` and `check:<name>`, on any receipt; and `declined`, `cancelled`, `timeout` and `undeliverable`, on resolution receipts only. A `pass` has reason `ok`, an `escalate` has reason `maybe`, and a `block` has any other reason, `maybe` included: a crossing whose maybe rules differ is a block with reason `maybe` (composition-5). `check:<name>` is reserved for a check the card loads: no mediator of this version writes it, and a verifier reads it for shape only.
+A crossing receipt's `verdict` is `pass`, `block` or `escalate`; a resolution receipt's is `pass` or `block`. The reasons are a closed list of eight: `ok`, `no-match` and `maybe`, on any receipt; `judge:<name>`, on a crossing `block` only, where `<name>` is a judge's card name (composition-7); and `declined`, `cancelled`, `timeout` and `undeliverable`, on resolution receipts only. A `pass` has reason `ok`, an `escalate` has reason `maybe`, and a `block` has any other reason, `maybe` included: a crossing whose maybe rules differ is a block with reason `maybe` (composition-5). A reason that opens `check:` is no reason of this version.
 
 #### Scenario: a block with reason maybe
 
@@ -1082,6 +1201,12 @@ A crossing receipt's `verdict` is `pass`, `block` or `escalate`; a resolution re
 - Given a crossing predicate with `verdict` `block` and `reason` `declined`
 - When it is validated
 - Then it is refused
+
+#### Scenario: a judge's block
+
+- Given a crossing predicate with `verdict` `block`, `reason` `judge:jev` and `by` the judge `jev`, and separately one with `reason` `check:forbidden`
+- When each is validated against `predicate.json`
+- Then the first is accepted and the second refused
 
 ### receipt-5 Chains
 
@@ -1105,9 +1230,9 @@ A predicate holds no member but those receipt-3 lists, and each member has the f
 
 #### Scenario: an unlisted member
 
-- Given a predicate with a member `result`
-- When it is validated against `predicate.json`
-- Then it is refused
+- Given a predicate with a member `result`, and separately one with no `by`
+- When each is validated against `predicate.json`
+- Then each is refused
 
 ### receipt-10 Sequence numbers and times
 
@@ -1124,6 +1249,40 @@ A receipt's `seq`, like an envelope's, is a whole number from 1 to 2^53 − 1. I
 - Given two mediators founded from one set with one key, given the same operations at the same times
 - When their receipts are compared
 - Then they are identical byte for byte
+
+### receipt-11 Who decided
+
+Every predicate names its decider in `by`, in exactly one of these forms, and holds no probability, score or threshold:
+
+- `"terms"`: the terms decided a give's crossing receipt, a `pass` `ok`, a `block` `no-match` or `maybe`, or an `escalate` `maybe` (section 5).
+- `{"judge":"<card name>"}`: a judge's judgment decided a give's crossing receipt, a `pass` `ok`, or a `block` `judge:<name>` with the same name (composition-7).
+- `{"answer":"<typed hash>"}`: an answer call decided the resolution receipt of an accept, a change, a decline or a cancel, and its release receipt; the value is the typed hash of the call's canonical bytes, `sig` included (maybe-11, maybe-12). An accept or a change that composition then blocks is still the answer's: its reason shows what the terms did.
+- `{"mediator":"deadline"}`: the resolution receipt of a timeout (maybe-5); and `{"mediator":"undeliverable"}`: that of an undeliverable (maybe-4). These two are the mediator's only values.
+
+A `by` must fit its receipt's kind, verdict and reason, as this table says; the verifier's statement row refuses any other (receipt-6). It cannot tell a release from another crossing receipt, so it takes an answer's `by` on any crossing `pass` or `block` the table allows, and the release row refuses one that is not a question's release, or whose `by` is not its closing's.
+
+| Kind | Verdict | Reason | `by` allowed |
+|---|---|---|---|
+| crossing | `pass` | `ok` | the terms, a judge, an answer |
+| crossing | `block` | `no-match`, `maybe` | the terms, an answer |
+| crossing | `block` | `judge:<name>` | the judge of that name |
+| crossing | `escalate` | `maybe` | the terms |
+| resolution | `pass` | `ok` | an answer |
+| resolution | `block` | `no-match`, `maybe`, `declined`, `cancelled` | an answer |
+| resolution | `block` | `timeout` | the mediator, `deadline` |
+| resolution | `block` | `undeliverable` | the mediator, `undeliverable` |
+
+#### Scenario: every event names its decider
+
+- Given a give the terms pass, one a judge passes, one asked about, its accept with its release, a decline, an undeliverable and a timeout
+- When their receipts are read
+- Then each names its decider as the table says: the terms, the judge, the terms, the answer call twice, the call, and the mediator with `undeliverable` and `deadline`
+
+#### Scenario: a by that does not fit
+
+- Given a correctly signed timeout whose `by` is the terms, and a correctly signed `block` `judge:jev` whose `by` names the judge `other`
+- When each is verified
+- Then each fails `statement-type` at its index
 
 ### crossing-5 Every envelope is echoed
 
@@ -1143,7 +1302,7 @@ Every receipt carries an envelope in its predicate's `envelope`, as its signer's
 
 ## 8. Verifying receipts
 
-A verifier needs only the mediator's reference and a list of receipts in the order the mediator wrote them, such as its journal. It checks the reference once, then each receipt in list order, every row of one receipt before the next receipt, and stops at the first failure, which it reports with its code and the receipt's index, counted from 0. An empty list verifies. A list that verifies yields its statements.
+A verifier needs only the mediator's reference and a list of receipts in the order the mediator wrote them, such as its journal; or the Accord's id and its founding set, from which it takes the mediator's reference (verify-1). It checks the reference once, then each receipt in list order, every row of one receipt before the next receipt, and stops at the first failure, which it reports with its code and the receipt's index, counted from 0. An empty list verifies. A list that verifies yields its statements.
 
 | # | Check | Reads | Code |
 |---|---|---|---|
@@ -1151,20 +1310,22 @@ A verifier needs only the mediator's reference and a list of receipts in the ord
 | 1 | Bytes | The receipt's bytes, and the bytes `payload` decodes to when it is a string of standard base64 in its one encoding (canonical-1) | `not-canonical` |
 | 2 | Payload type | `payloadType`: present, exactly `application/vnd.in-toto+json` | `payload-type` |
 | 3 | Signature | `payload` as standard base64 in its one encoding; `signatures`, exactly one entry with exactly `keyid`, the given mediator's reference, and `sig`, standard base64 of 64 bytes; the signature, over the pre-authentication encoding of the payload type and the payload's bytes, under the given mediator's key; and no member of the receipt but these three | `signature` |
-| 4 | Statement | The statement: exactly `_type`, `subject`, `predicateType` and `predicate`, with the values receipt-1 and receipt-2 give; the predicate's members as receipt-3, receipt-4, receipt-9 and receipt-10 give, but `mediator`, `seq` and `prev`; and in a crossing receipt, the envelope's `sender` equal to its `from` (receipt-3) | `statement-type` |
+| 4 | Statement | The statement: exactly `_type`, `subject`, `predicateType` and `predicate`, with the values receipt-1 and receipt-2 give; the predicate's members as receipt-3, receipt-4, receipt-9, receipt-10 and receipt-11 give, but `mediator`, `seq` and `prev`, its `by` fitting its kind, verdict and reason; and in a crossing receipt, the envelope's `sender` equal to its `from` (receipt-3) | `statement-type` |
 | 5 | Mediator named | The predicate's `mediator`: the given mediator's reference | `mediator` |
 | 6 | Chain | The predicate's `seq` and `prev`, against the receipt before it in the list from the same `from` to the same `to` (receipt-5) | `chain` |
-| 7 | Release | The receipt's place among the receipts before it that echo the same envelope (receipt-6) | `release` |
+| 7 | Release | The receipt's place among the receipts before it that echo the same envelope, and a release's `by` against its closing's (receipt-6) | `release` |
 
 ### receipt-6 The verifier
 
-A verifier checks receipts with the mediator's key alone and performs no key lookup: the mediator's reference comes from the verifier's caller, never from a receipt. A receipt edited after signing, or signed again by another key, fails `signature`. A receipt signed by the right key that names another mediator fails `mediator`. In each pair the first receipt in the list must have `seq` 1 and no `prev`, and each later one `seq` one above and `prev` the id of the one before; a receipt removed from the middle of a chain therefore fails `chain` at the receipt after it. A list cut short after any receipt, the journal's last receipts removed, still verifies (receipt-7). Row 7 reads questions from receipts, by this rule, which every reader of a journal applies and none restates:
+A verifier checks receipts with the mediator's key alone and performs no key lookup: the mediator's reference comes from the verifier's caller, or from the founding set whose typed hash is the Accord id its caller gives (verify-1), never from a receipt. A receipt edited after signing, or signed again by another key, fails `signature`. A receipt signed by the right key that names another mediator fails `mediator`. In each pair the first receipt in the list must have `seq` 1 and no `prev`, and each later one `seq` one above and `prev` the id of the one before; a receipt removed from the middle of a chain therefore fails `chain` at the receipt after it. A list cut short after any receipt, the journal's last receipts removed, still verifies (receipt-7). Row 7 reads questions from receipts, by this rule, which every reader of a journal applies and none restates:
 
 1. A crossing receipt with verdict `escalate` is a question, and its echoed envelope, `sender`, `seq` and `hash`, is its key. It always opens a question of its own and belongs to no question before it, even one with the same key, as after a shortened journal is resumed.
 2. A later receipt that is not a question and echoes the same envelope belongs to the latest question before it with that key. Since row 4 makes a question's `sender` its `from`, every receipt that belongs to a question names the question's `from` as `sender`.
 3. A question's closing receipt is the first receipt that belongs to it. It must be a resolution receipt addressed to the question's `from`. When its reason is `declined`, `cancelled`, `timeout` or `undeliverable`, its subject is the question's, name and digest. Otherwise its subject `name` is `answer` or `changed-version`, and when its verdict is `pass` it is the question's answer: an accept when the name is `answer`, a change when it is `changed-version`.
-4. After an answer, the receipt right after the closing receipt in the list may belong to the question: it is the release receipt. After an accept it is a crossing receipt from the question's `from` to its `to`, with the question's subject, verdict `pass` or `block`. After a change it is a resolution receipt from the answer's `from` to the question's `to`, with the answer's subject, and the question's `to` is neither its `from` nor the answer's `from`.
-5. Every other receipt that belongs to a question fails `release`: one before the closing receipt that is not a resolution addressed to the asker, a closing of the wrong subject, a second release, a release that is not right after its answer, one after a closing that is not an answer, one of the wrong form. So does a resolution receipt that belongs to no question.
+4. After an answer, the receipt right after the closing receipt in the list may belong to the question: it is the release receipt, and its `by` is its closing's. After an accept it is a crossing receipt from the question's `from` to its `to`, with the question's subject, verdict `pass` or `block`. After a change it is a resolution receipt from the answer's `from` to the question's `to`, with the answer's subject, and the question's `to` is neither its `from` nor the answer's `from`.
+5. Every other receipt that belongs to a question fails `release`: one before the closing receipt that is not a resolution addressed to the asker, a closing of the wrong subject, a second release, a release that is not right after its answer, one after a closing that is not an answer, one of the wrong form, one whose `by` is not its closing's. So do a resolution receipt that belongs to no question and a crossing receipt an answer decided that belongs to none.
+
+A verifier given a subset of the receipts, not the whole list, reads them by this rule with two differences: a chain may start at any `seq`, the first receipt of a pair with a `prev` of its form, and each chain that starts above 1 is named; and a receipt that would belong to a question not in the subset is outside it, never a failure of `release`.
 
 A release receipt with verdict `pass` released its part; one with verdict `block` is a blocked release, which queued nothing. A crossing receipt whose envelope's `sender` is not its `from` fails `statement-type` at row 4, so a give's receipt cannot echo another member's envelope, and no envelope counts as echoed for its signer (crossing-5, receipt-7) by a receipt of someone else's give.
 
@@ -1216,6 +1377,18 @@ A release receipt with verdict `pass` released its part; one with verdict `block
 - When it is verified
 - Then it fails with `reference`, and no receipt is read
 
+#### Scenario: a release of another answer
+
+- Given an ask, its accept and a release whose `by` names another answer call than the accept's
+- When the three are verified
+- Then they fail with `release` at index 2
+
+#### Scenario: a subset that starts late
+
+- Given the last two receipts of a chain of three
+- When they are verified as a subset
+- Then they verify, and the chain is named as starting at `seq` 2; verified as a whole list they fail with `chain` at index 0
+
 ### receipt-8 Reading without verifying
 
 A receipt can be decoded and shown without being verified: its statement read from its payload, its words printed. Whatever does so says the receipt was not verified, because a forged receipt decodes and shows exactly as a real one does. Anything that presents a receipt as the mediator's decision verifies it first.
@@ -1225,6 +1398,71 @@ A receipt can be decoded and shown without being verified: its statement read fr
 - Given a receipt whose signature is not the mediator's
 - When it is decoded and shown without verifying
 - Then it shows like any other receipt, and the showing says it was not verified
+
+### verify-1 What a verifier is given
+
+A verifier that checks conformance is given the Accord's id out of band, and nothing else: the founding set, the receipts, and optionally answer calls, a subset of the receipts rather than the whole list, and one delivery. It founds the set at the first receipt's time and takes the mediator's reference from the set whose typed hash is the Accord id, its `mediator.actor`; a set of another typed hash, one that does not found, or one whose mediator is not the reference the verifier was also given, is `founding`, and nothing else is checked. It checks the receipts' validity, section 8's first table, under that reference, and then their conformance, the table below. It never runs a judge again, never fetches anything, and never takes the mediator's reference from a receipt.
+
+Conformance runs only with a founding set whose typed hash is the Accord id, receipt by receipt in list order after validity passes, every row of one receipt before the next; the first failure decides, with its code and the receipt's index. Row 3 runs only when the card's kernel hash is one the verifier trusts to decide again, the module it runs itself; with any other, row 3 is skipped and rows 4 and 5 still run. Row 5 reads only a delivery and its receipt, and runs with or without a founding set.
+
+| # | Check | Reads | Code |
+|---|---|---|---|
+| 0 | Founding | The set: it founds at the first receipt's `at`, its typed hash is the Accord id, and the receipts are verified under its `mediator.actor` | `founding` |
+| 1 | Accord | Each receipt's `accord` and `card`, against the set's | `accord` |
+| 2 | Parties | Each receipt's `from` and `to`, members of the set, or a `from` that is the mediator where maybe-4 or maybe-5 let it be | `party` |
+| 3 | Decision | The receipt decided again, by composition, with the judgment its `by` and verdict claim (composition-7): it gives the receipt's verdict and reason, and a judge it names is one consented to with use `decide`. An accept's or a change's `from` is an answerer of the question's rule, and its `at` before the deadline; a decline or a cancel is from the first answerer, before the deadline; a timeout's `at` is the deadline; an undeliverable is from the first answerer, or the mediator when there is none; and a release follows maybe-10 | `decision` |
+| 4 | Witness | For a receipt an answer decided, a call given whose typed hash is its `by`: the call reads (maybe-11), names the Accord id and the receipt's question, takes the action the receipt records, names the receipt's digest for an accept or a change, and is from the receipt's `from` for an accept or a change, an answerer for a decline, or a member when row 3 is skipped and the question's answerers are not known, the asker for a cancel. A release follows the closing only when the call asks for one; and when it asks for one, a release follows, but for a change whose question's receiver is its answerer or its asker, which releases nothing, and in a subset, which may leave the release out | `witness` |
+| 5 | Body | A delivery: its receipt is one of the list, by its id, and the salted digest of its body under its salt is that receipt's subject digest, of its kind | `body` |
+
+A call is matched only in its canonical bytes, as it was signed: a copy re-encoded with other whitespace or member order has the call's typed hash once made canonical, but it matches no receipt. A call given that matches no receipt is counted and fails nothing. A receipt an answer decided that no call given matches is unwitnessed, never a failure (verify-3). The first failure decides the code and index, and a verifier still reads every receipt's decider and witness, so that a log that does not conform is shown whole.
+
+#### Scenario: a journal verified by its Accord id
+
+- Given a journal of a note, an ask and an accept with release, and its founding set
+- When it is verified with the Accord id and the set
+- Then it is valid and conforms; and with the id one hex digit off it is `founding`
+
+### verify-2 Conformance
+
+Every decision a receipt states must be one the Accord let its decider make, by the rows of verify-1's table: the receipt names the Accord, its parties are members, decided again it is what the terms, the judge it names or the answer it names make of it, and an answer it names is witnessed by a call that fits it, when one is given. A verifier reports the first receipt that does not conform, with its code and index.
+
+#### Scenario: decisions the Accord did not allow
+
+- Given, each alone, a `pass` `ok` of a kind the terms block, an accept from a member who holds no answering role, a timeout whose `at` is not the deadline, and a judge's pass where both sides grant the judge only to advise
+- When each journal is checked for conformance
+- Then each fails `decision` at the receipt's index
+
+#### Scenario: calls that do not fit
+
+- Given, each alone, an accept whose matched call names the decider but was signed by another key, one whose call names another Accord, a release whose call asks for no release, and a passing accept whose call asks for release with no release receipt after it
+- When each journal is checked
+- Then each fails `witness` at the receipt's index; and a passing change asking for release whose question's receiver is its answerer, or its asker, conforms with no release receipt
+
+#### Scenario: one body
+
+- Given a delivery a receiver fetched, and the journal
+- When its body is checked
+- Then it is the part its receipt names; with one byte of its text changed it fails `body` at its receipt's index
+
+### verify-3 Witnessed and unwitnessed
+
+An answer's receipt is witnessed when a call given, whose typed hash is its `by`, passes row 4: the call shows that the key that signed it answered, and the founding set shows which principal bound that key to which roles. With no such call it is unwitnessed: only the mediator says that a key holding the answering role answered, or that the asker cancelled. An unwitnessed answer is never a failure.
+
+#### Scenario: with and without the calls
+
+- Given a journal with an accept and the journal's answer calls
+- When it is checked with the calls, and then without them
+- Then the accept and its release are witnessed by the decider's key, and then unwitnessed, and both conform
+
+### verify-4 Completeness is not claimed
+
+A verifier checks the receipts it is given. Until an Accord has a close, no receipt says that a journal holds every receipt the mediator wrote: a list cut short after any receipt still verifies (receipt-6). So conformance claims nothing about completeness, and a subset claims less still.
+
+#### Scenario: no close receipt
+
+- Given any valid journal, and separately a subset of it
+- When it is checked
+- Then completeness is not claimed: of the journal, because the Accord has no close receipt, and of the subset, because only a subset was given
 
 ## 9. Reconciling kept records
 
@@ -1284,7 +1522,7 @@ A conformance vector is a file that states inputs and the exact results an imple
 
 ### conformance-vectors-1 The header
 
-Every vector has `vector`, its path under `vectors/` without the `.json` extension, a group and a name each in lowercase words joined by hyphens; `spec`, `0.1`; `tests`, one line saying what the vector tests; and `operation`, what it runs: `canonical`, `sign`, `verify-signature`, `found`, `scenario`, `verify` or `reconcile`.
+Every vector has `vector`, its path under `vectors/` without the `.json` extension, a group and a name each in lowercase words joined by hyphens; `spec`, `0.1`; `tests`, one line saying what the vector tests; and `operation`, what it runs: `canonical`, `sign`, `verify-signature`, `found`, `scenario`, `verify`, `reconcile` or `conform`.
 
 #### Scenario: a vector's path
 
@@ -1300,11 +1538,11 @@ A vector gives every input an implementation could choose or read from the world
 
 - Given a scenario vector with an accept
 - When the runner runs it
-- Then the answer's salt is the step's `salt`, not one the implementation minted
+- Then the answer's salt is the step's `salt`, the one the answerer minted, not one the implementation minted
 
 ### conformance-vectors-3 Scenario vectors
 
-A `scenario` vector founds one mediator from `founding` at `foundedAt`, run by the key named `mediator`, and applies its `steps` in order. A step is `give`, `get`, `resolve` or `tick`, and each names the time it runs at in `at`, but `get`, which reads no time. After the last step the runner compares `final`: `receipts`, every receipt the mediator wrote, in order, each with its id; `delivered`, for each party by name, the deliveries still queued for it, in order, a party with none left out; and `pending`, the ids of the questions still open, in the order they were opened. Every outcome a step expects names a receipt's `verdict` and `reason`, paired as receipt-4 says: a `give` step's is a crossing receipt's, never with a reason only a resolution receipt has; a `tick` step's are timeouts, `block` with reason `timeout`; and a `resolve` step's is its resolution receipt's, with its `release` composition's. The runner also verifies `final.receipts` under the mediator's reference (section 8), and a list that fails fails the vector. Steps after a rejected step still run.
+A `scenario` vector founds one mediator from `founding` at `foundedAt`, run by the key named `mediator`, and applies its `steps` in order. A step is `give`, `get`, `resolve` or `tick`, and each names the time it runs at in `at`, but `get`, which reads no time. A `give` step may carry `judge`, `{"name","verdict"}`, the judgment the decision is given: a judge's card name and `pass` or `block` (composition-7). After the last step the runner compares `final`: `receipts`, every receipt the mediator wrote, in order, each with its id; `delivered`, for each party by name, the deliveries still queued for it, in order, a party with none left out; and `pending`, the ids of the questions still open, in the order they were opened. Every outcome a step expects names a receipt's `verdict` and `reason`, paired as receipt-4 says: a `give` step's is a crossing receipt's, never with a reason only a resolution receipt has; a `tick` step's are timeouts, `block` with reason `timeout`; and a `resolve` step's is its resolution receipt's, with its `release` composition's. Every expected receipt names its decider (receipt-11). The runner also verifies `final.receipts` under the mediator's reference (section 8), and a list that fails fails the vector. Steps after a rejected step still run.
 
 #### Scenario: a give, then the end state
 
@@ -1314,7 +1552,7 @@ A `scenario` vector founds one mediator from `founding` at `foundedAt`, run by t
 
 ### conformance-vectors-4 Operations and groups
 
-Each operation names what the runner calls and what it compares. `canonical` puts `inputText` or `inputHex` in canonical form and expects `canonicalHex` and `hash`, or `code` and `offset`. `sign` signs `input`, an object, as the key named `signer` under `typeUri`, and expects `signingBytesHex` and `sig`. `verify-signature` verifies the object given as `input`, `inputText` or `inputHex` under `typeUri` by `reference`, and expects `valid`. `found` founds the set given as `input`, `inputText` or `inputHex` at `foundedAt`, as the mediator the set names, and expects `accord` and `card`, or `code`. `verify` verifies `receipts` under `reference`, and expects `verified`, the number of receipts, or `code`, with `index` for every code but `reference`. `reconcile` reconciles `receipts` with `kept` under `reference`, `accord` and `card`, `parties` giving each party's name its reference, and expects `removed`, `unrecorded` and `missing`, or `code` with the index, and for `kept` the party. Vectors are filed in groups by the section of this text they test: `canonical`, `signatures`, `founding`, `crossing`, `receipts` and `questions`.
+Each operation names what the runner calls and what it compares. `canonical` puts `inputText` or `inputHex` in canonical form and expects `canonicalHex` and `hash`, or `code` and `offset`. `sign` signs `input`, an object, as the key named `signer` under `typeUri`, and expects `signingBytesHex` and `sig`. `verify-signature` verifies the object given as `input`, `inputText` or `inputHex` under `typeUri` by `reference`, and expects `valid`. `found` founds the set given as `input`, `inputText` or `inputHex` at `foundedAt`, as the mediator the set names, and expects `accord` and `card`, or `code`. `verify` verifies `receipts` under `reference`, and expects `verified`, the number of receipts, or `code`, with `index` for every code but `reference`. `reconcile` reconciles `receipts` with `kept` under `reference`, `accord` and `card`, `parties` giving each party's name its reference, and expects `removed`, `unrecorded` and `missing`, or `code` with the index, and for `kept` the party. `conform` checks `receipts` for conformance (verify-1) given `accord`, `founding` or `reference`, `answers`, each a call as `call` or `callHex`, `subset`, `delivery`, and `kernel`, the kernel hash the verifier trusts to decide again, and expects `code` with `index`, a code of section 8's first table or of verify-1's, or `conforms` with the counts `witnessed`, `unwitnessed` and `unmatched`, `module`, whether the card's kernel was the trusted one, and `body` when a delivery was given. Vectors are filed in groups by the section of this text they test: `canonical`, `signatures`, `founding`, `crossing`, `receipts`, `questions` and `conform`.
 
 #### Scenario: a founding refusal
 
@@ -1334,19 +1572,25 @@ The runner compares exactly. A rejection is compared by its code. An outcome is 
 
 ### conformance-vectors-6 The resolve step
 
-A `resolve` step has `question`, the id of the question's receipt, and `action`: `accepted`, `changed`, `declined`, `cancelled`, or `undeliverable`, the mediator's finding that nobody can be reached, which takes no caller. For `accepted` and `changed` it has `content.answer`, the answer's text or the version, which for `changed` is not empty, and `salt`, the salt the mediator mints, exactly 32 bytes in lowercase hex. It may have `release`, `true`, for `accepted` and `changed` only; its `expect` then holds `release`, the release receipt's outcome, when one was written, and holds none when the step has no `release`. `by` names the member that answers; without it, the runner answers as the question's first answerer, by actor-reference order. `expect` is the outcome of the resolution receipt, or the rejection. After `accepted` or `changed` that outcome is composition's, and so is the release's; after `declined`, `cancelled` or `undeliverable` it is `block` with that action as its reason.
+A `resolve` step is an answer step or the mediator's finding. An answer step has `callHex`, the answer call's canonical bytes (maybe-11), and for `accepted` and `changed` also `answer`, the answer's text or the version, and `salt`, the salt the answerer minted, exactly 32 bytes in lowercase hex; the action, the question and whether it asks for release are the call's. `by` names the member that sends it; without it, the caller is the call's `from`. The mediator's finding that nobody can be reached has `question`, the id of the question's receipt, and `undeliverable`, `true`, and no `callHex`, `answer`, `salt` or `by`: it takes no caller. A step holds no `action`. `expect` is the outcome of the resolution receipt, or the rejection. After an accept or a change that outcome is composition's, and so is the release's, which `expect` holds as `release` only when the call asks for one; after a decline, a cancel or an undeliverable it is `block` with that action as its reason. The schema cannot read the call, so a runner reads it and fails, as a malformed vector, an answer step whose `expect` does not pair with its call so.
 
 #### Scenario: an accepted answer with release
 
-- Given a `resolve` step with `action` `accepted`, `release` `true`, and an answer that passes
+- Given a `resolve` step whose call is an accept asking for release, and an answer that passes
 - When the runner runs it
 - Then the implementation's resolution outcome equals `expect`, and its release outcome equals `expect.release`
 
 #### Scenario: a change with release
 
-- Given a `resolve` step with `action` `changed`, `content.answer` holding the version, and `release` `true`
+- Given a `resolve` step whose call is a change asking for release, `answer` holding the version
 - When the runner runs it
 - Then the implementation forms the version as maybe-9 says, under the step's `salt`, its resolution outcome to the asker equals `expect`, and its release outcome to the receiver equals `expect.release`
+
+#### Scenario: an answer step that does not pair with its call
+
+- Given an answer step whose call is a decline and whose `expect` is `pass`, `ok`
+- When the runner runs it
+- Then the vector fails as malformed
 
 ### conformance-vectors-7 The tick step
 
@@ -1415,7 +1659,7 @@ Every object has `exit`, the command's exit code. The words a person reads are t
 | Refusal | One of `rejection`, a code of this text the window returned; `door`, a code of the window's door; or `error`, a code of the command's own, with `detail`, the list of what the error line carries after its code, each as the line prints it, such as `["chain","receipts.jsonl","line 3"]`, when it carries any |
 | Outcome | `word`, the product word of the receipt's verdict, `released` for a release that passed; `reason`; `receiptId`; and `receipt`, the receipt as the window returned it |
 | Closing | `word`, the closing's word; and, for a question that closed, `receiptId` and `receipt`, those of the receipt that closed it |
-| Delivery | `receiptId`, `receipt`, `messageId`, `kind`, `salt`, and `re` when the part has one, as the delivery carries them; and its body as `text`, `raw` or `data`, as the delivery carries it |
+| Delivery | `receiptId`, `receipt`, `messageId`, `kind`, `salt`, `re` when the part has one, `mediaType` when it had one, and `answer`, the answer call, when an answer queued it, as the delivery carries them; and its body as `text`, `raw` or `data`, as the delivery carries it |
 | Comment | `crossed`, `true` only when the comment's give passed; and the comment give's `outcome`, or the members of its refusal |
 
 A command that is refused, or fails, has the members of its refusal beside what it had done before. The commands' members, besides `exit`:
@@ -1433,9 +1677,9 @@ A command that is refused, or fails, has the members of its refusal beside what 
 | `change` | As `answer`, and `comment` when a comment was given |
 | `decline` | `question`; `outcome`; `comment`, once the window took the decline |
 | `get` | `delivery`, when one was fetched; with `--out`, the delivery without its body, and `path`, the file the body was written to. With `--all`, in place of `delivery` and `path`, `deliveries`, the list of every delivery it fetched, in the order it fetched them, each as `get` without `--all` holds it; with `--out`, each without its body and with `path`, the file its body was written to, when it was written |
-| `questions` | `questions`, the list of the open questions this key may answer, each the object the command prints for it without `--json` |
-| `show` | `verified`, `false`; `receiptId`; `word`; `reason`; `kind`, the part's kind; `at`; `from`; `to`; `module`, the module line; `claim`, the receipt's claim line; `notClaimed`, the scope line; and `shown`, the list of the lines the command prints on standard output without `--json` |
-| `verify` | `verified`, the number of receipts; `mediator`; `accord`; `card`; with `--founding`, `operator`, `runs`, `module`, an object of the kernel's `version` and `hash`, and `checks`, the list of the loaded checks as the card lists them, and `members`, a list with one object per member in actor-reference order, each its `actor`, its `roles` as its binding gives them, and the `principal` that signed its binding; `counts`, the number of receipts by product word, `pass`, `block` and `ask`; `questionsClosed`; `questionsOpen`; `releases`; `blockedReleases`; `predicates`, the list of the receipts' predicates in journal order; `claim`, the claim line; `notClaimed`, the scope line |
+| `questions` | `questions`, the list of the open questions this key may answer, each the object the command prints for it without `--json`, with `receiptId` and `receipt`, those of the ask; never the part's salt or a raw body |
+| `show` | `verified`, `false`; `receiptId`; `word`; `reason`; `by`, the decider as the predicate holds it; `kind`, the part's kind; `at`; `from`; `to`; `module`, the module line; `claim`, the receipt's claim line; `notClaimed`, the scope line; and `shown`, the list of the lines the command prints on standard output without `--json` |
+| `verify` | `verified`, the number of receipts; `mediator`; `accord`; `card`; with `--founding`, `operator`, `runs`, `module`, an object of the kernel's `version` and `hash`, `judges`, the card's judges as it lists them, `members`, a list with one object per member in actor-reference order, each its `actor`, its `roles` as its binding gives them, and the `principal` that signed its binding, `custody`, its line, and `supersedes`, `{"accord","close"}`, when the policy has one; `counts`, the number of receipts by product word, `pass`, `block` and `ask`; `questionsClosed`; `questionsOpen`; `releases`; `blockedReleases`; `starts`, a list of `{"from","to","seq"}`, each chain a subset starts late; `decisions`, a list of `{"receiptId","line"}`, each decision line; `unmatched`, the number of calls matching no receipt; `valid`, `conforms` and `complete`, each its line; `body`, its line, with `--delivery`; `predicates`, the list of the receipts' predicates in journal order; `claim`, the claim line; `notClaimed`, the scope line |
 | `log` | `log`, the object the command prints without `--json`, which carries the claim and the scope line. `--json` with `--format csv` is the command's error `format` |
 | `reconcile` | `removed`, `unrecorded` and `missing`, as the command prints them without `--json` |
 | `released` | On a match, `receiptId` and `receipt`, those of the receipt the file, or the kept part, matched; `kind`, the part's kind; `verified`, `false`; `claim`, the claim line, the value's with `--at`; `notClaimed`, the scope line. With no match, `exit` alone. With `--every`, in place of `receiptId`, `receipt` and `kind`, `matches`, the list of every match in the order the key fetched them, each `receiptId`, `kind`, `at`, the receipt's time, `from`, the receipt's sender, and `re` when the part has one; on a match `verified`, `claim` and `notClaimed` beside it |
@@ -1657,6 +1901,22 @@ On a match the command prints on standard output the receipt id of the first mat
 - When the receiver asks
 - Then the changed part never matches, the parts beside it still do, and a directory that kept nothing, or that holds only parts its key gave and versions it gave as answers, matches nothing: exit 1
 
+### commands-8 What verify prints
+
+`verify` prints, on standard error, in order: the line of the mediator, the Accord and the card; with a founding set, the operator, the module, one line per judge of the card in card order, one line per member, the custody line, which says of how many members the operator is the principal, and what the policy supersedes; the counts of verdicts, questions and releases; with a subset, each chain it starts late; with a founding set, one line per receipt the terms did not decide, in list order: an answer witnessed, by the key that signed its call and the principal that bound it to its roles, or unwitnessed, by the roles of the answerer, the `from` of the question's closing, or, for a cancel, the asker's; a judge of the card; or the mediator, by its event; with a subset, how many decisions were not checked because their question is not in it; how many decisions the terms made; how many calls given match no receipt, when any; then the `valid` line, the receipts' count and the mediator; the `conforms` line: that every decision is one the Accord let its decider make, that conformance was not checked for want of a founding set or because the card's module is not the one the verifier runs, or that the log does not conform, with the code and the line of `receipts.jsonl`; the `complete` line, which claims nothing; with a delivery, the `body` line; and the claim and scope lines. A log that does not conform, and a body that is not its receipt's part, exit 1 with every line; a validity failure prints its code and line and none of these, and so does a delivery given that is not one, or whose receipt is none of the receipts, a tool error. With `--json` the object holds each of these lines under its member.
+
+#### Scenario: the lines of a verified journal
+
+- Given the worked journal and its founding set
+- When `verify` runs with the Accord id, with and without `--json`
+- Then standard error holds the valid, conforms, complete, custody and decision lines, and the object holds the same lines under `valid`, `conforms`, `complete`, `custody` and `decisions`
+
+#### Scenario: a log that does not conform
+
+- Given a journal holding a receipt the mediator's key signed whose decision the terms do not allow
+- When `verify` runs with the Accord id
+- Then it exits 1, prints the valid line and that the log does not conform at that receipt's line, and still prints every other line: each decision line, the count of the terms' decisions, and the complete, claim and scope lines
+
 ## 12. The log of a journal
 
 `placket log` reads a journal, verifies it under the mediator's key, and prints its log: rows of what crossed, as one JSON object or as CSV. The log is a door format, not a frozen one: a mediator never reads it and a verifier never needs it, so this section adds no receipt, no code and no format of the protocol. Every cell of every row comes from a receipt that verified, or from a kept part such a receipt covers; nothing comes from a file name, the clock, or a line no receipt covers. A journal that does not verify, or whose receipts name more than one Accord or card, prints no row. A verdict is never decided again: the answer and the release are read from the receipts by receipt-6's rule, the one every reader applies.
@@ -1682,7 +1942,7 @@ These are the columns of a question's row, in order.
 | `answer` | The closing's word, `accepted`, `changed`, `declined`, `cancelled`, `timeout`, `undeliverable` or `blocked`, read from the closing receipt; `open` while the question is open |
 | `released_at` | The release receipt's time, when the release passed |
 | `comment` | The text of a comment that passed from the answerer to the asker with re the question, from the giver's kept message |
-| `answer_signed` | `yes` when a kept answer call for the row verifies |
+| `answer_signed` | `yes` when an answer call whose typed hash is the closing receipt's `by` reads (maybe-11), from the journal's answer calls or a kept part, and fits the closing: its Accord and question, the action the closing records, and its signer, the closing's `from` for an accept or a change and the asker for a cancel, with the closing's subject digest for an accept or a change; a decline's signer is not compared, since any answerer may decline while the closing's `from` is the first answerer |
 | `answerer` | The closing receipt's `from` |
 | `receipts` | The ids of every receipt the row rests on: the ask's, the closing's, the release's and the comment's |
 | `text` | With `--words`: the asked part's text |

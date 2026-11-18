@@ -6,8 +6,8 @@ import (
 	"os"
 	"unicode/utf8"
 
+	"github.com/orilloai/placket/core/answer"
 	"github.com/orilloai/placket/core/composition"
-	"github.com/orilloai/placket/core/mediator"
 	"github.com/orilloai/placket/core/receipts"
 )
 
@@ -15,18 +15,20 @@ func init() {
 	commands["change"] = changeCommand
 }
 
-// changeCommand is `change --question ID (--text S | --file F) [--comment S] [--keep]`: a change,
-// the version given as text. With no version, an empty one, or a file that is not UTF-8, it is tool
-// error changed and sends nothing. It prints the outcome of the version returned to the asker, then
-// of the version released; with --keep it keeps the version with the salt the reply carries; with
-// --comment it then gives the asker a comment; a comment that is not UTF-8 is tool error comment and
-// sends nothing.
+// changeCommand is `change --question ID (--text S | --file F) [--comment S] [--keep]
+// [--no-release]`: a change, the version given as text, asking for release unless --no-release. With
+// no version, an empty one, or a file that is not UTF-8, it is tool error changed and sends nothing.
+// It prints the outcome of the version returned to the asker, then of the version released; with
+// --keep it keeps the call it signed and the salt it minted, and the version as the asker's delivery
+// holds it; with --comment it then gives the asker a comment; a comment that is not UTF-8 is tool
+// error comment and sends nothing.
 func changeCommand(r *run, args []string) int {
 	var text, file, comment *string
-	var keep *bool
+	var keep, noRelease *bool
 	s, question, code := answerFlags(r, "change", args, func(fs *flagSet) {
 		text, file = fs.String("text", "", "the version"), fs.String("file", "", "a file holding the version")
 		comment, keep = fs.String("comment", "", "a comment"), fs.Bool("keep", false, "keep the version")
+		noRelease = fs.Bool("no-release", false, "ask for no release")
 	})
 	if s == nil {
 		return code
@@ -49,15 +51,15 @@ func changeCommand(r *run, args []string) int {
 	if version == "" {
 		return r.tool(codeChanged)
 	}
-	rep, code := s.resolve(question, mediator.Changed, version)
+	rep, signed, code := s.resolve(answering{question: question, action: answer.Changed, text: version, release: !*noRelease, keep: *keep})
 	if rep == nil {
 		return code
 	}
-	if *keep && rep.Outcome.Verdict == string(composition.Pass) && rep.Salt != nil {
+	if *keep && rep.Outcome.Verdict == string(composition.Pass) {
 		k := canonicalJSON(map[string]any{
 			"receipt": json.RawMessage(rep.Outcome.Receipt), "receiptId": rep.Outcome.ReceiptID,
-			"messageId": changeMessage + question, "kind": receipts.NameChanged, "salt": hex.EncodeToString(rep.Salt),
-			"re": question, "text": version,
+			"messageId": changeMessage + question, "kind": receipts.NameChanged, "salt": hex.EncodeToString(signed.salt),
+			"re": question, "text": version, "answer": json.RawMessage(signed.call),
 		})
 		if err := s.dir.Keep(k); err != nil {
 			return r.failed(err)

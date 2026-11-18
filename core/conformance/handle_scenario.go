@@ -7,7 +7,9 @@ import (
 	"sort"
 	"strconv"
 
+	"github.com/orilloai/placket/core/answer"
 	"github.com/orilloai/placket/core/canonical"
+	"github.com/orilloai/placket/core/composition"
 	"github.com/orilloai/placket/core/mediator"
 	vreceipts "github.com/orilloai/placket/core/receipts"
 )
@@ -51,7 +53,15 @@ func runScenario(v Vector) []Part {
 			if !ok1 || !ok2 {
 				return append(parts, Part{Name: name, Failure: "the message or envelope does not decode"})
 			}
-			out, err := med.Give(ref(s.str("as")), msg, env, s.str("at"))
+			var judge *composition.Judgment
+			if s.has("judge") {
+				var j struct{ Name, Verdict string }
+				if json.Unmarshal(s["judge"], &j) != nil {
+					return append(parts, Part{Name: name, Failure: "the judge does not decode"})
+				}
+				judge = &composition.Judgment{Name: j.Name, Verdict: composition.Verdict(j.Verdict)}
+			}
+			out, err := med.Give(ref(s.str("as")), msg, env, judge, s.str("at"))
 			parts = append(parts, compare(name, outcome(out, err), s["expect"]))
 		case "get":
 			d, err := med.Get(ref(s.str("as")))
@@ -69,6 +79,9 @@ func runScenario(v Vector) []Part {
 			}
 			parts = append(parts, compare(name, got, s["expect"]))
 		case "resolve":
+			if why := pairing(s); why != "" {
+				return append(parts, Part{Name: name, Failure: "a malformed vector: " + why})
+			}
 			parts = append(parts, compare(name, resolveStep(med, s, ref), s["expect"]))
 		case "tick":
 			outs, err := med.Tick(s.str("at"))
@@ -146,31 +159,28 @@ func outcome(o mediator.Outcome, err error) []byte {
 	return jsonOf(map[string]any{"verdict": o.Verdict, "reason": o.Reason, "receiptId": o.ReceiptID, "receipt": json.RawMessage(o.Receipt)})
 }
 
-// resolveStep runs a resolve step (conformance-vectors-6): an answer by the member named in by, or by
-// the question's first answerer when by is absent, or the mediator's finding that nobody can answer.
-// It writes the resolution receipt's outcome as a vector states it, with the release receipt's
-// outcome under release when one was written, or the rejection.
+// resolveStep runs a resolve step (conformance-vectors-6): an answer step, the signed call given as
+// callHex with the answer's text and salt, by the member named in by, or by the call's from when by
+// is absent; or the mediator's finding that nobody can answer the question, which takes no caller. It
+// writes the resolution receipt's outcome as a vector states it, with the release receipt's outcome
+// under release when one was written, or the rejection.
 func resolveStep(med *mediator.Mediator, s members, ref func(string) string) []byte {
-	question, at := s.str("question"), s.str("at")
-	if s.str("action") == "undeliverable" {
-		return outcome(med.Undeliverable(question, at))
+	at := s.str("at")
+	if s.has("undeliverable") {
+		return outcome(med.Undeliverable(s.str("question"), at))
 	}
+	call, _ := hex.DecodeString(s.str("callHex"))
 	var by string
 	if s.has("by") {
 		by = ref(s.str("by"))
-	} else if l, ok := med.Answerers(question); ok && len(l) > 0 {
-		by = l[0]
+	} else if c, err := answer.Read(call); err == nil {
+		by = c.From
 	}
-	var content struct {
-		Answer string `json:"answer"`
+	var salt []byte
+	if s.has("salt") {
+		salt, _ = hex.DecodeString(s.str("salt"))
 	}
-	_ = json.Unmarshal(s["content"], &content)
-	salt, _ := hex.DecodeString(s.str("salt"))
-	var release bool
-	_ = json.Unmarshal(s["release"], &release)
-	outs, err := med.Resolve(by, question, mediator.Resolution{
-		Action: mediator.Action(s.str("action")), Answer: content.Answer, Salt: salt, Release: release,
-	}, at)
+	outs, err := med.Resolve(by, mediator.Resolution{Call: call, Text: s.str("answer"), Salt: salt}, at)
 	if err != nil || len(outs) == 0 {
 		return outcome(mediator.Outcome{}, err)
 	}
@@ -179,6 +189,53 @@ func resolveStep(med *mediator.Mediator, s members, ref func(string) string) []b
 		o["release"] = json.RawMessage(outcome(outs[1], nil))
 	}
 	return jsonOf(o)
+}
+
+// pairing checks an answer step's expected outcome against the action and the release of its call,
+// which the schema cannot read inside callHex (conformance-vectors-6): an accept or a change expects
+// no reason of a decline, a cancel, a timeout or an undeliverable; a decline expects block, declined;
+// a cancel expects block, cancelled; and an expected release only when the call asks for release. A
+// rejection, an undeliverable step and a call that does not read pair with anything. It returns why
+// the step is malformed, or the empty string.
+func pairing(s members) string {
+	if !s.has("callHex") {
+		return ""
+	}
+	b, err := hex.DecodeString(s.str("callHex"))
+	if err != nil {
+		return "callHex is not hex"
+	}
+	c, err := answer.Read(b)
+	if err != nil {
+		return ""
+	}
+	var e struct {
+		Verdict, Reason string
+		Release         json.RawMessage
+		Rejection       string
+	}
+	if json.Unmarshal(s["expect"], &e) != nil || e.Rejection != "" {
+		return ""
+	}
+	switch c.Action {
+	case answer.Accepted, answer.Changed:
+		switch e.Reason {
+		case vreceipts.ReasonDeclined, vreceipts.ReasonCancelled, vreceipts.ReasonTimeout, vreceipts.ReasonUndeliverable:
+			return "an " + string(c.Action) + " call expects the reason " + e.Reason
+		}
+	case answer.Declined:
+		if e.Verdict != "block" || e.Reason != vreceipts.ReasonDeclined {
+			return "a declined call expects " + e.Verdict + " " + e.Reason
+		}
+	case answer.Cancelled:
+		if e.Verdict != "block" || e.Reason != vreceipts.ReasonCancelled {
+			return "a cancelled call expects " + e.Verdict + " " + e.Reason
+		}
+	}
+	if len(e.Release) > 0 && !c.Release {
+		return "a release is expected of a call that does not ask for one"
+	}
+	return ""
 }
 
 // receiptID reads a receipt's id without verifying it.

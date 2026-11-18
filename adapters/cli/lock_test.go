@@ -9,8 +9,8 @@ import (
 
 // TestChangeKeepsUnderTheLock changes a proposal with --keep, as a decider whose kept.jsonl ends in
 // a line with no line feed: the change takes the state lock first, so the line is removed with one
-// line on standard error before anything else is printed, and the version is kept on a line of its
-// own (state-lock).
+// line on standard error before anything else is printed, and the call it signed and the version
+// are kept on lines of their own, the version's with the call inside it (state-lock).
 func TestChangeKeepsUnderTheLock(t *testing.T) {
 	t.Parallel()
 	a := newAccord(t, "proposer", "applier", "decider")
@@ -32,7 +32,8 @@ func TestChangeKeepsUnderTheLock(t *testing.T) {
 	}
 	b := fileOf(t, p)
 	k := keptLines(t, dir)
-	if strings.Count(b, "\n") != 1 || !strings.HasSuffix(b, "\n") || len(k) != 1 || str(k[0]["text"]) != "Hide notes." || str(k[0]["re"]) != q {
+	if strings.Count(b, "\n") != 2 || !strings.HasSuffix(b, "\n") || len(k) != 2 || string(k[0]["answer"]) != string(k[1]["answer"]) ||
+		len(k[0]["salt"]) == 0 || str(k[1]["text"]) != "Hide notes." || str(k[1]["re"]) != q {
 		t.Fatalf("kept.jsonl: %q", b)
 	}
 }

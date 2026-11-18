@@ -13,7 +13,7 @@ import (
 
 	"github.com/orilloai/placket/adapters/journal"
 	"github.com/orilloai/placket/adapters/local"
-	"github.com/orilloai/placket/core/mediator"
+	"github.com/orilloai/placket/core/answer"
 )
 
 // journaled is a world whose journal holds a pass to the applier not yet fetched, and an ask that was
@@ -24,7 +24,7 @@ func journaled(t *testing.T) *world {
 	win := start(t, w.window(t))
 	w.give(t, "proposer", "applier", "n-1", "note", "A note.")
 	q := w.give(t, "proposer", "applier", "p-1", "proposal", "Rename total.").Outcome.ReceiptID
-	w.call(t, "decider", local.OpResolve, local.ResolveArgs(q, mediator.Accepted, "accepted"))
+	w.call(t, "decider", local.OpResolve, w.answerArgs(t, "decider", q, answer.Accepted, "accepted"))
 	win.stop(t)
 	return w
 }

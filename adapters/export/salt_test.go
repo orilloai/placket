@@ -34,7 +34,7 @@ func TestAKeptPartNeedsA32ByteSalt(t *testing.T) {
 		r, _, err := receipts.Build(receipts.Subject{Name: "note", Digest: receipts.Digest(salt, []byte(text))}, receipts.Predicate{
 			Accord: hash("accord"), Card: hash("card"), Kind: receipts.KindCrossing, From: from, To: to, Seq: 1,
 			At: "2026-11-12T09:00:00Z", Envelope: receipts.Envelope{Sender: from, Seq: 1, Hash: hash("message")},
-			Verdict: "pass", Reason: "ok"}, med)
+			Verdict: "pass", Reason: "ok", By: receipts.By{Decider: receipts.ByTerms}}, med)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -43,7 +43,7 @@ func TestAKeptPartNeedsA32ByteSalt(t *testing.T) {
 			"salt": hex.EncodeToString(salt), "text": text})
 		line, _ = canonical.Form(line)
 		var notes []string
-		l, err := BuildAll(med.Reference(), [][]byte{r}, [][]byte{line}, func(s string) { notes = append(notes, s) })
+		l, err := BuildAll(med.Reference(), [][]byte{r}, [][]byte{line}, nil, func(s string) { notes = append(notes, s) })
 		if err != nil || len(l.Rows) != 1 {
 			t.Fatalf("%d bytes: %+v, %v", n, l, err)
 		}

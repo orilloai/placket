@@ -4,11 +4,14 @@ import (
 	"bytes"
 	"errors"
 	"reflect"
+	"strings"
 	"testing"
 
+	"github.com/orilloai/placket/core/answer"
 	ptesting "github.com/orilloai/placket/core/internal/testing"
 	"github.com/orilloai/placket/core/mediator"
 	"github.com/orilloai/placket/core/receipts"
+	"github.com/orilloai/placket/core/signing"
 )
 
 // answerSalt is a salt of SaltBytes for an answer.
@@ -20,19 +23,58 @@ func ask(t testing.TB, m *mediator.Mediator, seq int64, id, at string) string {
 	t.Helper()
 	p, ap := ptesting.Key(t, "proposer"), ptesting.Key(t, "applier")
 	msg := message(t, m.Accord(), id, ap.Reference(), "proposal", "Proposal "+id+".", nil)
-	out, err := m.Give(p.Reference(), msg, envelope(t, seq, msg, p), at)
+	out, err := m.Give(p.Reference(), msg, envelope(t, seq, msg, p), nil, at)
 	if err != nil || out.Verdict != "escalate" {
 		t.Fatalf("the ask: %+v, %v", out, err)
 	}
 	return out.ReceiptID
 }
 
-func accept(release bool) mediator.Resolution {
-	return mediator.Resolution{Action: mediator.Accepted, Answer: "accepted", Salt: answerSalt, Release: release}
+// signer returns the vectors' key whose reference is ref, of the names the tests answer as, or the
+// zero Key, which signs nothing.
+func signer(t testing.TB, ref string) signing.Key {
+	t.Helper()
+	for _, n := range []string{"proposer", "applier", "decider", "lead", "stranger", "mediator"} {
+		if k := ptesting.Key(t, n); k.Reference() == ref {
+			return k
+		}
+	}
+	return signing.Key{}
 }
 
-func change(release bool) mediator.Resolution {
-	return mediator.Resolution{Action: mediator.Changed, Answer: "Rename total to amount_due.", Salt: answerSalt, Release: release}
+// callBy signs, as the key of ref, an answer call of the action on the question q under m's Accord,
+// with the digest and release of an accept or a change (maybe-11). A key the tests do not name, and
+// a mediator no one founded, sign none: the call is nil.
+func callBy(t testing.TB, m *mediator.Mediator, ref, q string, action answer.Action, digest string, release bool) []byte {
+	t.Helper()
+	b, _ := answer.Sign(answer.Call{Accord: m.Accord(), Question: q, Action: action, Digest: digest, Release: release}, signer(t, ref))
+	return b
+}
+
+// accept is ref's accept of q with the text accepted under answerSalt, asking for release or not.
+func accept(t testing.TB, m *mediator.Mediator, ref, q string, release bool) mediator.Resolution {
+	t.Helper()
+	text := "accepted"
+	return mediator.Resolution{Call: callBy(t, m, ref, q, answer.Accepted, receipts.Digest(answerSalt, []byte(text)), release), Text: text, Salt: answerSalt}
+}
+
+// change is ref's change of q to a version under answerSalt, asking for release or not.
+func change(t testing.TB, m *mediator.Mediator, ref, q string, release bool) mediator.Resolution {
+	t.Helper()
+	text := "Rename total to amount_due."
+	return mediator.Resolution{Call: callBy(t, m, ref, q, answer.Changed, receipts.Digest(answerSalt, []byte(text)), release), Text: text, Salt: answerSalt}
+}
+
+// decline is ref's decline of q.
+func decline(t testing.TB, m *mediator.Mediator, ref, q string) mediator.Resolution {
+	t.Helper()
+	return mediator.Resolution{Call: callBy(t, m, ref, q, answer.Declined, "", false)}
+}
+
+// cancel is ref's cancel of q.
+func cancel(t testing.TB, m *mediator.Mediator, ref, q string) mediator.Resolution {
+	t.Helper()
+	return mediator.Resolution{Call: callBy(t, m, ref, q, answer.Cancelled, "", false)}
 }
 
 func errorCode(err error, code mediator.ErrorCode) bool {
@@ -71,7 +113,7 @@ func TestAStrangersAnswerIsNotAMember(t *testing.T) {
 	m := found(t)
 	q := ask(t, m, 1, "p-1", "2026-11-12T09:00:00Z")
 	before, pending := m.Receipts(), m.Pending()
-	_, err := m.Resolve(ptesting.Key(t, "stranger").Reference(), q, accept(true), "2026-11-12T09:01:00Z")
+	_, err := m.Resolve(ptesting.Key(t, "stranger").Reference(), accept(t, m, ptesting.Key(t, "stranger").Reference(), q, true), "2026-11-12T09:01:00Z")
 	if !rejected(err, mediator.NotAMember) || err.Error() != "mediator: rejected: not-a-member" {
 		t.Fatalf("got %v", err)
 	}
@@ -85,11 +127,11 @@ func TestTheProposerOnAClosedQuestion(t *testing.T) {
 	t.Parallel()
 	m := found(t)
 	q := ask(t, m, 1, "p-1", "2026-11-12T09:00:00Z")
-	if _, err := m.Resolve(ptesting.Key(t, "decider").Reference(), q, mediator.Resolution{Action: mediator.Declined}, "2026-11-12T09:01:00Z"); err != nil {
+	if _, err := m.Resolve(ptesting.Key(t, "decider").Reference(), decline(t, m, ptesting.Key(t, "decider").Reference(), q), "2026-11-12T09:01:00Z"); err != nil {
 		t.Fatal(err)
 	}
 	before, pending := m.Receipts(), m.Pending()
-	_, err := m.Resolve(ptesting.Key(t, "proposer").Reference(), q, accept(false), "2026-11-12T09:02:00Z")
+	_, err := m.Resolve(ptesting.Key(t, "proposer").Reference(), accept(t, m, ptesting.Key(t, "proposer").Reference(), q, false), "2026-11-12T09:02:00Z")
 	if !rejected(err, mediator.NoOpenQuestion) || err.Error() != "mediator: rejected: no-open-question" {
 		t.Fatalf("got %v", err)
 	}
@@ -104,7 +146,7 @@ func TestTheProposerIsNotAnAnswerer(t *testing.T) {
 	m := found(t)
 	q := ask(t, m, 1, "p-1", "2026-11-12T09:00:00Z")
 	before, pending := m.Receipts(), m.Pending()
-	_, err := m.Resolve(ptesting.Key(t, "proposer").Reference(), q, accept(true), "2026-11-12T09:01:00Z")
+	_, err := m.Resolve(ptesting.Key(t, "proposer").Reference(), accept(t, m, ptesting.Key(t, "proposer").Reference(), q, true), "2026-11-12T09:01:00Z")
 	if !rejected(err, mediator.NotAnAnswerer) || err.Error() != "mediator: rejected: not-an-answerer" {
 		t.Fatalf("got %v", err)
 	}
@@ -128,7 +170,7 @@ func TestAnAskerWhoHoldsTheRoleAnswers(t *testing.T) {
 	if l, ok := m.Answerers(q); !ok || len(l) != 2 {
 		t.Fatalf("answerers %v, %v", l, ok)
 	}
-	outs, err := m.Resolve(p.Reference(), q, accept(false), "2026-11-12T09:01:00Z")
+	outs, err := m.Resolve(p.Reference(), accept(t, m, p.Reference(), q, false), "2026-11-12T09:01:00Z")
 	if err != nil || len(outs) != 1 || outs[0].Verdict != "pass" || outs[0].Reason != "ok" {
 		t.Fatalf("got %+v, %v", outs, err)
 	}
@@ -146,92 +188,163 @@ func TestAnAskerWhoHoldsTheRoleAnswers(t *testing.T) {
 	}
 }
 
-// misuse answers an open question as the decider with r and checks that it is refused as the
-// caller's misuse with code, an *Error and never a *Rejection, and that the question is untouched
-// (section 6).
-func misuse(t *testing.T, r mediator.Resolution, code mediator.ErrorCode) {
+// misuse answers an open question as the decider with the Resolution make builds for the mediator
+// and the question, and checks that it is rejected with code, a *Rejection, and that the question is
+// untouched (section 6).
+func misuse(t *testing.T, make func(m *mediator.Mediator, q string) mediator.Resolution, code mediator.RejectionCode) {
 	t.Helper()
 	m := found(t)
 	q := ask(t, m, 1, "p-1", "2026-11-12T09:00:00Z")
 	before, pending := m.Receipts(), m.Pending()
-	_, err := m.Resolve(ptesting.Key(t, "decider").Reference(), q, r, "2026-11-12T09:01:00Z")
-	var rej *mediator.Rejection
-	if errors.As(err, &rej) || !errorCode(err, code) || err.Error() != "mediator: "+string(code) {
-		t.Fatalf("got %v, want the error %s", err, code)
+	_, err := m.Resolve(ptesting.Key(t, "decider").Reference(), make(m, q), "2026-11-12T09:01:00Z")
+	if !rejected(err, code) || err.Error() != "mediator: rejected: "+string(code) {
+		t.Fatalf("got %v, want the rejection %s", err, code)
 	}
 	unchanged(t, m, before, pending)
 }
 
-// TestAShortSaltIsMisuse answers with a salt of 15 bytes: an accept and a change are refused with the
-// error salt.
+// withSalt is the decider's accept or change of the question, its call's digest taken over the text
+// under salt, given with the text and salt.
+func withSalt(t *testing.T, action answer.Action, text string, salt []byte, release bool) func(*mediator.Mediator, string) mediator.Resolution {
+	return func(m *mediator.Mediator, q string) mediator.Resolution {
+		d := ptesting.Key(t, "decider").Reference()
+		return mediator.Resolution{Call: callBy(t, m, d, q, action, receipts.Digest(salt, []byte(text)), release), Text: text, Salt: salt}
+	}
+}
+
+// TestAShortSaltIsMisuse answers with a salt of 15 bytes, and with none: an accept and a change are
+// rejected with answer-body, section 6's row 5.
 func TestAShortSaltIsMisuse(t *testing.T) {
 	t.Parallel()
 	short := answerSalt[:15]
-	misuse(t, mediator.Resolution{Action: mediator.Accepted, Answer: "accepted", Salt: short}, mediator.CodeSalt)
-	misuse(t, mediator.Resolution{Action: mediator.Changed, Answer: "A version.", Salt: short, Release: true}, mediator.CodeSalt)
-	misuse(t, mediator.Resolution{Action: mediator.Accepted, Answer: "accepted"}, mediator.CodeSalt)
+	misuse(t, withSalt(t, answer.Accepted, "accepted", short, false), mediator.AnswerBody)
+	misuse(t, withSalt(t, answer.Changed, "A version.", short, true), mediator.AnswerBody)
+	misuse(t, withSalt(t, answer.Accepted, "accepted", nil, false), mediator.AnswerBody)
 }
 
 // TestASaltOfAnotherLengthIsMisuse answers with salts of 16, 31 and 33 bytes: an accept and a change
-// are each refused with the error salt, write nothing and leave the question open. A salt of exactly
+// are each rejected with answer-body, write nothing and leave the question open. A salt of exactly
 // SaltBytes closes it (section 6, maybe-8, maybe-9).
 func TestASaltOfAnotherLengthIsMisuse(t *testing.T) {
 	t.Parallel()
 	for _, n := range []int{16, 31, 33} {
 		salt := bytes.Repeat([]byte{7}, n)
-		misuse(t, mediator.Resolution{Action: mediator.Accepted, Answer: "accepted", Salt: salt}, mediator.CodeSalt)
-		misuse(t, mediator.Resolution{Action: mediator.Changed, Answer: "A version.", Salt: salt, Release: true}, mediator.CodeSalt)
+		misuse(t, withSalt(t, answer.Accepted, "accepted", salt, false), mediator.AnswerBody)
+		misuse(t, withSalt(t, answer.Changed, "A version.", salt, true), mediator.AnswerBody)
 	}
-	for _, r := range []mediator.Resolution{accept(false), change(false)} {
+	for _, action := range []answer.Action{answer.Accepted, answer.Changed} {
 		m := found(t)
 		q := ask(t, m, 1, "p-1", "2026-11-12T09:00:00Z")
+		r := withSalt(t, action, "A version.", answerSalt, false)(m, q)
 		if len(r.Salt) != 32 {
 			t.Fatalf("the answer's salt is %d bytes", len(r.Salt))
 		}
-		if outs, err := m.Resolve(ptesting.Key(t, "decider").Reference(), q, r, "2026-11-12T09:01:00Z"); err != nil || len(outs) != 1 {
-			t.Fatalf("a %s with a salt of 32 bytes: %+v, %v", r.Action, outs, err)
+		if outs, err := m.Resolve(ptesting.Key(t, "decider").Reference(), r, "2026-11-12T09:01:00Z"); err != nil || len(outs) != 1 {
+			t.Fatalf("a %s with a salt of 32 bytes: %+v, %v", action, outs, err)
 		}
 		if len(m.Pending()) != 0 {
-			t.Fatalf("a %s with a salt of 32 bytes left the question open", r.Action)
+			t.Fatalf("a %s with a salt of 32 bytes left the question open", action)
 		}
 	}
 }
 
-// TestAnEmptyChange is maybe-9's scenario: a change with an empty version is the caller's misuse,
-// the error answer; nothing is written and the question stays open.
+// TestAnEmptyChange is maybe-9's scenario: a change with an empty version is rejected with
+// answer-body; nothing is written and the question stays open.
 func TestAnEmptyChange(t *testing.T) {
 	t.Parallel()
-	misuse(t, mediator.Resolution{Action: mediator.Changed, Salt: answerSalt}, mediator.CodeAnswer)
-	misuse(t, mediator.Resolution{Action: mediator.Changed, Salt: answerSalt, Release: true}, mediator.CodeAnswer)
+	misuse(t, withSalt(t, answer.Changed, "", answerSalt, false), mediator.AnswerBody)
+	misuse(t, withSalt(t, answer.Changed, "", answerSalt, true), mediator.AnswerBody)
 }
 
-// TestAnUnknownActionIsMisuse answers with an action that is not one of the four, before its salt
-// is read: the error action.
-func TestAnUnknownActionIsMisuse(t *testing.T) {
+// TestResolveRows holds section 6's five rows, each alone: a stranger is not-a-member; a call that
+// does not read, is another's, or names another Accord is answer-call; a call for no open question
+// is no-open-question; a member who may not take the action is not-an-answerer, an answerer's cancel
+// among them; and a text or salt that does not fit the call is answer-body, a salt of 16 bytes among
+// them (U5, U6). Each writes nothing and leaves the question open.
+func TestResolveRows(t *testing.T) {
 	t.Parallel()
-	misuse(t, mediator.Resolution{Action: "approved", Answer: "yes", Salt: answerSalt}, mediator.CodeAction)
-	misuse(t, mediator.Resolution{Action: "undeliverable"}, mediator.CodeAction)
-	misuse(t, mediator.Resolution{Action: "Accepted", Answer: "yes", Salt: answerSalt[:3]}, mediator.CodeAction)
-	misuse(t, mediator.Resolution{}, mediator.CodeAction)
+	d, p := ptesting.Key(t, "decider").Reference(), ptesting.Key(t, "proposer").Reference()
+	other := "sha256:" + strings.Repeat("ab", 32)
+	for _, c := range []struct {
+		name   string
+		caller string
+		make   func(m *mediator.Mediator, q string) mediator.Resolution
+		code   mediator.RejectionCode
+	}{
+		{"a stranger", ptesting.Key(t, "stranger").Reference(), func(m *mediator.Mediator, q string) mediator.Resolution { return decline(t, m, d, q) }, mediator.NotAMember},
+		{"bytes that are no call", d, func(*mediator.Mediator, string) mediator.Resolution { return mediator.Resolution{Call: []byte("{}")} }, mediator.AnswerCall},
+		{"no call", d, func(*mediator.Mediator, string) mediator.Resolution { return mediator.Resolution{} }, mediator.AnswerCall},
+		{"another's call", d, func(m *mediator.Mediator, q string) mediator.Resolution { return decline(t, m, p, q) }, mediator.AnswerCall},
+		{"another Accord's call", d, func(m *mediator.Mediator, q string) mediator.Resolution {
+			b, _ := answer.Sign(answer.Call{Accord: other, Question: q, Action: answer.Declined}, signer(t, d))
+			return mediator.Resolution{Call: b}
+		}, mediator.AnswerCall},
+		{"a call edited after signing", d, func(m *mediator.Mediator, q string) mediator.Resolution {
+			r := accept(t, m, d, q, true)
+			r.Call = bytes.Replace(r.Call, []byte(`"release":true`), []byte(`"release":false`), 1)
+			return r
+		}, mediator.AnswerCall},
+		{"no open question", d, func(m *mediator.Mediator, q string) mediator.Resolution { return decline(t, m, d, other) }, mediator.NoOpenQuestion},
+		{"the proposer's accept", p, func(m *mediator.Mediator, q string) mediator.Resolution { return accept(t, m, p, q, true) }, mediator.NotAnAnswerer},
+		{"the proposer's decline", p, func(m *mediator.Mediator, q string) mediator.Resolution { return decline(t, m, p, q) }, mediator.NotAnAnswerer},
+		{"the answerer's cancel", d, func(m *mediator.Mediator, q string) mediator.Resolution { return cancel(t, m, d, q) }, mediator.NotAnAnswerer},
+		{"a salt of 16 bytes", d, withSalt(t, answer.Accepted, "accepted", answerSalt[:16], true), mediator.AnswerBody},
+		{"a text the digest does not name", d, func(m *mediator.Mediator, q string) mediator.Resolution {
+			r := accept(t, m, d, q, true)
+			r.Text = "accepted!"
+			return r
+		}, mediator.AnswerBody},
+		{"a decline with a text", d, func(m *mediator.Mediator, q string) mediator.Resolution {
+			r := decline(t, m, d, q)
+			r.Text = "no"
+			return r
+		}, mediator.AnswerBody},
+		{"a decline with a salt", d, func(m *mediator.Mediator, q string) mediator.Resolution {
+			r := decline(t, m, d, q)
+			r.Salt = answerSalt
+			return r
+		}, mediator.AnswerBody},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+			m := found(t)
+			q := ask(t, m, 1, "p-1", "2026-11-12T09:00:00Z")
+			before, pending := m.Receipts(), m.Pending()
+			_, err := m.Resolve(c.caller, c.make(m, q), "2026-11-12T09:01:00Z")
+			if !rejected(err, c.code) {
+				t.Fatalf("got %v, want %s", err, c.code)
+			}
+			unchanged(t, m, before, pending)
+		})
+	}
 }
 
-// TestTheRowsComeBeforeMisuse answers with a short salt as members the rows refuse: the rows decide
-// (section 6), and an answer at a bad time is the error at before any row (check-order).
+// TestTheRowsComeBeforeMisuse answers with inputs that fail two rows at once: the earlier row decides
+// (check-order). A call signed by another key for a question that is not open is answer-call; a
+// stranger's bad call is not-a-member; the proposer's call with a short salt is not-an-answerer;
+// and an answer at a bad time is the error at before any row.
 func TestTheRowsComeBeforeMisuse(t *testing.T) {
 	t.Parallel()
 	m := found(t)
 	q := ask(t, m, 1, "p-1", "2026-11-12T09:00:00Z")
-	bad := mediator.Resolution{Action: "approved", Salt: answerSalt[:1]}
-	if _, err := m.Resolve(ptesting.Key(t, "stranger").Reference(), q, bad, "2026-11-12T09:01:00Z"); !rejected(err, mediator.NotAMember) {
+	d, p := ptesting.Key(t, "decider").Reference(), ptesting.Key(t, "proposer").Reference()
+	other := "sha256:" + q[7:39] + q[7:39]
+	short := withSalt(t, answer.Accepted, "accepted", answerSalt[:1], false)
+	if _, err := m.Resolve(d, decline(t, m, p, other), "2026-11-12T09:01:00Z"); !rejected(err, mediator.AnswerCall) {
+		t.Fatalf("another's call for no open question: %v", err)
+	}
+	if _, err := m.Resolve(ptesting.Key(t, "stranger").Reference(), mediator.Resolution{Call: []byte("x")}, "2026-11-12T09:01:00Z"); !rejected(err, mediator.NotAMember) {
 		t.Fatalf("a stranger: %v", err)
 	}
-	if _, err := m.Resolve(ptesting.Key(t, "proposer").Reference(), q, bad, "2026-11-12T09:01:00Z"); !rejected(err, mediator.NotAnAnswerer) {
+	r := short(m, q)
+	r.Call = callBy(t, m, p, q, answer.Accepted, receipts.Digest(r.Salt, []byte(r.Text)), false)
+	if _, err := m.Resolve(p, r, "2026-11-12T09:01:00Z"); !rejected(err, mediator.NotAnAnswerer) {
 		t.Fatalf("the proposer: %v", err)
 	}
-	if _, err := m.Resolve(ptesting.Key(t, "decider").Reference(), "sha256:"+q[7:39]+q[7:39], bad, "2026-11-12T09:01:00Z"); !rejected(err, mediator.NoOpenQuestion) {
+	if _, err := m.Resolve(d, withSalt(t, answer.Accepted, "accepted", answerSalt[:1], false)(m, other), "2026-11-12T09:01:00Z"); !rejected(err, mediator.NoOpenQuestion) {
 		t.Fatalf("another id: %v", err)
 	}
-	if _, err := m.Resolve(ptesting.Key(t, "stranger").Reference(), q, bad, "2026-11-12 09:01:00"); !errorCode(err, mediator.CodeAt) || err.Error() != "mediator: at" {
+	if _, err := m.Resolve(ptesting.Key(t, "stranger").Reference(), r, "2026-11-12 09:01:00"); !errorCode(err, mediator.CodeAt) || err.Error() != "mediator: at" {
 		t.Fatalf("a bad time: %v", err)
 	}
 	if _, err := m.Undeliverable(q, "2026-11-12T09:01:00"); !errorCode(err, mediator.CodeAt) {
@@ -303,7 +416,7 @@ func TestADeadlineAtTheLastTime(t *testing.T) {
 	if len(m.Pending()) != 0 {
 		t.Fatalf("pending %v", m.Pending())
 	}
-	if _, err := m.Resolve(ptesting.Key(t, "decider").Reference(), q, accept(false), "9999-12-31T23:59:59Z"); !rejected(err, mediator.NoOpenQuestion) {
+	if _, err := m.Resolve(ptesting.Key(t, "decider").Reference(), accept(t, m, ptesting.Key(t, "decider").Reference(), q, false), "9999-12-31T23:59:59Z"); !rejected(err, mediator.NoOpenQuestion) {
 		t.Fatalf("an answer after the timeout: %v", err)
 	}
 }
@@ -367,23 +480,45 @@ func TestADeclineQueuesNothing(t *testing.T) {
 	t.Parallel()
 	m := found(t)
 	q := ask(t, m, 1, "p-1", "2026-11-12T09:00:00Z")
-	outs, err := m.Resolve(ptesting.Key(t, "decider").Reference(), q, mediator.Resolution{Action: mediator.Declined, Release: true}, "2026-11-12T09:01:00Z")
+	outs, err := m.Resolve(ptesting.Key(t, "decider").Reference(), decline(t, m, ptesting.Key(t, "decider").Reference(), q), "2026-11-12T09:01:00Z")
 	if err != nil || len(outs) != 1 || outs[0].Reason != receipts.ReasonDeclined {
 		t.Fatalf("got %+v, %v", outs, err)
 	}
 	closedQueuesNothing(t, m, outs, "")
 }
 
-// TestACancelQueuesNothing closes a question by a cancel: nothing for the receiver.
+// TestACancelQueuesNothing closes a question by its asker's cancel: nothing for the receiver. The
+// receipt is from the first answerer, and names the asker's call as its decider (maybe-4, U6).
 func TestACancelQueuesNothing(t *testing.T) {
 	t.Parallel()
 	m := found(t)
 	q := ask(t, m, 1, "p-1", "2026-11-12T09:00:00Z")
-	outs, err := m.Resolve(ptesting.Key(t, "decider").Reference(), q, mediator.Resolution{Action: mediator.Cancelled}, "2026-11-12T09:01:00Z")
+	p := ptesting.Key(t, "proposer").Reference()
+	r := cancel(t, m, p, q)
+	outs, err := m.Resolve(p, r, "2026-11-12T09:01:00Z")
 	if err != nil || len(outs) != 1 || outs[0].Reason != receipts.ReasonCancelled {
 		t.Fatalf("got %+v, %v", outs, err)
 	}
+	st := statement(t, m, outs[0].ReceiptID)
+	if st.Predicate.From != ptesting.Key(t, "decider").Reference() || st.Predicate.By != (receipts.By{Decider: receipts.ByAnswer, Answer: answer.ID(r.Call)}) {
+		t.Fatalf("the cancel's receipt: %+v", st.Predicate)
+	}
 	closedQueuesNothing(t, m, outs, "")
+}
+
+// TestNobodyCancelsAQuestionNoOneCanAnswer is maybe-6's cancel of a question whose rule names a role
+// no member holds: the asker's cancel is not-an-answerer, nothing is written and the question stays
+// open (U6).
+func TestNobodyCancelsAQuestionNoOneCanAnswer(t *testing.T) {
+	t.Parallel()
+	m := nobodyAnswers(t)
+	q := ask(t, m, 1, "p-1", "2026-11-12T09:00:00Z")
+	p := ptesting.Key(t, "proposer").Reference()
+	before, pending := m.Receipts(), m.Pending()
+	if _, err := m.Resolve(p, cancel(t, m, p, q), "2026-11-12T09:01:00Z"); !rejected(err, mediator.NotAnAnswerer) {
+		t.Fatalf("got %v, want not-an-answerer", err)
+	}
+	unchanged(t, m, before, pending)
 }
 
 // TestAnAcceptWithoutReleaseQueuesOnlyTheAnswer closes a question by an accept that does not ask for
@@ -392,7 +527,7 @@ func TestAnAcceptWithoutReleaseQueuesOnlyTheAnswer(t *testing.T) {
 	t.Parallel()
 	m := found(t)
 	q := ask(t, m, 1, "p-1", "2026-11-12T09:00:00Z")
-	outs, err := m.Resolve(ptesting.Key(t, "decider").Reference(), q, accept(false), "2026-11-12T09:01:00Z")
+	outs, err := m.Resolve(ptesting.Key(t, "decider").Reference(), accept(t, m, ptesting.Key(t, "decider").Reference(), q, false), "2026-11-12T09:01:00Z")
 	if err != nil || len(outs) != 1 || outs[0].Verdict != "pass" {
 		t.Fatalf("got %+v, %v", outs, err)
 	}
@@ -408,7 +543,7 @@ func TestABlockedAcceptReleasesNothing(t *testing.T) {
 	parties[0].terms = parties[0].terms[:2]
 	m := foundSet(t, buildSet(t, askAndLogRoles, parties...))
 	q := ask(t, m, 1, "p-1", "2026-11-12T09:00:00Z")
-	outs, err := m.Resolve(ptesting.Key(t, "decider").Reference(), q, accept(true), "2026-11-12T09:01:00Z")
+	outs, err := m.Resolve(ptesting.Key(t, "decider").Reference(), accept(t, m, ptesting.Key(t, "decider").Reference(), q, true), "2026-11-12T09:01:00Z")
 	if err != nil || len(outs) != 1 || outs[0].Verdict != "block" || outs[0].Reason != "no-match" {
 		t.Fatalf("got %+v, %v", outs, err)
 	}
@@ -437,11 +572,11 @@ func changeReleasedWithin(t *testing.T, receiver string) {
 	m := foundSet(t, buildSet(t, askAndLogRoles, parties...))
 	p, to := ptesting.Key(t, "proposer"), ptesting.Key(t, receiver)
 	msg := message(t, m.Accord(), "p-1", to.Reference(), "proposal", "A proposal.", nil)
-	ask, err := m.Give(p.Reference(), msg, envelope(t, 1, msg, p), "2026-11-12T09:00:00Z")
+	ask, err := m.Give(p.Reference(), msg, envelope(t, 1, msg, p), nil, "2026-11-12T09:00:00Z")
 	if err != nil || ask.Verdict != "escalate" {
 		t.Fatalf("the ask: %+v, %v", ask, err)
 	}
-	outs, err := m.Resolve(ptesting.Key(t, "decider").Reference(), ask.ReceiptID, change(true), "2026-11-12T09:01:00Z")
+	outs, err := m.Resolve(ptesting.Key(t, "decider").Reference(), change(t, m, ptesting.Key(t, "decider").Reference(), ask.ReceiptID, true), "2026-11-12T09:01:00Z")
 	if err != nil || len(outs) != 1 || outs[0].Verdict != "pass" {
 		t.Fatalf("got %+v, %v", outs, err)
 	}
@@ -489,7 +624,7 @@ func TestTheNewReadsAreCopies(t *testing.T) {
 	if again, _ := m.Answerers(q); again[0] != d {
 		t.Fatal("Answerers shares the mediator's state")
 	}
-	outs, err := m.Resolve(d, q, accept(true), "2026-11-12T09:01:00Z")
+	outs, err := m.Resolve(d, accept(t, m, d, q, true), "2026-11-12T09:01:00Z")
 	if err != nil || len(outs) != 2 {
 		t.Fatalf("got %+v, %v", outs, err)
 	}

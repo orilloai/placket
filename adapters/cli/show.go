@@ -2,6 +2,7 @@ package cli
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"os"
 
@@ -13,7 +14,8 @@ func init() {
 }
 
 // showCommand is `show --receipt R`: the one receipt in the file R, decoded without verifying it.
-// It prints the core's reading on standard output, and on standard error, in order: not verified;
+// It prints the core's reading on standard output, its decider on the line after its verdict
+// (receipt-8, receipt-11), and on standard error, in order: not verified;
 // <word> <reason> <kind> <at>; from <ref> to <ref>; the module line; the receipt's claim line; the
 // scope line.
 func showCommand(r *run, args []string) int {
@@ -43,6 +45,8 @@ func showCommand(r *run, args []string) int {
 	for _, l := range lines {
 		fmt.Fprintln(r.stdout, l)
 	}
+	by, _ := member(predicateOf(b), "by")
+	r.put("by", json.RawMessage(by))
 	for name, v := range map[string]any{
 		"verified": false, memberReceiptID: st.ID, memberWord: word(p.Verdict), memberReason: p.Reason, "kind": st.Subject.Name,
 		"at": p.At, "from": p.From, "to": p.To, LabelModule: module, memberClaim: claim(p), memberNotClaimed: Scope, "shown": lines,

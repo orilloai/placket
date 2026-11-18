@@ -1,0 +1,20 @@
+{
+  "expect": {
+    "valid": true
+  },
+  "input": {
+    "accord": "sha256:04f71f9b99b729d07bc824bcae742abc9f51f31d2b9d59e968a5c169e15b9303",
+    "action": "changed",
+    "digest": "aa7eb7aef4421a15042c1d350fb0c7c5fdb96b6976964c934f85331fe026fecf",
+    "from": "ed25519:375dea8c4519dbae84fc9eb513e97eb4b693968ef37d52ac10da7b79250c6a22",
+    "question": "sha256:713cb8a02f99b328f5e1f5543bfd4c461c55165e469e187413f20157e7c0b54f",
+    "release": true,
+    "sig": "b4a568cdaa505546fe2d1648e1567618ca6a1cae464c02c8ff3ce22ba0f31393c96c3078c0cafc6f134509cbdcb8fe711bf37cf48ea9116bdea19a2db2388b0c"
+  },
+  "operation": "verify-signature",
+  "reference": "ed25519:375dea8c4519dbae84fc9eb513e97eb4b693968ef37d52ac10da7b79250c6a22",
+  "spec": "0.1",
+  "tests": "maybe-11, signing-2: an answer call verifies under the answer type URI by its from",
+  "typeUri": "https://placket.tech/answer/0.1",
+  "vector": "signatures/answer-verifies"
+}

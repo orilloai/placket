@@ -14,7 +14,7 @@ import (
 // version under that hash.
 var (
 	otherHash = "sha256:" + strings.Repeat("0", 64)
-	otherCard = `{"spec":"0.1","kernel":{"version":"0.1.0","hash":"` + otherHash + `"},"judges":[],"checks":[]}`
+	otherCard = `{"spec":"0.1","kernel":{"version":"0.1.0","hash":"` + otherHash + `"},"judges":[]}`
 )
 
 // otherLine is the line that names a card of another module (docs/adr/0012-the-kernel-hash.md).
@@ -27,12 +27,12 @@ func otherLine(version, hash string) string {
 func TestCardDefault(t *testing.T) {
 	t.Parallel()
 	r := run(t, env(), "card", "--default")
-	want := `{"checks":[],"judges":[],"kernel":{"hash":"` + composition.KernelHash() + `","version":"0.1.0"},"spec":"0.1"}`
+	want := `{"judges":[],"kernel":{"hash":"` + composition.KernelHash() + `","version":"0.2.0"},"spec":"0.1"}`
 	h, err := canonical.TypedHash([]byte(want))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if r.code != 0 || r.stdout != want+"\n" || r.stderr != "card "+h+"\nmodule 0.1.0 "+composition.KernelHash()+"\n" {
+	if r.code != 0 || r.stdout != want+"\n" || r.stderr != "card "+h+"\nmodule 0.2.0 "+composition.KernelHash()+"\n" {
 		t.Fatalf("card --default: %v", r)
 	}
 }
@@ -93,7 +93,7 @@ func TestWindowRefusesAnotherModule(t *testing.T) {
 	t.Parallel()
 	for _, c := range []struct{ name, card, version, hash string }{
 		{"another hash", otherCard, "0.1.0", otherHash},
-		{"another version", strings.Replace(must(t, "card", "--default").stdout, `"0.1.0"`, `"0.2.0"`, 1), "0.2.0", composition.KernelHash()},
+		{"another version", strings.Replace(must(t, "card", "--default").stdout, `"0.2.0"`, `"0.3.0"`, 1), "0.3.0", composition.KernelHash()},
 	} {
 		a := newAccord(t, "p1", "p2")
 		_, set := a.refound(t, c.card)
@@ -157,7 +157,7 @@ func TestVerifyOfThisModule(t *testing.T) {
 	must(t, a.as("p1", "give", "--to", a.refs["p2"], "--kind", "note", "--text", "one")...)
 	r := must(t, "verify", "--mediator", a.refs["mediator"], "--receipts", a.journal(), "--founding", filepath.Join(a.dir, "founding.json"))
 	l := r.lines()
-	if len(l) < 5 || l[3] != "module 0.1.0 "+composition.KernelHash() || strings.HasPrefix(l[4], "module ") {
+	if len(l) < 5 || l[2] != "module 0.2.0 "+composition.KernelHash() || strings.HasPrefix(l[3], "module ") {
 		t.Fatalf("verify: %v", r)
 	}
 }

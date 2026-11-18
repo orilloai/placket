@@ -1,11 +1,14 @@
 package cli_test
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 
+	"github.com/orilloai/placket/adapters/cli"
 	"github.com/orilloai/placket/core/composition"
 )
 
@@ -183,7 +186,7 @@ func TestTheWindowEscapesAnUncheckedKernel(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	set := strings.Replace(string(b), `"version":"0.1.0"`, `"version":"0.1.0\u001b[2J"`, 1)
+	set := strings.Replace(string(b), `"version":"0.2.0"`, `"version":"0.1.0\u001b[2J"`, 1)
 	if set == string(b) {
 		t.Fatal("the founding set names no kernel version")
 	}
@@ -227,7 +230,8 @@ func TestVerifyAFoundingSetWithNoReceipts(t *testing.T) {
 	a.start(t).stop(t)
 	r := run(t, env(), "verify", "--mediator", a.refs["mediator"], "--receipts", a.journal(), "--founding", filepath.Join(a.dir, "founding.json"))
 	l := r.lines()
-	if r.code != 0 || r.stdout != "" || len(l) < 3 || l[0] != "verified 0 receipts" || l[2] != "operator "+a.refs["operator"]+" runs process" {
+	if r.code != 0 || r.stdout != "" || len(l) < 3 || l[0] != "mediator "+a.refs["mediator"]+" accord "+a.id+" card " ||
+		l[1] != "operator "+a.refs["operator"]+" runs process" || !slices.Contains(l, fmt.Sprintf(cli.LineValid, 0, a.refs["mediator"])) {
 		t.Fatalf("verify: %v", r)
 	}
 	r = run(t, env(), "verify", "--mediator", a.refs["p1"], "--receipts", a.journal(), "--founding", filepath.Join(a.dir, "founding.json"))

@@ -3,7 +3,7 @@ package cli
 import (
 	"unicode/utf8"
 
-	"github.com/orilloai/placket/core/mediator"
+	"github.com/orilloai/placket/core/answer"
 )
 
 func init() {
@@ -24,7 +24,7 @@ func declineCommand(r *run, args []string) int {
 	if *comment == "" || !utf8.ValidString(*comment) {
 		return r.tool(codeComment)
 	}
-	rep, code := s.resolve(question, mediator.Declined, "")
+	rep, _, code := s.resolve(answering{question: question, action: answer.Declined})
 	if rep == nil {
 		return code
 	}

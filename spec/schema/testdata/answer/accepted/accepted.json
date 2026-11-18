@@ -1,0 +1,9 @@
+{
+  "accord": "sha256:2626262626262626262626262626262626262626262626262626262626262626",
+  "action": "accepted",
+  "digest": "9e9e9e9e9e9e9e9e9e9e9e9e9e9e9e9e9e9e9e9e9e9e9e9e9e9e9e9e9e9e9e9e",
+  "from": "ed25519:f6f6f6f6f6f6f6f6f6f6f6f6f6f6f6f6f6f6f6f6f6f6f6f6f6f6f6f6f6f6f6f6",
+  "question": "sha256:b6b6b6b6b6b6b6b6b6b6b6b6b6b6b6b6b6b6b6b6b6b6b6b6b6b6b6b6b6b6b6b6",
+  "release": true,
+  "sig": "abababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababab"
+}

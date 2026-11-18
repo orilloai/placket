@@ -42,7 +42,6 @@
       }
     ],
     "card": {
-      "checks": [],
       "judges": [],
       "kernel": {
         "hash": "sha256:a8755bef6ff188c2dc6b74377a73c6a49d612fc44915675db9d2795bb5b99475",
@@ -190,14 +189,14 @@
       "as": "proposer",
       "at": "2026-11-12T09:00:00Z",
       "envelope": {
-        "hash": "sha256:117db97509962ba6170ef576fbd3d4df9c7fb17bbc95eec0041986b499e63aeb",
+        "hash": "sha256:7d1632ade3735849167921b830a2c416f13cef16787bc21c2983793fc589dc3a",
         "seq": 1,
-        "sig": "14a3ae8ce21d592f5f272e989b507bf7a922f0626d6f0e6dae036a6955e917d4aa2b02cae0576d7e23a522a44b19844175eccc9d4ef43f0d4ff0d1a492d6780a"
+        "sig": "a9b5dcb80c00c512fb1cb6884b29473a41f2fd528315b6b042a88d23d9eb1086ee701a8a439e03d2fa3aaf9e6e43c5d6fd63bfa66042a19d8d50c4bb3d20d300"
       },
       "expect": {
         "rejection": "envelope-signature"
       },
-      "messageText": "{\"extensions\":[\"https://placket.tech/crossing/0.1\"],\"messageId\":\"dup\",\"messageId\":\"dup\",\"metadata\":{\"https://placket.tech/crossing/0.1\":{\"accord\":\"sha256:fdb4c6101b33876a56e9501d756b0905671a9a44c726e599c9a7a76270aab1df\",\"to\":\"ed25519:a80586279ba17c5360b029018bf025be0169fdb02087e77301774c99eed92117\"}},\"parts\":[{\"metadata\":{\"https://placket.tech/crossing/0.1\":{\"kind\":\"note\",\"salt\":\"3e8e5cbb80f999731c3dcb8c6b2d6f5e08e535f1aa98f83c7886a0c3e320e300\"}},\"text\":\"Twice.\"}],\"role\":\"ROLE_USER\"}",
+      "messageText": "{\"extensions\":[\"https://placket.tech/crossing/0.1\"],\"messageId\":\"dup\",\"messageId\":\"dup\",\"metadata\":{\"https://placket.tech/crossing/0.1\":{\"accord\":\"sha256:04f71f9b99b729d07bc824bcae742abc9f51f31d2b9d59e968a5c169e15b9303\",\"to\":\"ed25519:a80586279ba17c5360b029018bf025be0169fdb02087e77301774c99eed92117\"}},\"parts\":[{\"metadata\":{\"https://placket.tech/crossing/0.1\":{\"kind\":\"note\",\"salt\":\"3e8e5cbb80f999731c3dcb8c6b2d6f5e08e535f1aa98f83c7886a0c3e320e300\"}},\"text\":\"Twice.\"}],\"role\":\"ROLE_USER\"}",
       "op": "give"
     }
   ],

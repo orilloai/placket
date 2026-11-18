@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://placket.tech/schema/0.1/card.json",
   "title": "Card",
-  "description": "What can change a verdict under an Accord, hashed into every receipt (setup-contract-4): the protocol version, the decision module's kernel, and two reserved lists. judges is read for shape only. checks names the checks the module loads; it is empty in v1.",
+  "description": "What can change a verdict under an Accord, hashed into every receipt (setup-contract-4): the protocol version, the decision module's kernel, and judges, the ordered list of the judges a maybe term may grant, each pinned by its name, version and hash, no two of one name. A schema compares whole entries, so uniqueItems refuses an entry repeated exactly; founding refuses one name with two versions or hashes (setup-contract-4).",
   "type": "object",
   "properties": {
     "spec": {
@@ -26,13 +26,7 @@
     },
     "judges": {
       "type": "array",
-      "items": {
-        "$ref": "#/$defs/component"
-      }
-    },
-    "checks": {
-      "type": "array",
-      "maxItems": 0,
+      "uniqueItems": true,
       "items": {
         "$ref": "#/$defs/component"
       }
@@ -41,8 +35,7 @@
   "required": [
     "spec",
     "kernel",
-    "judges",
-    "checks"
+    "judges"
   ],
   "additionalProperties": false,
   "$defs": {

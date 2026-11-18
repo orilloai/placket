@@ -2,10 +2,12 @@
 // parties' terms and the roles their bindings give them, and returns a verdict and a reason. It
 // refuses nothing: every crossing that reaches it is decided.
 //
-// It implements composition-1 to composition-6: matching terms (composition-1), no match
-// (composition-2), a refusal wins (composition-3), checks (composition-4), maybe (composition-5) and
-// need (composition-6), run in the order of section 5's table. Decide is the one entry point
-// (one-decision-module): no other code compares a stance or matches a term.
+// It implements composition-1 to composition-3 and composition-5 to composition-7: matching terms
+// (composition-1), no match (composition-2), a refusal wins (composition-3), maybe (composition-5),
+// need (composition-6) and a judge's judgment where the terms would ask (composition-7), run in the
+// order of section 5's table. Decide is the one entry point (one-decision-module): no other code
+// compares a stance, matches a term or compares two terms' judges. It runs no judge: a judgment is an
+// input, settled before Decide is called.
 package composition
 
 import (
@@ -24,28 +26,46 @@ const (
 	Escalate Verdict = "escalate"
 )
 
-// The reasons composition returns (receipt-4). A failing check's reason, check:<name>, cannot arise
-// in this version: no founded Accord has a term that names a check (composition-4).
+// The reasons composition returns (receipt-4). A judge's block has the reason ReasonJudge writes.
 const (
 	ReasonOK      = "ok"
 	ReasonNoMatch = "no-match"
 	ReasonMaybe   = "maybe"
 )
 
+// judgePrefix opens the reason of a judge's block (receipt-4, composition-7).
+const judgePrefix = "judge:"
+
+// ReasonJudge is the reason of a block the judge named name decided: judge: and its card name
+// (receipt-4, composition-7).
+func ReasonJudge(name string) string { return judgePrefix + name }
+
+// A Judgment is a judge's verdict on a crossing, Pass or Block, by the judge's card name, as the
+// runner settled it before Decide is called (composition-7). A nil *Judgment is none.
+type Judgment struct {
+	Name    string
+	Verdict Verdict
+}
+
 // A Crossing is what composition decides: a part of a kind from a sender to a receiver, given by a
-// member or formed by the mediator from an answer (composition-1, maybe-8, record 0005).
+// member or formed by the mediator from an answer, and the judgment a judge gave it, or nil
+// (composition-1, composition-7, maybe-8, record 0005).
 type Crossing struct {
 	From, To string
 	Kind     string
 	Formed   bool
+	Judge    *Judgment
 }
 
-// A Decision is composition's verdict and reason, and for an escalate the rule every matching maybe
-// term agreed on, with its roles in sorted order (composition-5, record 0005).
+// A Decision is composition's verdict and reason; for an escalate, and for a judged pass or block,
+// the rule every matching maybe term agreed on, with its roles in sorted order and its Judges the
+// judges both sides consented to, or none (composition-5, composition-7, record 0005); and the name
+// of the judge that decided, empty when the terms decided.
 type Decision struct {
 	Verdict Verdict
 	Reason  string
 	Rule    setup.Rule
+	Judge   string
 }
 
 // Decide decides c under the Accord a by the rows of section 5, in order; the first that applies
@@ -78,31 +98,71 @@ func Decide(a *setup.Accord, c Crossing) Decision {
 	if sent == 0 || got == 0 {
 		return block(ReasonNoMatch)
 	}
-	// Row 3, the checks (composition-4), never applies in this version: the card loads no check and
-	// founding refuses a term that names one, so no matching term has a check to run.
 	var rules []setup.Rule
+	allMaybe := true
 	for _, t := range matching {
 		if t.Stance == setup.StanceMaybe && t.Resolve != nil {
 			rules = append(rules, *t.Resolve)
+		} else {
+			allMaybe = false
 		}
 	}
 	if len(rules) == 0 {
 		// Row 7 (composition-6: need composes as want).
 		return Decision{Verdict: Pass, Reason: ReasonOK}
 	}
-	// Row 4: a part the mediator formed meets a maybe term.
+	// Row 3: a part the mediator formed meets a maybe term.
 	if c.Formed {
 		return block(ReasonMaybe)
 	}
-	// Row 5: the maybe rules must agree.
+	// Row 4: the maybe rules must agree, compared without their judges.
 	agreed := normal(rules[0])
 	for _, r := range rules[1:] {
 		if !same(agreed, normal(r)) {
 			return block(ReasonMaybe)
 		}
 	}
+	// Consent: the judges hold only when every matching term, on both sides, is a maybe and all of
+	// them list the same judges, in the same order with the same uses (composition-7).
+	agreed.Judges = nil
+	if allMaybe && len(rules[0].Judges) > 0 {
+		agreed.Judges = append([]setup.Judge(nil), rules[0].Judges...)
+		for _, r := range rules[1:] {
+			if !sameJudges(agreed.Judges, r.Judges) {
+				agreed.Judges = nil
+				break
+			}
+		}
+	}
+	// Row 5: a judge the terms consented to, with use decide, decides (composition-7). Any other
+	// judgment is none.
+	if j := c.Judge; j != nil && (j.Verdict == Pass || j.Verdict == Block) {
+		for _, g := range agreed.Judges {
+			if g.Name != j.Name || g.Use != setup.Decide {
+				continue
+			}
+			if j.Verdict == Pass {
+				return Decision{Verdict: Pass, Reason: ReasonOK, Rule: agreed, Judge: j.Name}
+			}
+			return Decision{Verdict: Block, Reason: ReasonJudge(j.Name), Rule: agreed, Judge: j.Name}
+		}
+	}
 	// Row 6: ask (maybe-1).
 	return Decision{Verdict: Escalate, Reason: ReasonMaybe, Rule: agreed}
+}
+
+// sameJudges reports whether two lists of judges hold the same names in the same order with the
+// same uses.
+func sameJudges(a, b []setup.Judge) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
 }
 
 // matches reports whether t selects kind and names a role the other party holds (composition-1).

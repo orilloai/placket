@@ -42,7 +42,6 @@
       }
     ],
     "card": {
-      "checks": [],
       "judges": [],
       "kernel": {
         "hash": "sha256:a8755bef6ff188c2dc6b74377a73c6a49d612fc44915675db9d2795bb5b99475",
@@ -190,9 +189,9 @@
       "as": "mediator",
       "at": "2026-11-12T09:00:00Z",
       "envelope": {
-        "hash": "sha256:e3118f70e1188d738538b8031436085b8260a773d8ffaa56d72796759fe5dc28",
+        "hash": "sha256:62ad233488d21d7fc09b9f4d8331a260b323ad2d56be58cc114418fc277f681b",
         "seq": 1,
-        "sig": "6a5e8ad5d871d5faa0fec7a24348751a9351c99f1dc4c4c9d6270d1405c74ca69d4935d9dab43ea8ed429d0c59183c5b53a6c5578ffc2543ac7e612a802a1f03"
+        "sig": "98d53914b2ce34ef52c49e3ba5ef1fe99f1d613c32bf499d80f631c0ff0a8841f4afdcafcf37a24af8b14dc386ce3bfea12e98636cf56025a44ff8309884900d"
       },
       "expect": {
         "rejection": "not-a-member"
@@ -204,7 +203,7 @@
         "messageId": "mediator-1",
         "metadata": {
           "https://placket.tech/crossing/0.1": {
-            "accord": "sha256:fdb4c6101b33876a56e9501d756b0905671a9a44c726e599c9a7a76270aab1df",
+            "accord": "sha256:04f71f9b99b729d07bc824bcae742abc9f51f31d2b9d59e968a5c169e15b9303",
             "to": "ed25519:a80586279ba17c5360b029018bf025be0169fdb02087e77301774c99eed92117"
           }
         },

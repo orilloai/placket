@@ -420,5 +420,52 @@ func main() {
 		s.Get(kit.Proposer)
 		add("an-answer-that-meets-a-maybe-term", "composition-5: an accept decided from the decider to a proposer that gets answers under a maybe term is block, maybe; nothing is queued and no question opens", s, set)
 	}
+	// Judges (composition-7), under the judged Accord. Each give hands the decision jev's judgment; it
+	// decides only where both sides' every matching term is a maybe listing jev to decide.
+	judged := kit.Judged().Build()
+	judge := func(name, tests, kind string, judgment kit.Obj, verdict, reason string, by any) {
+		s := scene(judged)
+		s.GiveJudged(at(0), kit.Proposer, 1, of(judged, kind+"-1", kind), kit.Applier, judgment, verdict, reason, by)
+		s.Get(kit.Applier)
+		add(name, tests, s, judged)
+	}
+	judge("judge-pass", "composition-7, receipt-11, conformance-vectors-3: both sides list jev to decide, and its pass is pass, ok, by the judge jev; the part is queued", "report",
+		kit.Judgment("jev", "pass"), "pass", "ok", kit.ByJudge("jev"))
+	judge("judge-block", "composition-7, receipt-4, receipt-11: both sides list jev to decide, and its block is block, judge:jev, by the judge jev; nothing is queued", "report",
+		kit.Judgment("jev", "block"), "block", "judge:jev", kit.ByJudge("jev"))
+	judge("judge-one-side", "composition-7: only the sender's maybe term lists jev, so its pass is no judgment and the part is asked, by the terms", "review",
+		kit.Judgment("jev", "pass"), "escalate", "maybe", kit.ByTerms)
+	judge("judges-differ", "composition-5, composition-7: the two sides list jev with uses that differ, so the part is asked and no judge is consulted", "survey",
+		kit.Judgment("jev", "pass"), "escalate", "maybe", kit.ByTerms)
+	judge("judge-advise", "composition-7: both sides list jev to advise, so its judgment decides nothing and the part is asked", "digest",
+		kit.Judgment("jev", "block"), "escalate", "maybe", kit.ByTerms)
+	judge("judge-beside-a-want", "composition-7: the sender's want term matches beside its maybe term, so not every matching term is a maybe and the part is asked", "ledger",
+		kit.Judgment("jev", "pass"), "escalate", "maybe", kit.ByTerms)
+	{
+		// A judged release (maybe-10): the asked report is accepted with release, decided again with no
+		// judgment, and passes by the answer, never by the judge.
+		s := scene(judged)
+		q := s.GiveJudged(at(0), kit.Proposer, 1, of(judged, "report-2", "report"), kit.Applier, nil, "escalate", "maybe", kit.ByTerms)
+		pass := kit.Verdict{Verdict: "pass", Reason: "ok"}
+		s.Resolve(kit.Answer{At: at(1), Question: q, Action: "accepted", Text: "accepted", Salt: kit.Salt("crossing judged answer", 32),
+			By: kit.Decider, Verdict: pass, Release: true, Released: &pass})
+		s.Get(kit.Applier)
+		add("a-judge-never-acts-at-release", "maybe-10, composition-7: a report asked with no judgment and accepted with release is decided again with none, so its release is pass, ok, by the answer", s, judged)
+	}
+	{
+		// A part's media type (crossing-2, crossing-3).
+		s := scene(askAndLog)
+		typed := note("typed-1", `{"total":1250}`)
+		kit.PartOf(typed)["mediaType"] = "application/json"
+		s.Give(at(0), kit.Proposer, 1, typed, kit.Applier, "pass", "ok")
+		for i, mt := range []any{"Application/JSON", "json", "text/plain; charset=utf-8", 7} {
+			m := note("typed-bad-"+string(rune('a'+i)), "A note.")
+			kit.PartOf(m)["mediaType"] = mt
+			msg, env := signedBy(m, 2, kit.Proposer)
+			s.Reject(at(1+i), kit.Proposer, "one-body", msg, env)
+		}
+		s.Get(kit.Applier)
+		add("a-part-with-a-media-type", "crossing-2, crossing-3: a part with mediaType application/json passes and its delivery carries it; Application/JSON, json, a type with a parameter, and a number are each one-body", s, askAndLog)
+	}
 	kit.Main("crossing", vs)
 }

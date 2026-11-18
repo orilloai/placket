@@ -179,10 +179,51 @@ func main() {
 	{
 		s := scene()
 		q := proposal(s, askAndLog, asked, 1, "cancel")
-		s.Close("2026-11-12T09:10:00Z", q, "cancelled", nil, decider)
+		s.CloseAs("2026-11-12T09:10:00Z", q, "cancelled", proposerKey, false, decider)
 		s.Get(kit.Applier)
-		add("a-cancel",
-			"maybe-4, conformance-vectors-6: a cancel with no by, answered as the first answerer, the decider, is one receipt from the decider to the proposer, block, cancelled, naming the asked part, and nothing is queued", s, askAndLog)
+		add("cancel-by-asker",
+			"maybe-4, maybe-6, conformance-vectors-6: the asker's cancel, a call the proposer signed and a step with no by, answered as the call's from, is one receipt from the first answerer, the decider, to the proposer, block, cancelled, naming the asked part and the call as its decider; nothing is queued", s, askAndLog)
+	}
+	{
+		s := scene()
+		q := proposal(s, askAndLog, asked, 1, "cancel")
+		s.Refuse("2026-11-12T09:10:00Z", q, "cancelled", &decider, "", "", "not-an-answerer")
+		s.Get(kit.Applier)
+		add("cancel-by-answerer",
+			"maybe-6: the decider's cancel, a call the answerer signed, is not-an-answerer, since only the asker cancels; nothing is written and the question stays open", s, askAndLog)
+	}
+	{
+		s := sceneOf(unanswered)
+		q := proposal(s, unanswered, asked, 1, "nobody")
+		s.Refuse("2026-11-12T09:00:30Z", q, "cancelled", &proposerKey, "", "", "not-an-answerer")
+		add("a-cancel-nobody-can-answer",
+			"maybe-6, maybe-4: the asker's cancel of a question whose rule names a role no member holds is not-an-answerer, and the question stays open", s, unanswered)
+	}
+
+	// The answer call and the answer's body (section 6, rows 2 and 5; maybe-11).
+	{
+		s := scene()
+		q := proposal(s, askAndLog, asked, 1, "call")
+		forged := kit.Signed(kit.Unsigned(s.Call(q, "accepted", "accepted", salt("call"), true, decider)), kit.TypeAnswer, proposerKey)
+		s.RefuseCall("2026-11-12T09:05:00Z", forged, &decider, "accepted", salt("call"), "answer-call")
+		other := kit.AnswerCall(kit.HashOf(compose), q, "declined", "", false, decider)
+		s.RefuseCall("2026-11-12T09:06:00Z", other, &decider, "", "", "answer-call")
+		s.RefuseCall("2026-11-12T09:07:00Z", s.Call(q, "declined", "", "", false, proposerKey), &decider, "", "", "answer-call")
+		s.Get(kit.Applier)
+		add("answer-call-refused",
+			"maybe-11, section 6 row 2: a call naming the decider but signed by the proposer's key, a decline under another Accord's id, and the proposer's call given as the decider are each answer-call; nothing is written and the question stays open", s, askAndLog)
+	}
+	{
+		s := scene()
+		q := proposal(s, askAndLog, asked, 1, "body")
+		call := s.Call(q, "accepted", "accepted", salt("body"), true, decider)
+		s.RefuseCall("2026-11-12T09:05:00Z", call, &decider, "accepted.", salt("body"), "answer-body")
+		s.RefuseCall("2026-11-12T09:06:00Z", call, &decider, "accepted", salt("another"), "answer-body")
+		s.RefuseCall("2026-11-12T09:07:00Z", s.Call(q, "declined", "", "", false, decider), &decider, "no", salt("body"), "answer-body")
+		s.Resolve(kit.Answer{At: "2026-11-12T09:08:00Z", Question: q, Action: "accepted", Text: "accepted", Salt: salt("body"),
+			By: decider, Verdict: passOK, Release: true, Released: &passOK})
+		add("answer-body-refused",
+			"section 6 row 5: an accept whose text, or whose salt, is not the one its call's digest names, and a decline given with a text and a salt, are each answer-body and write nothing; the same call with its own text and salt then closes the question", s, askAndLog)
 	}
 	{
 		s := scene()

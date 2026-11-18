@@ -1,6 +1,6 @@
 {
   "expect": {
-    "code": "check-unknown"
+    "code": "term-invalid"
   },
   "foundedAt": "2026-11-12T08:00:00Z",
   "input": {
@@ -40,7 +40,6 @@
       }
     ],
     "card": {
-      "checks": [],
       "judges": [],
       "kernel": {
         "hash": "sha256:a8755bef6ff188c2dc6b74377a73c6a49d612fc44915675db9d2795bb5b99475",
@@ -150,6 +149,6 @@
   },
   "operation": "found",
   "spec": "0.1",
-  "tests": "setup-contract-1: a term that names a check is check-unknown, since the card loads no check",
+  "tests": "setup-contract-1: a term with checks holds a member a term does not list, and is term-invalid",
   "vector": "founding/term-names-a-check"
 }

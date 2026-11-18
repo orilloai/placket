@@ -260,10 +260,9 @@ func TestCardJudges(t *testing.T) {
 	}
 }
 
-// TestTermChecksList holds that a term's checks, where present, is a non-empty list: an empty list
-// or a value that is not a list, the declaration signed again after the change, is term-invalid at
-// section 3 row 6, while a list of one well-formed check reaches row 8 as check-unknown
-// (setup-contract-1).
+// TestTermChecksList holds that a term has no checks member: an empty list, a value that is not a
+// list and a list of one well-formed check, the declaration signed again after the change, are each
+// term-invalid at section 3 row 6, a member the term does not list (setup-contract-1).
 func TestTermChecksList(t *testing.T) {
 	t.Parallel()
 	cases := []struct {
@@ -273,7 +272,7 @@ func TestTermChecksList(t *testing.T) {
 	}{
 		{"empty", []any{}, setup.TermInvalid},
 		{"not a list", "forbidden", setup.TermInvalid},
-		{"one check", []any{map[string]any{"name": "forbidden", "corpus": "tests"}}, setup.CheckUnknown},
+		{"one check", []any{map[string]any{"name": "forbidden", "corpus": "tests"}}, setup.TermInvalid},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

@@ -13,17 +13,23 @@
 //	questions.jsonl  one line per ask, {"deadline","question","roles"}: the question's id, its
 //	                 deadline and the role labels that may answer it, never a byte of its part.
 //	                 Written before the ask's receipt, and kept after the question closes.
+//	answers.jsonl    one answer call per line, the signed call's canonical JSON exactly as the window
+//	                 accepted it, in the order of the receipts that close its questions; never the
+//	                 answer's text or salt (answer-call-attached). Appended and synced before the
+//	                 receipts.jsonl line of its closing. A call no receipt names, as after a crash
+//	                 between the two writes, is read by no one as evidence: verify counts it, and a
+//	                 closing whose call line is missing reads as unwitnessed. Made at the first answer.
 //	held/<hex>       one delivery not yet fetched, named by the hex of the id of the receipt that
-//	                 queued it: {"answerCall"?,"delivery","to"}, the delivery's canonical JSON, the
-//	                 member it is for, and beside it, never inside it, the answerer's signed call when
-//	                 the delivery's body is that call's answer (answer-call-attached). Mode 0600.
-//	                 Written before its receipt's line; removed, and the directory synced, before the
-//	                 fetch that hands it out is answered.
+//	                 queued it: {"delivery","to"}, the delivery's canonical JSON, the answer call inside
+//	                 it when an answer queued it, and the member it is for. Mode 0600. Written before
+//	                 its receipt's line; removed, and the directory synced, before the fetch that
+//	                 hands it out is answered.
 //
 // The receipts are evidence (journal-is-evidence): nothing rewrites or truncates receipts.jsonl but
 // the one repair at the start, of a last line with no line feed, which was never answered. A last
-// line of questions.jsonl with no line feed was never written either, and is removed. Both repairs
-// print one line on the error writer. Read hands mediator.Reload what the files hold and judges
+// line of questions.jsonl with no line feed was never written either, and is removed, and so is one
+// of answers.jsonl, a call whose closing was never written, so that the next call appended is a line
+// of its own. Each repair prints one line on the error writer. Read hands mediator.Reload what the files hold and judges
 // none of it: every check of what was read is Reload's. Read's only clean-ups are the two Reload
 // documents: a held file whose receipt was never journaled is removed by RemoveStrays once the
 // rest reloaded, and a questions.jsonl line
@@ -91,6 +97,7 @@ const (
 	FileAccord    = "accord"
 	FileReceipts  = "receipts.jsonl"
 	FileQuestions = "questions.jsonl"
+	FileAnswers   = "answers.jsonl"
 	DirHeld       = "held"
 )
 
@@ -330,19 +337,14 @@ func ParseQuestion(line []byte) (mediator.Open, bool) {
 
 // A held file.
 type heldFile struct {
-	AnswerCall json.RawMessage `json:"answerCall,omitempty"`
-	Delivery   json.RawMessage `json:"delivery"`
-	To         string          `json:"to"`
+	Delivery json.RawMessage `json:"delivery"`
+	To       string          `json:"to"`
 }
 
-// HeldFile is the bytes of the held file of a delivery queued for to, with the answer call beside
-// it when it has one (nil otherwise).
-func HeldFile(to string, delivery, answerCall []byte) ([]byte, error) {
-	h := heldFile{Delivery: delivery, To: to}
-	if answerCall != nil {
-		h.AnswerCall = answerCall
-	}
-	b, err := json.Marshal(h)
+// HeldFile is the bytes of the held file of a delivery queued for to. An answer's call is inside the
+// delivery, never beside it (maybe-12).
+func HeldFile(to string, delivery []byte) ([]byte, error) {
+	b, err := json.Marshal(heldFile{Delivery: delivery, To: to})
 	if err != nil {
 		return nil, &Error{Code: CodeJournal, File: DirHeld}
 	}
@@ -353,29 +355,23 @@ func HeldFile(to string, delivery, answerCall []byte) ([]byte, error) {
 	return c, nil
 }
 
-// ParseHeld reads a held file's bytes: an object in canonical form with its members, the delivery an
-// object whose receiptId is a typed hash. It returns the member the delivery is for, the delivery's
-// canonical bytes, its receipt id and the answer call beside it, if any.
-func ParseHeld(b []byte) (to string, delivery []byte, receiptID string, answerCall []byte, ok bool) {
+// ParseHeld reads a held file's bytes: an object in canonical form with exactly its two members, the
+// delivery an object whose receiptId is a typed hash. It returns the member the delivery is for, the
+// delivery's canonical bytes and its receipt id.
+func ParseHeld(b []byte) (to string, delivery []byte, receiptID string, ok bool) {
 	c, err := canonical.Form(b)
 	if err != nil || !bytes.Equal(c, b) {
-		return "", nil, "", nil, false
+		return "", nil, "", false
 	}
 	var h heldFile
 	if !strict.Decode(b, &h) || h.To == "" || len(h.Delivery) == 0 || h.Delivery[0] != '{' {
-		return "", nil, "", nil, false
+		return "", nil, "", false
 	}
 	rid, ok := receiptIDOf(h.Delivery)
 	if !ok {
-		return "", nil, "", nil, false
+		return "", nil, "", false
 	}
-	if len(h.AnswerCall) > 0 {
-		if h.AnswerCall[0] != '{' {
-			return "", nil, "", nil, false
-		}
-		answerCall = append([]byte(nil), h.AnswerCall...)
-	}
-	return h.To, append([]byte(nil), h.Delivery...), rid, answerCall, true
+	return h.To, append([]byte(nil), h.Delivery...), rid, true
 }
 
 // receiptIDOf is a delivery's receiptId member, a typed hash.
@@ -407,9 +403,10 @@ func heldName(receiptID string) string {
 }
 
 // Read reads the journal for Reload. A journal no window founded an Accord in is Empty. It repairs
-// what was never written, an unterminated last line of receipts.jsonl or questions.jsonl, and makes
-// the clean-ups Reload documents, each with a line on the error writer. A file whose lines or
-// members are not what a window writes is CodeJournal, with the file and line.
+// what was never written, an unterminated last line of receipts.jsonl, questions.jsonl or
+// answers.jsonl, so that the next line appended starts a line of its own, and makes the clean-ups
+// Reload documents, each with a line on the error writer. A file whose lines or members are not what
+// a window writes is CodeJournal, with the file and line.
 func (j *Journal) Read() (*Record, error) {
 	b, err := io.ReadAll(io.NewSectionReader(j.lock, 0, 1<<20))
 	if err != nil {
@@ -436,6 +433,12 @@ func (j *Journal) Read() (*Record, error) {
 	}
 	questions, err := j.repairedLines(FileQuestions)
 	if err != nil {
+		return nil, err
+	}
+	// A cut call line is a call whose closing was never written, since the call is synced first: it
+	// is removed, and AddAnswer then appends whole lines only. The calls themselves are verify's and
+	// log's to read.
+	if _, err := j.repairedLines(FileAnswers); err != nil {
 		return nil, err
 	}
 
@@ -499,7 +502,7 @@ func (j *Journal) Read() (*Record, error) {
 		if err != nil {
 			return nil, &Error{Code: CodeJournal, File: rel}
 		}
-		to, delivery, id, _, ok := ParseHeld(hb)
+		to, delivery, id, ok := ParseHeld(hb)
 		clear(hb)
 		if !ok || heldName(id) != rel {
 			return nil, &Error{Code: CodeJournal, File: rel}
@@ -575,14 +578,14 @@ func (j *Journal) AddReceipts(list [][]byte) error {
 	return nil
 }
 
-// PutHeld writes the held file of a delivery not yet fetched, queued for to, with the answer call
-// beside it when it has one. The window writes it before the receipt that queued it.
-func (j *Journal) PutHeld(to string, delivery, answerCall []byte) error {
+// PutHeld writes the held file of a delivery not yet fetched, queued for to. The window writes it
+// before the receipt that queued it.
+func (j *Journal) PutHeld(to string, delivery []byte) error {
 	id, ok := receiptIDOf(delivery)
 	if !ok {
 		return &Error{Code: CodeJournal, File: DirHeld}
 	}
-	b, err := HeldFile(to, delivery, answerCall)
+	b, err := HeldFile(to, delivery)
 	if err != nil {
 		return err
 	}
@@ -594,23 +597,65 @@ func (j *Journal) PutHeld(to string, delivery, answerCall []byte) error {
 	return nil
 }
 
-// TakeHeld removes the held file of the delivery the receipt queued, synced, and returns the answer
-// call that was beside it, or nil. The window calls it before it answers the fetch.
-func (j *Journal) TakeHeld(receiptID string) ([]byte, error) {
+// TakeHeld removes the held file of the delivery the receipt queued, synced. The window calls it
+// before it answers the fetch.
+func (j *Journal) TakeHeld(receiptID string) error {
 	rel := heldName(receiptID)
 	b, err := os.ReadFile(j.path(rel))
 	if err != nil {
-		return nil, &Error{Code: CodeJournal, File: rel}
+		return &Error{Code: CodeJournal, File: rel}
 	}
-	_, _, id, answerCall, ok := ParseHeld(b)
+	_, _, id, ok := ParseHeld(b)
 	clear(b)
 	if !ok || id != receiptID {
-		return nil, &Error{Code: CodeJournal, File: rel}
+		return &Error{Code: CodeJournal, File: rel}
 	}
 	if err := j.disk.Remove(j.path(rel)); err != nil {
-		return nil, &Error{Code: CodeJournal, File: rel}
+		return &Error{Code: CodeJournal, File: rel}
 	}
-	return answerCall, nil
+	return nil
+}
+
+// AddAnswer appends an accepted answer call to answers.jsonl, synced: the call's canonical bytes, one
+// line, and no text or salt. The window writes it before the receipts of the call's closing.
+func (j *Journal) AddAnswer(call []byte) error {
+	c, err := canonical.Form(call)
+	if err != nil || !bytes.Equal(c, call) {
+		return &Error{Code: CodeJournal, File: FileAnswers}
+	}
+	if err := j.disk.Append(j.path(FileAnswers), append(append([]byte(nil), call...), '\n')); err != nil {
+		return &Error{Code: CodeJournal, File: FileAnswers}
+	}
+	return nil
+}
+
+// ReadAnswers reads the answer calls of the journal directory dir, one per whole line of
+// answers.jsonl, in file order, as verify and log read them. It takes no lock and writes nothing. A
+// directory with no answers.jsonl has none, and returns an empty list. A file that is not a regular
+// file, or a line longer than maxLine, is CodeJournal naming the file; a last line with no line
+// feed is left out, with one line on stderr.
+func ReadAnswers(dir string, stderr io.Writer) ([][]byte, error) {
+	path := filepath.Join(dir, FileAnswers)
+	if _, err := os.Lstat(path); errors.Is(err, fs.ErrNotExist) {
+		return [][]byte{}, nil
+	}
+	f, err := lines.Read(path, maxLine)
+	if errors.Is(err, lines.ErrNotRegular) {
+		return nil, lines.NotRegular(&Error{Code: CodeJournal, File: FileAnswers})
+	}
+	if err != nil {
+		return nil, &Error{Code: CodeJournal, File: FileAnswers}
+	}
+	if f.Long > 0 {
+		return nil, &Error{Code: CodeJournal, File: FileAnswers, Line: f.Long}
+	}
+	if f.Cut {
+		fmt.Fprintf(stderr, "journal: %s line %d has no line feed; the file was cut there, and the line is left out\n", FileAnswers, len(f.Lines)+1)
+	}
+	if f.Lines == nil {
+		return [][]byte{}, nil
+	}
+	return f.Lines, nil
 }
 
 // ReadReceipts reads the receipts of the journal directory dir, one per whole line of

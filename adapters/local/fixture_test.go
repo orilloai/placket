@@ -16,8 +16,10 @@ import (
 
 	"github.com/orilloai/placket/adapters/journal"
 	"github.com/orilloai/placket/adapters/local"
+	"github.com/orilloai/placket/core/answer"
 	"github.com/orilloai/placket/core/canonical"
 	"github.com/orilloai/placket/core/mediator"
+	"github.com/orilloai/placket/core/receipts"
 	"github.com/orilloai/placket/core/signing"
 )
 
@@ -117,7 +119,7 @@ func askAndLog(t testing.TB, mediatorName string) []byte {
 		"policy":   policy,
 		"mediator": map[string]any{"actor": med.Reference(), "operator": op.Reference(), "runs": "process"},
 		"card": map[string]any{"spec": "0.1", "kernel": map[string]any{"version": "0.1.0", "hash": "sha256:" + hex.EncodeToString(make([]byte, 32))},
-			"judges": []any{}, "checks": []any{}},
+			"judges": []any{}},
 		"declarations": decls, "bindings": binds,
 	})
 	c, err := canonical.Form(b)
@@ -257,6 +259,24 @@ func (w *world) window(t testing.TB) local.Window {
 
 func (w *world) client(t testing.TB, name string) *local.Client {
 	return &local.Client{Socket: w.socket, Key: key(t, name), Accord: w.accord, Now: w.clock.Now, Rand: w.nonces, Timeout: 30 * time.Second}
+}
+
+// answerArgs are the args of name's resolve call answering the question with the action, its call
+// signed with name's key under the world's Accord: for an accept or a change, over text under a salt
+// the answerer mints from the question's id, asking for release (maybe-11).
+func (w *world) answerArgs(t testing.TB, name, question string, action answer.Action, text string) map[string]any {
+	t.Helper()
+	c := answer.Call{Accord: w.accord, Question: question, Action: action}
+	var salt []byte
+	if action == answer.Accepted || action == answer.Changed {
+		salt = saltOf("the answer's salt of " + question)
+		c.Digest, c.Release = receipts.Digest(salt, []byte(text)), true
+	}
+	b, err := answer.Sign(c, key(t, name))
+	if err != nil {
+		t.Fatal(err)
+	}
+	return local.ResolveArgs(b, text, salt)
 }
 
 // saltOf returns s's bytes as a salt of SaltBytes: cut, or padded with zero bytes.

@@ -35,7 +35,7 @@ else
 	echo "ok   a build of another kernel prints another card"
 fi
 case $this_module in
-"0.1.0 sha256:"*) ;;
+"0.2.0 sha256:"*) ;;
 *) fail "this build's module line is '$this_module'" ;;
 esac
 

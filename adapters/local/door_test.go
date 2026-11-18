@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/orilloai/placket/adapters/local"
+	"github.com/orilloai/placket/core/answer"
 	"github.com/orilloai/placket/core/canonical"
 	"github.com/orilloai/placket/core/mediator"
 )
@@ -123,10 +124,25 @@ func TestTheDoorPassesTheBytes(t *testing.T) {
 func TestParseCallReadsOnlyItsForm(t *testing.T) {
 	t.Parallel()
 	p := key(t, "proposer")
-	good, _ := local.SignCall(p, local.OpResolve, "a", time.Date(2026, 11, 12, 9, 0, 0, 0, time.UTC), make([]byte, 16), local.ResolveArgs("q", mediator.Changed, "v"))
+	answerCall := []byte(`{"action":"changed","from":"x"}`)
+	salt := saltOf("a salt")
+	good, _ := local.SignCall(p, local.OpResolve, "a", time.Date(2026, 11, 12, 9, 0, 0, 0, time.UTC), make([]byte, 16), local.ResolveArgs(answerCall, "v", salt))
 	c, code := local.ParseCall(good)
-	if code != "" || c.Op != local.OpResolve || c.Question != "q" || c.Action != "changed" || c.Answer != "v" || !c.HasAnswer || !c.Verified() {
+	if code != "" || c.Op != local.OpResolve || string(c.AnswerCall) != string(answerCall) || c.Action != "" || c.Answer != "v" || !c.HasAnswer ||
+		string(c.Salt) != string(salt) || !c.Verified() {
 		t.Fatalf("got %q", code)
+	}
+	for name, args := range map[string]map[string]any{
+		"no answer":               {"text": "v"},
+		"an answer not an object": {"answer": "x"},
+		"a salt not hex":          {"answer": map[string]any{}, "salt": "zz"},
+		"a salt in uppercase":     {"answer": map[string]any{}, "salt": "AB"},
+		"the old question":        {"answer": map[string]any{}, "question": "q"},
+	} {
+		b, _ := local.SignCall(p, local.OpResolve, "a", time.Date(2026, 11, 12, 9, 0, 0, 0, time.UTC), make([]byte, 16), args)
+		if _, code := local.ParseCall(b); code != local.BadCall {
+			t.Fatalf("resolve args with %s: got %q", name, code)
+		}
 	}
 	var o map[string]any
 	_ = json.Unmarshal(good, &o)
@@ -163,7 +179,7 @@ func FuzzParseCall(f *testing.F) {
 		case local.OpGive:
 			args = local.GiveArgs([]byte("{}"), []byte("{}"))
 		case local.OpResolve:
-			args = local.ResolveArgs("q", mediator.Accepted, "accepted")
+			args = local.ResolveArgs([]byte(`{"action":"accepted"}`), "accepted", saltOf("a salt"))
 		case local.OpResult:
 			args = map[string]any{"question": "q"}
 		}
@@ -195,23 +211,41 @@ func FuzzParseReply(f *testing.F) {
 	f.Add([]byte(`{"ok":true,"outcome":{"reason":"ok","receipt":{},"receiptId":"x","verdict":"pass"},"salt":"00"}`))
 	f.Add([]byte(`{"answerCall":{},"delivery":{"a":1},"ok":true}`))
 	f.Add([]byte(`{"ok":true,"questions":[{"asker":"a","deadline":"d","form":"raw","id":"i","kind":"k","size":3}]}`))
+	f.Add([]byte(`{"more":true,"ok":true,"questions":[{"asker":"a","deadline":"d","form":"raw","id":"i","kind":"k","raw":"AA==","receipt":{},"salt":"00","size":1}]}`))
 	f.Fuzz(func(t *testing.T, b []byte) {
 		_, _ = local.ParseReply(b)
 	})
 }
 
-// FuzzVerifyAnswerCall checks any bytes as an answer call. It never panics, and what it accepts is a
-// resolve call that accepts or changes.
+// FuzzVerifyAnswerCall checks any bytes as an answer call, as a client reads one inside a delivery,
+// with answer.Read. It never panics, and what it accepts is a call of one of the four actions whose
+// typed hash is its id (maybe-11). Its seeds are signed answer calls of each action.
 func FuzzVerifyAnswerCall(f *testing.F) {
 	d := key(f, "decider")
-	line, _ := local.SignCall(d, local.OpResolve, "a", time.Date(2026, 11, 12, 9, 0, 0, 0, time.UTC), make([]byte, 16), local.ResolveArgs("q", mediator.Accepted, "yes"))
-	c, _ := local.ParseCall(line)
-	f.Add(local.AnswerCall(c))
+	for _, action := range []answer.Action{answer.Accepted, answer.Changed, answer.Declined, answer.Cancelled} {
+		c := answer.Call{Accord: "sha256:" + strings.Repeat("ab", 32), Question: "sha256:" + strings.Repeat("cd", 32), Action: action}
+		if action == answer.Accepted || action == answer.Changed {
+			c.Digest, c.Release = strings.Repeat("ef", 32), true
+		}
+		b, err := answer.Sign(c, d)
+		if err != nil {
+			f.Fatal(err)
+		}
+		f.Add(b)
+	}
 	f.Add([]byte(`{"call":"e30=","sig":""}`))
 	f.Fuzz(func(t *testing.T, b []byte) {
-		a, ok := local.VerifyAnswerCall(b, d.Reference())
-		if ok && a.Action != "accepted" && a.Action != "changed" {
+		a, err := answer.Read(b)
+		if err != nil {
+			return
+		}
+		switch a.Action {
+		case answer.Accepted, answer.Changed, answer.Declined, answer.Cancelled:
+		default:
 			t.Fatalf("accepted action %q", a.Action)
+		}
+		if answer.ID(b) == "" {
+			t.Fatal("a call that reads has no id")
 		}
 	})
 }

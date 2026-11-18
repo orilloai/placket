@@ -4,35 +4,40 @@ import (
 	"encoding/hex"
 	"fmt"
 
+	"github.com/orilloai/placket/core/answer"
 	"github.com/orilloai/placket/core/composition"
 	"github.com/orilloai/placket/core/internal/crossing"
 	"github.com/orilloai/placket/core/internal/shape"
 	"github.com/orilloai/placket/core/receipts"
 )
 
-// Action is what an answer does to a question (section 6), spelled as the vector format spells it
-// (conformance-vectors-6).
-type Action string
+// Action is what an answer does to a question.
+//
+// Deprecated: use answer.Action, its one definition (constants-once,
+// docs/adr/0021-who-decided-and-the-answer-call.md). It is removed at the release.
+type Action = answer.Action
 
-// The four actions of an answer: an accept (maybe-3), a change (maybe-9), and a decline and a cancel
-// (maybe-4).
+// The four actions of an answer.
+//
+// Deprecated: use answer.Accepted, answer.Changed, answer.Declined and answer.Cancelled. They are
+// removed at the release.
 const (
-	Accepted  Action = "accepted"
-	Changed   Action = "changed"
-	Declined  Action = "declined"
-	Cancelled Action = "cancelled"
+	Accepted  = answer.Accepted
+	Changed   = answer.Changed
+	Declined  = answer.Declined
+	Cancelled = answer.Cancelled
 )
 
-// A Resolution is an answer's own inputs (section 6): its action; for an accept the answer's text
-// and for a change the version, in Answer; the salt the mediator's caller minted for it; and whether
-// it asks for release (maybe-10). A decline and a cancel read only the action. A Resolution holds an
-// answer's text and salt, so it prints as a fixed text under every format verb (secrets-never-print,
-// record 0006).
+// A Resolution is an answer as its caller gives it (section 6, maybe-11): Call, the signed answer
+// call's canonical bytes, which say the question, the action and whether it asks for release; and,
+// for an accept or a change, Text, the answer's text or the version, and Salt, the salt the
+// answerer minted for it, under which the call's digest was taken. A decline and a cancel have
+// neither. A Resolution holds an answer's text and salt, so it prints as a fixed text under every
+// format verb (secrets-never-print, record 0006).
 type Resolution struct {
-	Action  Action
-	Answer  string
-	Salt    []byte
-	Release bool
+	Call []byte
+	Text string
+	Salt []byte
 }
 
 // Format prints the Resolution as a fixed text, whatever the verb.
@@ -98,15 +103,22 @@ func (b *batch) queue(to string, part map[string]any, receipt []byte, id string)
 }
 
 // close writes the resolution receipt that closes q with a reason of its own (maybe-4, maybe-5):
-// from from to the asker, block, naming the asked part and echoing the question's envelope.
-func (b *batch) close(q *question, from, reason, at string) error {
+// from from to the asker, block, naming the asked part, echoing the question's envelope and naming
+// by as its decider (receipt-11).
+func (b *batch) close(q *question, from, reason, at string, by receipts.By) error {
 	b.closed[q.id] = true
 	_, _, err := b.write(q.subject, receipts.Predicate{
 		Kind: receipts.KindResolution, From: from, To: q.asker, At: at,
-		Envelope: q.envelope, Verdict: string(composition.Block), Reason: reason,
+		Envelope: q.envelope, Verdict: string(composition.Block), Reason: reason, By: by,
 	})
 	return err
 }
+
+// The by of the mediator's own closings (receipt-11): a deadline, and a question nobody can answer.
+var (
+	byDeadline      = receipts.By{Decider: receipts.ByMediator, Event: receipts.EventDeadline}
+	byUndeliverable = receipts.By{Decider: receipts.ByMediator, Event: receipts.EventUndeliverable}
+)
 
 // commit changes the state: every receipt the batch built, the chains, the deliveries, and the
 // questions it closed, which are no longer open.
@@ -191,20 +203,23 @@ func (m *Mediator) Answerers(questionID string) ([]string, bool) {
 	return nil, false
 }
 
-// Resolve answers the question questionID as caller at the time at (section 6). Its rows run in
-// order: the caller is a member (not-a-member), the question is open at a time before its deadline
-// (no-open-question, maybe-7), and the caller is one of its answerers (not-an-answerer, maybe-6). A
-// rejected answer writes nothing. The answer's own inputs are checked next, and their misuse is an
-// *Error, writing nothing: an action that is not one of the four (action), an accept or a change with a salt
-// that is not exactly SaltBytes (salt), a change with an empty version (answer).
+// Resolve answers a question as caller at the time at (section 6). Its rows run in order: the
+// caller is a member (not-a-member); the answer call reads, names this Accord and is the caller's
+// (answer-call, maybe-11); the question it names is open at a time before its deadline
+// (no-open-question, maybe-7); the caller may take its action, an answerer for an accept, a change or
+// a decline and the question's asker for a cancel of a question with an answerer (not-an-answerer,
+// maybe-6); and the answer's text and salt fit the call (answer-body). A rejected answer writes
+// nothing and leaves the question as it was.
 //
-// An accept forms the answer and a change the version (maybe-8, maybe-9), a part decided by its kind
-// through composition from the answerer to the asker as a part the mediator formed; its resolution
-// receipt holds composition's verdict, and a pass queues the part for the asker. A decline and a
-// cancel write a block from the first answerer (maybe-4). An accept or a change that passes and asks
-// for release then writes the release receipt (maybe-10). Every receipt is built before any state
-// changes, the resolution first, and both are returned in that order.
-func (m *Mediator) Resolve(caller, questionID string, r Resolution, at string) ([]Outcome, error) {
+// An accept forms the answer and a change the version (maybe-8, maybe-9), under the answerer's salt,
+// so its digest is the call's: a part decided by its kind through composition from the answerer to
+// the asker as a part the mediator formed; its resolution receipt holds composition's verdict, and a
+// pass queues the part for the asker. A decline and a cancel write a block from the first answerer
+// (maybe-4). An accept or a change that passes and whose call asks for release then writes the
+// release receipt (maybe-10). Every receipt names the call by its typed hash (receipt-11), and every
+// delivery it queues carries the call (maybe-12). Every receipt is built before any state changes,
+// the resolution first, and both are returned in that order.
+func (m *Mediator) Resolve(caller string, r Resolution, at string) ([]Outcome, error) {
 	if !m.founded() {
 		return nil, failure(CodeUnfounded)
 	}
@@ -215,55 +230,68 @@ func (m *Mediator) Resolve(caller, questionID string, r Resolution, at string) (
 	if !m.accord.Member(caller) {
 		return nil, &Rejection{Code: NotAMember}
 	}
-	// Row 2: an open question, at a time before its deadline (maybe-7).
-	q := m.open(questionID, at)
+	// Row 2: the answer call, the caller's, under this Accord (maybe-11).
+	c, err := answer.Read(r.Call)
+	if err != nil || c.Accord != m.accord.ID() || c.From != caller {
+		return nil, &Rejection{Code: AnswerCall}
+	}
+	// Row 3: an open question, at a time before its deadline (maybe-7).
+	q := m.open(c.Question, at)
 	if q == nil {
 		return nil, &Rejection{Code: NoOpenQuestion}
 	}
-	// Row 3: the caller is among its answerers (maybe-6).
-	if !contains(m.answerers(q.roles), caller) {
+	// Row 4: an answerer answers, and the asker cancels a question someone could answer (maybe-6).
+	answerers := m.answerers(q.roles)
+	if c.Action == answer.Cancelled {
+		if caller != q.asker || len(answerers) == 0 {
+			return nil, &Rejection{Code: NotAnAnswerer}
+		}
+	} else if !contains(answerers, caller) {
 		return nil, &Rejection{Code: NotAnAnswerer}
 	}
-	// The answer's own inputs, the caller's to get right.
-	switch r.Action {
-	case Accepted, Changed:
-		if len(r.Salt) != SaltBytes {
-			return nil, failure(CodeSalt)
+	// Row 5: the answer's text and salt (maybe-8, maybe-9).
+	switch c.Action {
+	case answer.Accepted, answer.Changed:
+		if len(r.Salt) != SaltBytes || (c.Action == answer.Changed && r.Text == "") ||
+			receipts.Digest(r.Salt, []byte(r.Text)) != c.Digest {
+			return nil, &Rejection{Code: AnswerBody}
 		}
-		if r.Action == Changed && r.Answer == "" {
-			return nil, failure(CodeAnswer)
-		}
-	case Declined, Cancelled:
 	default:
-		return nil, failure(CodeAction)
+		if r.Text != "" || len(r.Salt) != 0 {
+			return nil, &Rejection{Code: AnswerBody}
+		}
 	}
+	// The call is canonical bytes that read, so it decodes, and its typed hash names it.
+	call, _, _ := shape.Decode(r.Call)
+	by := receipts.By{Decider: receipts.ByAnswer, Answer: answer.ID(r.Call)}
 
 	b := m.batch()
-	if r.Action == Declined || r.Action == Cancelled {
+	if c.Action == answer.Declined || c.Action == answer.Cancelled {
 		reason := receipts.ReasonDeclined
-		if r.Action == Cancelled {
+		if c.Action == answer.Cancelled {
 			reason = receipts.ReasonCancelled
 		}
-		if err := b.close(q, m.firstAnswerer(q.roles), reason, at); err != nil {
+		if err := b.close(q, m.firstAnswerer(q.roles), reason, at, by); err != nil {
 			return nil, err
 		}
 		m.commit(b)
 		return b.outs, nil
 	}
 
-	// The answer, or the version: one part the mediator forms (maybe-8, maybe-9).
+	// The answer, or the version: one part the mediator forms (maybe-8, maybe-9), with the call
+	// inside its delivery (maybe-12).
 	kind, prefix := receipts.NameAnswer, "answer:"
-	if r.Action == Changed {
+	if c.Action == answer.Changed {
 		kind, prefix = receipts.NameChanged, "change:"
 	}
-	digest := receipts.Digest(r.Salt, []byte(r.Answer))
-	subject := receipts.Subject{Name: kind, Digest: digest}
-	part := map[string]any{"messageId": prefix + q.id, "kind": kind, "salt": hex.EncodeToString(r.Salt), "text": r.Answer, "re": q.id}
+	subject := receipts.Subject{Name: kind, Digest: c.Digest}
+	part := map[string]any{"messageId": prefix + q.id, "kind": kind, "salt": hex.EncodeToString(r.Salt), "text": r.Text, "re": q.id,
+		"answer": call}
 	d := composition.Decide(m.accord, composition.Crossing{From: caller, To: q.asker, Kind: kind, Formed: true})
 	b.closed[q.id] = true
 	receipt, id, err := b.write(subject, receipts.Predicate{
 		Kind: receipts.KindResolution, From: caller, To: q.asker, At: at,
-		Envelope: q.envelope, Verdict: string(d.Verdict), Reason: d.Reason,
+		Envelope: q.envelope, Verdict: string(d.Verdict), Reason: d.Reason, By: by,
 	})
 	if err != nil {
 		return nil, err
@@ -272,8 +300,8 @@ func (m *Mediator) Resolve(caller, questionID string, r Resolution, at string) (
 		if err := b.queue(q.asker, part, receipt, id); err != nil {
 			return nil, err
 		}
-		if r.Release {
-			if err := m.release(b, q, r.Action, caller, subject, part, at); err != nil {
+		if c.Release {
+			if err := m.release(b, q, c.Action, caller, subject, part, call, by, at); err != nil {
 				return nil, err
 			}
 		}
@@ -283,13 +311,15 @@ func (m *Mediator) Resolve(caller, questionID string, r Resolution, at string) (
 }
 
 // release writes the release receipt of an answer that passed and asked for release, into b
-// (maybe-10). After an accept, the held part is decided again, as given, from the asker to the
+// (maybe-10), naming the answer's call as its decider, as its closing does (receipt-11). After an
+// accept, the held part is decided again, as given and with no judgment, from the asker to the
 // receiver: a block is written as composition returns it, and any other verdict is the answer's
-// pass, which queues the held part for the receiver as it was given. After a change, the same version
-// is decided from the answerer to the receiver as a part the mediator formed, and a pass queues it
-// for the receiver; when the receiver is the answerer or the asker, a change releases nothing.
-func (m *Mediator) release(b *batch, q *question, action Action, answerer string, version receipts.Subject, part map[string]any, at string) error {
-	if action == Accepted {
+// pass, which queues the held part for the receiver as it was given, with the call inside its
+// delivery (maybe-12). After a change, the same version is decided from the answerer to the receiver
+// as a part the mediator formed, and a pass queues it for the receiver; when the receiver is the
+// answerer or the asker, a change releases nothing.
+func (m *Mediator) release(b *batch, q *question, action answer.Action, answerer string, version receipts.Subject, part map[string]any, call any, by receipts.By, at string) error {
+	if action == answer.Accepted {
 		d := composition.Decide(m.accord, composition.Crossing{From: q.asker, To: q.receiver, Kind: q.subject.Name})
 		verdict, reason := composition.Pass, composition.ReasonOK
 		if d.Verdict == composition.Block {
@@ -297,12 +327,16 @@ func (m *Mediator) release(b *batch, q *question, action Action, answerer string
 		}
 		receipt, id, err := b.write(q.subject, receipts.Predicate{
 			Kind: receipts.KindCrossing, From: q.asker, To: q.receiver, At: at,
-			Envelope: q.envelope, Verdict: string(verdict), Reason: reason,
+			Envelope: q.envelope, Verdict: string(verdict), Reason: reason, By: by,
 		})
 		if err != nil || verdict != composition.Pass {
 			return err
 		}
-		return b.queue(q.receiver, q.delivery, receipt, id)
+		held := map[string]any{"answer": call}
+		for k, v := range q.delivery {
+			held[k] = v
+		}
+		return b.queue(q.receiver, held, receipt, id)
 	}
 	if q.receiver == answerer || q.receiver == q.asker {
 		return nil
@@ -310,7 +344,7 @@ func (m *Mediator) release(b *batch, q *question, action Action, answerer string
 	d := composition.Decide(m.accord, composition.Crossing{From: answerer, To: q.receiver, Kind: version.Name, Formed: true})
 	receipt, id, err := b.write(version, receipts.Predicate{
 		Kind: receipts.KindResolution, From: answerer, To: q.receiver, At: at,
-		Envelope: q.envelope, Verdict: string(d.Verdict), Reason: d.Reason,
+		Envelope: q.envelope, Verdict: string(d.Verdict), Reason: d.Reason, By: by,
 	})
 	if err != nil || d.Verdict != composition.Pass {
 		return err
@@ -320,7 +354,7 @@ func (m *Mediator) release(b *batch, q *question, action Action, answerer string
 
 // Undeliverable closes the question questionID as one nobody can be reached to answer, at the time
 // at (maybe-4): a resolution receipt from its first answerer, or from the mediator's own reference
-// when it has none, to the asker, block, undeliverable. It reads only row 2 of section 6: an id that
+// when it has none, to the asker, block, undeliverable. It reads only row 3 of section 6: an id that
 // names no question open before its deadline is rejected with no-open-question (maybe-7).
 func (m *Mediator) Undeliverable(questionID, at string) (Outcome, error) {
 	if !m.founded() {
@@ -334,7 +368,7 @@ func (m *Mediator) Undeliverable(questionID, at string) (Outcome, error) {
 		return Outcome{}, &Rejection{Code: NoOpenQuestion}
 	}
 	b := m.batch()
-	if err := b.close(q, m.firstAnswerer(q.roles), receipts.ReasonUndeliverable, at); err != nil {
+	if err := b.close(q, m.firstAnswerer(q.roles), receipts.ReasonUndeliverable, at, byUndeliverable); err != nil {
 		return Outcome{}, err
 	}
 	m.commit(b)
@@ -355,7 +389,7 @@ func (m *Mediator) Tick(at string) ([]Outcome, error) {
 	b := m.batch()
 	for _, q := range m.questions {
 		if q.deadline <= at {
-			if err := b.close(q, m.firstAnswerer(q.roles), receipts.ReasonTimeout, q.deadline); err != nil {
+			if err := b.close(q, m.firstAnswerer(q.roles), receipts.ReasonTimeout, q.deadline, byDeadline); err != nil {
 				return nil, err
 			}
 		}

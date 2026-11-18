@@ -208,6 +208,7 @@ const (
 	TypeDeclaration = Root + "declaration/" + Spec
 	TypeBinding     = Root + "binding/" + Spec
 	TypeEnvelope    = Root + "envelope/" + Spec
+	TypeAnswer      = Root + "answer/" + Spec
 	Extension       = Root + "crossing/" + Spec
 	PayloadType     = "application/vnd.in-toto+json"
 	StatementType   = "https://in-toto.io/Statement/v1"

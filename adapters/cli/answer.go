@@ -1,10 +1,14 @@
 package cli
 
 import (
+	"encoding/hex"
+	"encoding/json"
 	"fmt"
+	"io"
 	"unicode/utf8"
 
 	"github.com/orilloai/placket/adapters/local"
+	"github.com/orilloai/placket/core/answer"
 	"github.com/orilloai/placket/core/composition"
 	"github.com/orilloai/placket/core/mediator"
 	"github.com/orilloai/placket/core/receipts"
@@ -14,25 +18,107 @@ func init() {
 	commands["answer"] = answerCommand
 }
 
-// resolve sends an answer to the question and prints its outcome, then its release's. It returns the
-// reply, or nil and the exit code of a refusal.
-func (s *session) resolve(question string, action mediator.Action, answer string) (*local.Reply, int) {
-	rep, err := s.client.Call(local.OpResolve, local.ResolveArgs(question, action, answer))
+// A signedAnswer is what resolve signed and minted: the answer call's bytes and the answer's salt,
+// nil for a decline or a cancel.
+type signedAnswer struct{ call, salt []byte }
+
+// An answering is what one answer signs and sends: the question, the action, for an accept or a
+// change the text and whether it asks for release, and whether the key keeps the call it signed.
+type answering struct {
+	question string
+	action   answer.Action
+	text     string
+	release  bool
+	keep     bool
+}
+
+// shown reads the question as the window shows it to this key's answerer and checks it before
+// anything is signed (asked). A question the window does not show is tool error asked too, whether
+// or not the window left some out of its reply: nothing is signed for a part that was not checked.
+// It returns 0, or the exit code of a refusal or of tool error asked.
+func (s *session) shown(question string) int {
+	rep, err := s.client.Call(local.OpQuestions, nil)
 	if err != nil {
-		return nil, s.r.failed(err)
+		return s.r.failed(err)
 	}
 	if code, refused := s.r.refusal(rep); refused {
-		return nil, code
+		return code
+	}
+	for _, q := range rep.Questions {
+		if q.ID == question && s.asked(q) {
+			return 0
+		}
+	}
+	return s.r.tool(codeAsked)
+}
+
+// asked reports whether a question the window shows is the part its ask's receipt names: the
+// receipt is the question's, under this Accord, of the kind shown, and its subject digest is the
+// salted digest of the body shown under the salt shown (crossing-3, maybe-1).
+func (s *session) asked(q local.Asked) bool {
+	st, err := receipts.Decode(q.Receipt)
+	return err == nil && st.ID == q.ID && st.Predicate.Accord == s.client.Accord && st.Subject.Name == q.Kind &&
+		receipts.Digest(q.Salt, askedBody(q)) == st.Subject.Digest
+}
+
+// askedBody is the bytes of an asked part's body as the digest reads them: a text's UTF-8, a data
+// body's canonical bytes, a raw body's bytes.
+func askedBody(q local.Asked) []byte {
+	if q.Raw != nil {
+		return q.Raw
+	}
+	if q.Message != nil {
+		return []byte(*q.Message)
+	}
+	return nil
+}
+
+// resolve answers the question (maybe-11): for an accept, a change or a decline it first checks the
+// question the window shows (shown); for an accept or a change it mints the answer's salt, 32
+// random bytes; it signs the answer call with the key, the answer's salted digest in it and never
+// its text; with keep it keeps the call and the salt; and it sends the call, with the text and the
+// salt beside it. It prints the outcome, then the release's, and returns the reply and what it
+// signed, or nil and the exit code of a refusal.
+func (s *session) resolve(a answering) (*local.Reply, signedAnswer, int) {
+	if a.action != answer.Cancelled {
+		if code := s.shown(a.question); code != 0 {
+			return nil, signedAnswer{}, code
+		}
+	}
+	call := answer.Call{Accord: s.client.Accord, Question: a.question, Action: a.action}
+	var salt []byte
+	if a.action == answer.Accepted || a.action == answer.Changed {
+		salt = make([]byte, mediator.SaltBytes)
+		if _, err := io.ReadFull(s.r.env.Rand, salt); err != nil {
+			return nil, signedAnswer{}, s.r.tool(codeRand)
+		}
+		call.Digest, call.Release = receipts.Digest(salt, []byte(a.text)), a.release
+	}
+	signed, err := answer.Sign(call, s.key)
+	if err != nil {
+		return nil, signedAnswer{}, s.r.tool(codeInternal)
+	}
+	if a.keep && salt != nil {
+		if err := s.dir.Keep(canonicalJSON(map[string]any{"answer": json.RawMessage(signed), "salt": hex.EncodeToString(salt)})); err != nil {
+			return nil, signedAnswer{}, s.r.failed(err)
+		}
+	}
+	rep, err := s.client.Call(local.OpResolve, local.ResolveArgs(signed, a.text, salt))
+	if err != nil {
+		return nil, signedAnswer{}, s.r.failed(err)
+	}
+	if code, refused := s.r.refusal(rep); refused {
+		return nil, signedAnswer{}, code
 	}
 	if rep.Outcome == nil {
-		return nil, s.r.tool(codeReply)
+		return nil, signedAnswer{}, s.r.tool(codeReply)
 	}
-	s.r.put(memberQuestion, question)
+	s.r.put(memberQuestion, a.question)
 	s.r.outcome(rep.Outcome, false, memberOutcome)
 	if rep.Release != nil {
 		s.r.outcome(rep.Release, true, memberRelease)
 	}
-	return &rep, 0
+	return &rep, signedAnswer{call: signed, salt: salt}, 0
 }
 
 // passed reports whether an answer and its release, when it has one, both passed.
@@ -96,11 +182,16 @@ func answerFlags(r *run, name string, args []string, more func(fs *flagSet)) (*s
 	return s, *question, 0
 }
 
-// answerCommand is `answer --question ID [--text S]`: an accept, the text accepted unless given. It
-// prints the answer's outcome, then the release's.
+// answerCommand is `answer --question ID [--text S] [--no-release] [--keep]`: an accept, the text
+// accepted unless given, asking for release unless --no-release. With --keep the key keeps the call
+// it signed and the salt it minted. It prints the answer's outcome, then the release's.
 func answerCommand(r *run, args []string) int {
 	var text *string
-	s, question, code := answerFlags(r, "answer", args, func(fs *flagSet) { text = fs.String("text", WordAccepted, "the answer") })
+	var noRelease, keep *bool
+	s, question, code := answerFlags(r, "answer", args, func(fs *flagSet) {
+		text = fs.String("text", WordAccepted, "the answer")
+		noRelease, keep = fs.Bool("no-release", false, "ask for no release"), fs.Bool("keep", false, "keep the signed call")
+	})
 	if s == nil {
 		return code
 	}
@@ -108,7 +199,7 @@ func answerCommand(r *run, args []string) int {
 	if !utf8.ValidString(*text) {
 		return r.tool(codeText)
 	}
-	rep, code := s.resolve(question, mediator.Accepted, *text)
+	rep, _, code := s.resolve(answering{question: question, action: answer.Accepted, text: *text, release: !*noRelease, keep: *keep})
 	if rep == nil {
 		return code
 	}
