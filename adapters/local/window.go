@@ -17,10 +17,13 @@ import (
 	"time"
 
 	"github.com/orilloai/placket/adapters/journal"
+	"github.com/orilloai/placket/adapters/judge"
+	"github.com/orilloai/placket/adapters/judge/jev"
 	"github.com/orilloai/placket/core/canonical"
 	"github.com/orilloai/placket/core/composition"
 	"github.com/orilloai/placket/core/mediator"
 	"github.com/orilloai/placket/core/receipts"
+	"github.com/orilloai/placket/core/setup"
 	"github.com/orilloai/placket/core/signing"
 )
 
@@ -52,6 +55,18 @@ type Window struct {
 	Idle time.Duration
 	// Ready, when set, is closed once the door listens.
 	Ready chan<- struct{}
+	// Judges are the judges' configs, each with its hash: exactly one for each judge the card lists,
+	// at its hash, or the window starts nothing (docs/adr/0023-judges.md). A window that cannot take a
+	// give, a close or a closed journal, needs none.
+	Judges []judge.Loaded
+	// NewJudge makes the adapter of a judge's config; nil is one that has no key, and says none.
+	NewJudge func(judge.Config) judge.Judge
+	// Keyed says whether the judges have a key, for EventStarted's Reach only: the window never holds
+	// the key.
+	Keyed bool
+	// Budget is how long a give's decide judges have together, and each advise run; zero is
+	// judge.Budget.
+	Budget time.Duration
 	// replyLimit is the most bytes a reply that carries the close may have; zero is MaxReply. Only
 	// a test sets it, to reach the bound without a queue that long.
 	replyLimit int
@@ -74,8 +89,8 @@ const (
 	EventRefused = "refused"
 )
 
-// An Event is one thing the window did. It holds ids, codes and receipts, never a body, a salt or a
-// question's part.
+// An Event is one thing the window did. It holds ids, codes and receipts, never a body, a salt, a
+// question's part or a judge's output.
 type Event struct {
 	Kind string
 	// For started: whether the Accord was founded now, and its id and card.
@@ -96,6 +111,18 @@ type Event struct {
 	Error     mediator.ErrorCode
 	// For a get that handed out a delivery: the id of the receipt that queued it.
 	Fetched string
+	// For started, on a window that can take a give: one Reach per judge the card lists, in card
+	// order.
+	Reach []Reach
+}
+
+// A Reach is where a judge's requests may go, as the window prints it at start: the judge's name, the
+// host and model of its config, the kinds of every term that lists it, a superset of what can reach
+// it, and whether the window has a key for it (docs/adr/0023-judges.md).
+type Reach struct {
+	Judge, Host, Model string
+	Kinds              []string
+	Keyed              bool
 }
 
 // window is a running window's state, owned by its one goroutine (one-mediator-goroutine).
@@ -104,6 +131,26 @@ type window struct {
 	m      *mediator.Mediator
 	j      *journal.Journal
 	nonces map[string]time.Time
+	// The judges by name, their reach, and the callers whose give is with a judge.
+	judges map[string]judge.Configured
+	reach  []Reach
+	busy   map[string]bool
+	// What the judge runs need of serve: the context that stops them, the group that waits for
+	// them, the channel their results come back on, and serve's end.
+	runs    context.Context
+	wg      *sync.WaitGroup
+	results chan result
+	done    <-chan struct{}
+}
+
+// A result is what a decide run settled for a give: the call, the time it arrived, the reply channel
+// its connection waits on, the judgment and the run's records.
+type result struct {
+	call     Call
+	at       string
+	reply    chan []byte
+	judgment *composition.Judgment
+	records  []judge.Record
 }
 
 type request struct {
@@ -150,7 +197,13 @@ func Run(ctx context.Context, cfg Window) error {
 		return err
 	}
 	defer j.Close()
-	w := &window{cfg: cfg, j: j, nonces: map[string]time.Time{}}
+	if cfg.NewJudge == nil {
+		cfg.NewJudge = func(c judge.Config) judge.Judge { return jev.New(c, "", nil) }
+	}
+	if cfg.Budget == 0 {
+		cfg.Budget = judge.Budget
+	}
+	w := &window{cfg: cfg, j: j, nonces: map[string]time.Time{}, busy: map[string]bool{}}
 	founded, err := w.start()
 	if err != nil {
 		return err
@@ -163,7 +216,7 @@ func Run(ctx context.Context, cfg Window) error {
 		return err
 	}
 	defer l.Close()
-	started := Event{Kind: EventStarted, Founded: founded, Accord: w.m.Accord(), Card: w.m.Card()}
+	started := Event{Kind: EventStarted, Founded: founded, Accord: w.m.Accord(), Card: w.m.Card(), Reach: w.reach}
 	if c, ok := w.m.Closed(); ok {
 		started.Close, started.CloseReceipt = c.ID, c.Receipt
 	}
@@ -189,6 +242,9 @@ func (w *window) start() (bool, error) {
 		if err != nil {
 			return false, err
 		}
+		if err := w.loadJudges(at); err != nil {
+			return false, err
+		}
 		if err := w.j.Found(m.Accord(), m.Card(), w.cfg.Key.Reference(), at); err != nil {
 			return false, err
 		}
@@ -209,6 +265,12 @@ func (w *window) start() (bool, error) {
 		return false, &journal.Error{Code: journal.CodeJournal, File: journal.FileAccord, Line: 1, Core: "card"}
 	}
 	w.m = m
+	// A closed Accord takes no give, so it needs no judge.
+	if _, closed := m.Closed(); !closed {
+		if err := w.loadJudges(rec.FoundedAt); err != nil {
+			return false, err
+		}
+	}
 	if err := w.j.RemoveStrays(rec); err != nil {
 		return false, err
 	}
@@ -219,6 +281,41 @@ func (w *window) start() (bool, error) {
 		w.cfg.Event(Event{Kind: EventReloaded, Outcomes: outs, Release: -1})
 	}
 	return false, nil
+}
+
+// loadJudges compares the card's judges with the window's configs, before anything is written to
+// the journal (docs/adr/0023-judges.md): each judge the card lists needs exactly one config of its
+// name whose hash is the card's, at this adapter's version, and each config must be one the card
+// lists; otherwise CodeJudge. It makes each judge's adapter, and the reach the window prints. The
+// Accord is founded at foundedAt, as the mediator was.
+func (w *window) loadJudges(foundedAt string) error {
+	a, err := setup.Found(w.cfg.Founding, foundedAt)
+	if err != nil {
+		return err
+	}
+	loaded := map[string]judge.Loaded{}
+	for _, l := range w.cfg.Judges {
+		if _, twice := loaded[l.Config.Name]; twice {
+			return &Error{Code: CodeJudge}
+		}
+		loaded[l.Config.Name] = l
+	}
+	cards := a.CardJudges()
+	if len(cards) != len(loaded) {
+		return &Error{Code: CodeJudge}
+	}
+	w.judges = map[string]judge.Configured{}
+	w.reach = nil
+	for _, c := range cards {
+		l, ok := loaded[c.Name]
+		if !ok || l.Hash != c.Hash || c.Version != jev.Version {
+			return &Error{Code: CodeJudge}
+		}
+		w.judges[c.Name] = judge.Configured{Config: l.Config, Judge: w.cfg.NewJudge(l.Config)}
+		w.reach = append(w.reach, Reach{Judge: c.Name, Host: l.Config.Host, Model: l.Config.Model,
+			Kinds: a.JudgeKinds(c.Name), Keyed: w.cfg.Keyed})
+	}
+	return nil
 }
 
 // close closes the journal's Accord at the time at (close-1): the closings and the close receipt in
@@ -404,7 +501,11 @@ func (w *window) serve(ctx context.Context, l *net.UnixListener) error {
 		conns  = map[net.Conn]struct{}{}
 		closed bool
 	)
+	// The judge runs are this goroutine's too: they stop when it returns, and it waits for them.
+	runs, stopRuns := context.WithCancel(ctx)
+	w.runs, w.wg, w.results, w.done = runs, &wg, make(chan result), done
 	defer func() {
+		stopRuns()
 		close(done)
 		_ = l.Close()
 		mu.Lock()
@@ -444,7 +545,7 @@ func (w *window) serve(ctx context.Context, l *net.UnixListener) error {
 			pause = 0
 			// The deadline is set before the connection is registered, so the shutdown's deadline of
 			// now, set to every registered connection, is never overwritten by a later one.
-			_ = c.SetDeadline(time.Now().Add(readTimeout))
+			_ = c.SetDeadline(time.Now().Add(readDeadline))
 			mu.Lock()
 			if closed {
 				mu.Unlock()
@@ -480,7 +581,19 @@ func (w *window) serve(ctx context.Context, l *net.UnixListener) error {
 			if err != nil {
 				return err
 			}
-			r.reply <- reply
+			// A give with a judge has no reply yet: its result brings it.
+			if reply != nil {
+				r.reply <- reply
+			}
+		case res := <-w.results:
+			delete(w.busy, res.call.Caller)
+			ev := Event{Kind: EventCall, Op: OpGive, Caller: res.call.Caller, Release: -1}
+			reply, err := w.decide(res.call, res.at, &ev, res.judgment, res.records)
+			if err != nil {
+				return err
+			}
+			w.cfg.Event(ev)
+			res.reply <- reply
 		}
 	}
 }
@@ -498,11 +611,17 @@ func temporary(err error) bool {
 	return errors.Is(err, syscall.EMFILE) || errors.Is(err, syscall.ENFILE) || (errors.As(err, &ne) && ne.Timeout())
 }
 
-// readTimeout is how long a connection may take to send its call and read its reply.
-const readTimeout = 30 * time.Second
+// readDeadline is how long a connection may take to send its call and read its reply, and
+// replyMargin how long it has to read the reply once the window writes it. judge.Budget and
+// replyMargin together are below readDeadline, so a judged give's reply is written in time.
+const (
+	readDeadline = 30 * time.Second
+	replyMargin  = 5 * time.Second
+)
 
 // read reads one call from c, hands it to the window, and writes the reply, if one comes. Its
-// deadline is set before it starts.
+// deadline is set before it starts, and the reply's write has a deadline of its own, replyMargin,
+// so a call that was slow to arrive does not shorten the reply's time.
 func read(c net.Conn, reqs chan<- request, done <-chan struct{}) {
 	defer c.Close()
 	br := bufio.NewReaderSize(c, 64<<10)
@@ -531,6 +650,7 @@ func read(c net.Conn, reqs chan<- request, done <-chan struct{}) {
 	}
 	select {
 	case b := <-r.reply:
+		_ = c.SetWriteDeadline(time.Now().Add(replyMargin))
 		_, _ = c.Write(append(b, '\n'))
 	case <-done:
 	}
@@ -588,13 +708,18 @@ func (w *window) handle(r request) ([]byte, error) {
 		return refuse(Replayed)
 	}
 	w.nonces[c.Nonce] = now
+	// A caller's give while its last is with a judge is refused, so its gives reach the core in the
+	// order of their seq (crossing-4, docs/adr/0023-judges.md); its other calls go on.
+	if c.Op == OpGive && w.busy[c.Caller] {
+		return refuse(JudgeBusy)
+	}
 
 	if err := w.tick(at, EventTick); err != nil {
 		return nil, err
 	}
 	ev := Event{Kind: EventCall, Op: c.Op, Caller: c.Caller, Release: -1}
-	reply, err := w.op(c, at, &ev)
-	if err != nil {
+	reply, err := w.op(c, at, &ev, r.reply)
+	if err != nil || reply == nil {
 		return nil, err
 	}
 	w.cfg.Event(ev)
@@ -617,10 +742,12 @@ func refused(err error, ev *Event) []byte {
 	return refusal(byDoor, string(Internal))
 }
 
-func (w *window) op(c Call, at string, ev *Event) ([]byte, error) {
+// op runs the call's operation. A give that a judge runs on returns no reply and no error: its
+// result brings the reply.
+func (w *window) op(c Call, at string, ev *Event, reply chan []byte) ([]byte, error) {
 	switch c.Op {
 	case OpGive:
-		return w.give(c, at, ev)
+		return w.give(c, at, ev, reply)
 	case OpGet:
 		return w.get(c, ev)
 	case OpQuestions:
@@ -632,9 +759,73 @@ func (w *window) op(c Call, at string, ev *Event) ([]byte, error) {
 	}
 }
 
-func (w *window) give(c Call, at string, ev *Event) ([]byte, error) {
-	// No judge runs at this door: every give is decided with no judgment (composition-7).
-	out, err := w.m.Give(c.Caller, c.Message, c.Envelope, nil, at)
+// give asks the core which judges the give would reach (composition-7). With no decide judge it
+// decides the give at once with no judgment. A raw body is sent to no judge: each judge the rule
+// lists says none, raw-body. Otherwise it marks the caller busy and runs the decide judges on a
+// goroutine of the window's, and goes on serving; their judgment comes back on the results channel,
+// and serve decides the give with it, at the time the give arrived (door-owns-clock).
+func (w *window) give(c Call, at string, ev *Event, reply chan []byte) ([]byte, error) {
+	jg, judged := w.m.Judges(c.Caller, c.Message, c.Envelope)
+	if !judged {
+		return w.decide(c, at, ev, nil, nil)
+	}
+	if jg.Form == formRaw {
+		var recs []judge.Record
+		for _, j := range jg.Judges {
+			recs = append(recs, judge.Record{Judge: j.Name, Use: string(j.Use), Outcome: outcomeNone, Error: string(judge.CodeRawBody)})
+		}
+		return w.decide(c, at, ev, nil, recs)
+	}
+	s := w.stack(jg.Judges)
+	if !hasUse(s, setup.Decide) {
+		return w.decide(c, at, ev, nil, nil)
+	}
+	w.busy[c.Caller] = true
+	req := judge.Request{Kind: jg.Kind, Body: jg.Body}
+	w.wg.Add(1)
+	go func() {
+		defer w.wg.Done()
+		j, recs := judge.Run(w.runs, s, req, w.cfg.Budget)
+		select {
+		case w.results <- result{call: c, at: at, reply: reply, judgment: j, records: recs}:
+		case <-w.done:
+		}
+	}()
+	return nil, nil
+}
+
+// formRaw is the form of a raw body, which is never sent to a judge; outcomeNone is a run that
+// decided nothing.
+const (
+	formRaw     = "raw"
+	outcomeNone = "none"
+)
+
+// stack is the rule's judges, in its order, each with its config and adapter.
+func (w *window) stack(js []setup.Judge) judge.Stack {
+	var s judge.Stack
+	for _, j := range js {
+		c := w.judges[j.Name]
+		c.Use = j.Use
+		s = append(s, c)
+	}
+	return s
+}
+
+// hasUse reports whether the stack holds a judge of use u.
+func hasUse(s judge.Stack, u setup.Use) bool {
+	for _, c := range s {
+		if c.Use == u {
+			return true
+		}
+	}
+	return false
+}
+
+// decide gives the call's part with the judgment, journals its receipt and then the judges' records
+// of it, and returns the reply. A give the core rejects drops the records.
+func (w *window) decide(c Call, at string, ev *Event, judgment *composition.Judgment, recs []judge.Record) ([]byte, error) {
+	out, err := w.m.Give(c.Caller, c.Message, c.Envelope, judgment, at)
 	if err != nil {
 		return refused(err, ev), nil
 	}
@@ -670,6 +861,15 @@ func (w *window) give(c Call, at string, ev *Event) ([]byte, error) {
 				return nil, err
 			}
 			ev.Outcomes = append(ev.Outcomes, u)
+		}
+	}
+	if len(recs) > 0 {
+		lines := make([][]byte, len(recs))
+		for i, r := range recs {
+			lines[i] = judge.Line(r)
+		}
+		if err := w.j.AddJudged(out.ReceiptID, lines); err != nil {
+			return nil, err
 		}
 	}
 	return encodeReply(wireReply{Outcome: wire(out)}), nil

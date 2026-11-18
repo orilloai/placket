@@ -19,8 +19,10 @@
 // The door checks a call in this order and stops at the first that fails (door-check-order):
 // its size (too-large), its form (bad-call), its signature under call.caller (bad-signature), its
 // Accord (wrong-accord), its time within StaleSeconds of the door's (stale), and its nonce, unseen
-// in the last ReplaySeconds (replayed). Only then does the mediator see it, and the mediator's first
-// row is membership. A refused call changes nothing. The door hands the mediator the operation's
+// in the last ReplaySeconds (replayed). Then a give from a caller whose last give is still with a
+// judge is refused (judge-busy), so a caller's gives reach the mediator in the order of their seq.
+// Only then does the mediator see it, and the mediator's first row is membership. A refused call
+// changes nothing, but that a give refused judge-busy has spent its nonce. The door hands the mediator the operation's
 // bytes exactly as decoded from the call's base64 (door-passes-bytes).
 //
 // A reply is one of:

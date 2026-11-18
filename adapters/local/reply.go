@@ -33,6 +33,9 @@ const (
 	// CodeSocketPath: the socket path is longer than MaxSocketPath, so it can be neither bound nor
 	// connected to.
 	CodeSocketPath Code = "socket-path"
+	// CodeJudge: the window's judge configs are not the ones its card lists, at their hashes and this
+	// adapter's version; it started nothing (docs/adr/0023-judges.md).
+	CodeJudge Code = "judge"
 )
 
 // MaxSocketPath is the longest socket path, in bytes, the system takes: its sun_path less the
