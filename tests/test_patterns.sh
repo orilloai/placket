@@ -8,7 +8,7 @@
 #
 # Then each pattern runs, one at a time, on the binary this tree builds and nothing else of the tree:
 # from a fresh copy of its own directory, with the binary's directory first on PATH and a fresh TMPDIR
-# of its own, short enough for a socket's path. It must exit 0 within LIMIT seconds, print exactly its
+# of its own, short enough for a socket's path, and with no PLACKET_JEV_KEY. It must exit 0 within LIMIT seconds, print exactly its
 # expected.txt (standard output and standard error together) and leave no process running. It runs in a
 # process group of its own, which is killed whatever happens, so a pattern that fails, hangs or is
 # interrupted leaves no window or socket behind. With no patterns it passes, and builds nothing.
@@ -106,7 +106,8 @@ for job in $jobs; do
 	cp -R "$patterns/$job/." "$run/"
 	(
 		cd "$run" || exit 1
-		PATH=$tmp/bin:$PATH TMPDIR=$short/$job exec perl -e "$LEADER" sh pattern.sh
+		# No pattern reaches a judge's host, even where the caller's shell holds a key.
+		PATH=$tmp/bin:$PATH TMPDIR=$short/$job exec env -u PLACKET_JEV_KEY perl -e "$LEADER" sh pattern.sh
 	) >"$out" 2>&1 </dev/null &
 	group=$!
 	(exec perl -e "$LEADER" sh -c "sleep $LIMIT; kill -KILL -$group") >/dev/null 2>&1 &

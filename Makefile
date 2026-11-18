@@ -35,6 +35,9 @@ ci: build guard core-no-deps core-imports core-no-world core-no-panic specs-name
 # whatever -k says: a test that runs make ci inside make ci would run every step again. The checker
 # refuses a test or script that clears the marker.
 ci: export PLACKET_IN_CI = 1
+# No step of make ci reaches a judge's host: every step sees the judges' key empty, which every reader
+# of it takes for no key (docs/adr/0023-judges.md).
+ci: export PLACKET_JEV_KEY =
 ifneq ($(filter ci,$(or $(MAKECMDGOALS),ci)),)
 ifneq ($(PLACKET_IN_CI),)
 $(info ci-stays-fast: refused: make ci inside make ci)
