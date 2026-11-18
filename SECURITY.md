@@ -27,6 +27,14 @@ Include what you can: the version or commit, what you ran, what happened, what y
 - Bypassing the authentication of the local socket: a call that reaches the mediator without a valid signature from a member.
 - Exposing key files: a key written, logged or printed where another user or process can read it.
 - Denial of service through the parsers: input that makes a parser crash, hang or use memory far out of proportion to its size.
+- A judge's request whose content is more than the part's kind, its body and the instruction, or that carries anything beside them but the config's model and the key as its credential; or any content reaching a host the window did not print at start (see "What a judge sends").
+- The judges' key written to disk, the journal, `judged/` or any other file, or printed.
+
+## What a judge sends
+
+A `maybe` term may let a judge decide or advise where the terms would ask a person. In v0.1.0 the one judge provider is Jev, called with the user's own key. For each part a judge runs on, the window sends one HTTPS request to the host of the judge's config, carrying the part's kind, its body and the config's instruction, with the config's model, and the key as the request's credential. Nothing else of the part, its message, its envelope or the Accord goes, and a raw body is never sent. With no key, the judge sends nothing and says none. At start the window prints which kinds may go to which host.
+
+The judge key is the user's own credential. Placket reads it only from the environment variable `PLACKET_JEV_KEY`, once, when the window or the eval starts. It holds the key only in memory, and never writes it to disk, the journal, `judged/` or any other file. `docs/security/threat-model.md`, "The Jev data flow", says more.
 
 ## Out of scope
 
