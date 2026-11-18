@@ -1,6 +1,6 @@
 # The placket protocol, version 0.1
 
-This document is the normative text of the placket protocol. It says what a mediator does at a handoff between parties that do not fully trust each other: how an Accord is founded, how a part is given, judged, held, asked about, answered, released and fetched, how an Accord is closed, what every receipt states and who it says decided, and how a third party who holds only the Accord's id and its founding set checks that the receipts are valid and that every decision was one the Accord let its decider make. `README.md` beside it says how to read `spec/`; the schemas under `schema/` and the register, `frozen-formats.md`, hold the formats this text defines.
+This document is the normative text of the placket protocol. It says what a mediator does at a handoff between parties that do not fully trust each other: how an Accord is founded from terms each party keeps sealed from the others and a view each signs, how a part is given, judged, held, asked about, answered, released and fetched, how an Accord is closed, what every receipt states and who it says decided, and how a third party who holds only the Accord's id, its founding set and its acceptances checks that the receipts are valid and that every decision was one the Accord let its decider make. `README.md` beside it says how to read `spec/`; the schemas under `schema/` and the register, `frozen-formats.md`, hold the formats this text defines.
 
 ## How to read this document
 
@@ -234,7 +234,7 @@ Row 1 finds the strings of the input by scanning its quotes from the first byte,
 
 ## 2. Actor references and signing
 
-An actor is named by its Ed25519 public key. A declaration, a binding, an envelope and an answer call each carry a signature by the actor that stands behind it, and a receipt carries the mediator's. Signing has no codes of its own: an operation that checks a signature returns its own code when any row below fails, and the table is the same for each of them.
+An actor is named by its Ed25519 public key. A declaration, a binding, an envelope, an answer call and an acceptance each carry a signature by the actor that stands behind it, and a receipt carries the mediator's. Signing has no codes of its own: an operation that checks a signature returns its own code when any row below fails, and the table is the same for each of them.
 
 | # | Check | Reads | Code |
 |---|---|---|---|
@@ -243,7 +243,7 @@ An actor is named by its Ed25519 public key. A declaration, a binding, an envelo
 | 3 | Signature form | The object's `sig`: present, a string of 128 lowercase hex | The calling operation's signature code |
 | 4 | Equation | The signing bytes of signing-2, under the type URI the caller names, and the signature | The calling operation's signature code |
 
-The calling operation's signature codes are `declaration-signature` and `binding-signature` in founding (setup-contract-8), `envelope-signature` at the door (crossing-6) and `answer-call` for an answer (section 6, maybe-11). A receipt's signature is checked by the verifier's `signature` row (receipt-6).
+The calling operation's signature codes are `declaration-signature`, `binding-signature` and `acceptance-signature` in founding (setup-contract-8), `envelope-signature` at the door (crossing-6) and `answer-call` for an answer (section 6, maybe-11). A receipt's signature is checked by the verifier's `signature` row (receipt-6).
 
 ### signing-1 Actor references and keys that sign nothing
 
@@ -285,7 +285,7 @@ The signing bytes of an object under a type URI are the DSSE 1.0 pre-authenticat
 
 ### signing-4 Type URIs
 
-Placket signs objects of four kinds under four type URIs: `https://placket.tech/declaration/0.1`, `https://placket.tech/binding/0.1`, `https://placket.tech/envelope/0.1` and `https://placket.tech/answer/0.1`, the answer call's (maybe-11). Each ends in the protocol number setup-contract-4 names. A signature over any other payload, such as a receipt's statement or a message of a door, is a DSSE signature over that payload under its own payload type, and its payload type is never one of the four, so no payload signature can be taken for a placket object's signature, or the reverse. A receipt is signed so, under the payload type `application/vnd.in-toto+json` (receipt-1).
+Placket signs objects of five kinds under five type URIs: `https://placket.tech/declaration/0.1`, `https://placket.tech/binding/0.1`, `https://placket.tech/envelope/0.1`, `https://placket.tech/answer/0.1`, the answer call's (maybe-11), and `https://placket.tech/acceptance/0.1`, a member's acceptance of its view (setup-contract-15). Each ends in the protocol number setup-contract-4 names. A signature over any other payload, such as a receipt's statement or a message of a door, is a DSSE signature over that payload under its own payload type, and its payload type is never one of the five, so no payload signature can be taken for a placket object's signature, or the reverse. A receipt is signed so, under the payload type `application/vnd.in-toto+json` (receipt-1).
 
 #### Scenario: a placket URI as a payload type
 
@@ -299,18 +299,25 @@ Placket signs objects of four kinds under four type URIs: `https://placket.tech/
 - When it is verified under that type URI by its `from`, by another key, and under the envelope's type URI
 - Then only the first verifies
 
+#### Scenario: an acceptance signed and verified
+
+- Given a member's acceptance of its view, signed by that member under `https://placket.tech/acceptance/0.1`
+- When it is verified under that type URI by its `from`, by another key, and under the declaration's type URI
+- Then only the first verifies
+
 ## 3. Founding an Accord
 
-Founding reads a founding set and the time it is founded at, and either founds an Accord or refuses the set with one code. Its inputs are the set's bytes and the founding time; the set itself names the mediator. It opens with the canonical form and a whole-shape check. After them, each declaration is checked in actor-reference order (setup-contract-10), all its rows before the next declaration's, then the rows that look across declarations. The first failing row decides.
+Founding reads a founding set, the openings its founder holds, the members' acceptances and the time it is founded at, and either founds an Accord or refuses with one code. The set holds each declaration as its seal, not in the clear (setup-contract-12); the openings are what open the seals (setup-contract-13), and the acceptances are each member's signed consent to its view of the merged Accord (setup-contract-14, setup-contract-15). The set itself names the mediator. Founding opens with the canonical form and a whole-shape check. After them, each seal entry is checked in actor-reference order (setup-contract-10), all its rows before the next entry's, then the rows that look across declarations, then the acceptances: the list whole, and then each member's in actor-reference order, all its rows before the next member's. The first failing row decides. A founder that holds no opening, as any party and any verifier, runs every row but 4a, 5 to 8 and 21 (setup-contract-16).
 
 | # | Check | Reads | Code |
 |---|---|---|---|
 | 1 | Canonical form | The set's bytes (canonical-1) | `not-canonical` |
-| 2 | Shape | The whole set but what rows 4 to 8 read: the top level; `policy`, `mediator` and `card` in full; `declarations` and `bindings` as non-empty arrays of objects; each declaration's members, none but `actor`, `terms` and `sig`, and its `actor` present and a string; each binding in full, `until` by the timestamp rule included; the order of both lists (setup-contract-9, setup-contract-10) | `invalid-shape` |
+| 2 | Shape | The whole set but what row 4 reads: the top level; `policy`, `mediator` and `card` in full; `declarations` and `bindings` as non-empty arrays of objects; each seal entry's members, exactly `actor`, a string, and `seal`, a typed hash in the form `hash.json` reads (setup-contract-12); each binding in full, `until` by the timestamp rule included; the order of both lists (setup-contract-9, setup-contract-10) | `invalid-shape` |
 | 3 | One binding per actor | The bindings' `actor` members | `binding-duplicate` |
-| 4 | Actor | The declaration's `actor`, as an actor reference (signing-1) | `actor-reference` |
-| 5 | Declaration signature | The declaration's `sig`, and the declaration, under `https://placket.tech/declaration/0.1` by its `actor` (signing-2) | `declaration-signature` |
-| 6 | Terms | The declaration's `terms` and each term's members, a `resolve` on a term that is not a `maybe` and the form of every `resolve` and of its `judges` included, but not whether a `maybe` term has one (setup-contract-1) | `term-invalid` |
+| 4 | Actor | The seal entry's `actor`, as an actor reference (signing-1) | `actor-reference` |
+| 4a | Opening | The opening the founder holds for the entry: one is held (`opening-missing`); its bytes are accepted by the canonical form and hold exactly `declaration` and `salt`, the salt 32 bytes in lowercase hex, the declaration an object of no member but `actor`, `terms` and `sig`, its `actor` present and a string (`invalid-shape`); the declaration's `actor` is the entry's, and the salted digest of its canonical bytes under the salt is the seal (setup-contract-13) | `opening-missing`, `seal-mismatch` |
+| 5 | Declaration signature | The opened declaration's `sig`, and the declaration, under `https://placket.tech/declaration/0.1` by its `actor` (signing-2) | `declaration-signature` |
+| 6 | Terms | The opened declaration's `terms` and each term's members, a `resolve` on a term that is not a `maybe` and the form of every `resolve` and of its `judges` included, but not whether a `maybe` term has one (setup-contract-1) | `term-invalid` |
 | 7 | Maybe rule | Each term of stance `maybe`, for the presence of its `resolve` member | `maybe-without-resolve` |
 | 8 | Judges | Each judge a term's `resolve.judges` names, against the names of the card's `judges` | `judge-unknown` |
 | 9 | Binding present | A binding whose `actor` is the declaration's | `binding-missing` |
@@ -319,15 +326,19 @@ Founding reads a founding set and the time it is founded at, and either founds a
 | 12 | Binding roles | Each role of that binding's `roles`, against the `roles` of its principal's entry | `binding-role` |
 | 13 | Binding policy | That binding's `policy`, against the typed hash of the set's `policy` (canonical-3) | `binding-policy` |
 | 14 | Binding mediator | That binding's `mediator`, against the set's `mediator.actor` | `binding-mediator` |
-| 15 | Binding time | That binding's `until`, against the founding time | `binding-expired` |
+| 15 | Binding time | That binding's `until`, against the founding time: for the window, the time it holds the last acceptance; for a verifier, the first receipt's `at` (verify-1) | `binding-expired` |
 | 16 | Declaration present | Each binding's `actor`, for a declaration by that actor | `declaration-missing` |
 | 17 | Roles held | Each role of the policy's `roles`, for a declaring actor whose binding holds it | `role-missing` |
+| 18 | Acceptance present | First, once, the acceptance list whole: bytes the canonical form refuses are `not-canonical`; a list of objects each of exactly `accord`, `view`, `from` and `sig`, `accord` and `view` typed hashes and `from` a string, in strictly ascending actor-reference order of `from`, each `from` a member, or it is `invalid-shape`. Then, for each member, an acceptance whose `from` is the member (setup-contract-15) | `acceptance-missing` |
+| 19 | Acceptance signature | That acceptance's `sig`, and the acceptance, under `https://placket.tech/acceptance/0.1` by the member (signing-2) | `acceptance-signature` |
+| 20 | Acceptance Accord | That acceptance's `accord`, against the Accord id (setup-contract-5) | `acceptance-accord` |
+| 21 | Acceptance view | That acceptance's `view`, against the typed hash of the member's view built from the openings (setup-contract-14); run only by a founder that holds every opening | `acceptance-view` |
 
-When every row passes, the Accord is founded: its id is the typed hash of the set (setup-contract-5).
+When every row passes, the Accord is founded: its id is the typed hash of the set (setup-contract-5). A founder that ran every row with every opening checked the terms; one that held some or none says that the terms were not checked (setup-contract-16).
 
 ### setup-contract-1 Declarations
 
-A declaration is an actor's own terms, signed by that actor (`declaration.json`, `term.json`). Its `actor` is the actor's reference, its `terms` a non-empty list of terms, and its `sig` the actor's signature under `https://placket.tech/declaration/0.1`. A term has a `stance` (`need`, `want`, `maybe` or `no`), a `dir` (`give` or `get`), `with`, a non-empty list of distinct role selectors `role:<label>` naming roles the other side must hold, and `select`, an object whose one member `kind` is a non-empty list of distinct kinds. A label and a kind are lowercase letters and digits in words joined by single hyphens, at most 64 characters. A term of stance `maybe` has a `resolve` member: `to`, a non-empty list of distinct role selectors naming who answers, `timeout`, a whole number of seconds from 1 to 2^53 − 1, and optionally `judges`, the judges the term grants, in order: a non-empty list of objects each with exactly a judge's `name`, a label the card's `judges` names, and its `use`, `decide` or `advise`, no two of one name (composition-7). A judge the card does not name is `judge-unknown`. A term of any other stance has no `resolve`. A term holds no other member: a term with a member missing, of the wrong type, of the wrong form or not listed, such as `checks`, is `term-invalid`, and so is a `terms` member that is missing, empty or not a list. Every party of an Accord signs its own terms: founding refuses a declaration signed by any key but its actor's.
+A declaration is an actor's own terms, signed by that actor (`declaration.json`, `term.json`). Its `actor` is the actor's reference, its `terms` a non-empty list of terms, and its `sig` the actor's signature under `https://placket.tech/declaration/0.1`. A term has a `stance` (`need`, `want`, `maybe` or `no`), a `dir` (`give` or `get`), `with`, a non-empty list of distinct role selectors `role:<label>` naming roles the other side must hold, and `select`, an object whose one member `kind` is a non-empty list of distinct kinds. A label and a kind are lowercase letters and digits in words joined by single hyphens, at most 64 characters. A term of stance `maybe` has a `resolve` member: `to`, a non-empty list of distinct role selectors naming who answers, `timeout`, a whole number of seconds from 1 to 2^53 − 1, and optionally `judges`, the judges the term grants, in order: a non-empty list of objects each with exactly a judge's `name`, a label the card's `judges` names, and its `use`, `decide` or `advise`, no two of one name (composition-7). A judge the card does not name is `judge-unknown`. A term of any other stance has no `resolve`. A term holds no other member: a term with a member missing, of the wrong type, of the wrong form or not listed, such as `checks`, is `term-invalid`, and so is a `terms` member that is missing, empty or not a list. Every party of an Accord signs its own terms: founding refuses a declaration signed by any key but its actor's. A founding set holds a declaration only as its seal, and these rules read the declaration its opening holds (setup-contract-12, setup-contract-13).
 
 #### Scenario: a selector that is not a role
 
@@ -361,8 +372,8 @@ A declaration is an actor's own terms, signed by that actor (`declaration.json`,
 
 #### Scenario: a declaration edited after signing
 
-- Given a set whose declaration's terms were changed after it was signed
-- When it is founded
+- Given a set whose declaration's terms were changed after it was signed, and then sealed
+- When it is founded with its openings
 - Then it is refused with `declaration-signature`
 
 ### setup-contract-2 Bindings and roles
@@ -463,7 +474,7 @@ The card says what can change a verdict under the Accord (`card.json`). Its `spe
 
 ### setup-contract-5 The Accord id
 
-The Accord id is the typed hash of the founding set's canonical bytes; the card hash is the typed hash of the card's. The same set founds to the same id at any time, and any change to the set, a term or a role included, founds to another. Every role the policy's `roles` names must be held, through a binding, by an actor that has a declaration in the set, or the set is refused with `role-missing`. A role held but not in the policy's `roles` is allowed, when the binding's principal may grant it, and the policy's `roles` may be empty. A role in the policy's `roles` that no entry lists can never be held, so its set is refused with `role-missing`.
+The Accord id is the typed hash of the founding set's canonical bytes; the card hash is the typed hash of the card's. The same set founds to the same id at any time, and any change to the set, a term or a role included, founds to another: a term changes its declaration's seal (setup-contract-12), so the id commits every term though the set holds none in the clear. The Accord is founded only once every member has accepted its view (setup-contract-15). Every role the policy's `roles` names must be held, through a binding, by an actor that has a declaration in the set, or the set is refused with `role-missing`. A role held but not in the policy's `roles` is allowed, when the binding's principal may grant it, and the policy's `roles` may be empty. A role in the policy's `roles` that no entry lists can never be held, so its set is refused with `role-missing`.
 
 #### Scenario: the same set twice
 
@@ -485,7 +496,7 @@ The Accord id is the typed hash of the founding set's canonical bytes; the card 
 
 ### setup-contract-6 Membership
 
-The members of an Accord are the actors with a declaration in its founding set. The mediator's key is a member only when it has a declaration there. Every operation on an Accord that has a caller, a give, a fetch and an answer, authenticates its caller by key and refuses a caller that is not a member with `not-a-member`, before it reads any other input. A refused operation changes nothing.
+The members of an Accord are the actors with a declaration in its founding set, each held as its seal entry (setup-contract-12). The mediator's key is a member only when it has a declaration there. Every operation on an Accord that has a caller, a give, a fetch and an answer, authenticates its caller by key and refuses a caller that is not a member with `not-a-member`, before it reads any other input. A refused operation changes nothing.
 
 #### Scenario: a stranger
 
@@ -517,7 +528,7 @@ The set's `mediator` names who runs the Accord: `actor`, the mediator's referenc
 
 ### setup-contract-8 The refusal order
 
-Founding runs the rows of the table in order and returns the first that fails: the canonical form, the shape, one binding per actor; then for each declaration in actor-reference order its actor, its signature, its terms, its maybe rules, its judges, and its binding's presence, principal, signature, roles, policy, mediator and time; then a binding with no declaration; then a policy role nobody holds. A refused set founds nothing and yields no id.
+Founding runs the rows of the table in order and returns the first that fails: the canonical form, the shape, one binding per actor; then for each declaration in actor-reference order its actor, its opening, its signature, its terms, its maybe rules, its judges, and its binding's presence, principal, signature, roles, policy, mediator and time; then a binding with no declaration; then a policy role nobody holds; then the acceptance list whole, and for each member in actor-reference order its acceptance's presence, signature, Accord and view. A refused set founds nothing and yields no id.
 
 #### Scenario: two defects in one declaration
 
@@ -530,6 +541,18 @@ Founding runs the rows of the table in order and returns the first that fails: t
 - Given a set whose first declaration's binding has expired and whose second declaration has a malformed term
 - When it is founded
 - Then it is refused with `binding-expired`, since the first declaration's rows all run first
+
+#### Scenario: defects in two members' acceptances
+
+- Given a set that founds but for its acceptances: the first member's, in actor-reference order, names a view other than its own, and the second member's is signed by another key
+- When it is founded with every opening
+- Then it is refused with `acceptance-view`, since the first member's rows all run first
+
+#### Scenario: a policy role nobody holds and acceptances that are not canonical
+
+- Given a set whose policy names a role no binding gives, and acceptance bytes the canonical form refuses
+- When it is founded with every opening
+- Then it is refused with `role-missing`, since the list is read after row 17
 
 #### Scenario: a role its principal may not grant and another mediator
 
@@ -545,7 +568,7 @@ Founding runs the rows of the table in order and returns the first that fails: t
 
 ### setup-contract-9 The shape of a set
 
-A founding set is an object with exactly `policy`, `mediator`, `card`, `declarations` and `bindings` (`founding.json`). `policy` has exactly `roles`, a list of distinct labels, and `principals`, a non-empty list of entries, and may have `supersedes` (setup-contract-11). Each entry is an object with exactly `principal`, an actor reference, and `roles`, a non-empty list of distinct labels: the roles that principal may grant. No two entries name the same principal; two entries may list the same role. A binding's `policy` is a typed hash. `mediator` is as setup-contract-7 says and `card` as setup-contract-4 says. `declarations` and `bindings` are non-empty lists. Bytes the canonical form refuses are `not-canonical`, before the shape is read, and no id is computed for them. Every defect of shape is `invalid-shape`, except in the members a later row reads: a declaration's `actor` form, its `sig` and its `terms` belong to rows 4 to 8.
+A founding set is an object with exactly `policy`, `mediator`, `card`, `declarations`, a list of seal entries (setup-contract-12), and `bindings` (`founding.json`). `policy` has exactly `roles`, a list of distinct labels, and `principals`, a non-empty list of entries, and may have `supersedes` (setup-contract-11). Each entry is an object with exactly `principal`, an actor reference, and `roles`, a non-empty list of distinct labels: the roles that principal may grant. No two entries name the same principal; two entries may list the same role. A binding's `policy` is a typed hash. `mediator` is as setup-contract-7 says and `card` as setup-contract-4 says. `declarations` and `bindings` are non-empty lists. Bytes the canonical form refuses are `not-canonical`, before the shape is read, and no id is computed for them. Every defect of shape is `invalid-shape`, except in the members a later row reads: a seal entry's `actor` form belongs to row 4, and an opened declaration's `actor` form, its `sig` and its `terms` belong to rows 4a to 8.
 
 #### Scenario: a repeated member name
 
@@ -555,7 +578,7 @@ A founding set is an object with exactly `policy`, `mediator`, `card`, `declarat
 
 #### Scenario: an actor of the wrong type
 
-- Given a set whose declaration's `actor` is the number 7, and separately one whose `actor` is the string `alice`
+- Given a set whose seal entry's `actor` is the number 7, and separately one whose `actor` is the string `alice`
 - When each is founded
 - Then the first is refused with `invalid-shape`, since the order of the list reads `actor` as a string, and the second with `actor-reference`
 
@@ -567,8 +590,8 @@ A founding set is an object with exactly `policy`, `mediator`, `card`, `declarat
 
 #### Scenario: a term with a missing member
 
-- Given a set whose declaration has a term with no `dir`, correctly signed
-- When it is founded
+- Given a set whose opened declaration has a term with no `dir`, correctly signed
+- When it is founded with its openings
 - Then it is refused with `term-invalid`, not `invalid-shape`
 
 ### setup-contract-10 The order of the lists
@@ -602,6 +625,145 @@ A policy may say that its Accord supersedes an earlier one: `supersedes`, an obj
 - Given a set whose policy's `supersedes` has a `close` that is not a typed hash, the bindings signed for that policy
 - When it is founded
 - Then it is refused with `invalid-shape`
+
+### setup-contract-12 The seal
+
+A founding set holds no declaration in the clear. Each entry of its `declarations` is a seal entry: an object of exactly `actor`, the declaring actor's reference, and `seal`, `sha256:` followed by the 64 lowercase hex digits of the SHA-256 of a salt of exactly 32 bytes and then the declaration's canonical bytes, its `sig` included. That is crossing-3's salted digest, written in the form `hash.json` reads. The actor mints the salt. The policy, the mediator, the card and the bindings stay in the clear. The Accord id is the typed hash of the set, so it commits every term through its seal, and a declaration keeps its own signature, so an opened seal still proves the terms are its actor's. Every declaration of every Accord is sealed, an Accord of one party included.
+
+#### Scenario: a sealed set
+
+- Given the ask-and-log set, each declaration sealed, with every opening and every member's acceptance
+- When it is founded
+- Then the Accord founds, and its id is the typed hash of the sealed set
+
+#### Scenario: a seal entry of the wrong shape
+
+- Given a set whose seal entry also holds `terms`, and separately one whose seal is 64 hex digits with no `sha256:`
+- When each is founded
+- Then each is refused with `invalid-shape`
+
+### setup-contract-13 The opening
+
+The opening of a seal is an object of exactly `declaration`, the declaration as its actor signed it, and `salt`, its 32 bytes in lowercase hex (`opening.json`). Its actor keeps it in a file of its own, named for the 64 hex digits of its reference followed by `.opening.json` and readable by its owner alone, and hands it only to whoever runs the window, which needs every term to decide. Row 4a reads the opening the founder holds for an entry: none held is `opening-missing`; bytes the canonical form refuses, a member besides the two, a salt of another length or form, or a declaration that is not an object, holds a member but `actor`, `terms` and `sig`, or has an `actor` missing or not a string, are `invalid-shape`; a declaration whose `actor` is not the entry's, or whose salted digest under the salt is not the seal, is `seal-mismatch`. Rows 5 to 8 then read the opened declaration as setup-contract-1 says. An actor may hand over its own opening, as in a dispute, and anyone may then check it against the Accord id (verify-1).
+
+#### Scenario: an opening that does not open its seal
+
+- Given the ask-and-log set and its openings, where the proposer's opening holds its declaration with one byte changed, or another salt, or the applier's declaration
+- When each is founded
+- Then each is refused with `seal-mismatch`
+
+#### Scenario: no opening for a member
+
+- Given the ask-and-log set and every opening but the proposer's
+- When it is founded by a founder that holds the openings
+- Then it is refused with `opening-missing`
+
+#### Scenario: an opening of the wrong shape
+
+- Given openings with a member besides `declaration` and `salt`; with a salt of 31 bytes; whose declaration holds a member besides `actor`, `terms` and `sig`; whose declaration's `actor` is the number 7; and whose bytes repeat a member name
+- When each is founded
+- Then each is refused with `invalid-shape`
+
+#### Scenario: a maybe without its rule inside an opening
+
+- Given a sealed set whose proposer's opening opens its seal and holds a maybe term with no `resolve`
+- When it is founded
+- Then it is refused with `maybe-without-resolve`, since rows 5 to 8 read the opened declaration
+
+### setup-contract-14 The view
+
+Each member is shown its view of the merged Accord before it is founded (`view.json`): what will cross for it, built from its own terms only. A view has `accord`, the Accord id; `viewer`, the member's reference; `salt`, the member's own opening salt; `crossings`; and `answers`.
+
+- **Crossings.** For each term of the viewer, each kind its `select` names, and each member whose binding gives a role one of the term's `with` selectors names, the view has one row, each crossing once: `counterpart`, that member's reference, and `roles`, its roles as its binding gives them; `dir`, the term's direction from the viewer; `kind`; and `outcome`, composition's decision of that crossing, given by a member with no judgment (section 5). A pass is `crosses`. A block is `blocked`, with no reason: a row never says whether the other side refused or said nothing, and maybe rules that differ (composition-5) are `blocked`. An ask is `asked`, with the agreed rule's `to`, its role selectors in sorted order, its `timeout`, and `judges`, the judges both sides consented to (composition-7), left out when there are none. A kind only the other side names has no row.
+- **Answers.** Every crossing between two other members that composition asks about and whose agreed rule's `to` names a role of the viewer has one row under `answers`: its `asker`, `receiver`, `kind` and `timeout`, each crossing once.
+
+Crossings are sorted by counterpart in actor-reference order, then by `dir` and by `kind` in byte order; answers by asker and receiver in actor-reference order, then by `kind`. So the same openings give the same bytes. The salt keeps the view's typed hash, which every verifier holds in the acceptances, from being matched against views guessed from the founding set. A view holds no byte of another party's declaration, salt or opening, and no row for a kind its viewer's terms do not select. It still shows something of the other side: an `asked` row shows the agreed rule, which may be the other side's alone; a `crosses` row shows that the other side has a matching term; and an answerer's `answers` show the asker, receiver, kind and timeout of every crossing it answers, before and whether or not it is ever asked. A view is built only by a founder that holds every opening, since its outcomes read the counterparts' terms. It is hashed, never signed by the mediator: the member's acceptance is what binds it.
+
+#### Scenario: a kind only the other side names
+
+- Given A, which refuses to give secrets and drafts to B and gives it notes, and B, which gets notes and drafts and has no term for secrets
+- When the views are built for B and for A
+- Then B's view has no row for secrets, and its draft row is `blocked`; A's has both rows `blocked` beside notes that cross
+
+#### Scenario: blocked carries no reason
+
+- Given the same B, once where A refuses drafts and once where A says nothing of them
+- When B's views are built
+- Then B's draft rows are the same bytes
+
+#### Scenario: maybe rules that differ
+
+- Given A and B, both `maybe` on memos with one rule, and both `maybe` on plans with timeouts 60 and 120, answered by C
+- When the views of A, B and C are built
+- Then memos are `asked` with `to` and `timeout`, plans are `blocked`, and C answers the memos only
+
+#### Scenario: asked with the judges consented to
+
+- Given both sides `maybe` on reports with one rule, both listing `jev` to decide, and on reviews with one rule, only A listing `jev`
+- When A's view is built
+- Then reports are `asked` with `to`, `timeout` and `jev` to decide, and reviews `asked` with no judges
+
+#### Scenario: the same openings twice
+
+- Given one set and its openings
+- When the view of one member is built twice
+- Then the two views are the same bytes with the same typed hash
+
+#### Scenario: an answerer's view
+
+- Given A and C, each asking the other about contracts under a rule whose `to` names `approver`, which D holds, D a side of no crossing of contracts
+- When D's view and A's are built
+- Then D's `answers` list the A to C and C to A contracts with their kind and timeout, and no term of A's or C's; and A's view shows its contracts `asked` with `to` naming `approver`
+
+#### Scenario: a view needs every opening
+
+- Given a two-party set and one member's opening alone
+- When a view is built
+- Then it is refused with `opening-missing`
+
+### setup-contract-15 The acceptance and the founding record
+
+A member consents to the Accord by signing an acceptance of its view (`acceptance.json`): an object of exactly `accord`, the Accord id; `view`, the typed hash of the member's view (setup-contract-14); `from`, the member's reference; and `sig`, its signature under `https://placket.tech/acceptance/0.1` (signing-4). The founding record is the founding set and `acceptances.json`, the list of every member's acceptance in strictly ascending actor-reference order of `from`, kept beside the set. The Accord is founded only when every member has accepted, so consent is given to the outcome while the terms behind it stay sealed. Rows 18 to 21 read the list: whole first, then each member's acceptance, all its rows before the next member's. The same set and acceptances found the same Accord. For the window, the founding time is when it holds the last acceptance. There is no deadline and no decline: a member that does not consent does not accept, and a set never fully accepted leaves no record and no receipt.
+
+#### Scenario: an acceptance refused
+
+- Given the ask-and-log set and every opening, with acceptances where one member's is missing; one is signed by another key; one's `sig` is not 128 lowercase hex; one names another Accord; and one names a view other than its member's
+- When each is founded
+- Then they are refused with `acceptance-missing`, `acceptance-signature`, `acceptance-signature`, `acceptance-accord` and `acceptance-view`
+
+#### Scenario: an acceptance list of the wrong shape
+
+- Given acceptance lists out of `from` order; with one member's acceptance twice; with an acceptance from a key that is no member; with an acceptance holding a member besides the four; and with a `view` that is not a typed hash
+- When each is founded
+- Then each is refused with `invalid-shape`
+
+#### Scenario: acceptance bytes that are not canonical
+
+- Given acceptance bytes that repeat a member name, and separately no acceptance list at all
+- When each is founded
+- Then each is refused with `not-canonical`
+
+### setup-contract-16 Founding without the openings
+
+A founder that holds no opening, as every party but the window's operator, and every verifier, runs every row but 4a, 5 to 8 and 21: it checks the set's clear parts, the bindings and the acceptances' signatures and Accord, and says that the terms were not checked. A founder that holds some openings, as a verifier given a dispute's openings, runs rows 4a to 8 for the members they open, and row 21 only when it holds every member's. The window's operator holds every opening and runs every row.
+
+#### Scenario: no opening
+
+- Given the sealed ask-and-log set and its acceptances, and no opening
+- When it is founded
+- Then the Accord founds to the same id, and the result says the terms were not checked
+
+#### Scenario: an acceptance of another view, unopened
+
+- Given the same set with an acceptance whose `view` is not its member's, signed by it, and no opening
+- When it is founded
+- Then the Accord founds, the terms not checked, since row 21 is not run
+
+#### Scenario: the clear rows still run
+
+- Given, with no opening, a set whose binding expires at the founding time, and separately an acceptance signed by another key
+- When each is founded
+- Then they are refused with `binding-expired` and `acceptance-signature`
 
 ## 4. Giving and getting a part at the door
 
@@ -1307,7 +1469,7 @@ Every receipt carries an envelope in its predicate's `envelope`, as its signer's
 
 ## 8. Verifying receipts
 
-A verifier needs only the mediator's reference and a list of receipts in the order the mediator wrote them, such as its journal; or the Accord's id and its founding set, from which it takes the mediator's reference (verify-1). It checks the reference once, then each receipt in list order, every row of one receipt before the next receipt, and stops at the first failure, which it reports with its code and the receipt's index, counted from 0. An empty list verifies. A list that verifies yields its statements, and its close when it holds one. A close receipt (close-2) goes through rows 1 to 5, its statement read against the close's form at row 4 and its `mediator` at row 5, and through rows 8 and 9; it is in no chain and belongs to no question, so rows 6 and 7 do not read it.
+A verifier needs only the mediator's reference and a list of receipts in the order the mediator wrote them, such as its journal; or the Accord's id, its founding set and its acceptances, from which it takes the mediator's reference (verify-1). It checks the reference once, then each receipt in list order, every row of one receipt before the next receipt, and stops at the first failure, which it reports with its code and the receipt's index, counted from 0. An empty list verifies. A list that verifies yields its statements, and its close when it holds one. A close receipt (close-2) goes through rows 1 to 5, its statement read against the close's form at row 4 and its `mediator` at row 5, and through rows 8 and 9; it is in no chain and belongs to no question, so rows 6 and 7 do not read it.
 
 | # | Check | Reads | Code |
 |---|---|---|---|
@@ -1408,13 +1570,13 @@ A receipt can be decoded and shown without being verified: its statement read fr
 
 ### verify-1 What a verifier is given
 
-A verifier that checks conformance is given the Accord's id out of band, and nothing else: the founding set, the receipts, and optionally answer calls, a subset of the receipts rather than the whole list, and one delivery. It founds the set at the first receipt's time and takes the mediator's reference from the set whose typed hash is the Accord id, its `mediator.actor`; a set of another typed hash, one that does not found, or one whose mediator is not the reference the verifier was also given, is `founding`, and nothing else is checked. It checks the receipts' validity, section 8's first table, under that reference, and then their conformance, the table below. It never runs a judge again, never fetches anything, and never takes the mediator's reference from a receipt.
+A verifier that checks conformance is given the Accord's id out of band, and nothing else: the founding set and its acceptances, the receipts, and optionally the openings of some or every member, answer calls, a subset of the receipts rather than the whole list, and one delivery. It founds the set, with the openings it holds, at the first receipt's time (setup-contract-16), and takes the mediator's reference from the set whose typed hash is the Accord id, its `mediator.actor`; a set of another typed hash, one that does not found, or one whose mediator is not the reference the verifier was also given, is `founding`, and nothing else is checked. It checks the receipts' validity, section 8's first table, under that reference, and then their conformance, the table below. It never runs a judge again, never fetches anything, and never takes the mediator's reference from a receipt.
 
-Conformance runs only with a founding set whose typed hash is the Accord id, receipt by receipt in list order after validity passes, every row of one receipt before the next; the first failure decides, with its code and the receipt's index. Row 3 runs only when the card's kernel hash is one the verifier trusts to decide again, the module it runs itself; with any other, row 3 is skipped and rows 4 and 5 still run. Row 5 reads only a delivery and its receipt, and runs with or without a founding set.
+Conformance runs only with a founding set whose typed hash is the Accord id, receipt by receipt in list order after validity passes, every row of one receipt before the next; the first failure decides, with its code and the receipt's index. Row 3 runs only when the card's kernel hash is one the verifier trusts to decide again, the module it runs itself; with any other, row 3 is skipped and rows 4 and 5 still run. Row 3 also reads terms, so for each receipt it runs only when the verifier holds the opening of every member whose terms the decision reads: the receipt's `from` and `to`, and for a question's closing or release the question's asker and receiver; otherwise it is skipped for that receipt, and row 4 reads a decline's signer as a member, as when the module is not trusted. So a verifier with no opening checks what was signed: the receipts' validity, the founding set's clear parts and its acceptances, each receipt's Accord and parties, and each answer call against the bindings; and it says that the terms were not checked. With some openings it checks the decisions whose sides they open, and with every opening it checks every decision. Row 5 reads only a delivery and its receipt, and runs with or without a founding set.
 
 | # | Check | Reads | Code |
 |---|---|---|---|
-| 0 | Founding | The set: it founds at the first receipt's `at`, its typed hash is the Accord id, and the receipts are verified under its `mediator.actor` | `founding` |
+| 0 | Founding | The set: with its acceptances and the openings the verifier holds, it founds at the first receipt's `at` (setup-contract-16), its typed hash is the Accord id, and the receipts are verified under its `mediator.actor` | `founding` |
 | 1 | Accord | Each receipt's `accord` and `card`, a close's included, against the set's | `accord` |
 | 2 | Parties | Each receipt's `from` and `to`, members of the set, or a `from` that is the mediator where maybe-4, maybe-5 or close-1 let it be | `party` |
 | 3 | Decision | The receipt decided again, by composition, with the judgment its `by` and verdict claim (composition-7): it gives the receipt's verdict and reason, and a judge it names is one consented to with use `decide`. An accept's or a change's `from` is an answerer of the question's rule, and its `at` before the deadline; a decline or a cancel is from the first answerer, before the deadline; a timeout's `at` is the deadline; an undeliverable, and a closing with reason `closed`, is from the first answerer, or the mediator when there is none, before the deadline; and a release follows maybe-10 | `decision` |
@@ -1431,6 +1593,12 @@ A call is matched only in its canonical bytes, as it was signed: a copy re-encod
 - When it is verified with the Accord id and the set
 - Then it is valid and conforms; and with the id one hex digit off it is `founding`
 
+#### Scenario: a journal verified without the openings
+
+- Given the same journal, its sealed founding set and its acceptances, the decider's call, and no opening
+- When it is verified
+- Then it is valid and conforms with its terms not checked, and the accept and its release are witnessed by the decider's call
+
 ### verify-2 Conformance
 
 Every decision a receipt states must be one the Accord let its decider make, by the rows of verify-1's table: the receipt names the Accord, its parties are members, decided again it is what the terms, the judge it names or the answer it names make of it, and an answer it names is witnessed by a call that fits it, when one is given. A verifier reports the first receipt that does not conform, with its code and index.
@@ -1440,6 +1608,12 @@ Every decision a receipt states must be one the Accord let its decider make, by 
 - Given, each alone, a `pass` `ok` of a kind the terms block, an accept from a member who holds no answering role, a timeout whose `at` is not the deadline, and a judge's pass where both sides grant the judge only to advise
 - When each journal is checked for conformance
 - Then each fails `decision` at the receipt's index
+
+#### Scenario: decisions the sealed terms hide
+
+- Given a `pass` `ok` of a kind the terms block, from the proposer to the applier
+- When it is checked with no opening, with the proposer's alone, and with the proposer's and the applier's
+- Then it conforms with its terms not checked, conforms with its terms not checked, and fails `decision` at index 0
 
 #### Scenario: calls that do not fit
 
@@ -1531,7 +1705,7 @@ A conformance vector is a file that states inputs and the exact results an imple
 
 ### conformance-vectors-1 The header
 
-Every vector has `vector`, its path under `vectors/` without the `.json` extension, a group and a name each in lowercase words joined by hyphens; `spec`, `0.1`; `tests`, one line saying what the vector tests; and `operation`, what it runs: `canonical`, `sign`, `verify-signature`, `found`, `scenario`, `verify`, `reconcile` or `conform`.
+Every vector has `vector`, its path under `vectors/` without the `.json` extension, a group and a name each in lowercase words joined by hyphens; `spec`, `0.1`; `tests`, one line saying what the vector tests; and `operation`, what it runs: `canonical`, `sign`, `verify-signature`, `found`, `view`, `scenario`, `verify`, `reconcile` or `conform`.
 
 #### Scenario: a vector's path
 
@@ -1551,7 +1725,7 @@ A vector gives every input an implementation could choose or read from the world
 
 ### conformance-vectors-3 Scenario vectors
 
-A `scenario` vector founds one mediator from `founding` at `foundedAt`, run by the key named `mediator`, and applies its `steps` in order. A step is `give`, `get`, `resolve`, `tick` or `close`, and each names the time it runs at in `at`, but `get`, which reads no time. A `close` step closes the Accord (close-1) from the mediator's state as the steps before it left it, and expects `receipts`, the outcomes of the closings it writes, in order, and `close`, the close receipt and its id; a `get` after the close that finds nothing queued expects that `close` (close-3). A `give` step may carry `judge`, `{"name","verdict"}`, the judgment the decision is given: a judge's card name and `pass` or `block` (composition-7). After the last step the runner compares `final`: `receipts`, every receipt the mediator wrote, in order, each with its id; `delivered`, for each party by name, the deliveries still queued for it, in order, a party with none left out; and `pending`, the ids of the questions still open, in the order they were opened. Every outcome a step expects names a receipt's `verdict` and `reason`, paired as receipt-4 says: a `give` step's is a crossing receipt's, never with a reason only a resolution receipt has; a `tick` step's are timeouts, `block` with reason `timeout`; and a `resolve` step's is its resolution receipt's, with its `release` composition's. Every expected receipt names its decider (receipt-11). The runner also verifies `final.receipts` under the mediator's reference (section 8), and a list that fails fails the vector. Steps after a rejected step still run.
+A `scenario` vector founds one mediator from `founding`, with every member's opening under `openings` and the acceptances under `acceptances`, at `foundedAt`, run by the key named `mediator`, and applies its `steps` in order. A step is `give`, `get`, `resolve`, `tick` or `close`, and each names the time it runs at in `at`, but `get`, which reads no time. A `close` step closes the Accord (close-1) from the mediator's state as the steps before it left it, and expects `receipts`, the outcomes of the closings it writes, in order, and `close`, the close receipt and its id; a `get` after the close that finds nothing queued expects that `close` (close-3). A `give` step may carry `judge`, `{"name","verdict"}`, the judgment the decision is given: a judge's card name and `pass` or `block` (composition-7). After the last step the runner compares `final`: `receipts`, every receipt the mediator wrote, in order, each with its id; `delivered`, for each party by name, the deliveries still queued for it, in order, a party with none left out; and `pending`, the ids of the questions still open, in the order they were opened. Every outcome a step expects names a receipt's `verdict` and `reason`, paired as receipt-4 says: a `give` step's is a crossing receipt's, never with a reason only a resolution receipt has; a `tick` step's are timeouts, `block` with reason `timeout`; and a `resolve` step's is its resolution receipt's, with its `release` composition's. Every expected receipt names its decider (receipt-11). The runner also verifies `final.receipts` under the mediator's reference (section 8), and a list that fails fails the vector. Steps after a rejected step still run.
 
 #### Scenario: a give, then the end state
 
@@ -1561,13 +1735,25 @@ A `scenario` vector founds one mediator from `founding` at `foundedAt`, run by t
 
 ### conformance-vectors-4 Operations and groups
 
-Each operation names what the runner calls and what it compares. `canonical` puts `inputText` or `inputHex` in canonical form and expects `canonicalHex` and `hash`, or `code` and `offset`. `sign` signs `input`, an object, as the key named `signer` under `typeUri`, and expects `signingBytesHex` and `sig`. `verify-signature` verifies the object given as `input`, `inputText` or `inputHex` under `typeUri` by `reference`, and expects `valid`. `found` founds the set given as `input`, `inputText` or `inputHex` at `foundedAt`, as the mediator the set names, and expects `accord` and `card`, or `code`. `verify` verifies `receipts` under `reference`, and expects `verified`, the number of receipts, or `code`, with `index` for every code but `reference`. `reconcile` reconciles `receipts` with `kept` under `reference`, `accord` and `card`, `parties` giving each party's name its reference, and expects `removed`, `unrecorded` and `missing`, or `code` with the index, and for `kept` the party. `conform` checks `receipts` for conformance (verify-1) given `accord`, `founding` or `reference`, `answers`, each a call as `call` or `callHex`, `subset`, `delivery`, and `kernel`, the kernel hash the verifier trusts to decide again, and expects `code` with `index`, a code of section 8's first table or of verify-1's, or `conforms` with the counts `witnessed`, `unwitnessed` and `unmatched`, `module`, whether the card's kernel was the trusted one, and `body` when a delivery was given. A `verify` or `conform` vector expects the codes of rows 8 and 9 of section 8, `close` and `after-close`, as it does every code of that table. Vectors are filed in groups by the section of this text they test: `canonical`, `signatures`, `founding`, `crossing`, `receipts`, `questions`, `conform` and `close`.
+Each operation names what the runner calls and what it compares. `canonical` puts `inputText` or `inputHex` in canonical form and expects `canonicalHex` and `hash`, or `code` and `offset`. `sign` signs `input`, an object, as the key named `signer` under `typeUri`, and expects `signingBytesHex` and `sig`. `verify-signature` verifies the object given as `input`, `inputText` or `inputHex` under `typeUri` by `reference`, and expects `valid`. `found` founds the set given as `input`, `inputText` or `inputHex` at `foundedAt`, as the mediator the set names, with `openings`, every member's, or none when it has none, and the acceptance list as `acceptances`, `acceptancesText` or `acceptancesHex`, and expects `accord` and `card`, with `terms` `not-checked` when it holds no opening (setup-contract-16), or `code`. `view` runs founding's rows 1 to 17 over the set given as `found`'s is, at `foundedAt` with every member's opening under `openings`, and builds the view of the member `viewer` names (setup-contract-14), and expects `view` and `hash`, its typed hash, or `code`. `verify` verifies `receipts` under `reference`, and expects `verified`, the number of receipts, or `code`, with `index` for every code but `reference`. `reconcile` reconciles `receipts` with `kept` under `reference`, `accord` and `card`, `parties` giving each party's name its reference, and expects `removed`, `unrecorded` and `missing`, or `code` with the index, and for `kept` the party. `conform` checks `receipts` for conformance (verify-1) given `accord`, `founding` with `acceptances` or `reference`, `openings`, those the verifier holds, some or every member's, or none, `answers`, each a call as `call` or `callHex`, `subset`, `delivery`, and `kernel`, the kernel hash the verifier trusts to decide again, and expects `code` with `index`, a code of section 8's first table or of verify-1's, or `conforms` with the counts `witnessed`, `unwitnessed` and `unmatched`, `module`, whether the card's kernel was the trusted one, `terms` `not-checked` when a founding set was given and a seal was not opened, and `body` when a delivery was given. A `verify` or `conform` vector expects the codes of rows 8 and 9 of section 8, `close` and `after-close`, as it does every code of that table. Vectors are filed in groups by the section of this text they test: `canonical`, `signatures`, `founding`, `view`, `crossing`, `receipts`, `questions`, `conform` and `close`; `view` is filed under section 3.
 
 #### Scenario: a founding refusal
 
 - Given a `found` vector whose set has a binding by an unlisted principal
 - When the runner runs it
 - Then the implementation returns `binding-principal`, the vector's `expect.code`
+
+#### Scenario: a founding without the openings
+
+- Given a `found` vector of a sealed set with its acceptances and no `openings`
+- When the runner runs it
+- Then the implementation returns the Accord id and the card hash, and that the terms were not checked, `expect.terms`
+
+#### Scenario: a view
+
+- Given a `view` vector
+- When the runner runs it
+- Then the implementation's view is `expect.view`, byte for byte in its canonical form, and its typed hash `expect.hash`
 
 ### conformance-vectors-5 How results compare
 
@@ -1613,7 +1799,7 @@ A `tick` step passes time to its `at` and expects `receipts`, the outcomes of th
 
 ### conformance-vectors-8 Bytes under test
 
-An input whose exact bytes are under test is given in one of three forms: as a JSON value, whose bytes are its canonical form; as text, whose bytes are its UTF-8; or as hex. The top-level input is `input`, `inputText` or `inputHex`; a give's message is `message`, `messageText` or `messageHex`, and its envelope `envelope`, `envelopeText` or `envelopeHex`; a receipt in a list is an object holding `receipt`, `receiptText` or `receiptHex`. Exactly one form of each is given. A `canonical` vector takes only `inputText` or `inputHex`, and an `offset` is counted in those bytes. Empty hex is the empty input.
+An input whose exact bytes are under test is given in one of three forms: as a JSON value, whose bytes are its canonical form; as text, whose bytes are its UTF-8; or as hex. The top-level input is `input`, `inputText` or `inputHex`; the acceptance list is `acceptances`, `acceptancesText` or `acceptancesHex`; an opening under `openings` is an object holding its `actor` and `opening`, `openingText` or `openingHex`; a give's message is `message`, `messageText` or `messageHex`, and its envelope `envelope`, `envelopeText` or `envelopeHex`; a receipt in a list is an object holding `receipt`, `receiptText` or `receiptHex`. Exactly one form of each is given. A `canonical` vector takes only `inputText` or `inputHex`, and an `offset` is counted in those bytes. Empty hex is the empty input.
 
 #### Scenario: an input only hex can hold
 

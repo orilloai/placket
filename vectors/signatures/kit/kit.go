@@ -171,11 +171,13 @@ type Key struct {
 func NewKey(name string) Key {
 	seed := sha256.Sum256([]byte("placket vectors: key " + name))
 	p := ed25519.NewKeyFromSeed(seed[:])
-	return Key{
+	k := Key{
 		Name: name, Seed: hex.EncodeToString(seed[:]),
 		Ref:     "ed25519:" + hex.EncodeToString(p.Public().(ed25519.PublicKey)),
 		private: p,
 	}
+	keyByRef[k.Ref] = k
+	return k
 }
 
 // Sign signs message with the key, raw Ed25519 (RFC 8032).

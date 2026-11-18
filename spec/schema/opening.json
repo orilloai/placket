@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://placket.tech/schema/0.1/opening.json",
+  "title": "Opening",
+  "description": "What opens a seal (setup-contract-13): the declaration the seal was made from and the 32-byte salt its actor minted, in lowercase hex. It goes only to whoever runs the window, as a file named for its actor's reference, and a party may hand over its own to open its seal in a dispute. That the salted digest of the declaration's canonical bytes is the seal, and that the declaration's actor is the seal entry's, are rules of the text a schema cannot state.",
+  "type": "object",
+  "properties": {
+    "declaration": {
+      "$ref": "declaration.json"
+    },
+    "salt": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    }
+  },
+  "required": [
+    "declaration",
+    "salt"
+  ],
+  "additionalProperties": false
+}

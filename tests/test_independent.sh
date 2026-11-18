@@ -5,11 +5,17 @@
 #
 # - Typed hashes (canonical-3): canonical vectors' hashes, Accord ids, card hashes, the policy each
 #   binding of an accepted set names, message hashes in envelopes and receipts, and receipt ids.
+# - Seals (setup-contract-12): every opening an accepted found vector or a view vector gives, its
+#   salt and then its declaration's canonical bytes, against its actor's seal entry.
+# - View hashes (setup-contract-14): every view a view vector expects, against its expected typed
+#   hash, its Accord and its viewer's opening salt; and every acceptance of a found vector whose
+#   member has a view vector of the same Accord, against that view's hash.
 # - Salted digests (crossing-3): every accepted give's part and every delivery, against its receipt;
 #   and every accepted or changed answer of a resolve step, its salt and its text, against its
 #   resolution receipt and, for a change, its release.
 # - Actors' signatures (signing-2): sign vectors, re-signed with the signer's seed; valid
-#   verify-signature vectors; every declaration and binding of an accepted set; every accepted
+#   verify-signature vectors; every opened declaration, every binding and every acceptance of an
+#   accepted set, the acceptance's Accord its set's; every accepted
 #   give's envelope; every answer call of a resolve step and of a conform vector that conforms.
 # - Deciders (receipt-11): every receipt an answer step writes names the typed hash of its call,
 #   and an accept's or a change's call names its receipt's digest.
@@ -65,6 +71,7 @@ tbind=https://placket.tech/binding/0.1
 tenv=https://placket.tech/envelope/0.1
 tanswer=https://placket.tech/answer/0.1
 tclose=https://placket.tech/close/0.1
+tacc=https://placket.tech/acceptance/0.1
 
 hex2bin() { tr -d '\n' | tr 'abcdef' 'ABCDEF' | basenc --base16 -d; }
 bin2hex() { od -An -v -tx1 | tr -d ' \n'; }
@@ -241,6 +248,29 @@ bytesof() {
 	fi
 }
 
+# sealcheck <what> <group> <vector file> <set file>: each opening the vector gives as a JSON value
+# opens its actor's seal: the SHA-256 of its salt's bytes and its declaration's canonical bytes is
+# the seal, and the declaration's signature verifies under the declaration type URI by its actor.
+sealcheck() {
+	_no=$(jq '.openings // [] | length' "$3")
+	_i=0
+	while [ "$_i" -lt "$_no" ]; do
+		if jq -e ".openings[$_i] | has(\"opening\")" "$3" >/dev/null; then
+			_actor=$(jq -r ".openings[$_i].actor" "$3")
+			jq ".openings[$_i].opening" "$3" >"$tmp/opening"
+			if rebuilt "$1: opening $_i" '.declaration' "$tmp/opening" "$tmp/decl"; then
+				jq -r .salt "$tmp/opening" | hex2bin >"$tmp/sl"
+				cat "$tmp/decl" >>"$tmp/sl"
+				_seal=$(jq -r --arg a "$_actor" '[.declarations[] | select(.actor == $a) | .seal][0] // ""' "$4")
+				if [ "sha256:$(sha "$tmp/sl")" = "$_seal" ]; then counted "$2"; else bad "$1: opening $_i does not open its actor's seal"; fi
+				jq .declaration "$tmp/opening" >"$tmp/obj"
+				sigcheck "$1: opened declaration $_i" "$2" "$tmp/obj" "$tdecl" "$_actor"
+			fi
+		fi
+		_i=$((_i + 1))
+	done
+}
+
 # The groups the vectors' README lists.
 groups=$(awk -F'|' '/^## / { on = ($0 == "## Groups and the packages they test") }
 	on && NF >= 4 && $2 ~ /^ *`[a-z0-9-]+` *$/ { g = $2; gsub(/[ `]/, "", g); print g }' "$V/README.md")
@@ -248,6 +278,7 @@ groups=$(awk -F'|' '/^## / { on = ($0 == "## Groups and the packages they test")
 
 # Founding first: every scenario's set must be the set of an accepted found vector.
 : >"$tmp/accords"
+: >"$tmp/accepted"
 for f in "$V"/*/*.json; do
 	[ "${f##*/}" = coverage.json ] && continue
 	[ "$(jq -r .operation "$f")" = found ] || continue
@@ -261,11 +292,17 @@ for f in "$V"/*/*.json; do
 	if rebuilt "$n: the card" '.card' "$tmp/set" "$tmp/card"; then
 		if [ "sha256:$(sha "$tmp/card")" = "$(jq -r .expect.card "$f")" ]; then counted "$g"; else bad "$n: the card hash"; fi
 	fi
-	nd=$(jq '.declarations | length' "$tmp/set")
+	sealcheck "$n" "$g" "$f" "$tmp/set"
+	# Every acceptance is signed by its from and names this Accord (setup-contract-15); its view's hash
+	# is kept for the view vectors.
+	na=$(jq '.acceptances // [] | length' "$f")
 	i=0
-	while [ "$i" -lt "$nd" ]; do
-		jq ".declarations[$i]" "$tmp/set" >"$tmp/obj"
-		sigcheck "$n: declaration $i" "$g" "$tmp/obj" "$tdecl" "$(jq -r .actor "$tmp/obj")"
+	while [ "$i" -lt "$na" ]; do
+		jq ".acceptances[$i]" "$f" >"$tmp/obj"
+		sigcheck "$n: acceptance $i" "$g" "$tmp/obj" "$tacc" "$(jq -r .from "$tmp/obj")"
+		if [ "$(jq -r .accord "$tmp/obj")" = "$a" ]; then counted "$g"; else bad "$n: acceptance $i names another Accord"; fi
+		# Only a founder holding every opening checked the view (row 21).
+		if jq -e 'has("openings")' "$f" >/dev/null; then echo "$a $(jq -r '.from + " " + .view' "$tmp/obj")" >>"$tmp/accepted"; fi
 		i=$((i + 1))
 	done
 	# Every binding names the typed hash of the set's policy (setup-contract-2).
@@ -312,6 +349,24 @@ for f in "$V"/*/*.json; do
 		bytesof "$f" '.' input "$tmp/in"
 		jq . "$tmp/in" >"$tmp/obj" 2>/dev/null || { bad "$n: the input is not JSON"; continue; }
 		sigcheck "$n" "$g" "$tmp/obj" "$(jq -r .typeUri "$f")" "$(jq -r .reference "$f")"
+		;;
+	view)
+		# The view's typed hash, Accord and salt, the seals of the set's openings, and the acceptance of
+		# a found vector of the same Accord by the viewer.
+		jq -e '.expect | has("view")' "$f" >/dev/null || continue
+		jq -r .inputHex "$f" | hex2bin >"$tmp/set"
+		a=sha256:$(sha "$tmp/set")
+		sealcheck "$n" "$g" "$f" "$tmp/set"
+		rebuilt "$n: the view" '.expect.view' "$f" "$tmp/view" || continue
+		h=sha256:$(sha "$tmp/view")
+		if [ "$h" = "$(jq -r .expect.hash "$f")" ]; then counted "$g"; else bad "$n: the view's typed hash"; fi
+		if [ "$(jq -r .expect.view.accord "$f")" = "$a" ]; then counted "$g"; else bad "$n: the view names another Accord"; fi
+		viewer=$(jq -r .viewer "$f")
+		salt=$(jq -r --arg v "$viewer" '[.openings[] | select(.actor == $v) | .opening.salt][0] // ""' "$f")
+		if [ "$(jq -r .expect.view.salt "$f")" = "$salt" ]; then counted "$g"; else bad "$n: the view's salt is not its viewer's opening salt"; fi
+		if signed=$(awk -v a="$a" -v v="$viewer" '$1 == a && $2 == v && !ok { print $3; ok = 1 } END { exit !ok }' "$tmp/accepted"); then
+			if [ "$signed" = "$h" ]; then counted "$g"; else bad "$n: a found vector's acceptance by the viewer names another view"; fi
+		fi
 		;;
 	conform)
 		# Every receipt, under the founding set's mediator, and, where the receipts conform, every

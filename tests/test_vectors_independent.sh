@@ -25,12 +25,15 @@ bad() { say "FAIL: $*"; failed=1; }
 
 # The planted faults, one a line: the package, the file, the text and its replacement, separated by
 # tabs. Each is a change of logic that compiles and that some vector of every group testing the
-# package notices. A package may have more than one; the mediator has one in Give and one in Resolve.
+# package notices. A package may have more than one; the mediator has one in Give and one in Resolve,
+# and composition one in its decision and one in the view's rows.
 # The answer call's reader and the conformance check have one each.
 faults='canonical	core/canonical/canonical.go	return a[i] < b[i]	return a[i] > b[i]
 signing	core/signing/signing.go	b.WriteString("DSSEv1 ")	b.WriteString("DSSEv2 ")
 setup	core/setup/setup.go	return until <= at	return until < at
 composition	core/composition/composition.go	if sent == 0 || got == 0 {	if sent == 0 && got == 0 {
+composition	core/composition/view.go	if t.Dir == setup.DirGet {	if t.Dir == setup.DirGive {
+founding	core/founding/founding.go	row["outcome"] = Crosses	row["outcome"] = Blocked
 receipts	core/receipts/receipts.go	"application/vnd.in-toto+json"	"application/vnd.in-toto+jsom"
 mediator	core/mediator/mediator.go	next := link{seq: last.seq + 1}	next := link{seq: last.seq + 2}
 mediator	core/mediator/questions.go	receipts.Digest(r.Salt, []byte(r.Text)) != c.Digest	receipts.Digest([]byte(r.Text), r.Salt) != c.Digest

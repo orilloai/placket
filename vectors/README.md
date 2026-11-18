@@ -2,7 +2,7 @@
 
 A conformance vector states inputs and the exact results an implementation of the placket protocol must produce from them. Section 10 of `spec/protocol.md` defines what a vector is, and `spec/schema/vector.json` is its format. This directory holds the vectors, the generators that write them, the coverage list that says which requirement each one covers, and this file.
 
-The vectors cover every section of the protocol: the canonical form, signing, founding, the door and composition, questions with their answers, deadlines and release, receipts, verifying, conformance to the Accord, reconciling and closing an Accord. The coverage list leaves no requirement and no scenario open.
+The vectors cover every section of the protocol: the canonical form, signing, founding with its seals, openings, views and acceptances, the door and composition, questions with their answers, deadlines and release, receipts, verifying, conformance to the Accord, reconciling and closing an Accord. The coverage list leaves no requirement and no scenario open.
 
 ## Layout
 
@@ -10,7 +10,7 @@ The vectors cover every section of the protocol: the canonical form, signing, fo
 |---|---|
 | `<group>/<name>.json` | One vector. Its `vector` member is this path without `.json`. The group is the section of the protocol it tests. |
 | `<group>/*.go` | The group's generator: a Go command, run from this directory as `go run ./<group>`, that writes every vector of the group and removes any it no longer writes. |
-| `signatures/kit/` | What the generators share: canonical bytes of the values they build, keys, salts, hashes, signatures, receipts, founding sets, messages, envelopes and the vector files. It is written from the text with the Go standard library alone. |
+| `signatures/kit/` | What the generators share: canonical bytes of the values they build, keys, salts, hashes, signatures, receipts, founding sets and their seals, openings, views and acceptances, messages, envelopes and the vector files. It is written from the text with the Go standard library alone. |
 | `go.mod` | The generators' module, `github.com/orilloai/placket/vectors`. It requires nothing: no generator can reach the core. |
 | `coverage.json` | The coverage list. |
 | `README.md` | This file. |
@@ -25,7 +25,8 @@ A group's vectors test the core packages in its row. Its generator must not impo
 |---|---|---|
 | `canonical` | 1 | `canonical` |
 | `signatures` | 2 | `signing`, `receipts` |
-| `founding` | 3 | `setup` |
+| `founding` | 3 | `setup`, `founding`, `composition` |
+| `view` | 3 | `founding`, `composition` |
 | `crossing` | 4, 5 | `composition`, `mediator` |
 | `receipts` | 7, 8, 9 | `receipts`, `mediator` |
 | `questions` | 6 | `mediator`, `receipts`, `answer` |
@@ -42,13 +43,14 @@ A vector's expected result never comes from the code it tests (`vectors-independ
 - **Bytes, hashes and signatures are computed by the group's generator**, with the Go standard library and the kit. No generator imports any package of the core: the generators' module requires nothing, and a test of the kit (`TestGeneratorsImportNoCore`) reads the imports of every Go file here.
 - **Every input an implementation could choose is given** (conformance-vectors-2): keys as seeds, salts, message ids and times. A key's seed is the SHA-256 of `placket vectors: key ` and its name, and a salt's bytes come from the SHA-256 of a label, so every run writes the same bytes.
 - **Every accepted set and every accepted give is given as hex.** An accepted `found` vector gives its set as `inputHex`, its canonical bytes; every scenario's `founding` is, in canonical form, the set of an accepted `found` vector; and an accepted give gives its message as `messageHex` and its envelope as `envelopeHex`.
-- **Every hash and signature is checked independently** by `tests/test_independent.sh`, which `make ci` runs. With OpenSSL 3.0 or later and shell tools, and no placket code, it re-computes the typed hashes, the salted digests, the actors' signatures and the receipts' signatures the vectors carry, prints the `openssl` version and a count per group, and fails on any one that does not hold. Where a preimage is canonical bytes the vector does not hold as hex, it rebuilds them with `jq` and proves them canonical, or fails.
+- **Every set is sealed, and every founder that founds one is given what it needs.** Each actor's seal salt comes from a label naming its reference. An accepted `found` vector, a `view` vector, a scenario and a `conform` vector give every opening, each a JSON value under its actor, but where the vector tests founding without them or with some; and every vector that founds gives the acceptances as a JSON value. The kit builds each member's view from the text alone, to sign its acceptance; the `view` group's generator states each view's rows and outcomes by hand, and refuses to write a vector whose view the kit builds otherwise.
+- **Every hash and signature is checked independently** by `tests/test_independent.sh`, which `make ci` runs. With OpenSSL 3.0 or later and shell tools, and no placket code, it re-computes the typed hashes, the salted digests, the seals, the actors' signatures, the acceptances' included, and the receipts' signatures the vectors carry, prints the `openssl` version and a count per group, and fails on any one that does not hold. Where a preimage is canonical bytes the vector does not hold as hex, it rebuilds them with `jq` and proves them canonical, or fails.
 - **A planted fault changes no byte.** `tests/test_vectors_independent.sh`, which `make ci` runs, plants each of its faults in turn in each package a group tests, runs the group's generator in a copy of the tree, and checks that no vector byte changed and that the runner fails on the group.
 - **A landed vector is never edited to match the code.** It changes only with a format note (below), when the format itself changes.
 
 The independent check needs these tools: `openssl` (OpenSSL 3.0 or later; LibreSSL is refused), `jq`, `basenc` and `base64` (GNU coreutils), `od`, `sed`, `grep`, `awk`, `tr` and `wc`.
 
-To write the vectors again after changing a generator: `cd vectors && for g in canonical signatures founding crossing receipts questions conform close; do go run ./$g; done`. The planted-fault test fails when the committed vectors are not what the generators write.
+To write the vectors again after changing a generator: `cd vectors && for g in canonical signatures founding view crossing receipts questions conform close; do go run ./$g; done`. The planted-fault test fails when the committed vectors are not what the generators write.
 
 ## How the runner judges a vector
 
@@ -109,10 +111,12 @@ A change to a frozen format, the vector format included, carries a note here and
 
 - 0.1, before release: the close (`spec/frozen-formats.md`, decision record 0022). A new group, `close`, tests a close in `mediator` and `receipts`: scenario vectors with a `close` step, which expects the closings it writes and the close receipt, and `verify` vectors that expect `after-close`, `close` or `verified`. A scenario's `get` step expects `close` once a closed Accord's queue is empty, and a `give` or `resolve` step the rejection `closed`. `conform/close-*.json` add the close's closings to the `conform` group. No landed vector changes.
 
+- 0.1, before release: sealed terms (`spec/frozen-formats.md`, decision record 0025). Every founding set holds its declarations as seal entries, so every Accord id changed, and with it every scenario vector's receipts, ids and hashes; every group but `canonical` was written again. Every vector that founds gives its openings and its acceptances, and the kit gains the seal, the opening, an independent view builder and the acceptance. `found` vectors may expect `terms` `not-checked`, and `conform` vectors' `conforms` may too. A new group, `view`, holds `view` vectors, filed under section 3. Added: the seal, opening and acceptance vectors of `founding` (row 4a and rows 18 to 21, and founding without the openings), the acceptance vectors of `signatures`, and the `conform` vectors of a verifier with no opening or some. No code, verdict, reason or step of an existing vector changed.
+
 The vector format is at version 0.1 as written. The coverage list is this directory's own record, not a frozen format; its `tests` and `rest` members were added with the first vectors.
 
 ## Known limits
 
 - `vectors-independent` reads import paths as written. A generator that reaches a tested package through another package it may import is not seen; the generators' module, which requires nothing, the kit's import test and the planted-fault run cover that.
-- The planted-fault run plants the faults listed in `tests/test_vectors_independent.sh`, at least one per package a group tests and two in the mediator, one in a give and one in an answer, written against the package's code as it is. A fault whose text the code no longer holds fails the run rather than passing, and is rewritten with the code.
+- The planted-fault run plants the faults listed in `tests/test_vectors_independent.sh`, at least one per package a group tests, two in the mediator, one in a give and one in an answer, and one in composition's view rows, written against the package's code as it is. A fault whose text the code no longer holds fails the run rather than passing, and is rewritten with the code.
 - The independent check proves a rebuilt preimage canonical only when it is printable ASCII with no escape. Every preimage the vectors rebuild is; one that is not fails the check and must be given as hex.

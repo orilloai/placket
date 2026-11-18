@@ -1,0 +1,24 @@
+{
+  "declaration": {
+    "actor": "ed25519:375dea8c4519dbae84fc9eb513e97eb4b693968ef37d52ac10da7b79250c6a22",
+    "sig": "55642d296e6f6b5086f3157132eb5fe5b36001b7141b8812f41a8b9ecd0bfa031e8c34dc7bb5a88ff54a11cc392f08a3c2260d83d9e9911e7166f667cf83bb06",
+    "terms": [
+      {
+        "dir": "give",
+        "select": {
+          "kind": [
+            "answer",
+            "changed-version"
+          ]
+        },
+        "stance": "want",
+        "with": [
+          "role:proposer",
+          "role:applier"
+        ]
+      }
+    ]
+  },
+  "note": "mine",
+  "salt": "672f3e62cbb05c6f8c3c128689ae81ad1518b501784f3b681a8a326c93f0f420"
+}

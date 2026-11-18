@@ -1,0 +1,39 @@
+{
+  "accord": "sha256:adcab2d19c2ce2a7d3616d06cd3c21d2fe0111d3ccc9a32dcee7743d1c000ea3",
+  "answers": [],
+  "crossings": [
+    {
+      "counterpart": "ed25519:a80586279ba17c5360b029018bf025be0169fdb02087e77301774c99eed92117",
+      "dir": "give",
+      "judges": [
+        {
+          "name": "jev",
+          "use": "decide"
+        }
+      ],
+      "kind": "report",
+      "outcome": "asked",
+      "roles": [
+        "b"
+      ],
+      "timeout": 3600,
+      "to": [
+        "role:c"
+      ]
+    },
+    {
+      "counterpart": "ed25519:a80586279ba17c5360b029018bf025be0169fdb02087e77301774c99eed92117",
+      "dir": "give",
+      "kind": "review",
+      "outcome": "asked",
+      "roles": [
+        "b"
+      ],
+      "timeout": 3600,
+      "to": [
+        "role:c"
+      ]
+    }
+  ],
+  "viewer": "ed25519:7cf35b36b9d57c62b9f3d5be2eb4d39147afa1b7625cd0032443523254df3bea"
+}

@@ -23,6 +23,11 @@ setup-contract-8
 setup-contract-9
 setup-contract-10
 setup-contract-11
+setup-contract-12
+setup-contract-13
+setup-contract-14
+setup-contract-15
+setup-contract-16
 crossing-1
 crossing-2
 crossing-3

@@ -3,11 +3,11 @@
     "valid": false
   },
   "input": {
-    "accord": "sha256:04f71f9b99b729d07bc824bcae742abc9f51f31d2b9d59e968a5c169e15b9303",
+    "accord": "sha256:924dff5065970a8e9173b639f9256915dc1df529fe352b4a485c8021fc4653d3",
     "action": "declined",
     "from": "ed25519:375dea8c4519dbae84fc9eb513e97eb4b693968ef37d52ac10da7b79250c6a22",
     "question": "sha256:713cb8a02f99b328f5e1f5543bfd4c461c55165e469e187413f20157e7c0b54f",
-    "sig": "29bd5d896ad019a15d62dc9d2ca7a43412ef1667281a07855b6f0a666065d04dbb4cdd4ef89a70b9ef80bf0f8e73577941b4b4b5a387ae3fcf2c53253595fe00"
+    "sig": "e6131cd1c1bec9de67401b1990a6824e4b3e3b8b3002f0746c60f16c90d6e8d3545ed5da69a45808cc8bb7621cdf27ac499f11b0c70abe3e044c5dff7ab63605"
   },
   "operation": "verify-signature",
   "reference": "ed25519:7cf35b36b9d57c62b9f3d5be2eb4d39147afa1b7625cd0032443523254df3bea",

@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://placket.tech/schema/0.1/acceptance.json",
+  "title": "Acceptance",
+  "description": "A member's consent to its view of the merged Accord, signed by that member under https://placket.tech/acceptance/0.1 (setup-contract-15, signing-2, signing-4): the Accord id, the typed hash of the member's view, and the member. acceptances.json is the list of every member's acceptance in strict ascending order of from, by actor reference, which is a rule of the text a schema cannot state, and so is that each from is a member.",
+  "type": "object",
+  "properties": {
+    "accord": {
+      "$ref": "hash.json"
+    },
+    "view": {
+      "$ref": "hash.json"
+    },
+    "from": {
+      "$ref": "reference.json"
+    },
+    "sig": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{128}$"
+    }
+  },
+  "required": [
+    "accord",
+    "view",
+    "from",
+    "sig"
+  ],
+  "additionalProperties": false
+}
