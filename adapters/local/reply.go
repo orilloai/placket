@@ -3,6 +3,7 @@ package local
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -33,6 +34,8 @@ const (
 	// CodeSocketPath: the socket path is longer than MaxSocketPath, so it can be neither bound nor
 	// connected to.
 	CodeSocketPath Code = "socket-path"
+	// CodeCursor: the window could not draw the random value of its cursors; it started nothing.
+	CodeCursor Code = "cursor"
 	// CodeJudge: the window's judge configs are not the ones its card lists, at their hashes and this
 	// adapter's version; it started nothing (docs/adr/0023-judges.md).
 	CodeJudge Code = "judge"
@@ -100,6 +103,12 @@ type Reply struct {
 	// Close is the close receipt a get on a closed Accord returns once the caller's queue is empty
 	// (close-3, docs/adr/0022-the-close.md).
 	Close []byte
+	// Cursor is the opaque value every questions reply carries: passed back as a questions call's
+	// after, it asks only for the questions opened after the last one this reply carries.
+	Cursor string
+	// Queued is the reply to a get that waited: a delivery is queued for the caller, and an ordinary
+	// get takes it. A get that waits never takes one itself.
+	Queued bool
 }
 
 // Format prints the Reply as a fixed text, whatever the verb: it may hold a body or a salt
@@ -135,6 +144,8 @@ type wireReply struct {
 	Close     json.RawMessage `json:"close,omitempty"`
 	Questions *[]wireAsked    `json:"questions,omitempty"`
 	More      *bool           `json:"more,omitempty"`
+	Cursor    *string         `json:"cursor,omitempty"`
+	Queued    *bool           `json:"queued,omitempty"`
 	Rejection *string         `json:"rejection,omitempty"`
 	Error     *string         `json:"error,omitempty"`
 	Door      *string         `json:"door,omitempty"`
@@ -217,6 +228,23 @@ func label(s string) bool {
 	return true
 }
 
+// cursorForm reports whether s has a cursor's form, as a window mints one: 1 to MaxCursor lowercase
+// letters, digits, hyphens and dots. A reply's cursor is passed back as it came, and may be printed.
+func cursorForm(s string) bool {
+	if s == "" || len(s) > MaxCursor {
+		return false
+	}
+	for i := 0; i < len(s); i++ {
+		if c := s[i]; (c < 'a' || c > 'z') && (c < '0' || c > '9') && c != '-' && c != '.' {
+			return false
+		}
+	}
+	return true
+}
+
+// MaxCursor is the most bytes of a cursor a client reads.
+const MaxCursor = 128
+
 // typedHash reports whether s has a typed hash's form: the prefix and 64 lowercase hex digits.
 func typedHash(s string) bool {
 	h, ok := strings.CutPrefix(s, canonical.HashPrefix)
@@ -276,7 +304,8 @@ func asked(q wireAsked) (Asked, bool) {
 // of its receipt, which must decode (receipts.Decode, which verifies nothing); a close receipt must
 // decode as one (receipts.DecodeClose, which verifies nothing either); an open question's
 // id is a typed hash, its asker an actor reference, its kind a label, its form text, raw or data with
-// that body, and its receipt and salt of their forms.
+// that body, and its receipt and salt of their forms; a cursor, of the form cursorForm reads, comes
+// only in a questions reply; and a queued reply is {"ok":true,"queued":true} alone.
 func ParseReply(b []byte) (Reply, bool) {
 	if _, err := canonical.Form(b); err != nil {
 		return Reply{}, false
@@ -326,11 +355,23 @@ func ParseReply(b []byte) (Reply, bool) {
 	if w.More != nil && (!*w.More || w.Questions == nil) {
 		return Reply{}, false
 	}
+	if w.Cursor != nil && (w.Questions == nil || !cursorForm(*w.Cursor)) {
+		return Reply{}, false
+	}
+	if w.Queued != nil {
+		if !*w.Queued || set != 0 || r.Outcome != nil || len(w.Delivery) > 0 || len(w.Close) > 0 || w.Questions != nil {
+			return Reply{}, false
+		}
+		r.Queued = true
+	}
 	if w.Questions != nil {
 		if r.Outcome != nil || r.Delivery != nil {
 			return Reply{}, false
 		}
 		r.IsQuestions, r.More = true, w.More != nil
+		if w.Cursor != nil {
+			r.Cursor = *w.Cursor
+		}
 		r.Questions = []Asked{}
 		for _, q := range *w.Questions {
 			a, ok := asked(q)
@@ -356,12 +397,23 @@ type Client struct {
 	// Now is the caller's clock, and Rand the source of nonces.
 	Now  func() time.Time
 	Rand io.Reader
-	// Timeout bounds one call, connect to reply; zero is a minute.
+	// Timeout bounds one call, connect to reply; zero is the larger of a minute and the call's wait
+	// plus WaitMargin.
 	Timeout time.Duration
 }
 
+// WaitMargin is how much longer than its wait a client's call may take, when its Timeout is zero:
+// the door replies by the end of the wait, and a give's judges may take as long as judge.Budget.
+const WaitMargin = 15 * time.Second
+
 // Call signs a call of op with args and sends it.
 func (c *Client) Call(op string, args map[string]any) (Reply, error) {
+	return c.CallContext(context.Background(), op, args)
+}
+
+// CallContext signs a call of op with args and sends it, as Call does. When ctx ends before the
+// reply is read, the connection is closed, and the call is CodeSocket.
+func (c *Client) CallContext(ctx context.Context, op string, args map[string]any) (Reply, error) {
 	nonce := make([]byte, 16)
 	if _, err := io.ReadFull(c.Rand, nonce); err != nil {
 		return Reply{}, &Error{Code: CodeSocket}
@@ -370,7 +422,18 @@ func (c *Client) Call(op string, args map[string]any) (Reply, error) {
 	if err != nil {
 		return Reply{}, &Error{Code: CodeReply}
 	}
-	return c.Send(line)
+	return c.send(ctx, line, argsWait(args))
+}
+
+// argsWait is the wait a call's args ask for, in whole seconds, or 0.
+func argsWait(args map[string]any) int {
+	switch w := args["wait"].(type) {
+	case int:
+		return w
+	case int64:
+		return int(w)
+	}
+	return 0
 }
 
 // Send sends the bytes of one call, as given, and reads the reply. A socket path too long is
@@ -378,9 +441,18 @@ func (c *Client) Call(op string, args map[string]any) (Reply, error) {
 // longer than MaxReply is CodeReply, read no further, and so is a reply whose outcome or release has
 // a receipt under another Accord than the client's, or whose close closes another Accord.
 func (c *Client) Send(line []byte) (Reply, error) {
+	return c.send(context.Background(), line, 0)
+}
+
+// send is Send, with ctx, which closes the connection when it ends, and the call's wait, which
+// lengthens a zero Timeout.
+func (c *Client) send(ctx context.Context, line []byte, wait int) (Reply, error) {
 	timeout := c.Timeout
 	if timeout == 0 {
-		timeout = time.Minute
+		timeout = max(time.Minute, time.Duration(wait)*time.Second+WaitMargin)
+	}
+	if err := ctx.Err(); err != nil {
+		return Reply{}, &Error{Code: CodeSocket}
 	}
 	if err := CheckSocket(c.Socket); err != nil {
 		return Reply{}, err
@@ -397,6 +469,8 @@ func (c *Client) Send(line []byte) (Reply, error) {
 		return Reply{}, &Error{Code: CodeSocket}
 	}
 	defer conn.Close()
+	stop := context.AfterFunc(ctx, func() { _ = conn.Close() })
+	defer stop()
 	_ = conn.SetDeadline(time.Now().Add(timeout))
 	if _, err := conn.Write(append(append([]byte(nil), line...), '\n')); err != nil {
 		return Reply{}, &Error{Code: CodeSocket}

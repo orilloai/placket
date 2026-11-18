@@ -70,6 +70,12 @@ type Call struct {
 	Message, Envelope []byte
 	// For result, the question's id.
 	Question string
+	// For questions, get and result: how many whole seconds the caller lets the door hold the call
+	// until it has something to return, 0 when the call does not wait (at most MaxWait).
+	Wait int
+	// For questions: the cursor of an earlier questions reply, and whether the call carries one.
+	After    string
+	HasAfter bool
 	// Action is never set: the action of an answer is inside its signed call.
 	//
 	// Deprecated: read the action from AnswerCall with answer.Read
@@ -123,9 +129,31 @@ type resolveArgs struct {
 
 type resultArgs struct {
 	Question *string `json:"question"`
+	Wait     *int64  `json:"wait"`
 }
 
-type noArgs struct{}
+type getArgs struct {
+	Wait *int64 `json:"wait"`
+}
+
+type questionsArgs struct {
+	After *string `json:"after"`
+	Wait  *int64  `json:"wait"`
+}
+
+// MaxWait is the most whole seconds a call may ask the door to hold it.
+const MaxWait = 60
+
+// wait reads a call's wait: absent is 0, and anything but a whole number from 0 to MaxWait is not one.
+func wait(w *int64) (int, bool) {
+	if w == nil {
+		return 0, true
+	}
+	if *w < 0 || *w > MaxWait {
+		return 0, false
+	}
+	return int(*w), true
+}
 
 var b64 = base64.StdEncoding.Strict()
 
@@ -160,6 +188,7 @@ func ParseCall(line []byte) (Call, DoorCode) {
 		return Call{}, BadCall
 	}
 	c := Call{Op: *m.Op, Caller: *m.Caller, Accord: *m.Accord, At: *m.At, Nonce: *m.Nonce, Bytes: cb, Sig: *w.Sig}
+	ok := true
 	switch c.Op {
 	case OpGive:
 		var a giveArgs
@@ -194,9 +223,27 @@ func ParseCall(line []byte) (Call, DoorCode) {
 			return Call{}, BadCall
 		}
 		c.Question = *a.Question
-	case OpGet, OpQuestions:
-		if !strict.Decode(m.Args, &noArgs{}) {
+		if c.Wait, ok = wait(a.Wait); !ok {
 			return Call{}, BadCall
+		}
+	case OpGet:
+		var a getArgs
+		if !strict.Decode(m.Args, &a) {
+			return Call{}, BadCall
+		}
+		if c.Wait, ok = wait(a.Wait); !ok {
+			return Call{}, BadCall
+		}
+	case OpQuestions:
+		var a questionsArgs
+		if !strict.Decode(m.Args, &a) {
+			return Call{}, BadCall
+		}
+		if c.Wait, ok = wait(a.Wait); !ok {
+			return Call{}, BadCall
+		}
+		if a.After != nil {
+			c.After, c.HasAfter = *a.After, true
 		}
 	default:
 		return Call{}, BadCall

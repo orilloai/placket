@@ -122,7 +122,7 @@ func TestAQuestionsReplyLeavesOutWhatItsSizeCannotHold(t *testing.T) {
 			Receipt: json.RawMessage(`{}`), Salt: str(strings.Repeat("00", 32))}
 	}
 	var ev Event
-	b := questionsReply(list, &ev)
+	b, _ := (&window{epoch: strings.Repeat("0", 32)}).questionsReply(list, make([]int, len(list)), 0, &ev)
 	if len(b) > MaxReply || ev.Door != "" {
 		t.Fatalf("a reply of %d bytes, door %q", len(b), ev.Door)
 	}
@@ -234,7 +234,7 @@ func TestAQuestionsReplyCountsTheCommas(t *testing.T) {
 		t.Fatalf("the fourth question takes %d bytes, not %d", encodedLen(list[3]), room)
 	}
 	var ev Event
-	b := questionsReply(list, &ev)
+	b, _ := (&window{epoch: strings.Repeat("0", 32)}).questionsReply(list, make([]int, len(list)), 0, &ev)
 	if len(b) > MaxReply || ev.Door != "" {
 		t.Fatalf("a reply of %d bytes, door %q", len(b), ev.Door)
 	}

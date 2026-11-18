@@ -193,7 +193,7 @@ func TestLocalErrorsQuoteNothing(t *testing.T) {
 
 // TestAQuestionsReplyFitsMaxReply asks about six text parts of 700 KiB, more than MaxReply holds:
 // the answerer's questions call still reads, shows the oldest five in full, each with its receipt and
-// salt, and says more, leaving the sixth out until an earlier question closes.
+// salt, and says more, leaving the sixth out; after the reply's cursor, the sixth comes (questions under more).
 func TestAQuestionsReplyFitsMaxReply(t *testing.T) {
 	t.Parallel()
 	w := newWorld(t)
@@ -220,6 +220,11 @@ func TestAQuestionsReplyFitsMaxReply(t *testing.T) {
 			len(q.Salt) != 32 || len(q.Receipt) == 0 {
 			t.Fatalf("question %d: id %s, form %s, not shown in full", i, q.ID, q.Form)
 		}
+	}
+	// After the cursor of the reply cut short, the one it left out comes, with no more.
+	rest, err := w.client(t, "decider").Call(local.OpQuestions, map[string]any{"after": rep.Cursor, "wait": 5})
+	if err != nil || len(rest.Questions) != 1 || rest.Questions[0].ID != ids[parts-1] || rest.More {
+		t.Fatalf("after the cursor: %v, %d questions, more %v", err, len(rest.Questions), rest.More)
 	}
 }
 
