@@ -321,8 +321,9 @@ type session struct {
 	key    signing.Key
 	client *local.Client
 	dir    *state.Dir
-	// closed is the id of the close receipt a fetch was handed, once the Accord is closed (close-3).
-	closed string
+	// handed is the close receipt a fetch was handed in place of a delivery, once the Accord is
+	// closed and the queue is empty (close-3). Only get keeps it.
+	handed []byte
 }
 
 // socketFlags adds the flags every socket command takes.

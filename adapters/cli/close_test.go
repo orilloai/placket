@@ -4,7 +4,9 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"slices"
@@ -293,6 +295,10 @@ func TestClosedQuestionsAndResult(t *testing.T) {
 	a.start(t)
 	q := a.openOne(t, "Rename total.")
 	must(t, a.as("decider", "answer", "--question", q)...)
+	q2 := a.openOne(t, "Rename count.")
+	must(t, a.as("decider", "answer", "--question", q2)...)
+	must(t, a.as("proposer", "get", "--keep")...)
+	must(t, a.as("proposer", "get")...)
 	open := a.openOne(t, "Rename amount.")
 	a.window.stop(t)
 	a.closeNow(t)
@@ -307,6 +313,15 @@ func TestClosedQuestionsAndResult(t *testing.T) {
 	}
 	if r := run(t, env(), a.as("proposer", "result", "--question", open, "--json")...); !strings.Contains(r.stdout, `"word":"closed"`) {
 		t.Fatalf("the result of a question the close closed: %v", r)
+	}
+	// The answer to q2 was fetched and not kept, so result fetches until the queue is empty and is
+	// handed the close, which only get keeps: result prints no close line and holds no close.
+	if r := run(t, env(), a.as("proposer", "result", "--question", q2, "--json")...); r.code != 0 || strings.Contains(r.stdout, `"close"`) ||
+		strings.Contains(r.stderr, "close ") || !strings.HasSuffix(r.stderr, "\n"+cli.LineNotFetched+"\n") {
+		t.Fatalf("the result of an answer fetched and not kept: %v", r)
+	}
+	if _, err := os.Stat(filepath.Join(a.state("proposer"), "close.json")); !errors.Is(err, fs.ErrNotExist) {
+		t.Fatalf("result kept the close: %v", err)
 	}
 	for _, args := range [][]string{{"answer", "--question", open}, {"decline", "--question", open, "--comment", "No."}} {
 		if r := run(t, env(), a.as("decider", args...)...); r.code != cli.ExitRejected || !slices.Equal(r.lines(), []string{"rejected closed"}) {
@@ -502,7 +517,7 @@ func TestVerifySupersededBy(t *testing.T) {
 			t.Fatalf("%s: %v", name, r)
 		}
 	}
-	if r := run(t, env(), "verify", "--receipts", a.journal(), "--mediator", a.refs["mediator"], "--superseded-by", next); r.code != cli.ExitTool {
+	if r := run(t, env(), "verify", "--receipts", a.journal(), "--mediator", a.refs["mediator"], "--superseded-by", next); r.code != cli.ExitTool || !slices.Equal(r.lines(), []string{"error usage"}) {
 		t.Fatalf("--superseded-by without --accord: %v", r)
 	}
 }
