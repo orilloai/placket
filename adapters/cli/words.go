@@ -60,9 +60,9 @@ const (
 	LineNoKeptValue     = "no part this key kept holds this value at this path"
 	// LineTornClose says what to run when a window finds a close cut short (close-1).
 	LineTornClose = "the journal holds a close cut short: run placket window close to complete it"
-	// LineCloseSize says why a close wrote nothing: its receipt would not fit in one reply of the
-	// door. A close of at most mediator.MaxCloseEntries entries always fits (close-2).
-	LineCloseSize = "the close would not fit in one reply of the door, and nothing was written"
+	// LineCloseSize says why a close wrote nothing: its receipt, which lists every delivery not yet
+	// fetched, would not fit in one reply of the door (close-2).
+	LineCloseSize = "the close would not fit in one reply: once members fetch what is queued for them, run placket window close again"
 )
 
 // The lines verify prints (commands-8, verify-1 to verify-4), each verb filled in order; under

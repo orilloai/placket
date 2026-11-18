@@ -258,8 +258,8 @@ func (w *window) close(rec *journal.Record, at string) error {
 }
 
 // CoreCloseSize follows error journal receipts.jsonl when a close receipt would not fit in the
-// largest reply that carries it. A close lists at most mediator.MaxCloseEntries entries, which fit
-// in MaxReply, so only a smaller limit reaches it (close-2, docs/adr/0022-the-close.md).
+// largest reply that carries it: the members fetch what is queued for them, and the close runs again
+// (docs/adr/0022-the-close.md).
 const CoreCloseSize = "close-size"
 
 // closeReply is the largest reply that carries the close receipt c: the questions reply of a closed

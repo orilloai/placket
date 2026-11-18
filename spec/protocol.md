@@ -611,7 +611,6 @@ The door is where a member gives a part to another member and fetches what was q
 |---|---|---|---|
 | 1 | Member | The caller's key, against the Accord's members (setup-contract-6) | `not-a-member` |
 | 1a | Open Accord | The Accord: not closed (close-3) | `closed` |
-| 1b | Room for the close | The Accord's chains, deliveries not yet fetched and open questions: no more than 8189 together (close-2) | `accord-full` |
 | 2 | Envelope signature | The envelope bytes: accepted by the canonical form, an object with exactly `seq`, `hash` and `sig`, its `sig` verifying under the caller's key and `https://placket.tech/envelope/0.1` (signing-2) | `envelope-signature` |
 | 3 | Canonical message | The message bytes (canonical-1) | `not-canonical` |
 | 4 | Envelope hash | The envelope's `hash`: the typed hash of the message's canonical bytes (crossing-4) | `envelope-hash` |
@@ -740,7 +739,7 @@ The envelope is the sender's signed claim to one submission (`envelope.json`): `
 
 ### crossing-6 The door's order
 
-The door runs the rows of its table in order and returns the first that fails. It authenticates first: membership, then whether the Accord is closed (close-3), then whether it has room for its close (close-2), then the envelope's signature under the caller's key, then the message's canonical bytes, then that the envelope's `hash` names those bytes and its `seq` is fresh, then the message's content. No member of the message is read before the message is known to be the one the caller signed for. The caller is the sender because the envelope verified under the caller's key: no member of the message names the sender, and a `from` in the extension is a member the frame does not list, `extension-missing` at row 6 (crossing-1). The message is not read at all before the envelope's signature has verified, so a stranger's give is `not-a-member` and a member's give under a bad envelope signature is `envelope-signature`, whatever the message holds. Everything decided is read from the message's canonical bytes, so a member name repeated anywhere in the message is `not-canonical`, at row 3, whichever copy is wrong. Row 2 reads the envelope's bytes, its members' names and its `sig`, so bytes the canonical form refuses, a member missing or not listed, and a bad signature are all `envelope-signature`; the value of its `hash` belongs to row 4 and of its `seq` to row 5.
+The door runs the rows of its table in order and returns the first that fails. It authenticates first: membership, then whether the Accord is closed (close-3), then the envelope's signature under the caller's key, then the message's canonical bytes, then that the envelope's `hash` names those bytes and its `seq` is fresh, then the message's content. No member of the message is read before the message is known to be the one the caller signed for. The caller is the sender because the envelope verified under the caller's key: no member of the message names the sender, and a `from` in the extension is a member the frame does not list, `extension-missing` at row 6 (crossing-1). The message is not read at all before the envelope's signature has verified, so a stranger's give is `not-a-member` and a member's give under a bad envelope signature is `envelope-signature`, whatever the message holds. Everything decided is read from the message's canonical bytes, so a member name repeated anywhere in the message is `not-canonical`, at row 3, whichever copy is wrong. Row 2 reads the envelope's bytes, its members' names and its `sig`, so bytes the canonical form refuses, a member missing or not listed, and a bad signature are all `envelope-signature`; the value of its `hash` belongs to row 4 and of its `seq` to row 5.
 
 #### Scenario: a repeated member behind a bad signature
 
@@ -908,7 +907,6 @@ A give that composition decides `escalate` opens a question: the mediator writes
 |---|---|---|---|
 | 1 | Member | The caller's key (setup-contract-6) | `not-a-member` |
 | 1a | Open Accord | The Accord: not closed (close-3) | `closed` |
-| 1b | Room for the close | The Accord's chains, deliveries not yet fetched and open questions: no more than 8189 together (close-2) | `accord-full` |
 | 2 | Answer call | The call: canonical bytes, its closed shape (maybe-11), its `accord` this Accord's id, its `from` the caller, and its `sig` under `from` and `https://placket.tech/answer/0.1` (signing-2) | `answer-call` |
 | 3 | Open question | The call's `question`: a question that is open, at a time before its deadline (maybe-7) | `no-open-question` |
 | 4 | Answerer | The call's `from`, by its action: for an accept, a change or a decline, among the question's answerers (maybe-6); for a cancel, the question's asker, of a question with at least one answerer. An asker who is also an answerer cancels as the asker | `not-an-answerer` |
@@ -2031,7 +2029,7 @@ A close writes, in one operation and in this order: first a timeout for every op
 
 ### close-2 The close receipt
 
-A close receipt is a DSSE 1.0 envelope as receipt-1 gives it, payload type `application/vnd.in-toto+json`, with one signature by the mediator. Its statement (`close.json`) has exactly `_type`, `https://in-toto.io/Statement/v1`; `subject`, a list of exactly one entry, `name` `accord` and `digest` an object with exactly `sha256`, the 64 lowercase hex digits of the Accord id, the SHA-256 of the founding set's canonical bytes; `predicateType`, `https://placket.tech/close/0.1`; and `predicate`, with exactly `accord`, the Accord id; `card`, the card hash; `mediator`, the mediator's reference; `at`, its time; `chains`, a list with one entry for each chain of the receipts before it, `from`, `to`, `seq` and `receipt`, that chain's last receipt's `seq` and id, ordered by `from` and then by `to` in actor-reference order; and `unfetched`, a list with one entry for each delivery not yet fetched at the close, `to`, its receiver, and `receipt`, the id of the receipt that queued it, in the order queued. Both lists are there when empty. A close lists at most 8192 entries, `chains` and `unfetched` together, so that it fits in one reply of a door and in one line of a journal: while the Accord's chains, its deliveries not yet fetched and its open questions, each of which a close may give a chain, number more than 8189 together, a member's give and a member's answer are rejected with `accord-full`, right after `closed` (sections 4 and 6), and nothing is written. One give or answer adds at most three to that count: a give a chain and a delivery or a question; an answer a chain and a delivery for its resolution and for its release, less the question it closes. A fetch, a timeout and a close never add to it, so a close is never refused for its size, and a member's fetch makes room again. A close has no `seq`, `prev`, `kind`, `envelope`, `verdict`, `reason` or `by`: it is in no chain and belongs to no question. Its id is the typed hash of its statement's canonical bytes.
+A close receipt is a DSSE 1.0 envelope as receipt-1 gives it, payload type `application/vnd.in-toto+json`, with one signature by the mediator. Its statement (`close.json`) has exactly `_type`, `https://in-toto.io/Statement/v1`; `subject`, a list of exactly one entry, `name` `accord` and `digest` an object with exactly `sha256`, the 64 lowercase hex digits of the Accord id, the SHA-256 of the founding set's canonical bytes; `predicateType`, `https://placket.tech/close/0.1`; and `predicate`, with exactly `accord`, the Accord id; `card`, the card hash; `mediator`, the mediator's reference; `at`, its time; `chains`, a list with one entry for each chain of the receipts before it, `from`, `to`, `seq` and `receipt`, that chain's last receipt's `seq` and id, ordered by `from` and then by `to` in actor-reference order; and `unfetched`, a list with one entry for each delivery not yet fetched at the close, `to`, its receiver, and `receipt`, the id of the receipt that queued it, in the order queued. Both lists are there when empty. A close has no `seq`, `prev`, `kind`, `envelope`, `verdict`, `reason` or `by`: it is in no chain and belongs to no question. Its id is the typed hash of its statement's canonical bytes.
 
 #### Scenario: the anatomy of a close
 
@@ -2044,12 +2042,6 @@ A close receipt is a DSSE 1.0 envelope as receipt-1 gives it, payload type `appl
 - Given a journal with three chains and a delivery never fetched
 - When the Accord is closed
 - Then the close is written at once, its `chains` names each chain's last receipt in pair order, and its `unfetched` names the delivery's receiver and the receipt that queued it
-
-#### Scenario: no room for the close
-
-- Given an Accord whose chains, deliveries not yet fetched and open questions number 8190 together
-- When a member gives and answers, a stranger does, and then a member fetches one delivery and answers
-- Then the member's give and answer are `accord-full`, the stranger's `not-a-member`, and nothing is written; after the fetch the answer is taken, and the close lists no more than 8192 entries
 
 ### close-3 A closed Accord
 

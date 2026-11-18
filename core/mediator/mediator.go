@@ -93,34 +93,6 @@ const (
 // right after membership (close-3, sections 4 and 6).
 const AccordClosed RejectionCode = "closed"
 
-// AccordFull is the rejection of a member's give or answer, checked right after closed, while the
-// Accord's chains, its deliveries not yet fetched and its open questions number more than
-// MaxCloseEntries less three together: one give or answer adds at most three to that count, so the
-// close never lists more than MaxCloseEntries entries (close-2, sections 4 and 6).
-const AccordFull RejectionCode = "accord-full"
-
-// MaxCloseEntries is the most entries a close lists, its chains and its deliveries not yet fetched
-// together (close-2). Each open question counts as one, since its closing may start a chain.
-const MaxCloseEntries = 8192
-
-// closeRoom is the most one give or answer adds to the count MaxCloseEntries bounds: for a give, a
-// new chain and a delivery or a question; for an answer, a chain and a delivery for its resolution
-// and for its release, less the question it closes.
-const closeRoom = 3
-
-// full reports whether the count MaxCloseEntries bounds leaves no room for one more give or answer.
-func (m *Mediator) full() bool {
-	n := len(m.chains) + len(m.questions)
-	for _, q := range m.queues {
-		n += len(q)
-	}
-	limit := m.maxClose
-	if limit == 0 {
-		limit = MaxCloseEntries
-	}
-	return n > limit-closeRoom
-}
-
 // Rejection is a rejected operation: the code of the first row that failed. A rejected operation
 // changes nothing (crossing-7). It carries nothing of the input.
 type Rejection struct{ Code RejectionCode }
@@ -239,7 +211,6 @@ type Mediator struct {
 	queues     map[string][]queued
 	questions  []*question
 	closed     *Closed
-	maxClose   int // the most entries a close may list; zero is MaxCloseEntries. Only a test sets it.
 }
 
 // founded reports whether Found or Reload made the mediator.
@@ -362,10 +333,6 @@ func (m *Mediator) Give(caller string, message, envelope []byte, judge *composit
 	// Right after membership: a closed Accord takes no give (close-3).
 	if m.closed != nil && m.accord.Member(caller) {
 		return Outcome{}, &Rejection{Code: AccordClosed}
-	}
-	// Right after closed: room for the close (close-2).
-	if m.accord.Member(caller) && m.full() {
-		return Outcome{}, &Rejection{Code: AccordFull}
 	}
 	g, code := m.admit(caller, message, envelope)
 	if code != "" {

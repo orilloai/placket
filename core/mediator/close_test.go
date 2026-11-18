@@ -3,7 +3,6 @@ package mediator_test
 import (
 	"bytes"
 	"errors"
-	"fmt"
 	"reflect"
 	"testing"
 
@@ -373,69 +372,4 @@ func FuzzClose(f *testing.F) {
 			t.Fatalf("a closed mediator's receipts do not verify, or do not end in its close: %v", err)
 		}
 	})
-}
-
-// TestAFullAccordRefusesGiveAndResolve is close-2's bound: once the chains, the deliveries not yet
-// fetched and the open questions leave no room for what one more give or answer may add, a member's
-// give and answer are rejected with accord-full, right after closed, and a stranger's with
-// not-a-member; nothing is written. A fetch makes room again, and the close of the fullest Accord
-// lists no more than MaxCloseEntries entries.
-func TestAFullAccordRefusesGiveAndResolve(t *testing.T) {
-	t.Parallel()
-	const limit = 12
-	m := mediator.WithMaxClose(found(t), limit)
-	p, ap, stranger := ptesting.Key(t, "proposer"), ptesting.Key(t, "applier"), ptesting.Key(t, "stranger")
-	d := ptesting.Key(t, "decider").Reference()
-	q := ask(t, m, 1, "p-1", "2026-11-12T09:00:00Z")
-	seq, given := int64(2), 0
-	var msg []byte
-	for {
-		msg = message(t, m.Accord(), fmt.Sprintf("n-%d", seq), ap.Reference(), "note", "A note.", nil)
-		_, err := m.Give(p.Reference(), msg, envelope(t, seq, msg, p), nil, "2026-11-12T09:01:00Z")
-		if rejected(err, mediator.AccordFull) {
-			break
-		}
-		if err != nil {
-			t.Fatalf("give %d: %v", seq, err)
-		}
-		given++
-		seq++
-	}
-	// One chain and one question, then one delivery a give: room is left for three more.
-	if want := limit - 3 - 2 + 1; given != want {
-		t.Fatalf("%d notes given before accord-full, want %d", given, want)
-	}
-	before := m.Receipts()
-	if _, err := m.Give(p.Reference(), msg, []byte("not an envelope"), nil, "2026-11-12T09:01:00Z"); !rejected(err, mediator.AccordFull) {
-		t.Fatalf("a member's give under a bad envelope: %v, want accord-full", err)
-	}
-	if _, err := m.Give(stranger.Reference(), msg, envelope(t, seq, msg, stranger), nil, "2026-11-12T09:01:00Z"); !rejected(err, mediator.NotAMember) {
-		t.Fatalf("a stranger's give: %v, want not-a-member", err)
-	}
-	if _, err := m.Resolve(d, accept(t, m, d, q, true), "2026-11-12T09:02:00Z"); !rejected(err, mediator.AccordFull) {
-		t.Fatalf("an answer: %v, want accord-full", err)
-	}
-	if _, err := m.Resolve(stranger.Reference(), accept(t, m, stranger.Reference(), q, true), "2026-11-12T09:02:00Z"); !rejected(err, mediator.NotAMember) {
-		t.Fatalf("a stranger's answer: %v, want not-a-member", err)
-	}
-	unchanged(t, m, before, []string{q})
-
-	if got, err := m.Get(ap.Reference()); err != nil || got == nil {
-		t.Fatalf("a fetch: %v", err)
-	}
-	if outs, err := m.Resolve(d, accept(t, m, d, q, true), "2026-11-12T09:02:00Z"); err != nil || len(outs) != 2 {
-		t.Fatalf("an answer after a fetch: %+v, %v", outs, err)
-	}
-	set, foundedAt := askAndLog(t)
-	_, _, closed, err := mediator.Close(set, m.Receipts(), nil, queuedOf(m), foundedAt, ptesting.Key(t, "mediator"), "2026-11-12T10:00:00Z")
-	if err != nil {
-		t.Fatalf("Close: %v", err)
-	}
-	cl := closeOfReceipt(t, closed.Receipt)
-	if n := len(cl.Chains) + len(cl.Unfetched); n != limit-1 {
-		t.Fatalf("the close lists %d entries, want %d", n, limit-1)
-	}
-	if mediator.MaxCloseEntries != 8192 {
-		t.Fatalf("MaxCloseEntries is %d, want close-2's 8192", mediator.MaxCloseEntries)
-	}
 }

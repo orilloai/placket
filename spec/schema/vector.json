@@ -972,7 +972,6 @@
           "enum": [
             "not-a-member",
             "closed",
-            "accord-full",
             "envelope-signature",
             "not-canonical",
             "extension-missing",
