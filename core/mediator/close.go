@@ -25,22 +25,22 @@ func (m *Mediator) Closed() (Closed, bool) {
 }
 
 // Close closes an Accord from the record a journal keeps (close-1, record 0022). It takes Reload's
-// record and checks it in Reload's order, with Reload's codes; a record that already ends in its
-// close is closed. Then it writes, in one batch built before any state changes: first a timeout for
-// each open question whose deadline is at or before at, at its deadline, as Tick would, in the order
-// the questions were opened (maybe-5); then a closed closing for each question still open, in the
-// order they were opened, from its first answerer, or the mediator when it has none, to its asker,
-// block, closed, naming the asked part, echoing its envelope and naming the mediator, with the event
-// close, as its decider; and last the close receipt, which lists the last receipt of every chain,
-// ordered by pair, and every delivery not yet fetched, in the order queued (close-2). It never waits
-// for a fetch.
+// record and checks it in Reload's order, with Reload's codes, but decides nothing, so it needs no
+// opening; a record that already ends in its close is closed. Then it writes, in one batch built
+// before any state changes: first a timeout for each open question whose deadline is at or before
+// at, at its deadline, as Tick would, in the order the questions were opened (maybe-5); then a
+// closed closing for each question still open, in the order they were opened, from its first
+// answerer, or the mediator when it has none, to its asker, block, closed, naming the asked part,
+// echoing its envelope and naming the mediator, with the event close, as its decider; and last the
+// close receipt, which lists the last receipt of every chain, ordered by pair, and every delivery
+// not yet fetched, in the order queued (close-2). It never waits for a fetch.
 //
 // A record cut inside a close, its closed closings with no close after them, is completed at the
 // time of the closings already written, not at at: every question still open is closed at that time,
 // and the close receipt written at it. It returns the closed mediator, the closings' outcomes in
 // order, and the close.
 func Close(in founding.Inputs, list [][]byte, open []Open, deliveries []Queued, foundedAt string, key signing.Key, at string) (*Mediator, []Outcome, Closed, error) {
-	r, err := rebuild(in, list, open, deliveries, foundedAt, key, at)
+	r, err := rebuild(in, list, open, deliveries, foundedAt, key, at, false)
 	if err != nil {
 		return nil, nil, Closed{}, err
 	}

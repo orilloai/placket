@@ -196,6 +196,10 @@ func verifyCommand(r *run, args []string) int {
 				if err != nil || openingActor(b) == "" {
 					return r.tool(codeFile, flagOpen)
 				}
+				if _, twice := openings.ByActor[openingActor(b)]; twice {
+					fmt.Fprintln(r.stderr, LineOpenTwice)
+					return r.tool(codeUsage)
+				}
 				openings.ByActor[openingActor(b)] = trimLF(b)
 			}
 		}
@@ -214,6 +218,13 @@ func verifyCommand(r *run, args []string) int {
 		}
 		if *med == "" {
 			*med = a.Mediator()
+		}
+		// An opening whose actor is no member opens no seal of this set, so founding never read it.
+		for actor := range openings.ByActor {
+			if !a.Member(actor) {
+				fmt.Fprintln(r.stderr, LineOpenNotMember)
+				return r.tool(codeUsage)
+			}
 		}
 	}
 

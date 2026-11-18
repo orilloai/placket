@@ -93,11 +93,15 @@ const (
 	// every seal it reads was opened (setup-contract-16, verify-1).
 	LineConformSealed = "conforms: every receipt names this Accord, its card and its members, and every answer call given fits; decisions checked against the terms only where the seals they read are opened"
 	// The lines of what the sealed terms were checked against (setup-contract-16).
-	LineTermsNotChecked   = "terms: not checked: the declarations are sealed; with every member's opening, --open checks them"
-	LineTermsChecked      = "terms: checked: every seal opens, and every view is the one its member accepted"
-	LineSealOpens         = "seal %s: opens: the declaration it seals is its actor's own"
-	LineViewMatches       = "view %s: matches its acceptance"
-	LineViewNotChecked    = "view %s: not checked: a view reads every member's terms"
+	LineTermsNotChecked = "terms: not checked: the declarations are sealed; with every member's opening, --open checks them"
+	LineTermsChecked    = "terms: checked: every seal opens, and every view is the one its member accepted"
+	LineSealOpens       = "seal %s: opens: the declaration it seals is its actor's own"
+	LineViewMatches     = "view %s: matches its acceptance"
+	LineViewNotChecked  = "view %s: not checked: a view reads every member's terms"
+	// LineOpenTwice and LineOpenNotMember are the usage lines of an --open that opens no seal of its
+	// own: a second opening for one actor, or an opening whose actor is no member of the Accord.
+	LineOpenTwice         = "usage: placket verify: two --open files open the seal of one actor"
+	LineOpenNotMember     = "usage: placket verify: an --open file opens the seal of an actor that is not a member"
 	LineNotConform        = "does not conform: %s at receipts.jsonl line %d"
 	LineNotComplete       = "complete: not claimed: this Accord has no close receipt"
 	LineSubsetNotComplete = "complete: not claimed: only a subset was given"

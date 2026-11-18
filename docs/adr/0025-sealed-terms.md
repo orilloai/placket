@@ -49,7 +49,7 @@ A founder without the openings, any party or verifier, runs every row but 4a, 5 
 
 ### The window and the door
 
-`placket window --founding S --openings DIR` with an empty journal starts a proposed Accord: it runs rows 1 to 17 with every opening and serves only two new calls of the mediator API, `view`, which returns the caller's own view, and `accept`, which takes the caller's signed acceptance and checks it by rows 19 to 21; an acceptance that fails is refused with that row's founding code. Every other op is refused with the door code `not-founded`. Once every member has accepted, the window founds at that time, writes `acceptances.json` beside the founding set, journals the founding, prints its founding line and serves as before. Started with `--acceptances A`, or on a founded journal, it is founded at once. `placket mcp` lists neither call.
+`placket window --founding S --openings DIR` with an empty journal starts a proposed Accord: it runs rows 1 to 17 with every opening and serves only two new calls of the mediator API, `view`, which returns the caller's own view, and `accept`, which takes the caller's signed acceptance and checks it by rows 19 to 21; an acceptance that fails is refused with that row's founding code. Every other op is refused with the door code `not-founded`. Once every member has accepted, the window founds at that time, writes `acceptances.json` beside the founding set, journals the founding, prints its founding line and serves as before. Started with `--acceptances A`, or with an `acceptances.json` beside the founding set, it is founded at once, on an empty journal as on a founded one; a founded journal with neither is refused `acceptance-missing`. `placket mcp` lists neither call.
 
 ### The command line
 

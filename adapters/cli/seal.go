@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/orilloai/placket/adapters/internal/lines"
 	"github.com/orilloai/placket/adapters/keyfile"
 	"github.com/orilloai/placket/core/setup"
 	"github.com/orilloai/placket/core/signing"
@@ -96,15 +97,24 @@ func writeNew(path string, b []byte) error {
 }
 
 // readOpenings reads, for each actor, the opening dir holds for it, DIR/<hex>.opening.json, its one
-// trailing line feed removed. A file that is missing is left out, so founding refuses the set with
-// opening-missing; one that cannot be read is tool error file opening.
+// trailing line feed removed. An actor that is not an actor reference names no file inside dir, so
+// it is left out, as is a file that is missing, and founding refuses the set (row 4 or
+// opening-missing); a file that is not regular, or cannot be read, is tool error file opening.
 func readOpenings(dir string, actors []string) (map[string][]byte, error) {
 	out := map[string][]byte{}
 	for _, a := range actors {
-		b, err := os.ReadFile(filepath.Join(dir, OpeningName(a)))
+		if _, ok := signing.ParseReference(a); !ok {
+			continue
+		}
+		f, err := lines.Open(filepath.Join(dir, OpeningName(a)))
 		if errors.Is(err, fs.ErrNotExist) {
 			continue
 		}
+		if err != nil {
+			return nil, err
+		}
+		b, err := io.ReadAll(f)
+		_ = f.Close()
 		if err != nil {
 			return nil, err
 		}

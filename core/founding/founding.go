@@ -200,11 +200,11 @@ func Acceptances(list [][]byte) ([]byte, error) {
 
 // Accept signs a member's acceptance of a view (setup-contract-15): {accord, view, from, sig}, view
 // the typed hash of the view's bytes and from the key's reference, signed under the acceptance's type
-// URI. The view must be accepted by the canonical form, or it is a *setup.Error of InvalidShape; a
-// signing failure is signing's *Error.
+// URI. The accord must be a typed hash and the view accepted by the canonical form, or it is a
+// *setup.Error of InvalidShape; a signing failure is signing's *Error.
 func Accept(accord string, view []byte, key signing.Key) ([]byte, error) {
 	h, err := canonical.TypedHash(view)
-	if err != nil {
+	if err != nil || !shape.Hash(accord) {
 		return nil, &setup.Error{Code: setup.InvalidShape}
 	}
 	o := shape.Object{"accord": accord, "view": h, "from": key.Reference()}

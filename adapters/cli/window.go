@@ -24,20 +24,23 @@ func init() {
 }
 
 // windowCommand is `window --key F --founding S --openings O [--acceptances A] [--socket P]
-// [--journal DIR]`: it runs the mediator of the Accord S founds, behind its door on the socket, with
-// its journal in DIR, until it is interrupted. O is the directory of every member's opening, each
-// <hex of its actor reference>.opening.json; one missing is error founding opening-missing. On an
-// empty journal with no --acceptances the Accord starts proposed (setup-contract-15): the window
-// serves each member its own view and takes its acceptance, refuses every other call with door
-// not-founded, and once every member has accepted writes acceptances.json beside S, prints `accord
-// <id> founded` and serves as founded. With --acceptances it is founded at once; on a founded journal
-// it takes --acceptances, or the acceptances.json beside S. With no --socket it listens on the Accord's default socket, and with no --journal it
-// writes to the Accord's default journal (local.DefaultSocketWith, local.DefaultJournalWith); with
-// neither an absolute XDG_STATE_HOME nor an absolute HOME there is none, and no --journal is tool
-// error usage. It prints the Accord id, the card hash and the operator, then one line per event:
-// ids, words and codes, never a body, a salt, a seed, a key or a question's part. A founding set
-// whose card names another module than this build's is tool error founding kernel, after a line
-// that names both (docs/adr/0012-the-kernel-hash.md).
+// [--journal DIR]`: it runs the mediator of the Accord S founds, behind its door on the socket,
+// with its journal in DIR, until it is interrupted. O is the directory of every member's opening,
+// each <hex of its actor reference>.opening.json; one missing is error founding opening-missing.
+// The acceptances are the file --acceptances names or, without it, the acceptances.json beside S,
+// which the window writes once every member has accepted (readAcceptances). On an empty journal
+// with neither the Accord starts proposed (setup-contract-15): the window serves each member its
+// own view and takes its acceptance, refuses every other call with door not-founded, and once every
+// member has accepted writes acceptances.json beside S, prints `accord <id> founded` and serves as
+// founded. With either it is founded at once, on an empty journal as on a founded one, so
+// collecting the members' consent again means moving that file away. With no --socket it listens on
+// the Accord's default socket, and with no --journal it writes to the Accord's default journal
+// (local.DefaultSocketWith, local.DefaultJournalWith); with neither an absolute XDG_STATE_HOME nor
+// an absolute HOME there is none, and no --journal is tool error usage. It prints the Accord id,
+// the card hash and the operator, then one line per event: ids, words and codes, never a body, a
+// salt, a seed, a key or a question's part. A founding set whose card names another module than
+// this build's is tool error founding kernel, after a line that names both
+// (docs/adr/0012-the-kernel-hash.md).
 //
 // On a closed journal it prints `accord <id> closed <close id>` and serves the closed Accord. A
 // journal whose close was cut short is tool error journal, receipts.jsonl, close, after a line that

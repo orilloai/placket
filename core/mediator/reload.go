@@ -43,7 +43,7 @@ type Open struct {
 // writes nothing. A record that holds closed closings with no close after them was cut inside a close
 // (close-1), and only Close completes it: Reload refuses it with close.
 func Reload(in founding.Inputs, list [][]byte, open []Open, deliveries []Queued, foundedAt string, key signing.Key, at string) (*Mediator, []Outcome, error) {
-	r, err := rebuild(in, list, open, deliveries, foundedAt, key, at)
+	r, err := rebuild(in, list, open, deliveries, foundedAt, key, at, true)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -95,14 +95,14 @@ func (r record) question(qi int) *question {
 
 // rebuild is what Reload and Close share (record 0008, record 0022): it checks the record in
 // Reload's order and makes the mediator its receipts leave, with nothing written. A close in the
-// list makes the mediator closed.
-func rebuild(in founding.Inputs, list [][]byte, open []Open, deliveries []Queued, foundedAt string, key signing.Key, at string) (record, error) {
+// list makes the mediator closed. With terms set it needs every member's opening, as Found does.
+func rebuild(in founding.Inputs, list [][]byte, open []Open, deliveries []Queued, foundedAt string, key signing.Key, at string, terms bool) (record, error) {
 	fail := func(err error) (record, error) { return record{}, err }
 
 	if !shape.Timestamp(at) {
 		return fail(failure(CodeAt))
 	}
-	m, err := Found(in, key, foundedAt)
+	m, err := found(in, key, foundedAt, terms)
 	if err != nil {
 		return fail(err)
 	}
