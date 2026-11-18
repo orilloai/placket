@@ -169,12 +169,14 @@ func TestParseCallReadsOnlyItsForm(t *testing.T) {
 }
 
 // FuzzParseCall reads any bytes as a call. It never panics, and a call it reads is at most MaxCall
-// bytes with a known op.
+// bytes with a known op and a wait from 0 to MaxWait. Its seeds are a signed call of each op, and
+// of each op that waits, one with a wait, the questions one with an after too.
 func FuzzParseCall(f *testing.F) {
 	p := key(f, "proposer")
 	at := time.Date(2026, 11, 12, 9, 0, 0, 0, time.UTC)
 	for _, op := range []string{local.OpGive, local.OpGet, local.OpQuestions, local.OpResolve, local.OpResult} {
 		args := map[string]any{}
+		var waits []map[string]any
 		switch op {
 		case local.OpGive:
 			args = local.GiveArgs([]byte("{}"), []byte("{}"))
@@ -182,9 +184,16 @@ func FuzzParseCall(f *testing.F) {
 			args = local.ResolveArgs([]byte(`{"action":"accepted"}`), "accepted", saltOf("a salt"))
 		case local.OpResult:
 			args = map[string]any{"question": "q"}
+			waits = append(waits, map[string]any{"question": "q", "wait": 30})
+		case local.OpGet:
+			waits = append(waits, map[string]any{"wait": local.MaxWait})
+		case local.OpQuestions:
+			waits = append(waits, map[string]any{"wait": 10, "after": strings.Repeat("0a", 16)}, map[string]any{"after": ""})
 		}
-		b, _ := local.SignCall(p, op, "a", at, make([]byte, 16), args)
-		f.Add(b)
+		for _, a := range append([]map[string]any{args}, waits...) {
+			b, _ := local.SignCall(p, op, "a", at, make([]byte, 16), a)
+			f.Add(b)
+		}
 	}
 	f.Add([]byte(`{"call":{},"sig":""}`))
 	f.Fuzz(func(t *testing.T, b []byte) {
@@ -200,6 +209,9 @@ func FuzzParseCall(f *testing.F) {
 		default:
 			t.Fatalf("op %q", c.Op)
 		}
+		if c.Wait < 0 || c.Wait > local.MaxWait {
+			t.Fatalf("wait %d", c.Wait)
+		}
 		_ = c.Verified()
 	})
 }
@@ -212,6 +224,11 @@ func FuzzParseReply(f *testing.F) {
 	f.Add([]byte(`{"answerCall":{},"delivery":{"a":1},"ok":true}`))
 	f.Add([]byte(`{"ok":true,"questions":[{"asker":"a","deadline":"d","form":"raw","id":"i","kind":"k","size":3}]}`))
 	f.Add([]byte(`{"more":true,"ok":true,"questions":[{"asker":"a","deadline":"d","form":"raw","id":"i","kind":"k","raw":"AA==","receipt":{},"salt":"00","size":1}]}`))
+	f.Add([]byte(`{"cursor":"00000000000000000000000000000000","ok":true,"questions":[]}`))
+	f.Add([]byte(`{"cursor":"0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a0a","more":true,"ok":true,"questions":[{"asker":"a","deadline":"d","form":"text","id":"i","kind":"k","receipt":{},"salt":"00","size":1,"text":"a"}]}`))
+	f.Add([]byte(`{"ok":true,"queued":true}`))
+	f.Add([]byte(`{"ok":true,"queued":false}`))
+	f.Add([]byte(`{"cursor":"x","ok":true}`))
 	f.Fuzz(func(t *testing.T, b []byte) {
 		_, _ = local.ParseReply(b)
 	})
