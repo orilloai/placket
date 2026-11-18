@@ -211,7 +211,8 @@ func (m *Mediator) Answerers(questionID string) ([]string, bool) {
 // (no-open-question, maybe-7); the caller may take its action, an answerer for an accept, a change or
 // a decline and the question's asker for a cancel of a question with an answerer (not-an-answerer,
 // maybe-6); and the answer's text and salt fit the call (answer-body). Once the Accord is closed, a
-// member's answer is rejected with closed, right after membership (close-3). A rejected answer
+// member's answer is rejected with closed, right after membership (close-3), and while the close has
+// no room for what it may add, with accord-full right after closed (close-2). A rejected answer
 // writes nothing and leaves the question as it was.
 //
 // An accept forms the answer and a change the version (maybe-8, maybe-9), under the answerer's salt,
@@ -236,6 +237,10 @@ func (m *Mediator) Resolve(caller string, r Resolution, at string) ([]Outcome, e
 	// Right after membership: a closed Accord takes no answer (close-3).
 	if m.closed != nil {
 		return nil, &Rejection{Code: AccordClosed}
+	}
+	// Right after closed: room for the close (close-2).
+	if m.full() {
+		return nil, &Rejection{Code: AccordFull}
 	}
 	// Row 2: the answer call, the caller's, under this Accord (maybe-11).
 	c, err := answer.Read(r.Call)

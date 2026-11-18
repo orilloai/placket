@@ -4,14 +4,17 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"maps"
 	"os"
 	"path/filepath"
+	"slices"
 	"testing"
 	"time"
 
 	"github.com/orilloai/placket/adapters/journal"
 	"github.com/orilloai/placket/adapters/local"
+	"github.com/orilloai/placket/core/canonical"
 	"github.com/orilloai/placket/core/mediator"
 	"github.com/orilloai/placket/core/receipts"
 )
@@ -235,5 +238,41 @@ func TestCloseAtTheReplyBound(t *testing.T) {
 	}
 	if rep, ok := local.ParseReply(local.CloseReply(receipt)); !ok || !bytes.Equal(rep.Close, receipt) {
 		t.Fatalf("the reply that carries the close: %+v", rep)
+	}
+}
+
+// TestTheFullestCloseFitsAReply holds close-2's bound against the door's: a close that lists
+// mediator.MaxCloseEntries chains, each at the highest seq, fits beside an empty list of questions in
+// one reply of MaxReply bytes, and so in a line of the journal and of a state directory.
+func TestTheFullestCloseFitsAReply(t *testing.T) {
+	t.Parallel()
+	med := key(t, "mediator")
+	var refs []string
+	for i := 0; i*(i-1) < mediator.MaxCloseEntries; i++ {
+		refs = append(refs, key(t, fmt.Sprintf("member %d", i)).Reference())
+	}
+	slices.SortFunc(refs, func(a, b string) int {
+		if canonical.Less(a, b) {
+			return -1
+		}
+		return 1
+	})
+	var chains []receipts.Final
+	for _, from := range refs {
+		for _, to := range refs {
+			if from != to && len(chains) < mediator.MaxCloseEntries {
+				id, _ := canonical.TypedHash([]byte(fmt.Sprintf("%q", from+to)))
+				chains = append(chains, receipts.Final{From: from, To: to, Seq: 1<<53 - 1, Receipt: id})
+			}
+		}
+	}
+	accord, _ := canonical.TypedHash([]byte(`"an Accord"`))
+	card, _ := canonical.TypedHash([]byte(`"a card"`))
+	r, _, err := receipts.BuildClose(receipts.Close{Accord: accord, Card: card, At: "2026-11-12T10:00:00Z", Chains: chains, Unfetched: []receipts.Unfetched{}}, med)
+	if err != nil {
+		t.Fatalf("BuildClose: %v", err)
+	}
+	if n := len(local.CloseReply(r)); len(chains) != mediator.MaxCloseEntries || n > local.MaxReply {
+		t.Fatalf("a close of %d chains makes a reply of %d bytes, more than %d", len(chains), n, local.MaxReply)
 	}
 }

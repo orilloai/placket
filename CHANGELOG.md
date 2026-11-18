@@ -11,6 +11,7 @@ This file covers the tool and its Go API. Changes to the protocol's frozen forma
 ### Added
 
 - `placket window close --key F --founding S --journal DIR --accord ID [--socket P]` closes the Accord of a stopped window's journal: it closes every open question, a timeout where its deadline passed and `closed` otherwise, and writes a close receipt, signed by the mediator under `https://placket.tech/close/0.1`, that pins the last receipt of every chain and lists every delivery not yet fetched. With `--socket` it then serves the closed Accord (decision record 0022).
+- A close lists at most 8192 entries, chains and deliveries not yet fetched together: while an Accord is that full, a give or an answer is rejected with `accord-full` until members fetch, so a close always fits in one reply.
 - A closed Accord never reopens: a give or an answer is rejected with `closed`, a restarted window comes up closed and prints `accord <id> closed <close id>`, and once a member's queue is empty every `placket get` returns the close and keeps it as `close.json`.
 - `placket verify` prints `complete: against close receipt <id>; ...` for a whole journal that ends in its close, and fails `close` or `after-close` for a close that does not match its journal or a receipt after it. `--superseded-by NEW` checks that a successor Accord's `supersedes` pins the journal's close.
 - `docs/guides/rotation.md`: rotate a mediator's key by closing the Accord and founding a successor that pins the close.

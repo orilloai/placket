@@ -352,8 +352,8 @@
   },
   "close-2": {
     "vectors": ["close/every-chain-and-every-delivery-not-fetched", "close/an-accord-with-no-receipts", "close/three-questions-one-past-its-deadline"],
-    "tests": ["core/receipts:TestBuildCloseStatement", "core/mediator:TestCloseListsChainsAndUnfetched"],
-    "scenarios": {"the anatomy of a close": {"tests": ["core/receipts:TestBuildCloseStatement"]}, "every chain and every delivery not fetched": {"vectors": ["close/every-chain-and-every-delivery-not-fetched"], "tests": ["core/mediator:TestCloseListsChainsAndUnfetched"]}}
+    "tests": ["core/receipts:TestBuildCloseStatement", "core/mediator:TestCloseListsChainsAndUnfetched", "core/mediator:TestAFullAccordRefusesGiveAndResolve", "adapters/local:TestTheFullestCloseFitsAReply"],
+    "scenarios": {"the anatomy of a close": {"tests": ["core/receipts:TestBuildCloseStatement"]}, "every chain and every delivery not fetched": {"vectors": ["close/every-chain-and-every-delivery-not-fetched"], "tests": ["core/mediator:TestCloseListsChainsAndUnfetched"]}, "no room for the close": {"tests": ["core/mediator:TestAFullAccordRefusesGiveAndResolve", "adapters/local:TestTheFullestCloseFitsAReply"]}}
   },
   "close-3": {
     "vectors": ["close/a-give-and-an-answer-after-the-close", "close/fetches-after-the-close"],
