@@ -137,7 +137,7 @@ func verifyCommand(r *run, args []string) int {
 	successor := fs.String("superseded-by", "", "the founding set of the Accord that supersedes this one")
 	accFile := fs.String("acceptances", "", "the founding set's acceptances, acceptances.json beside it when not given")
 	var opens many
-	fs.Var(&opens, "open", "a member's opening, once per opening, for a dispute")
+	fs.Var(&opens, flagOpen, "a member's opening, once per opening, for a dispute")
 	if !r.parse(fs, args, "receipts") || (*med == "") == (*accordFlag == "") || (*accordFlag != "" && *setPath == "") ||
 		(*successor != "" && *accordFlag == "") || ((*accFile != "" || len(opens) > 0) && *setPath == "") {
 		return r.tool(codeUsage)
@@ -194,7 +194,7 @@ func verifyCommand(r *run, args []string) int {
 			for _, p := range opens {
 				b, err := os.ReadFile(p)
 				if err != nil || openingActor(b) == "" {
-					return r.tool(codeFile, "open")
+					return r.tool(codeFile, flagOpen)
 				}
 				openings.ByActor[openingActor(b)] = trimLF(b)
 			}
@@ -559,3 +559,7 @@ func (r *run) termsLines(a *setup.Accord) []string {
 	r.put("terms", terms)
 	return out
 }
+
+// flagOpen is verify's flag that gives a member's opening, for a dispute (setup-contract-16). It is
+// spelled as the product word for a question still open, which it shares and is defined once as.
+const flagOpen = WordOpen

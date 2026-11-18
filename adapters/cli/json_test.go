@@ -283,8 +283,8 @@ func TestJSONAFounding(t *testing.T) {
 	members(t, o, "exit", "binding")
 	is(t, o, "binding", must(t, bind...).stdout)
 	founding := []string{"founding", "--policy", filepath.Join(a.dir, "policy.json"), "--mediator", filepath.Join(a.dir, "mediator.json"),
-		"--card", filepath.Join(a.dir, "card.json"), "--declaration", filepath.Join(a.dir, "ann.declaration"), "--binding", filepath.Join(a.dir, "ann.binding"),
-		"--declaration", filepath.Join(a.dir, "bob.declaration"), "--binding", filepath.Join(a.dir, "bob.binding")}
+		"--card", filepath.Join(a.dir, "card.json"), "--seal", filepath.Join(a.dir, "ann.seal"), "--binding", filepath.Join(a.dir, "ann.binding"),
+		"--seal", filepath.Join(a.dir, "bob.seal"), "--binding", filepath.Join(a.dir, "bob.binding")}
 	plain := must(t, founding...)
 	r = run(t, env(), append(founding, "--json")...)
 	o = object(t, r)
@@ -517,7 +517,7 @@ func TestJSONAWindowStops(t *testing.T) {
 		stderr := &syncBuffer{}
 		done := make(chan int, 1)
 		go func() {
-			done <- cli.Run(e, []string{"window", "--key", a.key("mediator"), "--founding", filepath.Join(a.dir, "founding.json"),
+			done <- cli.Run(e, []string{"window", "--key", a.key("mediator"), "--founding", filepath.Join(a.dir, "founding.json"), "--openings", a.openings(),
 				"--socket", a.socket(), "--journal", a.journal(), "--json"}, strings.NewReader(""), &stdout, stderr)
 		}()
 		select {
@@ -582,7 +582,7 @@ func TestJSONAShownReceiptAndAVerifiedJournal(t *testing.T) {
 	o = object(t, r)
 	members(t, o, "exit", "verified", "mediator", "accord", "card", "operator", "runs", "module", "judges", "members", "counts",
 		"questionsClosed", "questionsOpen", "releases", "blockedReleases", "predicates", "claim", "notClaimed",
-		"valid", "conforms", "complete", "decisions", "custody", "starts", "unmatched")
+		"valid", "conforms", "complete", "decisions", "custody", "starts", "unmatched", "terms", "seals", "views")
 	ann, bob := `{"actor":`+quote(a.refs["ann"])+`,"principal":`+quote(a.refs["principal"])+`,"roles":["peer"]}`,
 		`{"actor":`+quote(a.refs["bob"])+`,"principal":`+quote(a.refs["principal"])+`,"roles":["peer"]}`
 	if canonical.Less(a.refs["bob"], a.refs["ann"]) {

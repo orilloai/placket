@@ -165,6 +165,6 @@ func acceptCommand(r *run, args []string) int {
 		fmt.Fprintln(r.stderr, LineNotYet)
 	}
 	r.put("acceptance", json.RawMessage(acc))
-	r.put("founded", rep.Founded)
+	r.put(wordFounded, rep.Founded)
 	return ExitOK
 }

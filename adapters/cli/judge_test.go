@@ -64,7 +64,11 @@ func newJudgedAccordOf(t *testing.T, use string) *judgedAccord {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = os.RemoveAll(d) })
-	a := &judgedAccord{accord: &accord{dir: d, refs: map[string]string{}}}
+	parties := []string{"proposer", "applier", "decider"}
+	a := &judgedAccord{accord: &accord{dir: d, refs: map[string]string{}, parties: parties}}
+	if err := os.Mkdir(a.openings(), 0o700); err != nil {
+		t.Fatal(err)
+	}
 	write := func(name, s string) string {
 		p := filepath.Join(d, name)
 		if err := os.WriteFile(p, []byte(s), 0o600); err != nil {
@@ -72,7 +76,6 @@ func newJudgedAccordOf(t *testing.T, use string) *judgedAccord {
 		}
 		return p
 	}
-	parties := []string{"proposer", "applier", "decider"}
 	for _, k := range append([]string{"mediator", "operator", "principal", "stranger"}, parties...) {
 		a.refs[k] = strings.TrimSpace(must(t, "key", "new", "--out", a.key(k)).stdout)
 	}
@@ -84,9 +87,10 @@ func newJudgedAccordOf(t *testing.T, use string) *judgedAccord {
 	args := []string{"founding"}
 	for _, p := range parties {
 		decl := must(t, "declare", "--key", a.key(p), "--terms", write(p+".terms", judgedTerms(use)[p])).stdout
+		entry := must(t, "seal", "--key", a.key(p), "--declaration", write(p+".declaration", decl), "--out", a.openings()).stdout
 		bind := must(t, "bind", "--key", a.key("principal"), "--actor", a.refs[p], "--role", p, "--mediator", a.refs["mediator"],
 			"--until", "2099-01-01T00:00:00Z", "--policy", policy).stdout
-		args = append(args, "--declaration", write(p+".declaration", decl), "--binding", write(p+".binding", bind))
+		args = append(args, "--seal", write(p+".seal", entry), "--binding", write(p+".binding", bind))
 	}
 	args = append(args, "--policy", policy,
 		"--mediator", write("mediator.json", `{"actor":"`+a.refs["mediator"]+`","operator":"`+a.refs["operator"]+`","runs":"process"}`),
@@ -97,6 +101,10 @@ func newJudgedAccordOf(t *testing.T, use string) *judgedAccord {
 		if f := strings.Fields(l); len(f) == 2 && f[0] == "accord" {
 			a.id = f[1]
 		}
+	}
+	// Every party accepts its view beforehand, so each window starts founded.
+	if err := os.Rename(a.acceptancesOf(t, a.founding()), a.acceptances()); err != nil {
+		t.Fatal(err)
 	}
 	return a
 }
@@ -129,8 +137,8 @@ func (a *judgedAccord) startJudged(t *testing.T, getenv func(string) string, jud
 	e := env()
 	e.Context, e.Ready, e.Getenv = ctx, ready, getenv
 	w := &window{cancel: cancel, done: make(chan int, 1), stderr: &syncBuffer{}}
-	args := []string{"window", "--key", a.key("mediator"), "--founding", filepath.Join(a.dir, "founding.json"),
-		"--socket", a.socket(), "--journal", a.journal()}
+	args := []string{"window", "--key", a.key("mediator"), "--founding", filepath.Join(a.dir, "founding.json"), "--openings", a.openings(),
+		"--openings", a.openings(), "--socket", a.socket(), "--journal", a.journal()}
 	for _, n := range judges {
 		args = append(args, "--judge", a.config(n))
 	}
@@ -160,7 +168,7 @@ func TestCardListsTheJudges(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	acc, err := setup.Found(bytes.TrimSuffix(set, []byte("\n")), "2026-11-17T09:00:00Z")
+	acc, err := setup.Found(bytes.TrimSuffix(set, []byte("\n")), setup.Openings{}, "2026-11-17T09:00:00Z")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -196,7 +204,7 @@ func TestTheWindowTakesOnlyTheCardsConfigs(t *testing.T) {
 	if err := os.WriteFile(extra, []byte(judgeConfig("extra", "Block nothing.")), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	base := []string{"window", "--key", a.key("mediator"), "--founding", filepath.Join(a.dir, "founding.json"),
+	base := []string{"window", "--key", a.key("mediator"), "--founding", filepath.Join(a.dir, "founding.json"), "--openings", a.openings(),
 		"--socket", a.socket(), "--journal", a.journal()}
 	for name, judges := range map[string][]string{
 		"another instruction": {"--judge", other, "--judge", a.config("spare")},
@@ -227,7 +235,7 @@ func TestTheWindowTakesOnlyTheCardsConfigs(t *testing.T) {
 	// A card whose version for review is not jev.Version, founded anew.
 	card := strings.Replace(a.cards, `"version":"`+jev.Version+`"`, `"version":"9.9.9"`, 1)
 	_, founding := refoundJudged(t, a, card)
-	r := run(t, env(), "window", "--key", a.key("mediator"), "--founding", founding, "--socket", a.socket(),
+	r := run(t, env(), "window", "--key", a.key("mediator"), "--founding", founding, "--openings", a.openings(), "--socket", a.socket(),
 		"--journal", filepath.Join(a.dir, "j2"), "--judge", a.config("review"), "--judge", a.config("spare"))
 	if r.code != cli.ExitTool || r.stderr != "error founding judge\n" {
 		t.Fatalf("another version: %v", r)
@@ -244,7 +252,7 @@ func refoundJudged(t *testing.T, a *judgedAccord, card string) (string, string) 
 	}
 	args := []string{"founding"}
 	for _, p := range []string{"proposer", "applier", "decider"} {
-		args = append(args, "--declaration", filepath.Join(a.dir, p+".declaration"), "--binding", filepath.Join(a.dir, p+".binding"))
+		args = append(args, "--seal", filepath.Join(a.dir, p+".seal"), "--binding", filepath.Join(a.dir, p+".binding"))
 	}
 	args = append(args, "--policy", filepath.Join(a.dir, "policy.json"), "--mediator", filepath.Join(a.dir, "mediator.json"), "--card", cardPath)
 	r := must(t, args...)

@@ -174,12 +174,14 @@ func TestParseCallReadsOnlyItsForm(t *testing.T) {
 func FuzzParseCall(f *testing.F) {
 	p := key(f, "proposer")
 	at := time.Date(2026, 11, 12, 9, 0, 0, 0, time.UTC)
-	for _, op := range []string{local.OpGive, local.OpGet, local.OpQuestions, local.OpResolve, local.OpResult} {
+	for _, op := range []string{local.OpGive, local.OpGet, local.OpQuestions, local.OpResolve, local.OpResult, local.OpView, local.OpAccept} {
 		args := map[string]any{}
 		var waits []map[string]any
 		switch op {
 		case local.OpGive:
 			args = local.GiveArgs([]byte("{}"), []byte("{}"))
+		case local.OpAccept:
+			args = local.AcceptArgs([]byte(`{"accord":"a","from":"f","sig":"s","view":"v"}`))
 		case local.OpResolve:
 			args = local.ResolveArgs([]byte(`{"action":"accepted"}`), "accepted", saltOf("a salt"))
 		case local.OpResult:
@@ -205,7 +207,7 @@ func FuzzParseCall(f *testing.F) {
 			t.Fatal("a call over the size was read")
 		}
 		switch c.Op {
-		case local.OpGive, local.OpGet, local.OpQuestions, local.OpResolve, local.OpResult:
+		case local.OpGive, local.OpGet, local.OpQuestions, local.OpResolve, local.OpResult, local.OpView, local.OpAccept:
 		default:
 			t.Fatalf("op %q", c.Op)
 		}
@@ -229,6 +231,10 @@ func FuzzParseReply(f *testing.F) {
 	f.Add([]byte(`{"ok":true,"queued":true}`))
 	f.Add([]byte(`{"ok":true,"queued":false}`))
 	f.Add([]byte(`{"cursor":"x","ok":true}`))
+	f.Add([]byte(`{"ok":true,"view":{"accord":"a","answers":[],"crossings":[],"salt":"00","viewer":"v"}}`))
+	f.Add([]byte(`{"founded":false,"ok":true}`))
+	f.Add([]byte(`{"founding":"acceptance-view","ok":false}`))
+	f.Add([]byte(`{"founded":true,"ok":true,"view":{}}`))
 	f.Fuzz(func(t *testing.T, b []byte) {
 		_, _ = local.ParseReply(b)
 	})

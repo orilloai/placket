@@ -23,12 +23,16 @@ func (a *accord) another(t testing.TB) (id, founding, socket, journal string) {
 		t.Fatal(err)
 	}
 	args := []string{"founding", "--policy", filepath.Join(a.dir, "policy.json"), "--mediator", med, "--card", filepath.Join(a.dir, "card.json")}
-	decls, _ := filepath.Glob(filepath.Join(a.dir, "*.declaration"))
-	for _, d := range decls {
-		args = append(args, "--declaration", d, "--binding", strings.TrimSuffix(d, ".declaration")+".binding")
+	seals, _ := filepath.Glob(filepath.Join(a.dir, "*.seal"))
+	for _, d := range seals {
+		args = append(args, "--seal", d, "--binding", strings.TrimSuffix(d, ".seal")+".binding")
 	}
 	r := must(t, args...)
-	founding = filepath.Join(a.dir, "founding2.json")
+	// Its own directory, so its acceptances.json is its own.
+	if err := os.Mkdir(filepath.Join(a.dir, "2"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	founding = filepath.Join(a.dir, "2", "founding.json")
 	if err := os.WriteFile(founding, []byte(r.stdout), 0o600); err != nil {
 		t.Fatal(err)
 	}
@@ -47,7 +51,7 @@ func (a *accord) another(t testing.TB) (id, founding, socket, journal string) {
 	e.Context, e.Ready = ctx, ready
 	stderr := &syncBuffer{}
 	go func() {
-		done <- cli.Run(e, []string{"window", "--key", a.key("mediator"), "--founding", founding, "--socket", socket, "--journal", journal},
+		done <- cli.Run(e, []string{"window", "--key", a.key("mediator"), "--founding", founding, "--openings", a.openings(), "--socket", socket, "--journal", journal},
 			strings.NewReader(""), &bytes.Buffer{}, stderr)
 	}()
 	select {
@@ -58,6 +62,7 @@ func (a *accord) another(t testing.TB) (id, founding, socket, journal string) {
 		t.Fatal("the second window did not start")
 	}
 	t.Cleanup(func() { cancel(); <-done })
+	a.acceptAllOn(t, socket, id)
 	return id, founding, socket, journal
 }
 

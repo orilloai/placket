@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://placket.tech/api/0.1/wire/view.call.json",
+  "title": "view: the call",
+  "description": "Asks for the caller's own view of the Accord: for each crossing its own terms select, whether it crosses, is asked or is blocked, and each question it answers. A proposed Accord serves it, and so does a founded one; only a member is shown one, and only its own.",
+  "type": "object",
+  "required": [
+    "call",
+    "sig"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "call": {
+      "description": "What is signed: the call's canonical bytes.",
+      "type": "object",
+      "required": [
+        "accord",
+        "args",
+        "at",
+        "caller",
+        "nonce",
+        "op"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "op": {
+          "const": "view"
+        },
+        "caller": {
+          "$ref": "https://placket.tech/api/0.1/wire/common.json#/$defs/actor"
+        },
+        "accord": {
+          "$ref": "https://placket.tech/api/0.1/wire/common.json#/$defs/hash",
+          "description": "The Accord id the caller expects the window to serve."
+        },
+        "at": {
+          "$ref": "https://placket.tech/api/0.1/wire/common.json#/$defs/timestamp",
+          "description": "The caller's clock; the door refuses a call more than 60 seconds from its own (stale)."
+        },
+        "nonce": {
+          "$ref": "https://placket.tech/api/0.1/wire/common.json#/$defs/nonce"
+        },
+        "args": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {}
+        }
+      }
+    },
+    "sig": {
+      "$ref": "https://placket.tech/api/0.1/wire/common.json#/$defs/sig"
+    }
+  }
+}

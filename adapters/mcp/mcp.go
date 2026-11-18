@@ -126,7 +126,11 @@ func (s *Server) serve() ([]*served, error) {
 		}
 		// What the key answers is read from the view it accepted, kept in its state directory: a
 		// label with none has not consented to the Accord (setup-contract-14, setup-contract-15).
-		view, ok, err := state.Accepted(m.State)
+		dir := m.State
+		if dir == "" {
+			dir = state.DefaultPath(m.Key, m.Accord)
+		}
+		view, ok, err := state.Accepted(dir)
 		if err != nil || !ok {
 			v.from, v.code = errtext.FromMCP, string(CodeFounding)
 			continue

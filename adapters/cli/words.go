@@ -34,7 +34,7 @@ const (
 	wordRemoved    = "removed"
 	wordUnrecorded = "unrecorded"
 	wordMissing    = "missing"
-	wordFounded    = "founded"
+	wordFounded    = local.EventFounded
 	wordProposed   = "proposed"
 	wordReloaded   = local.EventReloaded
 	wordClosed     = local.EventClosed

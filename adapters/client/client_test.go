@@ -58,6 +58,7 @@ func newWorld(t *testing.T) *world {
 		}
 		w.refs[name] = k.Actor
 	}
+	openings, acceptances := workedFounding(t, worked)
 	set, err := os.ReadFile(filepath.Join(worked, "founding.json"))
 	if err != nil {
 		t.Fatal(err)
@@ -70,7 +71,7 @@ func newWorld(t *testing.T) *world {
 	ctx, cancel := context.WithCancel(context.Background())
 	ready, done := make(chan struct{}), make(chan error, 1)
 	go func() {
-		done <- local.Run(ctx, local.Window{Key: mk, Founding: bytes.TrimSuffix(set, []byte{'\n'}), Socket: w.socket,
+		done <- local.Run(ctx, local.Window{Key: mk, Founding: bytes.TrimSuffix(set, []byte{'\n'}), Openings: openings, Acceptances: acceptances, Socket: w.socket,
 			Journal: filepath.Join(d, "j"), Now: time.Now, Idle: 20 * time.Millisecond, Ready: ready})
 	}()
 	select {
@@ -204,4 +205,27 @@ func TestKilledAfterPersisting(t *testing.T) {
 	client.SetPersisted(func() { _ = syscall.Kill(os.Getpid(), syscall.SIGKILL) })
 	_, _ = c.Get(context.Background(), 0, true)
 	t.Fatal("not killed: " + strconv.Itoa(os.Getpid()))
+}
+
+// workedFounding reads the worked Accord's openings, each under its actor, and its acceptances, so a
+// window of the worked set is founded at once (setup-contract-15).
+func workedFounding(t *testing.T, dir string) (map[string][]byte, []byte) {
+	t.Helper()
+	files, err := filepath.Glob(filepath.Join(dir, "*.opening.json"))
+	if err != nil || len(files) == 0 {
+		t.Fatalf("no worked openings: %v", err)
+	}
+	openings := map[string][]byte{}
+	for _, f := range files {
+		b, err := os.ReadFile(f)
+		if err != nil {
+			t.Fatal(err)
+		}
+		openings["ed25519:"+strings.TrimSuffix(filepath.Base(f), ".opening.json")] = bytes.TrimSuffix(b, []byte{'\n'})
+	}
+	acc, err := os.ReadFile(filepath.Join(dir, "acceptances.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	return openings, bytes.TrimSuffix(acc, []byte{'\n'})
 }

@@ -59,9 +59,9 @@ func (a *accord) refound(t *testing.T, card string) (result, string) {
 		t.Fatal(err)
 	}
 	args := []string{"founding", "--policy", filepath.Join(a.dir, "policy.json"), "--mediator", filepath.Join(a.dir, "mediator.json"), "--card", cardPath}
-	decls, _ := filepath.Glob(filepath.Join(a.dir, "*.declaration"))
+	decls, _ := filepath.Glob(filepath.Join(a.dir, "*.seal"))
 	for _, d := range decls {
-		args = append(args, "--declaration", d, "--binding", strings.TrimSuffix(d, ".declaration")+".binding")
+		args = append(args, "--seal", d, "--binding", strings.TrimSuffix(d, ".seal")+".binding")
 	}
 	r := must(t, args...)
 	set := filepath.Join(a.dir, "other-founding.json")
@@ -97,7 +97,7 @@ func TestWindowRefusesAnotherModule(t *testing.T) {
 	} {
 		a := newAccord(t, "p1", "p2")
 		_, set := a.refound(t, c.card)
-		r := run(t, env(), "window", "--key", a.key("mediator"), "--founding", set, "--socket", a.socket(), "--journal", a.journal())
+		r := run(t, env(), "window", "--key", a.key("mediator"), "--founding", set, "--openings", a.openings(), "--socket", a.socket(), "--journal", a.journal())
 		if r.code != 3 || r.stdout != "" || r.stderr != otherLine(c.version, c.hash)+"\nerror founding kernel\n" {
 			t.Fatalf("%s: window: %v", c.name, r)
 		}
@@ -117,7 +117,7 @@ func TestWindowLeavesAnUnreadableCardToFounding(t *testing.T) {
 		if err := os.WriteFile(set, []byte(c), 0o600); err != nil {
 			t.Fatal(err)
 		}
-		r := run(t, env(), "window", "--key", a.key("mediator"), "--founding", set, "--socket", a.socket(), "--journal", a.journal())
+		r := run(t, env(), "window", "--key", a.key("mediator"), "--founding", set, "--openings", a.openings(), "--socket", a.socket(), "--journal", a.journal())
 		if r.code != 3 || r.stdout != "" || r.stderr != "error founding invalid-shape\n" {
 			t.Fatalf("window under %s: %v", c, r)
 		}
@@ -136,7 +136,7 @@ func TestVerifyNamesAnotherModule(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(a.journal(), "receipts.jsonl"), nil, 0o600); err != nil {
 		t.Fatal(err)
 	}
-	r := must(t, "verify", "--mediator", a.refs["mediator"], "--receipts", a.journal(), "--founding", set)
+	r := must(t, "verify", "--mediator", a.refs["mediator"], "--receipts", a.journal(), "--founding", set, "--acceptances", a.acceptancesOf(t, set))
 	l := r.lines()
 	for i := range l {
 		if l[i] == "module 0.1.0 "+otherHash {

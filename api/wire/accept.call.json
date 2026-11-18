@@ -1,0 +1,85 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://placket.tech/api/0.1/wire/accept.call.json",
+  "title": "accept: the call",
+  "description": "Hands the window the caller's signed acceptance of its view. A proposed Accord is founded once every member's is taken; on a founded one, an acceptance that checks changes nothing.",
+  "type": "object",
+  "required": [
+    "call",
+    "sig"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "call": {
+      "description": "What is signed: the call's canonical bytes.",
+      "type": "object",
+      "required": [
+        "accord",
+        "args",
+        "at",
+        "caller",
+        "nonce",
+        "op"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "op": {
+          "const": "accept"
+        },
+        "caller": {
+          "$ref": "https://placket.tech/api/0.1/wire/common.json#/$defs/actor"
+        },
+        "accord": {
+          "$ref": "https://placket.tech/api/0.1/wire/common.json#/$defs/hash",
+          "description": "The Accord id the caller expects the window to serve."
+        },
+        "at": {
+          "$ref": "https://placket.tech/api/0.1/wire/common.json#/$defs/timestamp",
+          "description": "The caller's clock; the door refuses a call more than 60 seconds from its own (stale)."
+        },
+        "nonce": {
+          "$ref": "https://placket.tech/api/0.1/wire/common.json#/$defs/nonce"
+        },
+        "args": {
+          "type": "object",
+          "required": [
+            "acceptance"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "acceptance": {
+              "description": "The caller's acceptance, signed under https://placket.tech/acceptance/0.1: the Accord id, the typed hash of its view, and from, the caller (setup-contract-15).",
+              "type": "object",
+              "required": [
+                "accord",
+                "view",
+                "from",
+                "sig"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "accord": {
+                  "$ref": "https://placket.tech/api/0.1/wire/common.json#/$defs/hash"
+                },
+                "view": {
+                  "$ref": "https://placket.tech/api/0.1/wire/common.json#/$defs/hash"
+                },
+                "from": {
+                  "$ref": "https://placket.tech/api/0.1/wire/common.json#/$defs/actor"
+                },
+                "sig": {
+                  "description": "The signature, 128 lowercase hex digits.",
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{128}$"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "sig": {
+      "$ref": "https://placket.tech/api/0.1/wire/common.json#/$defs/sig"
+    }
+  }
+}

@@ -23,6 +23,7 @@ import (
 	"github.com/orilloai/placket/adapters/local"
 	"github.com/orilloai/placket/adapters/mcp"
 	"github.com/orilloai/placket/core/answer"
+	"github.com/orilloai/placket/core/canonical"
 	"github.com/orilloai/placket/core/signing"
 )
 
@@ -35,7 +36,7 @@ const (
 	repliesDir = "testdata/replies"
 )
 
-var ops = []string{local.OpGive, local.OpQuestions, local.OpGet, local.OpResult, local.OpResolve}
+var ops = []string{local.OpGive, local.OpQuestions, local.OpGet, local.OpResult, local.OpResolve, local.OpView, local.OpAccept}
 
 // A worked call, as the generator wrote it.
 type worked struct {
@@ -235,6 +236,7 @@ func startWindow(t *testing.T, k keys, now time.Time) string {
 	if err != nil {
 		t.Fatal(err)
 	}
+	openings, acceptances := workedFounding(t, workedDir)
 	d := shortDir(t)
 	sock := filepath.Join(d, "w")
 	ready := make(chan struct{})
@@ -242,7 +244,7 @@ func startWindow(t *testing.T, k keys, now time.Time) string {
 	done := make(chan error, 1)
 	go func() {
 		done <- local.Run(ctx, local.Window{Key: keyOf(t, k.Keys["mediator"].Seed), Founding: bytes.TrimSuffix(set, []byte{'\n'}),
-			Socket: sock, Journal: filepath.Join(d, "j"), Now: func() time.Time { return now }, Idle: 20 * time.Millisecond,
+			Openings: openings, Acceptances: acceptances, Socket: sock, Journal: filepath.Join(d, "j"), Now: func() time.Time { return now }, Idle: 20 * time.Millisecond,
 			CursorRand: bytes.NewReader(make([]byte, 16)), Ready: ready})
 	}()
 	select {
@@ -284,6 +286,22 @@ func TestTheWireSchemasDescribeTheDoor(t *testing.T) {
 		t.Fatalf("the worked give: %s", got[local.OpGive])
 	}
 	question := rep.Outcome.ReceiptID
+	// The applier is shown its view as the worked example derives it by hand, and its acceptance of
+	// it is taken by a window already founded (setup-contract-14, setup-contract-15).
+	var wv struct {
+		View json.RawMessage `json:"view"`
+	}
+	wb, _ := os.ReadFile(filepath.Join(workedDir, local.OpView+".json"))
+	if err := json.Unmarshal(wb, &wv); err != nil {
+		t.Fatal(err)
+	}
+	want, _ := canonical.Form(wv.View)
+	if v, ok := local.ParseReply(got[local.OpView]); !ok || !bytes.Equal(v.View, want) {
+		t.Fatalf("the worked view: %s", got[local.OpView])
+	}
+	if a, ok := local.ParseReply(got[local.OpAccept]); !ok || !a.IsAccept || !a.Founded {
+		t.Fatalf("the worked accept: %s", got[local.OpAccept])
+	}
 	p := startProxy(t, filepath.Join(filepath.Dir(sock), "p"), sock)
 	open := func(name string) *client.Client {
 		dir := t.TempDir()
@@ -495,4 +513,27 @@ func TestTheReferenceIsGenerated(t *testing.T) {
 	if err != nil || !bytes.Equal(fresh, committed) {
 		t.Fatalf("docs/reference/mediator-api.md differs from a fresh go run ./api/gen (%v)", err)
 	}
+}
+
+// workedFounding reads the worked Accord's openings, each under its actor, and its acceptances, so a
+// window of the worked set is founded at once (setup-contract-15).
+func workedFounding(t *testing.T, dir string) (map[string][]byte, []byte) {
+	t.Helper()
+	files, err := filepath.Glob(filepath.Join(dir, "*.opening.json"))
+	if err != nil || len(files) == 0 {
+		t.Fatalf("no worked openings: %v", err)
+	}
+	openings := map[string][]byte{}
+	for _, f := range files {
+		b, err := os.ReadFile(f)
+		if err != nil {
+			t.Fatal(err)
+		}
+		openings["ed25519:"+strings.TrimSuffix(filepath.Base(f), ".opening.json")] = bytes.TrimSuffix(b, []byte{'\n'})
+	}
+	acc, err := os.ReadFile(filepath.Join(dir, "acceptances.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	return openings, bytes.TrimSuffix(acc, []byte{'\n'})
 }

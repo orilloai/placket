@@ -161,7 +161,7 @@ func TestAWindowWithNoSocketListensOnTheDefault(t *testing.T) {
 	t.Parallel()
 	a := newAccord(t, "proposer", "applier", "decider")
 	e, home := labelsEnv(t, map[string]any{"accord": a.id, "key": a.key("proposer"), "founding": filepath.Join(a.dir, "founding.json"), "label": "merge"})
-	w := startWith(t, e, "window", "--key", a.key("mediator"), "--founding", filepath.Join(a.dir, "founding.json"))
+	w := startWith(t, e, "window", "--key", a.key("mediator"), "--founding", filepath.Join(a.dir, "founding.json"), "--openings", a.openings())
 	defer w.stop(t)
 	if r := run(t, e, "give", "--label", "merge", "--to", a.refs["applier"], "--kind", "proposal", "--text", "Default."); r.code != 4 {
 		t.Fatalf("a give on the default socket: %v", r)
@@ -180,7 +180,7 @@ func TestAWindowWithNoHomeNeedsItsJournal(t *testing.T) {
 	e := env()
 	e.Getenv = func(string) string { return "" }
 	t.Chdir(t.TempDir())
-	r := run(t, e, "window", "--key", a.key("mediator"), "--founding", filepath.Join(a.dir, "founding.json"), "--socket", a.socket())
+	r := run(t, e, "window", "--key", a.key("mediator"), "--founding", filepath.Join(a.dir, "founding.json"), "--openings", a.openings(), "--socket", a.socket())
 	if r.code != 3 || r.stderr != "error usage\n" {
 		t.Fatalf("a window with no journal to default to: %v", r)
 	}

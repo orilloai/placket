@@ -27,10 +27,12 @@ func accepted(t *testing.T) (*accord, string) {
 	return a, q
 }
 
-// verifyAccord runs verify --accord with the Accord's founding set, and extra flags.
+// verifyAccord runs verify --accord with the Accord's founding set and every member's opening, the
+// full check, and extra flags.
 func verifyAccord(t *testing.T, a *accord, dir string, extra ...string) result {
 	t.Helper()
-	return run(t, env(), append([]string{"verify", "--receipts", dir, "--accord", a.id, "--founding", filepath.Join(a.dir, "founding.json")}, extra...)...)
+	args := append([]string{"verify", "--receipts", dir, "--accord", a.id, "--founding", filepath.Join(a.dir, "founding.json")}, a.opens()...)
+	return run(t, env(), append(args, extra...)...)
 }
 
 // journalIDs are the ids of the journal's receipts, in order.
@@ -313,7 +315,7 @@ func TestVerifyAnotherModule(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dir, "receipts.jsonl"), nil, 0o600); err != nil {
 		t.Fatal(err)
 	}
-	r := run(t, env(), "verify", "--receipts", dir, "--accord", id, "--founding", set)
+	r := run(t, env(), "verify", "--receipts", dir, "--accord", id, "--founding", set, "--acceptances", a.acceptancesOf(t, set))
 	if r.code != 0 || !slices.Contains(r.lines(), cli.LineConformOtherModule) {
 		t.Fatalf("verify: %v", r)
 	}
@@ -371,7 +373,7 @@ func TestVerifyNamesWhatThePolicySupersedes(t *testing.T) {
 		if err := os.WriteFile(bp, []byte(bind), 0o600); err != nil {
 			t.Fatal(err)
 		}
-		args = append(args, "--declaration", filepath.Join(a.dir, p+".declaration"), "--binding", bp)
+		args = append(args, "--seal", filepath.Join(a.dir, p+".seal"), "--binding", bp)
 	}
 	r := must(t, args...)
 	set := filepath.Join(a.dir, "superseding-founding.json")
@@ -386,7 +388,7 @@ func TestVerifyNamesWhatThePolicySupersedes(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dir, "receipts.jsonl"), nil, 0o600); err != nil {
 		t.Fatal(err)
 	}
-	v := run(t, env(), "verify", "--receipts", dir, "--accord", id, "--founding", set)
+	v := run(t, env(), "verify", "--receipts", dir, "--accord", id, "--founding", set, "--acceptances", a.acceptancesOf(t, set))
 	if v.code != 0 || !slices.Contains(v.lines(), fmt.Sprintf(cli.LineSupersedes, earlier, closed)) {
 		t.Fatalf("verify: %v", v)
 	}

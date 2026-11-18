@@ -48,8 +48,8 @@ func TestBindForAPolicy(t *testing.T) {
 	}
 	founding := must(t, "founding", "--policy", shuffled, "--mediator", filepath.Join(a.dir, "mediator.json"),
 		"--card", filepath.Join(a.dir, "card.json"),
-		"--declaration", filepath.Join(a.dir, "ann.declaration"), "--binding", annBinding,
-		"--declaration", filepath.Join(a.dir, "bob.declaration"), "--binding", filepath.Join(a.dir, "bob.binding"))
+		"--seal", filepath.Join(a.dir, "ann.seal"), "--binding", annBinding,
+		"--seal", filepath.Join(a.dir, "bob.seal"), "--binding", filepath.Join(a.dir, "bob.binding"))
 	if l := founding.lines(); len(l) == 0 || l[0] != "accord "+a.id {
 		t.Fatalf("the set with the binding made from the shuffled policy founds as %q, want accord %s", l, a.id)
 	}
@@ -112,12 +112,12 @@ func TestVerifyNamesWhoStandsBehindEachMember(t *testing.T) {
 
 	l := must(t, verify...).lines()
 	counts := slices.IndexFunc(l, func(s string) bool { return strings.HasPrefix(s, cli.WordPass+" ") })
-	if counts < 4 || !strings.HasPrefix(l[counts-4], "module ") || !strings.HasPrefix(l[counts-1], "custody: ") {
+	if counts < 5 || !strings.HasPrefix(l[counts-5], "module ") || !strings.HasPrefix(l[counts-2], "custody: ") || l[counts-1] != cli.LineTermsNotChecked {
 		t.Fatalf("verify printed %q", l)
 	}
 	for i, m := range want {
-		if line := "member " + m.Actor + " roles peer principal " + m.Principal; l[counts-3+i] != line {
-			t.Fatalf("line %d is %q, want %q", counts-3+i, l[counts-3+i], line)
+		if line := "member " + m.Actor + " roles peer principal " + m.Principal; l[counts-4+i] != line {
+			t.Fatalf("line %d is %q, want %q", counts-4+i, l[counts-4+i], line)
 		}
 	}
 }

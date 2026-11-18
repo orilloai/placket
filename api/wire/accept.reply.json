@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://placket.tech/api/0.1/wire/accept.reply.json",
+  "title": "accept: the reply",
+  "description": "Whether the Accord is founded, every member having accepted, once the window took the acceptance; or a refusal, a founding code among them.",
+  "oneOf": [
+    {
+      "type": "object",
+      "required": [
+        "ok",
+        "founded"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "ok": {
+          "const": true
+        },
+        "founded": {
+          "type": "boolean"
+        }
+      }
+    },
+    {
+      "$ref": "https://placket.tech/api/0.1/wire/common.json#/$defs/refusal"
+    },
+    {
+      "type": "object",
+      "required": [
+        "ok",
+        "founding"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "ok": {
+          "const": false
+        },
+        "founding": {
+          "$ref": "https://placket.tech/api/0.1/wire/common.json#/$defs/code",
+          "description": "The founding code of the row the acceptance fails, such as invalid-shape, acceptance-signature, acceptance-accord or acceptance-view, or of the row that kept the window from founding."
+        }
+      }
+    }
+  ]
+}
