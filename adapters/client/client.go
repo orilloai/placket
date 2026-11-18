@@ -4,7 +4,8 @@
 // (crossing-4) and the state directory's lock, in the command line's state directory, so the command
 // line and a client take turns on one key (state-lock); persists a fetched delivery to the state
 // directory before returning it; and checks every reply: a receipt names its own Accord, a delivery
-// is what its receipt says, and a question shown is the part its ask names.
+// is what its receipt says, a question shown is the part its ask names, and a view shown is the
+// key's own view of its Accord, which it keeps, as it keeps the acceptance it signs of it.
 //
 // The calls and their replies are described, for a client in any language, by the schemas under
 // api/ (docs/reference/mediator-api.md); this package takes the request layer, what a caller asks

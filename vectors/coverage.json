@@ -314,8 +314,8 @@
     "scenarios": {"an ask left open": {"tests": ["adapters/cli:TestJSONAnAskLeftOpen"]}, "waits that end with an accept and a change": {"tests": ["adapters/cli:TestJSONWaitsThatEndWithAnAcceptAndAChange"]}, "a decline and its comment": {"tests": ["adapters/cli:TestJSONADeclineAndItsComment"]}}
   },
   "commands-3": {
-    "tests": ["adapters/cli:TestJSONAFounding", "adapters/cli:TestJSONAWindowStops", "adapters/cli:TestJSONAnEmptyQueueAndADelivery", "adapters/cli:TestJSONEveryDeliveryAtOnce", "adapters/cli:TestJSONEveryDeliveryAtOnceIntoADirectory", "adapters/cli:TestBindForAPolicy"],
-    "scenarios": {"a founding": {"tests": ["adapters/cli:TestJSONAFounding"]}, "a binding for a policy": {"tests": ["adapters/cli:TestBindForAPolicy"]}, "an empty queue and a delivery": {"tests": ["adapters/cli:TestJSONAnEmptyQueueAndADelivery"]}, "every delivery at once": {"tests": ["adapters/cli:TestJSONEveryDeliveryAtOnce"]}, "every delivery at once into a directory": {"tests": ["adapters/cli:TestJSONEveryDeliveryAtOnceIntoADirectory"]}, "a window stops": {"tests": ["adapters/cli:TestJSONAWindowStops"]}}
+    "tests": ["adapters/cli:TestJSONAFounding", "adapters/cli:TestJSONAWindowStops", "adapters/cli:TestJSONAnEmptyQueueAndADelivery", "adapters/cli:TestJSONEveryDeliveryAtOnce", "adapters/cli:TestJSONEveryDeliveryAtOnceIntoADirectory", "adapters/cli:TestBindForAPolicy", "adapters/cli:TestSealPrintsTheEntryAndWritesTheOpening", "adapters/cli:TestAcceptSignsTheKeptView"],
+    "scenarios": {"a founding": {"tests": ["adapters/cli:TestJSONAFounding"]}, "a binding for a policy": {"tests": ["adapters/cli:TestBindForAPolicy"]}, "an empty queue and a delivery": {"tests": ["adapters/cli:TestJSONAnEmptyQueueAndADelivery"]}, "every delivery at once": {"tests": ["adapters/cli:TestJSONEveryDeliveryAtOnce"]}, "every delivery at once into a directory": {"tests": ["adapters/cli:TestJSONEveryDeliveryAtOnceIntoADirectory"]}, "a seal and its opening": {"tests": ["adapters/cli:TestSealPrintsTheEntryAndWritesTheOpening"]}, "a view and its acceptance": {"tests": ["adapters/cli:TestAcceptSignsTheKeptView"]}, "a window stops": {"tests": ["adapters/cli:TestJSONAWindowStops"]}}
   },
   "commands-4": {
     "tests": ["adapters/cli:TestJSONAShownReceiptAndAVerifiedJournal", "adapters/cli:TestJSONTheLogAndReconciliation", "adapters/cli:TestVerifyNamesWhoStandsBehindEachMember"],
@@ -334,8 +334,8 @@
     "scenarios": {"every condition alone and combined": {"tests": ["adapters/cli:TestReleasedKeptEveryConditionAloneAndCombined"]}, "every match in fetch order": {"tests": ["adapters/cli:TestReleasedKeptEveryMatchInFetchOrder"]}, "a kept line changed, and nothing kept": {"tests": ["adapters/cli:TestReleasedKeptALineChangedAndNothingKept"]}}
   },
   "commands-8": {
-    "tests": ["adapters/cli:TestVerifyJSONHoldsTheLines", "adapters/cli:TestVerifyANonconformingLog", "adapters/cli:TestVerifyCustody", "adapters/cli:TestVerifyAnotherModule"],
-    "scenarios": {"the lines of a verified journal": {"tests": ["adapters/cli:TestVerifyJSONHoldsTheLines"]}, "a log that does not conform": {"tests": ["adapters/cli:TestVerifyANonconformingLog"]}}
+    "tests": ["adapters/cli:TestVerifyJSONHoldsTheLines", "adapters/cli:TestVerifyANonconformingLog", "adapters/cli:TestVerifyCustody", "adapters/cli:TestVerifyAnotherModule", "adapters/cli:TestVerifyWithoutTheOpenings", "adapters/cli:TestVerifyOpensASeal"],
+    "scenarios": {"the lines of a verified journal": {"tests": ["adapters/cli:TestVerifyJSONHoldsTheLines"]}, "a sealed set verified, without and with its openings": {"tests": ["adapters/cli:TestVerifyWithoutTheOpenings", "adapters/cli:TestVerifyOpensASeal"]}, "a log that does not conform": {"tests": ["adapters/cli:TestVerifyANonconformingLog"]}}
   },
   "log-1": {
     "tests": ["adapters/cli:TestTheLogOfTheWorkedExample", "adapters/cli:TestLogWithoutAllIsUnchanged"],

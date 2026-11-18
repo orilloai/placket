@@ -7,10 +7,13 @@
 //
 // It serves only the labels of the labels config it is started with, each a mediator on its own: its
 // key, its roles and its checks come from its own entry and founding set, and nothing about one is
-// checked against another's. A label whose key holds a role that a maybe term's resolve.to names, in
-// that label's own founding set, answers questions, and is refused (CodeAnsweringKey) unless the
-// server allows answering keys; a label whose founding set cannot be read, or does not found, is
-// refused too (CodeFounding). A label it is not started with has none of its files opened.
+// checked against another's. What a label's key answers is read from the view it accepted, kept as
+// view.json in its state directory beside the acceptance.json that names it (setup-contract-14,
+// setup-contract-15): a view with an answers row, or an asked crossing whose to names one of the
+// key's roles, answers questions, and is refused (CodeAnsweringKey) unless the server allows
+// answering keys. A label whose founding set cannot be read, or does not found, or that has accepted
+// no view of its Accord, is refused too (CodeFounding). The mediator API's view and accept are no
+// tools: a member consents to an Accord itself. A label it is not started with has none of its files opened.
 //
 // Each tool's input schema is its request schema under api/request/, with mediator, the served
 // label, or the Accord id of an entry with none. A tool error is MCP error text: the code and its one

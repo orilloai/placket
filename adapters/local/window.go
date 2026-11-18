@@ -245,7 +245,12 @@ type parked struct {
 // too long is CodeSocketPath before anything else is done; so is, when it listens, a path within 3
 // bytes of MaxSocketPath whose last element has fewer than 4 bytes (privateBound). Otherwise it opens the journal and takes
 // its lock; founds the Accord at the current second on an empty journal or reloads the journal's, journaling the closings of what a stop left open; removes a stale socket
-// file; and only then listens. Every call is handled by one goroutine, which owns the mediator. A
+// file; and only then listens. On an empty journal with no Acceptances it starts the Accord proposed
+// instead (setup-contract-15): it runs founding's rows 1 to 17 with every opening, emits
+// EventStarted with Proposed set, serves only view and accept, refuses every other call with
+// NotFounded, and founds once every member has accepted, at that time, handing acceptances.json to
+// Accepted before it journals the founding, then emits EventFounded. A founded journal with no
+// Acceptances is setup's *Error acceptance-missing. Every call is handled by one goroutine, which owns the mediator. A
 // journal write that fails ends Run with that error, and the call it was for gets no reply
 // (journal-synced); so does a failure of the mediator outside a call's refusal, when it ticks, reads
 // a question it just asked or closes one nobody can answer. An accept that fails for a reason that
