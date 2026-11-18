@@ -25,7 +25,7 @@ func TestCardJudgeNameTwice(t *testing.T) {
 		t.Fatalf("one name twice: got %q", c)
 	}
 	set["card"].(map[string]any)["judges"] = []any{judge("lint", "cd"), judge("jev", "ab")}
-	a, err := setup.Found(encode(t, set), at)
+	a, err := foundClear(t, encode(t, set), at)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -78,7 +78,7 @@ func TestTermJudges(t *testing.T) {
 			d := declarationOf(t, set, "proposer")
 			termsOf(d)[0]["resolve"].(map[string]any)["judges"] = tc.judges
 			sign(t, d, "proposer")
-			a, err := setup.Found(encode(t, set), at)
+			a, err := foundClear(t, encode(t, set), at)
 			if c := foundCode(t, encode(t, set), at); c != tc.want {
 				t.Fatalf("got %q, want %q", c, tc.want)
 			}
@@ -120,7 +120,7 @@ func TestSupersedes(t *testing.T) {
 		if c.want != founded {
 			continue
 		}
-		a, _ := setup.Found(encode(t, set), at)
+		a, _ := foundClear(t, encode(t, set), at)
 		if acc, cl, ok := a.Supersedes(); !ok || acc != earlier || cl != closed {
 			t.Fatalf("Supersedes = %q, %q, %v", acc, cl, ok)
 		}
@@ -129,7 +129,7 @@ func TestSupersedes(t *testing.T) {
 		}
 	}
 	set, at := base(t, "ask-and-log")
-	a, _ := setup.Found(encode(t, set), at)
+	a, _ := foundClear(t, encode(t, set), at)
 	if _, _, ok := a.Supersedes(); ok {
 		t.Fatal("a policy with no supersedes supersedes something")
 	}

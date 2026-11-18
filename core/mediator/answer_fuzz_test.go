@@ -134,7 +134,8 @@ func FuzzReload(f *testing.F) {
 			}
 		}
 	}
-	set, foundedAt := askAndLog(f)
+	sealed, foundedAt := askAndLog(f)
+	set := sealed.Set
 	f.Add(set, foundedAt, uint8(0), list[0], q2, "2026-11-12T10:02:00Z", "decider", queued[0].To, queued[0].Delivery, "2026-11-12T11:00:00Z")
 	f.Add(set, foundedAt, uint8(9), []byte(nil), q2, "2026-11-12T10:02:00Z", "", queued[1].To, queued[1].Delivery, "2026-11-12T10:00:00Z")
 	f.Add(set, foundedAt, uint8(3), list[1], q, "x", "decider", "", []byte(`{}`), "2026-11-12T11:00:00Z")
@@ -146,14 +147,16 @@ func FuzzReload(f *testing.F) {
 	for _, in := range seeds.Inputs(f, "receipts", "receipt") {
 		f.Add(set, foundedAt, uint8(0), in, q2, "2026-11-12T10:02:00Z", "decider", queued[0].To, in, "2026-11-12T11:00:00Z")
 	}
-	f.Fuzz(func(t *testing.T, founding []byte, foundedAt string, at uint8, receipt []byte, question, deadline, role, to string, delivery []byte, reloadAt string) {
+	f.Fuzz(func(t *testing.T, set []byte, foundedAt string, at uint8, receipt []byte, question, deadline, role, to string, delivery []byte, reloadAt string) {
 		l := append([][]byte(nil), list...)
 		if int(at) < len(l) {
 			l[at] = receipt
 		}
 		qd := append([]mediator.Queued(nil), queued...)
 		qd[0] = mediator.Queued{To: to, Delivery: delivery}
-		r, outs, err := mediator.Reload(founding, l, []mediator.Open{{Question: question, Deadline: deadline, Roles: []string{role}}}, qd, foundedAt, med, reloadAt)
+		in := sealed
+		in.Set = set
+		r, outs, err := mediator.Reload(in, l, []mediator.Open{{Question: question, Deadline: deadline, Roles: []string{role}}}, qd, foundedAt, med, reloadAt)
 		if err != nil {
 			if r != nil || outs != nil {
 				t.Fatal("a refused reload returned a mediator")

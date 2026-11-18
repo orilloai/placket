@@ -143,7 +143,7 @@ var askAndLogRoles = []string{"proposer", "applier", "decider"}
 // foundSet founds a set a test built, at the founding time of the vectors.
 func foundSet(t testing.TB, s []byte) *mediator.Mediator {
 	t.Helper()
-	m, err := mediator.Found(s, ptesting.Key(t, "mediator"), "2026-11-12T08:00:00Z")
+	m, err := mediator.Found(ptesting.SealedByAll(t, s, "2026-11-12T08:00:00Z"), ptesting.Key(t, "mediator"), "2026-11-12T08:00:00Z")
 	if err != nil {
 		t.Fatalf("the test's set does not found: %v", err)
 	}

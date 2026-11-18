@@ -38,7 +38,8 @@ func maybeTerm(dir, with, kind string, js []any) map[string]any {
 // sign the policy, not the card or the terms, so they stand.
 func judged(t *testing.T, sender, receiver []map[string]any) *setup.Accord {
 	t.Helper()
-	raw, at := ptesting.Founding(t, "ask-and-log")
+	sealed, at := ptesting.Founding(t, "ask-and-log")
+	raw := ptesting.Clear(t, sealed)
 	d := json.NewDecoder(bytes.NewReader(raw))
 	d.UseNumber()
 	var set map[string]any
@@ -74,7 +75,7 @@ func judged(t *testing.T, sender, receiver []map[string]any) *setup.Accord {
 		}
 		decl["sig"] = sig
 	}
-	a, err := setup.Found(encodeJSON(t, set), at)
+	a, err := ptesting.Open(t, encodeJSON(t, set), at)
 	if err != nil {
 		t.Fatalf("the judged set does not found: %v", err)
 	}

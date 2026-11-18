@@ -15,7 +15,7 @@ import (
 func TestEachPartyItsOwnPrincipal(t *testing.T) {
 	t.Parallel()
 	set, at := base(t, "two-principals")
-	a, err := setup.Found(encode(t, set), at)
+	a, err := foundClear(t, encode(t, set), at)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -52,7 +52,7 @@ func TestEachPartyItsOwnPrincipal(t *testing.T) {
 func TestOnePrincipalForEveryParty(t *testing.T) {
 	t.Parallel()
 	set, at := base(t, "ask-and-log")
-	a, err := setup.Found(encode(t, set), at)
+	a, err := foundClear(t, encode(t, set), at)
 	if err != nil {
 		t.Fatal(err)
 	}

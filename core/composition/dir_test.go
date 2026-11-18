@@ -16,7 +16,8 @@ import (
 // signed again by its actor.
 func withTerms(t *testing.T, added map[string][]map[string]any) *setup.Accord {
 	t.Helper()
-	raw, foundedAt := ptesting.Founding(t, "ask-and-log")
+	sealed, foundedAt := ptesting.Founding(t, "ask-and-log")
+	raw := ptesting.Clear(t, sealed)
 	d := json.NewDecoder(bytes.NewReader(raw))
 	d.UseNumber()
 	var set map[string]any
@@ -51,7 +52,7 @@ func withTerms(t *testing.T, added map[string][]map[string]any) *setup.Accord {
 	if err != nil {
 		t.Fatal(err)
 	}
-	a, err := setup.Found(c, foundedAt)
+	a, err := ptesting.Open(t, c, foundedAt)
 	if err != nil {
 		t.Fatal(err)
 	}

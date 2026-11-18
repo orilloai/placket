@@ -12,7 +12,8 @@ import (
 // has all three.
 func FuzzAccordReads(f *testing.F) {
 	v := vectors(f)["ask-and-log"]
-	a, err := setup.Found(v.set(), v.FoundedAt)
+	in := v.inputs()
+	a, err := setup.Found(in.Set, in.Openings, v.FoundedAt)
 	if err != nil {
 		f.Fatal(err)
 	}
