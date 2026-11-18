@@ -276,3 +276,49 @@ func TestSalts(t *testing.T) {
 		}
 	}
 }
+
+// TestKeepCloseAfterATornWrite keeps a close in close.json: absent, it is made; holding the same
+// close, it is left; holding a write a crash cut short, empty or with no line feed at its end, it is
+// replaced whole, mode 0600, and nothing else is left in the directory; holding another close, or
+// the same close with more after it, it is error state and left as it was.
+func TestKeepCloseAfterATornWrite(t *testing.T) {
+	t.Parallel()
+	close := []byte(`{"payloadType":"application/vnd.in-toto+json","payload":"e30=","signatures":[]}`)
+	file := func(path string) string { return filepath.Join(path, state.FileClose) }
+	for _, torn := range []string{"", string(close[:10]), string(close)} {
+		path := filepath.Join(t.TempDir(), "s")
+		d := open(t, path, &bytes.Buffer{})
+		if err := os.WriteFile(file(path), []byte(torn), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		before, _ := os.ReadDir(path)
+		if err := d.KeepClose(close); err != nil {
+			t.Fatalf("a close.json of %q: %v", torn, err)
+		}
+		b, err := os.ReadFile(file(path))
+		fi, _ := os.Stat(file(path))
+		if err != nil || string(b) != string(close)+"\n" || fi.Mode().Perm() != 0o600 {
+			t.Fatalf("a close.json of %q holds %q, mode %v", torn, b, fi.Mode())
+		}
+		if after, _ := os.ReadDir(path); len(after) != len(before) {
+			t.Fatalf("a close.json of %q: %d entries in the directory, were %d", torn, len(after), len(before))
+		}
+		if err := d.KeepClose(close); err != nil {
+			t.Fatalf("the same close again: %v", err)
+		}
+	}
+	for _, other := range []string{`{"other":1}` + "\n", string(close) + "\n" + string(close) + "\n", `{"other":1}` + "\n" + string(close[:10])} {
+		path := filepath.Join(t.TempDir(), "s")
+		d := open(t, path, &bytes.Buffer{})
+		if err := os.WriteFile(file(path), []byte(other), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		var se *state.Error
+		if err := d.KeepClose(close); !errors.As(err, &se) || se.Code != state.CodeState || se.File != state.FileClose {
+			t.Fatalf("a close.json of %q: %v, want state close.json", other, err)
+		}
+		if b, _ := os.ReadFile(file(path)); string(b) != other {
+			t.Fatalf("a close.json of %q became %q", other, b)
+		}
+	}
+}
