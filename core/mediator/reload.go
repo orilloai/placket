@@ -37,47 +37,119 @@ type Open struct {
 // (maybe-4), from the first member holding one of the entry's roles, or the mediator. It decides
 // nothing again: no crossing is put to composition (one-decision-module), and the closings' outcomes
 // are returned in order.
+//
+// A record that ends in its close is a closed Accord (close-3): Reload returns a closed mediator and
+// writes nothing. A record that holds closed closings with no close after them was cut inside a close
+// (close-1), and only Close completes it: Reload refuses it with close.
 func Reload(founding []byte, list [][]byte, open []Open, deliveries []Queued, foundedAt string, key signing.Key, at string) (*Mediator, []Outcome, error) {
+	r, err := rebuild(founding, list, open, deliveries, foundedAt, key, at)
+	if err != nil {
+		return nil, nil, err
+	}
+	m := r.m
+	// A record cut inside a close is completed by Close alone; one that ends in its close is a closed
+	// Accord, and its reload writes nothing (close-1, close-3).
+	if r.torn != "" {
+		return nil, nil, failure(CodeClose)
+	}
+	if m.closed != nil {
+		return m, []Outcome{}, nil
+	}
+
+	// Every open question closes, in the order opened; its receipts are built before the state takes
+	// them.
+	b := m.batch()
+	for _, qi := range r.order {
+		q := r.question(qi)
+		reason, when, by := receipts.ReasonUndeliverable, at, byUndeliverable
+		if q.deadline <= at {
+			reason, when, by = receipts.ReasonTimeout, q.deadline, byDeadline
+		}
+		if err := b.close(q, m.firstAnswerer(q.roles), reason, when, by); err != nil {
+			return nil, nil, err
+		}
+	}
+	m.commit(b)
+	return m, b.outs, nil
+}
+
+// A record is what rebuild made of a journal's record: the mediator with the state its receipts
+// leave, its open questions still open; the verified statements; the indexes of the questions the
+// receipts leave open, in the order opened, each with its entry; and, when the record ends in closed
+// closings with no close after them, their time.
+type record struct {
+	m     *Mediator
+	st    []receipts.Statement
+	order []int
+	given map[int]Open
+	torn  string
+}
+
+// question is the open question at index qi of the record, as its entry recorded it.
+func (r record) question(qi int) *question {
+	o, ask := r.given[qi], r.st[qi]
+	return &question{id: ask.ID, asker: ask.Predicate.From, receiver: ask.Predicate.To,
+		envelope: ask.Predicate.Envelope, subject: ask.Subject, roles: o.Roles, deadline: o.Deadline}
+}
+
+// rebuild is what Reload and Close share (record 0008, record 0022): it checks the record in
+// Reload's order and makes the mediator its receipts leave, with nothing written. A close in the
+// list makes the mediator closed.
+func rebuild(founding []byte, list [][]byte, open []Open, deliveries []Queued, foundedAt string, key signing.Key, at string) (record, error) {
+	fail := func(err error) (record, error) { return record{}, err }
+
 	if !shape.Timestamp(at) {
-		return nil, nil, failure(CodeAt)
+		return fail(failure(CodeAt))
 	}
 	m, err := Found(founding, key, foundedAt)
 	if err != nil {
-		return nil, nil, err
+		return fail(err)
 	}
 	verified, err := receipts.Verify(key.Reference(), list)
 	if err != nil {
 		var re *receipts.Error
 		if errors.As(err, &re) {
-			return nil, nil, &Error{Code: CodeJournal, Index: re.Index, Err: re}
+			return fail(&Error{Code: CodeJournal, Index: re.Index, Err: re})
 		}
-		return nil, nil, failure(CodeJournal)
+		return fail(failure(CodeJournal))
 	}
 	st := make([]receipts.Statement, len(verified))
+	var closed *Closed
+	torn := ""
 	for i, v := range verified {
 		st[i] = v.Statement()
-	}
-	for i, s := range st {
-		if s.Predicate.Accord != m.accord.ID() || s.Predicate.Card != m.accord.Card() {
-			return nil, nil, &Error{Code: CodeJournal, Index: i}
+		accord, card := st[i].Predicate.Accord, st[i].Predicate.Card
+		if c, ok := v.Close(); ok {
+			// The verifier lets nothing follow a close, so it is the last receipt (close-4).
+			accord, card = c.Accord, c.Card
+			closed = &Closed{ID: c.ID, Receipt: append([]byte(nil), list[i]...)}
+		} else if p := st[i].Predicate; p.Kind == receipts.KindResolution && p.Reason == receipts.ReasonClosed {
+			// The verifier holds the closed closings together at the end, before their close.
+			torn = p.At
 		}
+		if accord != m.accord.ID() || card != m.accord.Card() {
+			return fail(&Error{Code: CodeJournal, Index: i})
+		}
+	}
+	if closed != nil {
+		torn = ""
 	}
 	places, err := receipts.Releases(verified)
 	if err != nil {
-		return nil, nil, failure(CodeJournal)
+		return fail(failure(CodeJournal))
 	}
 
 	// The questions the receipts hold open, in the order they were opened, and the entry of each.
-	closed := map[int]bool{}
+	answered := map[int]bool{}
 	for _, p := range places {
 		if p.Role == receipts.RoleClosing {
-			closed[p.Question] = true
+			answered[p.Question] = true
 		}
 	}
 	openAt := map[string]int{}
 	var order []int
 	for i, p := range places {
-		if p.Role == receipts.RoleQuestion && !closed[i] {
+		if p.Role == receipts.RoleQuestion && !answered[i] {
 			openAt[st[i].ID] = i
 			order = append(order, i)
 		}
@@ -85,24 +157,26 @@ func Reload(founding []byte, list [][]byte, open []Open, deliveries []Queued, fo
 	given := map[int]Open{}
 	for i, o := range open {
 		if !shape.Timestamp(o.Deadline) {
-			return nil, nil, &Error{Code: CodeAt, Index: i}
+			return fail(&Error{Code: CodeAt, Index: i})
 		}
 		qi, ok := openAt[o.Question]
 		if _, twice := given[qi]; !ok || twice {
-			return nil, nil, &Error{Code: CodeQuestion, Index: i}
+			return fail(&Error{Code: CodeQuestion, Index: i})
 		}
 		given[qi] = Open{Question: o.Question, Deadline: o.Deadline, Roles: append([]string(nil), o.Roles...)}
 	}
 	for _, qi := range order {
 		if _, ok := given[qi]; !ok {
-			return nil, nil, failure(CodeQuestion)
+			return fail(failure(CodeQuestion))
 		}
 	}
 
 	// The deliveries not yet fetched, each the one its receipt queued.
 	byID := map[string]int{}
 	for i, s := range st {
-		byID[s.ID] = i
+		if s.ID != "" {
+			byID[s.ID] = i
+		}
 	}
 	type restored struct {
 		index int
@@ -114,18 +188,21 @@ func Reload(founding []byte, list [][]byte, open []Open, deliveries []Queued, fo
 	for i, q := range deliveries {
 		ri, ok := crossing.Held(st, list, byID, q.To, q.Delivery)
 		if !ok || seen[ri] {
-			return nil, nil, &Error{Code: CodeHeld, Index: i}
+			return fail(&Error{Code: CodeHeld, Index: i})
 		}
 		seen[ri] = true
 		back = append(back, restored{index: ri, to: q.To, q: queued{id: st[ri].ID, delivery: append([]byte(nil), q.Delivery...)}})
 	}
 	sort.Slice(back, func(i, j int) bool { return back[i].index < back[j].index })
 
-	// The state the receipts leave.
+	// The state the receipts leave. A close is in no chain and echoes no envelope.
 	for i, r := range list {
 		m.receipts = append(m.receipts, append([]byte(nil), r...))
 		s := st[i]
 		m.statements = append(m.statements, verified[i])
+		if s.ID == "" {
+			continue
+		}
 		m.chains[[2]string{s.Predicate.From, s.Predicate.To}] = link{seq: s.Predicate.Seq, id: s.ID}
 		if e := s.Predicate.Envelope; e.Seq > m.highest[e.Sender] {
 			m.highest[e.Sender] = e.Seq
@@ -134,22 +211,6 @@ func Reload(founding []byte, list [][]byte, open []Open, deliveries []Queued, fo
 	for _, x := range back {
 		m.queues[x.to] = append(m.queues[x.to], x.q)
 	}
-
-	// Every open question closes, in the order opened; its receipts are built before the state takes
-	// them.
-	b := m.batch()
-	for _, qi := range order {
-		o, ask := given[qi], st[qi]
-		q := &question{id: ask.ID, asker: ask.Predicate.From, receiver: ask.Predicate.To,
-			envelope: ask.Predicate.Envelope, subject: ask.Subject, roles: o.Roles, deadline: o.Deadline}
-		reason, when, by := receipts.ReasonUndeliverable, at, byUndeliverable
-		if o.Deadline <= at {
-			reason, when, by = receipts.ReasonTimeout, o.Deadline, byDeadline
-		}
-		if err := b.close(q, m.firstAnswerer(q.roles), reason, when, by); err != nil {
-			return nil, nil, err
-		}
-	}
-	m.commit(b)
-	return m, b.outs, nil
+	m.closed = closed
+	return record{m: m, st: st, order: order, given: given, torn: torn}, nil
 }

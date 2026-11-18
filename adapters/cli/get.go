@@ -105,7 +105,8 @@ func saltBytes(s string) ([]byte, bool) {
 
 // fetch gets the next delivery, under the state lock the caller holds, and records it: its receipt
 // in delivered.jsonl, its salt in salts.jsonl, and the delivery, the answer call inside it, in kept.jsonl when keep is
-// set. It returns the delivery and its kept.jsonl line, or nil when nothing is queued; a delivery
+// set. It returns the delivery and its kept.jsonl line, or nil when nothing is queued, leaving in
+// s.handed the close receipt the reply carried in its place, if any, for get to keep; a delivery
 // that is not what its receipt says is tool error reply, and nothing of it is recorded.
 func (s *session) fetch(keep bool) (*delivery, []byte, int) {
 	rep, err := s.client.Call(local.OpGet, nil)
@@ -116,6 +117,7 @@ func (s *session) fetch(keep bool) (*delivery, []byte, int) {
 		return nil, nil, code
 	}
 	if rep.Delivery == nil {
+		s.handed = rep.Close
 		return nil, nil, 0
 	}
 	var d delivery
@@ -135,6 +137,23 @@ func (s *session) fetch(keep bool) (*delivery, []byte, int) {
 		}
 	}
 	return &d, kl, 0
+}
+
+// keepClose keeps the close receipt a fetch was handed on a closed Accord, whose queue is empty
+// (close-3): in close.json, once, and in the object as close; it prints `close <id>`. ParseReply has
+// read it as a close, and Send under this Accord. A close.json that holds another is the state
+// directory's error.
+func (s *session) keepClose(receipt []byte) int {
+	c, err := receipts.DecodeClose(receipt)
+	if err != nil {
+		return s.r.tool(codeReply)
+	}
+	if err := s.dir.KeepClose(receipt); err != nil {
+		return s.r.failed(err)
+	}
+	fmt.Fprintln(s.r.stderr, memberClose+" "+c.ID)
+	s.r.put(memberClose, map[string]any{memberReceiptID: c.ID, memberReceipt: json.RawMessage(receipt)})
+	return 0
 }
 
 // keptLine is a fetched delivery's line of kept.jsonl: the delivery as it came, the answer call
@@ -232,6 +251,9 @@ func getCommand(r *run, args []string) int {
 	for n := 0; ; n++ {
 		d, kept, code := s.fetch(*keep || *all)
 		if d == nil {
+			if code == 0 && s.handed != nil {
+				return s.keepClose(s.handed)
+			}
 			if code == 0 && n == 0 {
 				fmt.Fprintln(r.stderr, LineNoDelivery)
 			}

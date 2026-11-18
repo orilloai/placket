@@ -1,0 +1,20 @@
+{
+  "_type": "https://in-toto.io/Statement/v1",
+  "predicate": {
+    "accord": "sha256:26f6de282cb5b5b3f9e4d93046306b95974e796572c6aee9e10aec0652567189",
+    "at": "2026-11-12T10:00:00Z",
+    "card": "sha256:1aeeb6d581d8d29e1298145764d3df8d4c343ce775f3bc42af57cb205bbfaf6f",
+    "chains": [],
+    "mediator": "ed25519:22cdf8245c3ce6fb391597095e59b2eb3e3cdfda6ab4b606cc3acd9d2d40ed77",
+    "unfetched": []
+  },
+  "predicateType": "https://placket.tech/close/0.1",
+  "subject": [
+    {
+      "digest": {
+        "sha256": "26f6de282cb5b5b3f9e4d93046306b95974e796572c6aee9e10aec0652567189"
+      },
+      "name": "accord"
+    }
+  ]
+}

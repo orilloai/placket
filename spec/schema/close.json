@@ -1,0 +1,130 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://placket.tech/schema/0.1/close.json",
+  "title": "Close statement",
+  "description": "The payload of a close receipt (close-2): an in-toto Statement v1 whose one subject is the Accord, named accord, with the 64 lowercase hex digits of the Accord id as its sha256 digest, and whose predicate pins the last receipt of every chain and lists every delivery not yet fetched. chains is ordered by from and then by to in actor-reference order, and unfetched in the order the deliveries were queued; both are there when empty. That the subject's digest is the hex of accord, and that the lists match the receipts before the close, are the verifier's to check (close-4): a schema cannot compare two members.",
+  "type": "object",
+  "properties": {
+    "_type": {
+      "const": "https://in-toto.io/Statement/v1"
+    },
+    "subject": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 1,
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "const": "accord"
+          },
+          "digest": {
+            "type": "object",
+            "properties": {
+              "sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              }
+            },
+            "required": [
+              "sha256"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "name",
+          "digest"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "predicateType": {
+      "const": "https://placket.tech/close/0.1"
+    },
+    "predicate": {
+      "$ref": "#/$defs/predicate"
+    }
+  },
+  "required": [
+    "_type",
+    "subject",
+    "predicateType",
+    "predicate"
+  ],
+  "additionalProperties": false,
+  "$defs": {
+    "predicate": {
+      "type": "object",
+      "properties": {
+        "accord": {
+          "$ref": "hash.json"
+        },
+        "card": {
+          "$ref": "hash.json"
+        },
+        "mediator": {
+          "$ref": "reference.json"
+        },
+        "at": {
+          "$ref": "timestamp.json"
+        },
+        "chains": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "from": {
+                "$ref": "reference.json"
+              },
+              "to": {
+                "$ref": "reference.json"
+              },
+              "seq": {
+                "$ref": "predicate.json#/$defs/seq"
+              },
+              "receipt": {
+                "$ref": "hash.json"
+              }
+            },
+            "required": [
+              "from",
+              "to",
+              "seq",
+              "receipt"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "unfetched": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "to": {
+                "$ref": "reference.json"
+              },
+              "receipt": {
+                "$ref": "hash.json"
+              }
+            },
+            "required": [
+              "to",
+              "receipt"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": [
+        "accord",
+        "card",
+        "mediator",
+        "at",
+        "chains",
+        "unfetched"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

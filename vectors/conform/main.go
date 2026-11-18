@@ -200,6 +200,28 @@ func main() {
 		name := map[string]string{kit.Decider.Name: "a-change-to-its-answerer-releases-nothing", kit.Proposer.Name: "a-change-to-its-asker-releases-nothing"}[receiver.Name]
 		add(of(set, s, call).vector(name, "verify-2 row 4, maybe-10: a passing change with release true whose question's receiver is the "+receiver.Name+" releases nothing, and conforms with no release receipt", conforms(1, 0, 0, true)))
 	}
+
+	// The close's closings and the close itself (verify-2 rows 1 to 3, close-4).
+	for _, c := range []struct{ name, tests, at string }{
+		{"close-a-closed-closing-conforms", "verify-2 rows 2 and 3, close-1, close-4: a closing with reason closed from the decider, the first answerer, at 09:30, before its deadline of 10:00, conforms, by the mediator with the event close; the close after it goes through rows 0 and 1 alone and is no decision", "2026-11-12T09:30:00Z"},
+		{"close-a-closing-at-its-deadline", "verify-2 row 3, close-1: a closing with reason closed whose at, 10:00, is its question's deadline is decision; its close at the same time is valid", "2026-11-12T10:00:00Z"},
+	} {
+		s := scene(askAndLog)
+		q := s.Give(at(0), kit.Proposer, 1, message(askAndLog, "proposal-1", "proposal", kit.Applier), kit.Applier, "escalate", "maybe")
+		s.CloseAccord(c.at, nil, []kit.Closing{{Question: q, From: decider}})
+		expect := conforms(0, 0, 0, true)
+		if c.at == "2026-11-12T10:00:00Z" {
+			expect = fails("decision", 1)
+		}
+		add(of(askAndLog, s).vector(c.name, c.tests, expect))
+	}
+	{
+		other := kit.HashOf("conform: another Accord")
+		st := kit.CloseStatement(other, kit.HashOf(askAndLog["card"]), kit.Mediator.Ref, at(5), nil, nil)
+		r, _ := kit.Receipt(kit.Canon(st), kit.Mediator)
+		e := evidence{set: askAndLog, accord: kit.HashOf(askAndLog), receipts: []kit.Obj{r}, kernel: kit.KernelHash}
+		add(e.vector("close-a-close-of-another-accord", "verify-2 rows 0 and 1, close-4: a close that names another Accord, the only receipt of the list, founds the set at its at and is accord at its index", fails("accord", 0)))
+	}
 	kit.Main("conform", vs)
 }
 

@@ -167,3 +167,13 @@ func Superseding() Set {
 	s.Supersedes = Obj{"accord": HashOf("placket vectors: an earlier Accord"), "close": HashOf("placket vectors: its close receipt")}
 	return s
 }
+
+// TwoWaits is the ask-and-log Accord in which the proposer may also give a brief to the applier,
+// asked about by the decider within 60 seconds: a brief's question has an earlier deadline than a
+// proposal's asked before it, since deadlines are set per rule (close-1).
+func TwoWaits() Set {
+	s := AskAndLog()
+	s.Parties[0].Terms = append(s.Parties[0].Terms, Maybe("give", []string{"applier"}, []string{"brief"}, []string{"decider"}, 60))
+	s.Parties[1].Terms[0] = Term("want", "get", []string{"proposer"}, []string{"proposal", "note", "brief"})
+	return s
+}

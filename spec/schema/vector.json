@@ -650,7 +650,9 @@
         "statement-type",
         "mediator",
         "chain",
-        "release"
+        "release",
+        "close",
+        "after-close"
       ]
     },
     "verifyExpect": {
@@ -770,6 +772,8 @@
                 "mediator",
                 "chain",
                 "release",
+                "close",
+                "after-close",
                 "presented"
               ]
             },
@@ -927,7 +931,8 @@
                   "declined",
                   "cancelled",
                   "timeout",
-                  "undeliverable"
+                  "undeliverable",
+                  "closed"
                 ]
               }
             }
@@ -966,6 +971,7 @@
         "rejection": {
           "enum": [
             "not-a-member",
+            "closed",
             "envelope-signature",
             "not-canonical",
             "extension-missing",
@@ -997,7 +1003,8 @@
             "give",
             "get",
             "resolve",
-            "tick"
+            "tick",
+            "close"
           ]
         }
       },
@@ -1051,6 +1058,18 @@
           },
           "then": {
             "$ref": "#/$defs/tick"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "op": {
+                "const": "close"
+              }
+            }
+          },
+          "then": {
+            "$ref": "#/$defs/close"
           }
         }
       ]
@@ -1185,6 +1204,18 @@
               },
               "required": [
                 "none"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "close": {
+                  "$ref": "#/$defs/closeReceipt"
+                }
+              },
+              "required": [
+                "close"
               ],
               "additionalProperties": false
             },
@@ -1458,7 +1489,8 @@
                   "declined",
                   "cancelled",
                   "timeout",
-                  "undeliverable"
+                  "undeliverable",
+                  "closed"
                 ]
               }
             }
@@ -1507,6 +1539,8 @@
                 "mediator",
                 "chain",
                 "release",
+                "close",
+                "after-close",
                 "founding",
                 "accord",
                 "party",
@@ -1561,6 +1595,84 @@
           "additionalProperties": false
         }
       ]
+    },
+    "closeReceipt": {
+      "type": "object",
+      "properties": {
+        "receiptId": {
+          "$ref": "hash.json"
+        },
+        "receipt": {
+          "$ref": "receipt.json"
+        }
+      },
+      "required": [
+        "receiptId",
+        "receipt"
+      ],
+      "additionalProperties": false,
+      "description": "A close receipt and its id (close-2)."
+    },
+    "closeOutcome": {
+      "type": "object",
+      "properties": {
+        "verdict": {
+          "const": "block"
+        },
+        "reason": {
+          "enum": [
+            "timeout",
+            "closed"
+          ]
+        },
+        "receiptId": {
+          "$ref": "hash.json"
+        },
+        "receipt": {
+          "$ref": "receipt.json"
+        }
+      },
+      "required": [
+        "verdict",
+        "reason",
+        "receiptId",
+        "receipt"
+      ],
+      "additionalProperties": false,
+      "description": "A closing a close writes (close-1): a timeout of a question whose deadline it reached, or block with reason closed."
+    },
+    "close": {
+      "description": "A close step (conformance-vectors-3, close-1): the Accord closed at at from the state the steps before it left; expect holds the outcomes of the closings it writes, in order, and the close receipt.",
+      "properties": {
+        "op": true,
+        "at": {
+          "$ref": "timestamp.json"
+        },
+        "expect": {
+          "type": "object",
+          "properties": {
+            "receipts": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/closeOutcome"
+              }
+            },
+            "close": {
+              "$ref": "#/$defs/closeReceipt"
+            }
+          },
+          "required": [
+            "receipts",
+            "close"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "at",
+        "expect"
+      ],
+      "additionalProperties": false
     }
   }
 }

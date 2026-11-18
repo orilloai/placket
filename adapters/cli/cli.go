@@ -66,6 +66,10 @@ const (
 	codeFormat  = "format"
 	codeFound   = "founding"
 	codeVerify  = "verify"
+	// codeClosed is a close of a journal already closed (close-3); detailSuperseded, under verify, a
+	// successor whose supersedes does not pin this log's close (close-4).
+	codeClosed       = string(mediator.CodeClosed)
+	detailSuperseded = "superseded"
 	// codeAsked: the window does not show the question, or what it shows is not the part its ask's
 	// receipt names, so the command signs no answer to it.
 	codeAsked = "asked"
@@ -317,6 +321,9 @@ type session struct {
 	key    signing.Key
 	client *local.Client
 	dir    *state.Dir
+	// handed is the close receipt a fetch was handed in place of a delivery, once the Accord is
+	// closed and the queue is empty (close-3). Only get keeps it.
+	handed []byte
 }
 
 // socketFlags adds the flags every socket command takes.

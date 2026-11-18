@@ -8,8 +8,9 @@
 //	                 at the first start and never again. The window holds an exclusive flock on it
 //	                 while it runs; a second window on the same journal is refused, journal-locked.
 //	receipts.jsonl   one receipt per line, the DSSE envelope's JSON exactly as the mediator returned
-//	                 it, in the order written. Made empty at the first start, before the accord file;
-//	                 appended and synced before the reply; the receipts of one call in one write.
+//	                 it, in the order written; on a closed Accord the close receipt is the last
+//	                 line. Made empty at the first start, before the accord file; appended and
+//	                 synced before the reply; the receipts of one call in one write.
 //	questions.jsonl  one line per ask, {"deadline","question","roles"}: the question's id, its
 //	                 deadline and the role labels that may answer it, never a byte of its part.
 //	                 Written before the ask's receipt, and kept after the question closes.
@@ -248,6 +249,9 @@ type Record struct {
 	// Strays is the held files whose receipt is in no line of receipts.jsonl: they never crossed.
 	// RemoveStrays removes them, once Reload took the rest.
 	Strays []string
+	// Closed is true for a journal whose receipts end in the Accord's close receipt (close-3): its
+	// last line of receipts.jsonl, read with receipts.DecodeClose's form.
+	Closed bool
 }
 
 // RemoveStrays removes the record's held files whose receipt was never journaled, each with a line
@@ -462,6 +466,11 @@ func (j *Journal) Read() (*Record, error) {
 			}
 		}
 		for i, v := range verified {
+			if _, ok := v.Close(); ok {
+				// The close is the last receipt, and opens or closes no question (close-2).
+				r.Closed = true
+				continue
+			}
 			id := v.Statement().ID
 			ids[id] = true
 			if places[i].Role == receipts.RoleQuestion && !closed[i] {
@@ -684,6 +693,7 @@ func ReadReceipts(dir string, stderr io.Writer) ([][]byte, error) {
 	return f.Lines, nil
 }
 
-// maxLine is the longest line ReadReceipts reads: local.MaxReply, the most a window replies with,
-// which holds any receipt a window writes.
+// maxLine is the longest line ReadReceipts reads: local.MaxReply, the most a window replies with.
+// It holds any receipt a window writes: a close receipt too, since a window writes none that would
+// not fit in a reply.
 const maxLine = 4 << 20

@@ -370,6 +370,7 @@ func main() {
 		accepted("judged", "setup-contract-1, setup-contract-4: the set of the judge scenarios, whose card lists jev and whose maybe terms list it to decide or to advise, founds", kit.Judged().Build(), at),
 		accepted("supersedes", "setup-contract-11: a set whose policy supersedes an earlier Accord, by its id and its close receipt's id, founds", kit.Superseding().Build(), at),
 		accepted("answer-under-maybe", "setup-contract-5: the set in which the asker gets answers under a maybe term founds", kit.AnswerUnderMaybe().Build(), at),
+		accepted("two-waits", "setup-contract-5: the set of the close scenarios, whose two maybe terms wait 3600 and 60 seconds, founds", kit.TwoWaits().Build(), at),
 		accepted("one-binding-two-roles", "setup-contract-2: one binding gives an actor two of the policy's three roles, the third held by another", twoRoles, at),
 		accepted("operator-changes-the-id", "setup-contract-7: a set differing from ask-and-log only in its operator founds to another id", otherOperator, at),
 		accepted("policy-without-roles", "setup-contract-5: a policy whose roles are empty founds", noRoles, at),

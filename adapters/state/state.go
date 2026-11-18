@@ -17,6 +17,8 @@
 //	                 has no receipt, which tells it from a part: a reader of parts passes over it
 //	salts.jsonl      one {"receiptId","salt"} per delivery fetched: the salt it came with, by the id
 //	                 of its receipt, so the actor can later show which receipt a file's bytes are of
+//	close.json       the Accord's close receipt and a line feed, once a fetch returned it (close-3);
+//	                 written once, and never replaced by another
 //
 // Each .jsonl file is appended one whole line at a time and synced, with the directory when the line
 // made the file. A last line with no line feed
@@ -73,6 +75,7 @@ const (
 	FileDelivered = "delivered.jsonl"
 	FileKept      = "kept.jsonl"
 	FileSalts     = "salts.jsonl"
+	FileClose     = "close.json"
 )
 
 // A Dir is one actor's state directory.
@@ -439,6 +442,63 @@ func (d *Dir) Salts() ([]Salt, error) {
 		out = append(out, Salt{ReceiptID: *s.ReceiptID, Salt: *s.Salt})
 	}
 	return out, nil
+}
+
+// KeepClose keeps the Accord's close receipt in close.json (close-3, docs/adr/0022-the-close.md): it
+// makes the file, mode 0600, synced with the directory, when it is absent, and leaves it as it is
+// when it holds the same receipt. A file with no line feed, as a crash while it was written leaves
+// it, was never written whole: it is replaced, through a file of its own renamed over it. A file
+// that holds anything else is CodeState: one Accord has one close, and a second that differs is not
+// written over the first.
+func (d *Dir) KeepClose(receipt []byte) error {
+	want := append(append([]byte(nil), receipt...), '\n')
+	if bytes.ContainsAny(receipt, "\n") {
+		return &Error{Code: CodeState, File: FileClose}
+	}
+	f, err := os.OpenFile(d.file(FileClose), os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600)
+	if errors.Is(err, fs.ErrExist) {
+		got, ok, err := lines.ReadAll(d.file(FileClose), len(want))
+		switch {
+		case err != nil || !ok:
+			return &Error{Code: CodeState, File: FileClose}
+		case bytes.Equal(got, want):
+			return nil
+		case bytes.IndexByte(got, '\n') < 0:
+			return d.replaceClose(want)
+		}
+		return &Error{Code: CodeState, File: FileClose}
+	}
+	if err != nil {
+		return &Error{Code: CodeState, File: FileClose}
+	}
+	if !writeSynced(f, want) || d.sync() != nil {
+		return &Error{Code: CodeState, File: FileClose}
+	}
+	return nil
+}
+
+// replaceClose writes close.json whole as b, mode 0600: into a file of its own in the directory,
+// synced, then renamed over close.json, and the directory synced, so a crash leaves the old file or
+// the new one.
+func (d *Dir) replaceClose(b []byte) error {
+	f, err := os.CreateTemp(d.path, "."+FileClose+".*")
+	if err != nil {
+		return &Error{Code: CodeState, File: FileClose}
+	}
+	tmp := f.Name()
+	if !writeSynced(f, b) || os.Rename(tmp, d.file(FileClose)) != nil || d.sync() != nil {
+		_ = os.Remove(tmp)
+		return &Error{Code: CodeState, File: FileClose}
+	}
+	return nil
+}
+
+// writeSynced writes b to f, syncs it and closes it, and reports whether all three worked.
+func writeSynced(f *os.File, b []byte) bool {
+	_, werr := f.Write(b)
+	serr := f.Sync()
+	cerr := f.Close()
+	return werr == nil && serr == nil && cerr == nil
 }
 
 // appendLine appends one whole line to the file name and syncs it; a line that makes the file

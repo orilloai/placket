@@ -1,6 +1,9 @@
 package kit
 
-import "sort"
+import (
+	"sort"
+	"strings"
+)
 
 // Times every generator uses: the founding time and the bindings' end.
 const (
@@ -290,6 +293,8 @@ var (
 	ByTerms         any = "terms"
 	ByDeadline          = Obj{"mediator": "deadline"}
 	ByUndeliverable     = Obj{"mediator": "undeliverable"}
+	// ByClose is the by of a question's closing that a close wrote, with reason closed (close-1).
+	ByClose = Obj{"mediator": "close"}
 )
 
 // ByJudge is the by of a receipt a judge of the card decided, by its name.
@@ -349,6 +354,9 @@ type Scene struct {
 	pending   []any
 	held      map[string]heldPart
 	steps     []any
+	// closed is the close receipt and its id, {"receiptId","receipt"}, once the scene closed its
+	// Accord (close-2).
+	closed Obj
 }
 
 // A heldPart is what a question holds (maybe-1): its asker and receiver, the echoed envelope, the
@@ -665,10 +673,14 @@ func (s *Scene) Reject(at string, as Key, code string, message, envelope Obj) {
 	s.steps = append(s.steps, st)
 }
 
-// Get adds a fetch by the key's party: the first delivery queued for it, which it takes, or none.
+// Get adds a fetch by the key's party: the first delivery queued for it, which it takes, or none;
+// once the Accord is closed, the close receipt in place of none (close-3).
 func (s *Scene) Get(as Key) {
 	q := s.queues[as.Name]
 	expect := Obj{"none": true}
+	if s.closed != nil {
+		expect = Obj{"close": s.closed}
+	}
 	if len(q) > 0 {
 		expect = Obj{"delivery": q[0]}
 		s.queues[as.Name] = q[1:]
@@ -725,4 +737,103 @@ func (s *Scene) Delivered(k Key) []Obj {
 		out = append(out, d.(Obj))
 	}
 	return out
+}
+
+// CloseStatement writes a close's statement (close-2): its one subject the Accord, by the hex of its
+// id, and its predicate's six members.
+func CloseStatement(accord, card, mediator, at string, chains, unfetched []any) Obj {
+	return Obj{
+		"_type":         StatementType,
+		"subject":       []any{Obj{"name": "accord", "digest": Obj{"sha256": strings.TrimPrefix(accord, "sha256:")}}},
+		"predicateType": ClosePredicateType,
+		"predicate": Obj{
+			"accord": accord, "card": card, "mediator": mediator, "at": at,
+			"chains": append([]any{}, chains...), "unfetched": append([]any{}, unfetched...),
+		},
+	}
+}
+
+// Final is one entry of a close's chains (close-2).
+func Final(from, to string, seq int64, receipt string) Obj {
+	return Obj{"from": from, "to": to, "seq": seq, "receipt": receipt}
+}
+
+// Finals returns the last receipt of every chain the scene wrote, ordered by from and then by to
+// in the order of UTF-16 code units, actor-reference order (close-2).
+func (s *Scene) Finals() []any {
+	pairs := make([][2]string, 0, len(s.chains))
+	for p := range s.chains {
+		pairs = append(pairs, p)
+	}
+	sort.Slice(pairs, func(i, j int) bool {
+		if pairs[i][0] != pairs[j][0] {
+			return Less16(pairs[i][0], pairs[j][0])
+		}
+		return Less16(pairs[i][1], pairs[j][1])
+	})
+	out := []any{}
+	for _, p := range pairs {
+		l := s.chains[p]
+		out = append(out, Final(p[0], p[1], l.seq, l.id))
+	}
+	return out
+}
+
+// Unfetched returns every delivery still queued, by its receiver and the id of the receipt that
+// queued it, in the order queued: the order of those receipts (close-2, crossing-3).
+func (s *Scene) Unfetched() []any {
+	index := map[string]int{}
+	for i, w := range s.written {
+		index[w.(Obj)["receiptId"].(string)] = i
+	}
+	type entry struct {
+		to, id string
+	}
+	var all []entry
+	for name, q := range s.queues {
+		for _, d := range q {
+			all = append(all, entry{s.Keys[name].Ref, d.(Obj)["receiptId"].(string)})
+		}
+	}
+	sort.Slice(all, func(i, j int) bool { return index[all[i].id] < index[all[j].id] })
+	out := []any{}
+	for _, e := range all {
+		out = append(out, Obj{"to": e.to, "receipt": e.id})
+	}
+	return out
+}
+
+// A Closing is a question a close closes with reason closed: its id and the receipt's from, the
+// first answerer or the mediator, derived by hand (close-1).
+type Closing struct {
+	Question string
+	From     Key
+}
+
+// CloseAccord adds a close step at at and writes what close-1 says a close writes, in the order the
+// generator gives, derived by hand: a timeout at its deadline for each question of timeouts, by the
+// deadline; a closing at at for each question of closings, block, closed, naming the asked part,
+// echoing the question's envelope, by the close; and last the close receipt at at, whose chains are
+// the scene's after those closings and whose unfetched is every delivery still queued (close-2). It
+// returns the close receipt and its id.
+func (s *Scene) CloseAccord(at string, timeouts []Timeout, closings []Closing) (Obj, string) {
+	list := []any{}
+	for _, c := range timeouts {
+		h := s.held[c.Question]
+		r, id := s.Write("resolution", c.From, h.asker, h.kind, h.digest, c.Deadline, h.asker, h.eseq, h.ehash, "block", "timeout", ByDeadline)
+		list = append(list, outcome(Verdict{"block", "timeout"}, r, id))
+		s.closeQuestion(c.Question)
+	}
+	for _, c := range closings {
+		h := s.held[c.Question]
+		r, id := s.Write("resolution", c.From, h.asker, h.kind, h.digest, at, h.asker, h.eseq, h.ehash, "block", "closed", ByClose)
+		list = append(list, outcome(Verdict{"block", "closed"}, r, id))
+		s.closeQuestion(c.Question)
+	}
+	st := CloseStatement(s.Accord, s.Card, s.Mediator.Ref, at, s.Finals(), s.Unfetched())
+	r, id := Receipt(Canon(st), s.Mediator)
+	s.written = append(s.written, Obj{"receiptId": id, "receipt": r})
+	s.closed = Obj{"receiptId": id, "receipt": r}
+	s.steps = append(s.steps, Obj{"op": "close", "at": at, "expect": Obj{"receipts": list, "close": s.closed}})
+	return r, id
 }

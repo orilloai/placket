@@ -13,8 +13,12 @@
 #   give's envelope; every answer call of a resolve step and of a conform vector that conforms.
 # - Deciders (receipt-11): every receipt an answer step writes names the typed hash of its call,
 #   and an accept's or a change's call names its receipt's digest.
+# - Close receipts (close-2): every close a scenario writes or a verify vector holds before its
+#   failing index names its Accord as its subject and pins each chain at the re-computed id of its
+#   last receipt; its unfetched entries name re-computed ids.
 # - Receipts' signatures (section 8, row 3): every receipt a scenario writes, delivers, or expects of a
-#   give, resolve or tick step, a resolve step's release included, and every
+#   give, resolve, tick or close step or of a fetch after a close, a resolve step's release included,
+#   and every
 #   receipt a verify or reconcile vector expects to pass that row. A receipt expected to fail
 #   signature whose form is sound, so that only its signed bytes or its signer can be wrong, must be
 #   refused by openssl. Every other refusal rests on the text's hand derivation, and is not counted.
@@ -60,6 +64,7 @@ tdecl=https://placket.tech/declaration/0.1
 tbind=https://placket.tech/binding/0.1
 tenv=https://placket.tech/envelope/0.1
 tanswer=https://placket.tech/answer/0.1
+tclose=https://placket.tech/close/0.1
 
 hex2bin() { tr -d '\n' | tr 'abcdef' 'ABCDEF' | basenc --base16 -d; }
 bin2hex() { od -An -v -tx1 | tr -d ' \n'; }
@@ -166,6 +171,30 @@ chained() {
 		if [ "$_prev" = "$_last" ]; then counted "$2"; echo "$2" >>"$tmp/prevs"; else bad "$1: its prev is not the re-computed id of the receipt before it in its pair"; fi
 	fi
 	echo "$_from $_to $_id" >>"$3"
+}
+
+# closecheck <what> <group> <chain file>: the close statement in $tmp/statement, whose id and
+# signature receiptcheck has just re-computed, names as its one subject the Accord by the hex of its
+# own accord, and pins every chain of the chain file (close-2): one entry per pair the file holds and
+# no other, each naming that pair's last re-computed id and its count of receipts as its seq, since
+# every list these vectors close is whole; the pairs distinct and in actor-reference order, by from
+# and then by to, which for references of ASCII is jq's order of strings; and each unfetched entry
+# names a distinct re-computed id of the file.
+closecheck() {
+	_acc=$(jq -r .predicate.accord "$tmp/statement")
+	if [ "sha256:$(jq -r '.subject[0].digest.sha256' "$tmp/statement")" = "$_acc" ] && [ "$(jq -r '.subject[0].name' "$tmp/statement")" = accord ]; then counted "$2"; else bad "$1: the close's subject is not its Accord"; fi
+	_pairs=$(awk '$1 != "null" { print $1 " " $2 }' "$3" | sort -u | wc -l | tr -d ' ')
+	if [ "$(jq '.predicate.chains | length' "$tmp/statement")" -eq "$_pairs" ]; then counted "$2"; else bad "$1: the close lists $(jq '.predicate.chains | length' "$tmp/statement") chains for $_pairs pairs"; fi
+	if jq -e '[.predicate.chains[] | [.from, .to]] | . == unique' "$tmp/statement" >/dev/null; then counted "$2"; else bad "$1: the close's pairs repeat or are out of order"; fi
+	if jq -e '[.predicate.unfetched[].receipt] | length == (unique | length)' "$tmp/statement" >/dev/null; then counted "$2"; else bad "$1: the close names an unfetched receipt twice"; fi
+	jq -r '.predicate.chains[] | "\(.from) \(.to) \(.seq) \(.receipt)"' "$tmp/statement" >"$tmp/finals"
+	while read -r _f _t _s _r; do
+		_last=$(awk -v f="$_f" -v t="$_t" '$1 == f && $2 == t { id = $3; n++ } END { print id " " n }' "$3")
+		if [ "$_last" = "$_r $_s" ]; then counted "$2"; echo "$2" >>"$tmp/prevs"; else bad "$1: the chain from $_f to $_t is not pinned at its last re-computed receipt"; fi
+	done <"$tmp/finals"
+	for _r in $(jq -r '.predicate.unfetched[].receipt' "$tmp/statement"); do
+		if awk -v r="$_r" '$3 == r { ok = 1 } END { exit !ok }' "$3"; then counted "$2"; else bad "$1: an unfetched receipt that is no re-computed id"; fi
+	done
 }
 
 # sound <receipt JSON file> <reference>: the receipt's form leaves only its signed bytes or its signer
@@ -327,6 +356,11 @@ for f in "$V"/*/*.json; do
 				if [ "$(jq -r .predicate.accord "$tmp/statement")" = "$accord" ] && [ "$(jq -r .predicate.card "$tmp/statement")" = "$card" ]; then
 					counted "$g"
 				else bad "$n: receipt $i names another Accord or card"; fi
+				if [ "$(jq -r .predicateType "$tmp/statement")" = "$tclose" ]; then
+					closecheck "$n: receipt $i" "$g" "$tmp/chain"
+					i=$((i + 1))
+					continue
+				fi
 				chained "$n: receipt $i" "$g" "$tmp/chain"
 				echoed=$(jq -r '.predicate.envelope | "\(.sender) \(.seq) \(.hash)"' "$tmp/statement")
 				if [ "$(jq -r .predicate.verdict "$tmp/statement")" = escalate ]; then
@@ -433,7 +467,23 @@ for f in "$V"/*/*.json; do
 					k=$((k + 1))
 				done
 				;;
+			close)
+				# Every closing and the close receipt, re-verified.
+				nt=$(jq "$s.expect.receipts | length" "$f")
+				k=0
+				while [ "$k" -lt "$nt" ]; do
+					jq "$s.expect.receipts[$k].receipt" "$f" >"$tmp/r"
+					receiptcheck "$n: step $i: closing $k" "$g" "$tmp/r" "$med" "$(jq -r "$s.expect.receipts[$k].receiptId" "$f")"
+					k=$((k + 1))
+				done
+				jq "$s.expect.close.receipt" "$f" >"$tmp/r"
+				receiptcheck "$n: step $i: the close" "$g" "$tmp/r" "$med" "$(jq -r "$s.expect.close.receiptId" "$f")"
+				;;
 			get)
+				if jq -e "$s.expect | has(\"close\")" "$f" >/dev/null; then
+					jq "$s.expect.close.receipt" "$f" >"$tmp/r"
+					receiptcheck "$n: step $i: the close" "$g" "$tmp/r" "$med" "$(jq -r "$s.expect.close.receiptId" "$f")"
+				fi
 				if jq -e "$s.expect | has(\"delivery\")" "$f" >/dev/null; then
 					jq "$s.expect.delivery" "$f" >"$tmp/d"
 					jq .receipt "$tmp/d" >"$tmp/r"
@@ -480,13 +530,23 @@ for f in "$V"/*/*.json; do
 			if [ "$i" -lt "$upto" ]; then
 				if receiptcheck "$n: receipt $i" "$g" "$tmp/r" "$ref"; then
 					echo "sha256:$(sha "$tmp/statement")" >>"$tmp/presented-ids"
-					chained "$n: receipt $i" "$g" "$tmp/chain"
+					if [ "$(jq -r .predicateType "$tmp/statement")" = "$tclose" ]; then
+						closecheck "$n: receipt $i" "$g" "$tmp/chain"
+					else
+						chained "$n: receipt $i" "$g" "$tmp/chain"
+					fi
 				fi
 			else
 				case "$code" in
 				statement-type | mediator | chain) receiptcheck "$n: receipt $i" "$g" "$tmp/r" "$ref" ;;
 				# A receipt refused at row 7 passed row 6, its chain, so its prev is checked too.
 				release) receiptcheck "$n: receipt $i" "$g" "$tmp/r" "$ref" && chained "$n: receipt $i" "$g" "$tmp/chain" ;;
+				# A receipt refused at row 8 or 9 passed rows 1 to 7; a close is in no chain.
+				close | after-close)
+					if receiptcheck "$n: receipt $i" "$g" "$tmp/r" "$ref" && [ "$(jq -r .predicateType "$tmp/statement")" != "$tclose" ]; then
+						chained "$n: receipt $i" "$g" "$tmp/chain"
+					fi
+					;;
 				signature)
 					if sound "$tmp/r" "$ref"; then
 						jq -r '.payload' "$tmp/r" | base64 -d >"$tmp/statement"

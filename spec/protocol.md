@@ -1,6 +1,6 @@
 # The placket protocol, version 0.1
 
-This document is the normative text of the placket protocol. It says what a mediator does at a handoff between parties that do not fully trust each other: how an Accord is founded, how a part is given, judged, held, asked about, answered, released and fetched, what every receipt states and who it says decided, and how a third party who holds only the Accord's id and its founding set checks that the receipts are valid and that every decision was one the Accord let its decider make. `README.md` beside it says how to read `spec/`; the schemas under `schema/` and the register, `frozen-formats.md`, hold the formats this text defines.
+This document is the normative text of the placket protocol. It says what a mediator does at a handoff between parties that do not fully trust each other: how an Accord is founded, how a part is given, judged, held, asked about, answered, released and fetched, how an Accord is closed, what every receipt states and who it says decided, and how a third party who holds only the Accord's id and its founding set checks that the receipts are valid and that every decision was one the Accord let its decider make. `README.md` beside it says how to read `spec/`; the schemas under `schema/` and the register, `frozen-formats.md`, hold the formats this text defines.
 
 ## How to read this document
 
@@ -610,6 +610,7 @@ The door is where a member gives a part to another member and fetches what was q
 | # | Check | Reads | Code |
 |---|---|---|---|
 | 1 | Member | The caller's key, against the Accord's members (setup-contract-6) | `not-a-member` |
+| 1a | Open Accord | The Accord: not closed (close-3) | `closed` |
 | 2 | Envelope signature | The envelope bytes: accepted by the canonical form, an object with exactly `seq`, `hash` and `sig`, its `sig` verifying under the caller's key and `https://placket.tech/envelope/0.1` (signing-2) | `envelope-signature` |
 | 3 | Canonical message | The message bytes (canonical-1) | `not-canonical` |
 | 4 | Envelope hash | The envelope's `hash`: the typed hash of the message's canonical bytes (crossing-4) | `envelope-hash` |
@@ -628,7 +629,7 @@ A fetch carries only the authenticated caller.
 |---|---|---|---|
 | 1 | Member | The caller's key (setup-contract-6) | `not-a-member` |
 
-A member's fetch returns the first delivery queued for it, once, or nothing when none is queued (crossing-3). A fetch writes no receipt.
+A member's fetch returns the first delivery queued for it, once, or nothing when none is queued (crossing-3); once the Accord is closed, a fetch that finds nothing queued returns the close receipt (close-3). A fetch writes no receipt.
 
 ### crossing-1 The crossing message
 
@@ -738,7 +739,7 @@ The envelope is the sender's signed claim to one submission (`envelope.json`): `
 
 ### crossing-6 The door's order
 
-The door runs the rows of its table in order and returns the first that fails. It authenticates first: membership, then the envelope's signature under the caller's key, then the message's canonical bytes, then that the envelope's `hash` names those bytes and its `seq` is fresh, then the message's content. No member of the message is read before the message is known to be the one the caller signed for. The caller is the sender because the envelope verified under the caller's key: no member of the message names the sender, and a `from` in the extension is a member the frame does not list, `extension-missing` at row 6 (crossing-1). The message is not read at all before the envelope's signature has verified, so a stranger's give is `not-a-member` and a member's give under a bad envelope signature is `envelope-signature`, whatever the message holds. Everything decided is read from the message's canonical bytes, so a member name repeated anywhere in the message is `not-canonical`, at row 3, whichever copy is wrong. Row 2 reads the envelope's bytes, its members' names and its `sig`, so bytes the canonical form refuses, a member missing or not listed, and a bad signature are all `envelope-signature`; the value of its `hash` belongs to row 4 and of its `seq` to row 5.
+The door runs the rows of its table in order and returns the first that fails. It authenticates first: membership, then whether the Accord is closed (close-3), then the envelope's signature under the caller's key, then the message's canonical bytes, then that the envelope's `hash` names those bytes and its `seq` is fresh, then the message's content. No member of the message is read before the message is known to be the one the caller signed for. The caller is the sender because the envelope verified under the caller's key: no member of the message names the sender, and a `from` in the extension is a member the frame does not list, `extension-missing` at row 6 (crossing-1). The message is not read at all before the envelope's signature has verified, so a stranger's give is `not-a-member` and a member's give under a bad envelope signature is `envelope-signature`, whatever the message holds. Everything decided is read from the message's canonical bytes, so a member name repeated anywhere in the message is `not-canonical`, at row 3, whichever copy is wrong. Row 2 reads the envelope's bytes, its members' names and its `sig`, so bytes the canonical form refuses, a member missing or not listed, and a bad signature are all `envelope-signature`; the value of its `hash` belongs to row 4 and of its `seq` to row 5.
 
 #### Scenario: a repeated member behind a bad signature
 
@@ -900,11 +901,12 @@ A judge acts only where the terms would ask, and only where both sides consented
 
 ## 6. Questions, the three answers and release
 
-A give that composition decides `escalate` opens a question: the mediator writes the ask's receipt, holds the part, and queues nothing for the receiver (maybe-1). The question's id is the id of that receipt. A question closes exactly once: by an answer, an accept, a change or a decline from a member holding a role it names, or a cancel by its asker; by the mediator finding that nobody can be reached to answer it; or by its deadline. An answer is one signed call, the answer call (maybe-11), which names the question, the action, and for an accept or a change the salted digest of the answer's text under the answerer's salt and whether it asks for release (maybe-10); for an accept or a change the answer's text and that salt are given beside the call. It runs these rows in order.
+A give that composition decides `escalate` opens a question: the mediator writes the ask's receipt, holds the part, and queues nothing for the receiver (maybe-1). The question's id is the id of that receipt. A question closes exactly once: by an answer, an accept, a change or a decline from a member holding a role it names, or a cancel by its asker; by the mediator finding that nobody can be reached to answer it; by its deadline; or by the close of its Accord (close-1). An answer is one signed call, the answer call (maybe-11), which names the question, the action, and for an accept or a change the salted digest of the answer's text under the answerer's salt and whether it asks for release (maybe-10); for an accept or a change the answer's text and that salt are given beside the call. It runs these rows in order.
 
 | # | Check | Reads | Code |
 |---|---|---|---|
 | 1 | Member | The caller's key (setup-contract-6) | `not-a-member` |
+| 1a | Open Accord | The Accord: not closed (close-3) | `closed` |
 | 2 | Answer call | The call: canonical bytes, its closed shape (maybe-11), its `accord` this Accord's id, its `from` the caller, and its `sig` under `from` and `https://placket.tech/answer/0.1` (signing-2) | `answer-call` |
 | 3 | Open question | The call's `question`: a question that is open, at a time before its deadline (maybe-7) | `no-open-question` |
 | 4 | Answerer | The call's `from`, by its action: for an accept, a change or a decline, among the question's answerers (maybe-6); for a cancel, the question's asker, of a question with at least one answerer. An asker who is also an answerer cancels as the asker | `not-an-answerer` |
@@ -921,8 +923,9 @@ The answerers of a question are the members whose bindings give them a role its 
 | Decline, cancel (maybe-4) | The first answerer, to the asker, whoever signed the call | The asked part | `block`, `declined` or `cancelled` | Nothing |
 | Undeliverable (maybe-4) | The first answerer, or the mediator when there is none, to the asker | The asked part | `block`, `undeliverable` | Nothing |
 | Timeout (maybe-5) | The first answerer, or the mediator when there is none, to the asker | The asked part | `block`, `timeout` | Nothing |
+| Closed (close-1) | The first answerer, or the mediator when there is none, to the asker | The asked part | `block`, `closed` | Nothing |
 
-Every one of these is a resolution receipt that echoes the question's envelope (crossing-5). An accept, a change, a decline and a cancel name the answer call as their decider, and an undeliverable and a timeout the mediator (receipt-11). An accept or a change that passes, and whose call asks for release, then writes a release receipt (maybe-10).
+Every one of these is a resolution receipt that echoes the question's envelope (crossing-5). An accept, a change, a decline and a cancel name the answer call as their decider, and an undeliverable, a timeout and a close's closing the mediator (receipt-11). An accept or a change that passes, and whose call asks for release, then writes a release receipt (maybe-10).
 
 ### maybe-1 Asking
 
@@ -964,7 +967,7 @@ An accept forms the answer as maybe-8 says and decides it through composition fr
 
 ### maybe-4 Decline, cancel and undeliverable
 
-A decline and a cancel each close the question with a resolution receipt from the question's first answerer, by actor-reference order, to the asker: `block` with reason `declined` or `cancelled`, naming the asked part by its kind and digest, echoing the question's envelope and naming the answer call as its decider. The receipt names the first answerer whichever answerer declined, and when the asker cancelled; only the call names who signed it. When the mediator finds that nobody can be reached to answer a question, it closes it the same way with reason `undeliverable`, naming itself, with the event `undeliverable`, as its decider; when the question has no answerer, the receipt is from the mediator's own reference. An undeliverable and a timeout are the only resolution receipts that can be from the mediator. Nothing is queued, and the held part is dropped.
+A decline and a cancel each close the question with a resolution receipt from the question's first answerer, by actor-reference order, to the asker: `block` with reason `declined` or `cancelled`, naming the asked part by its kind and digest, echoing the question's envelope and naming the answer call as its decider. The receipt names the first answerer whichever answerer declined, and when the asker cancelled; only the call names who signed it. When the mediator finds that nobody can be reached to answer a question, it closes it the same way with reason `undeliverable`, naming itself, with the event `undeliverable`, as its decider; when the question has no answerer, the receipt is from the mediator's own reference. An undeliverable, a timeout and a closing a close wrote, with reason `closed` (close-1), are the only resolution receipts that can be from the mediator. Nothing is queued, and the held part is dropped.
 
 #### Scenario: a decline
 
@@ -1138,7 +1141,7 @@ The receipts an answer writes name its call: the resolution receipt and the rele
 
 ## 7. Receipts and their chains
 
-A receipt is the mediator's signed statement of one decision. Writing one refuses nothing: the mediator writes a receipt for every give the door passes and for every closing and release of a question, and for nothing else. This table says which receipt each event writes; every receipt is chained in the pair of its `from` and `to` (receipt-5).
+A receipt is the mediator's signed statement of one decision. Writing one refuses nothing: the mediator writes a receipt for every give the door passes and for every closing and release of a question, and one close receipt when the Accord is closed (close-2), and for nothing else. This table says which receipt each event writes; every receipt is chained in the pair of its `from` and `to` (receipt-5).
 
 | Event | `kind` | `from`, `to` | Subject | `verdict`, `reason` | Echoed envelope | `by` |
 |---|---|---|---|---|---|---|
@@ -1147,12 +1150,13 @@ A receipt is the mediator's signed statement of one decision. Writing one refuse
 | A decline, a cancel | `resolution` | The first answerer, the asker | The asked part | `block`, `declined` or `cancelled` | The question's | The answer call |
 | An undeliverable | `resolution` | The first answerer or the mediator, the asker | The asked part | `block`, `undeliverable` | The question's | The mediator, `undeliverable` |
 | A timeout | `resolution` | The first answerer or the mediator, the asker | The asked part | `block`, `timeout` | The question's | The mediator, `deadline` |
+| A close's closing | `resolution` | The first answerer or the mediator, the asker | The asked part | `block`, `closed` | The question's | The mediator, `close` |
 | A release after an accept | `crossing` | The asker, the receiver | The asked part | `pass`, `ok`, or composition's block | The question's | The answer call |
 | A release after a change | `resolution` | The answerer, the receiver | The version | Composition's | The question's | The answer call |
 
 ### receipt-1 The receipt
 
-A receipt is a DSSE 1.0 envelope (`receipt.json`) with exactly `payloadType`, `application/vnd.in-toto+json`; `payload`, the standard base64 of the canonical bytes of the receipt's statement; and `signatures`, a list of exactly one entry with exactly `keyid`, the mediator's reference, and `sig`, the standard base64 of the mediator's Ed25519 signature over the DSSE pre-authentication encoding of the payload type and the payload's bytes (signing-2). The statement is an in-toto Statement v1 (`statement.json`): `_type` `https://in-toto.io/Statement/v1`, `subject`, `predicateType` `https://placket.tech/receipt/0.1`, and `predicate`. A receipt's id is the typed hash of the canonical bytes of its statement. The mediator writes the payload in canonical form, so putting it in canonical form again changes nothing.
+A receipt is a DSSE 1.0 envelope (`receipt.json`) with exactly `payloadType`, `application/vnd.in-toto+json`; `payload`, the standard base64 of the canonical bytes of the receipt's statement; and `signatures`, a list of exactly one entry with exactly `keyid`, the mediator's reference, and `sig`, the standard base64 of the mediator's Ed25519 signature over the DSSE pre-authentication encoding of the payload type and the payload's bytes (signing-2). The statement is an in-toto Statement v1 (`statement.json`): `_type` `https://in-toto.io/Statement/v1`, `subject`, `predicateType` `https://placket.tech/receipt/0.1`, and `predicate`. A receipt's id is the typed hash of the canonical bytes of its statement. The mediator writes the payload in canonical form, so putting it in canonical form again changes nothing. A close receipt is an envelope of this form whose statement is the close's own (close-2); its id is taken the same way.
 
 #### Scenario: the anatomy of a receipt
 
@@ -1182,7 +1186,7 @@ The predicate (`predicate.json`) has exactly these members: `accord`, the Accord
 
 ### receipt-4 Verdicts and reasons
 
-A crossing receipt's `verdict` is `pass`, `block` or `escalate`; a resolution receipt's is `pass` or `block`. The reasons are a closed list of eight: `ok`, `no-match` and `maybe`, on any receipt; `judge:<name>`, on a crossing `block` only, where `<name>` is a judge's card name (composition-7); and `declined`, `cancelled`, `timeout` and `undeliverable`, on resolution receipts only. A `pass` has reason `ok`, an `escalate` has reason `maybe`, and a `block` has any other reason, `maybe` included: a crossing whose maybe rules differ is a block with reason `maybe` (composition-5). A reason that opens `check:` is no reason of this version.
+A crossing receipt's `verdict` is `pass`, `block` or `escalate`; a resolution receipt's is `pass` or `block`. The reasons are a closed list of nine: `ok`, `no-match` and `maybe`, on any receipt; `judge:<name>`, on a crossing `block` only, where `<name>` is a judge's card name (composition-7); and `declined`, `cancelled`, `timeout`, `undeliverable` and `closed`, on resolution receipts only. A `pass` has reason `ok`, an `escalate` has reason `maybe`, and a `block` has any other reason, `maybe` included: a crossing whose maybe rules differ is a block with reason `maybe` (composition-5). A reason that opens `check:` is no reason of this version.
 
 #### Scenario: a block with reason maybe
 
@@ -1257,7 +1261,7 @@ Every predicate names its decider in `by`, in exactly one of these forms, and ho
 - `"terms"`: the terms decided a give's crossing receipt, a `pass` `ok`, a `block` `no-match` or `maybe`, or an `escalate` `maybe` (section 5).
 - `{"judge":"<card name>"}`: a judge's judgment decided a give's crossing receipt, a `pass` `ok`, or a `block` `judge:<name>` with the same name (composition-7).
 - `{"answer":"<typed hash>"}`: an answer call decided the resolution receipt of an accept, a change, a decline or a cancel, and its release receipt; the value is the typed hash of the call's canonical bytes, `sig` included (maybe-11, maybe-12). An accept or a change that composition then blocks is still the answer's: its reason shows what the terms did.
-- `{"mediator":"deadline"}`: the resolution receipt of a timeout (maybe-5); and `{"mediator":"undeliverable"}`: that of an undeliverable (maybe-4). These two are the mediator's only values.
+- `{"mediator":"deadline"}`: the resolution receipt of a timeout (maybe-5); `{"mediator":"undeliverable"}`: that of an undeliverable (maybe-4); and `{"mediator":"close"}`: that of a closing a close wrote, with reason `closed` (close-1). These three are the mediator's only values.
 
 A `by` must fit its receipt's kind, verdict and reason, as this table says; the verifier's statement row refuses any other (receipt-6). It cannot tell a release from another crossing receipt, so it takes an answer's `by` on any crossing `pass` or `block` the table allows, and the release row refuses one that is not a question's release, or whose `by` is not its closing's.
 
@@ -1271,6 +1275,7 @@ A `by` must fit its receipt's kind, verdict and reason, as this table says; the 
 | resolution | `block` | `no-match`, `maybe`, `declined`, `cancelled` | an answer |
 | resolution | `block` | `timeout` | the mediator, `deadline` |
 | resolution | `block` | `undeliverable` | the mediator, `undeliverable` |
+| resolution | `block` | `closed` | the mediator, `close` |
 
 #### Scenario: every event names its decider
 
@@ -1302,7 +1307,7 @@ Every receipt carries an envelope in its predicate's `envelope`, as its signer's
 
 ## 8. Verifying receipts
 
-A verifier needs only the mediator's reference and a list of receipts in the order the mediator wrote them, such as its journal; or the Accord's id and its founding set, from which it takes the mediator's reference (verify-1). It checks the reference once, then each receipt in list order, every row of one receipt before the next receipt, and stops at the first failure, which it reports with its code and the receipt's index, counted from 0. An empty list verifies. A list that verifies yields its statements.
+A verifier needs only the mediator's reference and a list of receipts in the order the mediator wrote them, such as its journal; or the Accord's id and its founding set, from which it takes the mediator's reference (verify-1). It checks the reference once, then each receipt in list order, every row of one receipt before the next receipt, and stops at the first failure, which it reports with its code and the receipt's index, counted from 0. An empty list verifies. A list that verifies yields its statements, and its close when it holds one. A close receipt (close-2) goes through rows 1 to 5, its statement read against the close's form at row 4 and its `mediator` at row 5, and through rows 8 and 9; it is in no chain and belongs to no question, so rows 6 and 7 do not read it.
 
 | # | Check | Reads | Code |
 |---|---|---|---|
@@ -1314,6 +1319,8 @@ A verifier needs only the mediator's reference and a list of receipts in the ord
 | 5 | Mediator named | The predicate's `mediator`: the given mediator's reference | `mediator` |
 | 6 | Chain | The predicate's `seq` and `prev`, against the receipt before it in the list from the same `from` to the same `to` (receipt-5) | `chain` |
 | 7 | Release | The receipt's place among the receipts before it that echo the same envelope, and a release's `by` against its closing's (receipt-6) | `release` |
+| 8 | Close | A close's `chains` and `unfetched` against the receipts before it, and the place of each closing with reason `closed` (close-4) | `close` |
+| 9 | After the close | No receipt after a close (close-4) | `after-close` |
 
 ### receipt-6 The verifier
 
@@ -1321,11 +1328,11 @@ A verifier checks receipts with the mediator's key alone and performs no key loo
 
 1. A crossing receipt with verdict `escalate` is a question, and its echoed envelope, `sender`, `seq` and `hash`, is its key. It always opens a question of its own and belongs to no question before it, even one with the same key, as after a shortened journal is resumed.
 2. A later receipt that is not a question and echoes the same envelope belongs to the latest question before it with that key. Since row 4 makes a question's `sender` its `from`, every receipt that belongs to a question names the question's `from` as `sender`.
-3. A question's closing receipt is the first receipt that belongs to it. It must be a resolution receipt addressed to the question's `from`. When its reason is `declined`, `cancelled`, `timeout` or `undeliverable`, its subject is the question's, name and digest. Otherwise its subject `name` is `answer` or `changed-version`, and when its verdict is `pass` it is the question's answer: an accept when the name is `answer`, a change when it is `changed-version`.
+3. A question's closing receipt is the first receipt that belongs to it. It must be a resolution receipt addressed to the question's `from`. When its reason is `declined`, `cancelled`, `timeout`, `undeliverable` or `closed`, its subject is the question's, name and digest. Otherwise its subject `name` is `answer` or `changed-version`, and when its verdict is `pass` it is the question's answer: an accept when the name is `answer`, a change when it is `changed-version`.
 4. After an answer, the receipt right after the closing receipt in the list may belong to the question: it is the release receipt, and its `by` is its closing's. After an accept it is a crossing receipt from the question's `from` to its `to`, with the question's subject, verdict `pass` or `block`. After a change it is a resolution receipt from the answer's `from` to the question's `to`, with the answer's subject, and the question's `to` is neither its `from` nor the answer's `from`.
 5. Every other receipt that belongs to a question fails `release`: one before the closing receipt that is not a resolution addressed to the asker, a closing of the wrong subject, a second release, a release that is not right after its answer, one after a closing that is not an answer, one of the wrong form, one whose `by` is not its closing's. So do a resolution receipt that belongs to no question and a crossing receipt an answer decided that belongs to none.
 
-A verifier given a subset of the receipts, not the whole list, reads them by this rule with two differences: a chain may start at any `seq`, the first receipt of a pair with a `prev` of its form, and each chain that starts above 1 is named; and a receipt that would belong to a question not in the subset is outside it, never a failure of `release`.
+A verifier given a subset of the receipts, not the whole list, reads them by this rule, and rows 8 and 9 as close-4 says, with two differences: a chain may start at any `seq`, the first receipt of a pair with a `prev` of its form, and each chain that starts above 1 is named; and a receipt that would belong to a question not in the subset is outside it, never a failure of `release`.
 
 A release receipt with verdict `pass` released its part; one with verdict `block` is a blocked release, which queued nothing. A crossing receipt whose envelope's `sender` is not its `from` fails `statement-type` at row 4, so a give's receipt cannot echo another member's envelope, and no envelope counts as echoed for its signer (crossing-5, receipt-7) by a receipt of someone else's give.
 
@@ -1408,11 +1415,13 @@ Conformance runs only with a founding set whose typed hash is the Accord id, rec
 | # | Check | Reads | Code |
 |---|---|---|---|
 | 0 | Founding | The set: it founds at the first receipt's `at`, its typed hash is the Accord id, and the receipts are verified under its `mediator.actor` | `founding` |
-| 1 | Accord | Each receipt's `accord` and `card`, against the set's | `accord` |
-| 2 | Parties | Each receipt's `from` and `to`, members of the set, or a `from` that is the mediator where maybe-4 or maybe-5 let it be | `party` |
-| 3 | Decision | The receipt decided again, by composition, with the judgment its `by` and verdict claim (composition-7): it gives the receipt's verdict and reason, and a judge it names is one consented to with use `decide`. An accept's or a change's `from` is an answerer of the question's rule, and its `at` before the deadline; a decline or a cancel is from the first answerer, before the deadline; a timeout's `at` is the deadline; an undeliverable is from the first answerer, or the mediator when there is none; and a release follows maybe-10 | `decision` |
+| 1 | Accord | Each receipt's `accord` and `card`, a close's included, against the set's | `accord` |
+| 2 | Parties | Each receipt's `from` and `to`, members of the set, or a `from` that is the mediator where maybe-4, maybe-5 or close-1 let it be | `party` |
+| 3 | Decision | The receipt decided again, by composition, with the judgment its `by` and verdict claim (composition-7): it gives the receipt's verdict and reason, and a judge it names is one consented to with use `decide`. An accept's or a change's `from` is an answerer of the question's rule, and its `at` before the deadline; a decline or a cancel is from the first answerer, before the deadline; a timeout's `at` is the deadline; an undeliverable, and a closing with reason `closed`, is from the first answerer, or the mediator when there is none, before the deadline; and a release follows maybe-10 | `decision` |
 | 4 | Witness | For a receipt an answer decided, a call given whose typed hash is its `by`: the call reads (maybe-11), names the Accord id and the receipt's question, takes the action the receipt records, names the receipt's digest for an accept or a change, and is from the receipt's `from` for an accept or a change, an answerer for a decline, or a member when row 3 is skipped and the question's answerers are not known, the asker for a cancel. A release follows the closing only when the call asks for one; and when it asks for one, a release follows, but for a change whose question's receiver is its answerer or its asker, which releases nothing, and in a subset, which may leave the release out | `witness` |
 | 5 | Body | A delivery: its receipt is one of the list, by its id, and the salted digest of its body under its salt is that receipt's subject digest, of its kind | `body` |
+
+A close receipt goes through rows 0 and 1 and no other: it is no decision. When the close is the first receipt, row 0 founds the set at its `at`.
 
 A call is matched only in its canonical bytes, as it was signed: a copy re-encoded with other whitespace or member order has the call's typed hash once made canonical, but it matches no receipt. A call given that matches no receipt is counted and fails nothing. A receipt an answer decided that no call given matches is unwitnessed, never a failure (verify-3). The first failure decides the code and index, and a verifier still reads every receipt's decider and witness, so that a log that does not conform is shown whole.
 
@@ -1454,9 +1463,9 @@ An answer's receipt is witnessed when a call given, whose typed hash is its `by`
 - When it is checked with the calls, and then without them
 - Then the accept and its release are witnessed by the decider's key, and then unwitnessed, and both conform
 
-### verify-4 Completeness is not claimed
+### verify-4 Completeness only against a close
 
-A verifier checks the receipts it is given. Until an Accord has a close, no receipt says that a journal holds every receipt the mediator wrote: a list cut short after any receipt still verifies (receipt-6). So conformance claims nothing about completeness, and a subset claims less still.
+A verifier checks the receipts it is given. Until an Accord has a close, no receipt says that a journal holds every receipt the mediator wrote: a list cut short after any receipt still verifies (receipt-6). So without a close, conformance claims nothing about completeness, and a subset claims less still. A whole list that ends in its close is complete against that close (close-4): the close pins the last receipt of every chain, and every chain links back to its first receipt by `prev`. That claims nothing about another list the mediator's key may have signed for the same Accord.
 
 #### Scenario: no close receipt
 
@@ -1466,7 +1475,7 @@ A verifier checks the receipts it is given. Until an Accord has a close, no rece
 
 ## 9. Reconciling kept records
 
-Reconciling compares a mediator's receipts, as they are presented, with what each party kept: the envelopes it signed and the receipts of the deliveries it fetched. It names what is in one record and not the other. Its inputs are the mediator's reference, the Accord id and the card hash it expects, the presented receipts in order, and for each party its kept envelopes and delivered receipts. Parties are read in actor-reference order and each party's records in the order kept.
+Reconciling compares a mediator's receipts, as they are presented, with what each party kept: the envelopes it signed and the receipts of the deliveries it fetched. It names what is in one record and not the other. Its inputs are the mediator's reference, the Accord id and the card hash it expects, the presented receipts in order, and for each party its kept envelopes and delivered receipts. A close among the presented receipts is checked against the Accord id and the card hash as every receipt is; it echoes no envelope and queued nothing, so no list names it. Parties are read in actor-reference order and each party's records in the order kept.
 
 | # | Check | Reads | Code |
 |---|---|---|---|
@@ -1542,7 +1551,7 @@ A vector gives every input an implementation could choose or read from the world
 
 ### conformance-vectors-3 Scenario vectors
 
-A `scenario` vector founds one mediator from `founding` at `foundedAt`, run by the key named `mediator`, and applies its `steps` in order. A step is `give`, `get`, `resolve` or `tick`, and each names the time it runs at in `at`, but `get`, which reads no time. A `give` step may carry `judge`, `{"name","verdict"}`, the judgment the decision is given: a judge's card name and `pass` or `block` (composition-7). After the last step the runner compares `final`: `receipts`, every receipt the mediator wrote, in order, each with its id; `delivered`, for each party by name, the deliveries still queued for it, in order, a party with none left out; and `pending`, the ids of the questions still open, in the order they were opened. Every outcome a step expects names a receipt's `verdict` and `reason`, paired as receipt-4 says: a `give` step's is a crossing receipt's, never with a reason only a resolution receipt has; a `tick` step's are timeouts, `block` with reason `timeout`; and a `resolve` step's is its resolution receipt's, with its `release` composition's. Every expected receipt names its decider (receipt-11). The runner also verifies `final.receipts` under the mediator's reference (section 8), and a list that fails fails the vector. Steps after a rejected step still run.
+A `scenario` vector founds one mediator from `founding` at `foundedAt`, run by the key named `mediator`, and applies its `steps` in order. A step is `give`, `get`, `resolve`, `tick` or `close`, and each names the time it runs at in `at`, but `get`, which reads no time. A `close` step closes the Accord (close-1) from the mediator's state as the steps before it left it, and expects `receipts`, the outcomes of the closings it writes, in order, and `close`, the close receipt and its id; a `get` after the close that finds nothing queued expects that `close` (close-3). A `give` step may carry `judge`, `{"name","verdict"}`, the judgment the decision is given: a judge's card name and `pass` or `block` (composition-7). After the last step the runner compares `final`: `receipts`, every receipt the mediator wrote, in order, each with its id; `delivered`, for each party by name, the deliveries still queued for it, in order, a party with none left out; and `pending`, the ids of the questions still open, in the order they were opened. Every outcome a step expects names a receipt's `verdict` and `reason`, paired as receipt-4 says: a `give` step's is a crossing receipt's, never with a reason only a resolution receipt has; a `tick` step's are timeouts, `block` with reason `timeout`; and a `resolve` step's is its resolution receipt's, with its `release` composition's. Every expected receipt names its decider (receipt-11). The runner also verifies `final.receipts` under the mediator's reference (section 8), and a list that fails fails the vector. Steps after a rejected step still run.
 
 #### Scenario: a give, then the end state
 
@@ -1552,7 +1561,7 @@ A `scenario` vector founds one mediator from `founding` at `foundedAt`, run by t
 
 ### conformance-vectors-4 Operations and groups
 
-Each operation names what the runner calls and what it compares. `canonical` puts `inputText` or `inputHex` in canonical form and expects `canonicalHex` and `hash`, or `code` and `offset`. `sign` signs `input`, an object, as the key named `signer` under `typeUri`, and expects `signingBytesHex` and `sig`. `verify-signature` verifies the object given as `input`, `inputText` or `inputHex` under `typeUri` by `reference`, and expects `valid`. `found` founds the set given as `input`, `inputText` or `inputHex` at `foundedAt`, as the mediator the set names, and expects `accord` and `card`, or `code`. `verify` verifies `receipts` under `reference`, and expects `verified`, the number of receipts, or `code`, with `index` for every code but `reference`. `reconcile` reconciles `receipts` with `kept` under `reference`, `accord` and `card`, `parties` giving each party's name its reference, and expects `removed`, `unrecorded` and `missing`, or `code` with the index, and for `kept` the party. `conform` checks `receipts` for conformance (verify-1) given `accord`, `founding` or `reference`, `answers`, each a call as `call` or `callHex`, `subset`, `delivery`, and `kernel`, the kernel hash the verifier trusts to decide again, and expects `code` with `index`, a code of section 8's first table or of verify-1's, or `conforms` with the counts `witnessed`, `unwitnessed` and `unmatched`, `module`, whether the card's kernel was the trusted one, and `body` when a delivery was given. Vectors are filed in groups by the section of this text they test: `canonical`, `signatures`, `founding`, `crossing`, `receipts`, `questions` and `conform`.
+Each operation names what the runner calls and what it compares. `canonical` puts `inputText` or `inputHex` in canonical form and expects `canonicalHex` and `hash`, or `code` and `offset`. `sign` signs `input`, an object, as the key named `signer` under `typeUri`, and expects `signingBytesHex` and `sig`. `verify-signature` verifies the object given as `input`, `inputText` or `inputHex` under `typeUri` by `reference`, and expects `valid`. `found` founds the set given as `input`, `inputText` or `inputHex` at `foundedAt`, as the mediator the set names, and expects `accord` and `card`, or `code`. `verify` verifies `receipts` under `reference`, and expects `verified`, the number of receipts, or `code`, with `index` for every code but `reference`. `reconcile` reconciles `receipts` with `kept` under `reference`, `accord` and `card`, `parties` giving each party's name its reference, and expects `removed`, `unrecorded` and `missing`, or `code` with the index, and for `kept` the party. `conform` checks `receipts` for conformance (verify-1) given `accord`, `founding` or `reference`, `answers`, each a call as `call` or `callHex`, `subset`, `delivery`, and `kernel`, the kernel hash the verifier trusts to decide again, and expects `code` with `index`, a code of section 8's first table or of verify-1's, or `conforms` with the counts `witnessed`, `unwitnessed` and `unmatched`, `module`, whether the card's kernel was the trusted one, and `body` when a delivery was given. A `verify` or `conform` vector expects the codes of rows 8 and 9 of section 8, `close` and `after-close`, as it does every code of that table. Vectors are filed in groups by the section of this text they test: `canonical`, `signatures`, `founding`, `crossing`, `receipts`, `questions`, `conform` and `close`.
 
 #### Scenario: a founding refusal
 
@@ -1652,7 +1661,7 @@ The runner reads a vector's header before anything else: a file whose bytes the 
 
 Placket's command line prints prose for a person on standard error and JSON or a body on standard output. A script reads neither safely: an id is one word of a line, a question's id shares standard output with the receipts, and a code is the last word of a line. So every command also takes `--json`. With it, the command prints on standard output exactly one JSON object, on one line, after it has done its work, and nothing else. Its exit code and every line it prints on standard error stay what they are without `--json`, and without `--json` nothing it prints changes. This section says what the object holds; it adds no receipt, no code and no format a mediator or a verifier reads.
 
-Every object has `exit`, the command's exit code. The words a person reads are the product words: `pass`, `block` and `ask` for the verdicts `pass`, `block` and `escalate`, `released` for a release that passed, and for a closing the words `accepted`, `changed`, `declined`, `cancelled`, `timeout`, `undeliverable`, `blocked` and `open`. A reason and a code are spelled as this text spells them, and a receipt, a predicate, a declaration, a binding and a founding set are carried as JSON values, unchanged. A member the tables give with a condition is left out when the condition does not hold; a list is there even when it is empty. These are the objects a command's members are built of.
+Every object has `exit`, the command's exit code. The words a person reads are the product words: `pass`, `block` and `ask` for the verdicts `pass`, `block` and `escalate`, `released` for a release that passed, and for a closing the words `accepted`, `changed`, `declined`, `cancelled`, `timeout`, `undeliverable`, `closed`, `blocked` and `open`. A reason and a code are spelled as this text spells them, and a receipt, a predicate, a declaration, a binding and a founding set are carried as JSON values, unchanged. A member the tables give with a condition is left out when the condition does not hold; a list is there even when it is empty. These are the objects a command's members are built of.
 
 | Object | Members |
 |---|---|
@@ -1670,16 +1679,17 @@ A command that is refused, or fails, has the members of its refusal beside what 
 | `declare` | `declaration`, the signed declaration |
 | `bind` | `binding`, the signed binding |
 | `founding` | `founding`, the founding set; `accord`, its Accord id; `card`, its card hash |
-| `window` | Printed when the window stops. Once it started: `accord`, `card`, `operator`, and `started`, `founded` or `reloaded` |
+| `window` | Printed when the window stops. Once it started: `accord`, `card`, `operator`, and `started`, `founded`, `reloaded` or `closed`; on a closed Accord, `close`, the close receipt's id |
+| `window close` | Printed when it stops: `accord`; `close`, `{"receiptId","receipt"}`, the close receipt; and `closings`, the list of the outcomes of the closings it wrote, in order. With `--socket`, also the members `window` holds |
 | `give` | `outcome`; `question`, the ask's receipt id, when the outcome is an ask; with `--wait`, the members of `result` besides |
 | `result`, and `give --wait` | `question`; `closing`; `release`, an outcome, when the answer had a release; after an accepted or changed answer that passed, `fetched`, `true` when the answer or the version was found, `answer`, its delivery, when it was, and `deliveries`, the list of the other deliveries it fetched, when it fetched any. A question still open, and a wait that was interrupted, have the closing `{"word":"open"}` |
 | `answer`, `cancel` | `question`; `outcome`; `release`, when the answer had one |
 | `change` | As `answer`, and `comment` when a comment was given |
 | `decline` | `question`; `outcome`; `comment`, once the window took the decline |
-| `get` | `delivery`, when one was fetched; with `--out`, the delivery without its body, and `path`, the file the body was written to. With `--all`, in place of `delivery` and `path`, `deliveries`, the list of every delivery it fetched, in the order it fetched them, each as `get` without `--all` holds it; with `--out`, each without its body and with `path`, the file its body was written to, when it was written |
+| `get` | `delivery`, when one was fetched; with `--out`, the delivery without its body, and `path`, the file the body was written to. With `--all`, in place of `delivery` and `path`, `deliveries`, the list of every delivery it fetched, in the order it fetched them, each as `get` without `--all` holds it; with `--out`, each without its body and with `path`, the file its body was written to, when it was written. `close`, `{"receiptId","receipt"}`, when the window handed out the Accord's close receipt (close-3) |
 | `questions` | `questions`, the list of the open questions this key may answer, each the object the command prints for it without `--json`, with `receiptId` and `receipt`, those of the ask; never the part's salt or a raw body |
 | `show` | `verified`, `false`; `receiptId`; `word`; `reason`; `by`, the decider as the predicate holds it; `kind`, the part's kind; `at`; `from`; `to`; `module`, the module line; `claim`, the receipt's claim line; `notClaimed`, the scope line; and `shown`, the list of the lines the command prints on standard output without `--json` |
-| `verify` | `verified`, the number of receipts; `mediator`; `accord`; `card`; with `--founding`, `operator`, `runs`, `module`, an object of the kernel's `version` and `hash`, `judges`, the card's judges as it lists them, `members`, a list with one object per member in actor-reference order, each its `actor`, its `roles` as its binding gives them, and the `principal` that signed its binding, `custody`, its line, and `supersedes`, `{"accord","close"}`, when the policy has one; `counts`, the number of receipts by product word, `pass`, `block` and `ask`; `questionsClosed`; `questionsOpen`; `releases`; `blockedReleases`; `starts`, a list of `{"from","to","seq"}`, each chain a subset starts late; `decisions`, a list of `{"receiptId","line"}`, each decision line; `unmatched`, the number of calls matching no receipt; `valid`, `conforms` and `complete`, each its line; `body`, its line, with `--delivery`; `predicates`, the list of the receipts' predicates in journal order; `claim`, the claim line; `notClaimed`, the scope line |
+| `verify` | `verified`, the number of receipts; `mediator`; `accord`; `card`; with `--founding`, `operator`, `runs`, `module`, an object of the kernel's `version` and `hash`, `judges`, the card's judges as it lists them, `members`, a list with one object per member in actor-reference order, each its `actor`, its `roles` as its binding gives them, and the `principal` that signed its binding, `custody`, its line, and `supersedes`, `{"accord","close"}`, when the policy has one; `counts`, the number of receipts by product word, `pass`, `block` and `ask`; `questionsClosed`; `questionsOpen`; `releases`; `blockedReleases`; `starts`, a list of `{"from","to","seq"}`, each chain a subset starts late; `decisions`, a list of `{"receiptId","line"}`, each decision line; `unmatched`, the number of calls matching no receipt; `valid`, `conforms` and `complete`, each its line, `complete` against the close when the list ends in one, and with `--superseded-by` the successor that pins it; `body`, its line, with `--delivery`; `predicates`, the list of the receipts' predicates in journal order; `claim`, the claim line; `notClaimed`, the scope line |
 | `log` | `log`, the object the command prints without `--json`, which carries the claim and the scope line. `--json` with `--format csv` is the command's error `format` |
 | `reconcile` | `removed`, `unrecorded` and `missing`, as the command prints them without `--json` |
 | `released` | On a match, `receiptId` and `receipt`, those of the receipt the file, or the kept part, matched; `kind`, the part's kind; `verified`, `false`; `claim`, the claim line, the value's with `--at`; `notClaimed`, the scope line. With no match, `exit` alone. With `--every`, in place of `receiptId`, `receipt` and `kind`, `matches`, the list of every match in the order the key fetched them, each `receiptId`, `kind`, `at`, the receipt's time, `from`, the receipt's sender, and `re` when the part has one; on a match `verified`, `claim` and `notClaimed` beside it |
@@ -1903,7 +1913,7 @@ On a match the command prints on standard output the receipt id of the first mat
 
 ### commands-8 What verify prints
 
-`verify` prints, on standard error, in order: the line of the mediator, the Accord and the card; with a founding set, the operator, the module, one line per judge of the card in card order, one line per member, the custody line, which says of how many members the operator is the principal, and what the policy supersedes; the counts of verdicts, questions and releases; with a subset, each chain it starts late; with a founding set, one line per receipt the terms did not decide, in list order: an answer witnessed, by the key that signed its call and the principal that bound it to its roles, or unwitnessed, by the roles of the answerer, the `from` of the question's closing, or, for a cancel, the asker's; a judge of the card; or the mediator, by its event; with a subset, how many decisions were not checked because their question is not in it; how many decisions the terms made; how many calls given match no receipt, when any; then the `valid` line, the receipts' count and the mediator; the `conforms` line: that every decision is one the Accord let its decider make, that conformance was not checked for want of a founding set or because the card's module is not the one the verifier runs, or that the log does not conform, with the code and the line of `receipts.jsonl`; the `complete` line, which claims nothing; with a delivery, the `body` line; and the claim and scope lines. A log that does not conform, and a body that is not its receipt's part, exit 1 with every line; a validity failure prints its code and line and none of these, and so does a delivery given that is not one, or whose receipt is none of the receipts, a tool error. With `--json` the object holds each of these lines under its member.
+`verify` prints, on standard error, in order: the line of the mediator, the Accord and the card; with a founding set, the operator, the module, one line per judge of the card in card order, one line per member, the custody line, which says of how many members the operator is the principal, and what the policy supersedes; the counts of verdicts, questions and releases; with a subset, each chain it starts late; with a founding set, one line per receipt the terms did not decide, in list order: an answer witnessed, by the key that signed its call and the principal that bound it to its roles, or unwitnessed, by the roles of the answerer, the `from` of the question's closing, or, for a cancel, the asker's; a judge of the card; or the mediator, by its event; with a subset, how many decisions were not checked because their question is not in it; how many decisions the terms made; how many calls given match no receipt, when any; then the `valid` line, the receipts' count and the mediator; the `conforms` line: that every decision is one the Accord let its decider make, that conformance was not checked for want of a founding set or because the card's module is not the one the verifier runs, or that the log does not conform, with the code and the line of `receipts.jsonl`; the `complete` line: that completeness is not claimed, for want of a close or because only a subset was given; or that the list is complete against its close receipt, named by its id, and, with the founding set of a successor Accord, that the successor's `supersedes` pins that close, naming the successor; and in each case what it does not claim, that the mediator signed no other list for this Accord; with a delivery, the `body` line; and the claim and scope lines. A log that does not conform, and a body that is not its receipt's part, exit 1 with every line; a validity failure prints its code and line and none of these, and so does a delivery given that is not one, or whose receipt is none of the receipts, a tool error. With `--json` the object holds each of these lines under its member.
 
 #### Scenario: the lines of a verified journal
 
@@ -1928,7 +1938,7 @@ A kept part is a line of a party's kept record, given with `--kept`. It is used 
 
 A kept part that no receipt covers is left out, and the log says so on standard error, naming the receipt it claims.
 
-The JSON object is `{"accord","claim","mediator","notClaimed","rows"}`: the Accord, the claim line and the scope line that follows every claim line, the mediator, and the rows, each an object of its columns, `receipts` a list. CSV is a header and one record per row, quoted per RFC 4180, `receipts` the ids joined by spaces, and the claim and the scope line are printed on standard error; a cell that begins with `=`, `+`, `-`, `@`, a tab or a carriage return is written after a `'`. With `--words` the columns `text` and `changed_text` follow the others; with `--no-words` the `comment` column is empty.
+The JSON object is `{"accord","claim","close"?,"mediator","notClaimed","rows"}`: the Accord, the claim line and the scope line that follows every claim line, the id of the close receipt when the journal holds one, the mediator, and the rows, each an object of its columns, `receipts` a list. CSV is a header and one record per row, quoted per RFC 4180, `receipts` the ids joined by spaces, and the claim and the scope line are printed on standard error; a cell that begins with `=`, `+`, `-`, `@`, a tab or a carriage return is written after a `'`. With `--words` the columns `text` and `changed_text` follow the others; with `--no-words` the `comment` column is empty.
 
 These are the columns of a question's row, in order.
 
@@ -1939,7 +1949,7 @@ These are the columns of a question's row, in order.
 | `kind` | The asked part's kind |
 | `asked_at` | The ask's time |
 | `answered_at` | The closing's time; empty while the question is open |
-| `answer` | The closing's word, `accepted`, `changed`, `declined`, `cancelled`, `timeout`, `undeliverable` or `blocked`, read from the closing receipt; `open` while the question is open |
+| `answer` | The closing's word, `accepted`, `changed`, `declined`, `cancelled`, `timeout`, `undeliverable`, `closed` or `blocked`, read from the closing receipt; `open` while the question is open |
 | `released_at` | The release receipt's time, when the release passed |
 | `comment` | The text of a comment that passed from the answerer to the asker with re the question, from the giver's kept message |
 | `answer_signed` | `yes` when an answer call whose typed hash is the closing receipt's `by` reads (maybe-11), from the journal's answer calls or a kept part, and fits the closing: its Accord and question, the action the closing records, and its signer, the closing's `from` for an accept or a change and the asker for a cancel, with the closing's subject digest for an accept or a change; a decline's signer is not compared, since any answerer may decline while the closing's `from` is the first answerer |
@@ -1991,3 +2001,96 @@ With `--all`, the log has one row for every receipt that opens a question and ev
 - When `log --all --words` runs with the receiver's kept record alone
 - Then each row's text is the text of the part its receipt's digest covers, and its topic is empty, since a fetched part does not cover its topic
 - And with the giver's kept record alone, each row's topic and text are those of the message its receipt's envelope hash covers
+
+## 13. Closing an Accord
+
+An Accord is closed once, by whoever runs its mediator, and never reopens. The close is the mediator's own act: no member calls it, and no door identity is given to the operator or to the mediator's key. It closes every question still open, then writes the close receipt, the last receipt of the Accord, which pins the last receipt of every chain and lists every delivery not yet fetched. It never waits for a fetch, a deadline or a member. A verifier given a whole list that ends in its close can then say the list is complete against that close; a new Accord whose policy `supersedes` names the close (setup-contract-11) pins it, which is how a mediator's key is retired.
+
+| Closing written by a close | Receipt from, to | Subject | Verdict, reason | `at` | `by` |
+|---|---|---|---|---|---|
+| A question whose deadline is at or before the close's time | The first answerer, or the mediator when there is none, to the asker | The asked part | `block`, `timeout` | The deadline | The mediator, `deadline` |
+| Every other open question | The first answerer, or the mediator when there is none, to the asker | The asked part | `block`, `closed` | The close's | The mediator, `close` |
+
+### close-1 What a close does, and in what order
+
+A close writes, in one operation and in this order: first a timeout for every open question whose deadline is at or before the close's `at`, at its deadline, as maybe-5 writes them, in the order the questions were opened; then, for each question still open, in the order the questions were opened, a closing from its first answerer, or the mediator when it has none, to its asker, `block` with reason `closed`, naming the asked part, echoing the question's envelope and naming the mediator, with the event `close`, as its decider; and last the close receipt (close-2), at the same `at`. Opened order is not deadline order: deadlines are set per rule. A close of an Accord that holds closings with reason `closed` and no close receipt after them, as a write cut short leaves it, completes that close: it takes the `at` of the closings already written, not its own, closes each question still open as `closed` at that `at`, and then writes the close receipt at it. Only a close completes it; a restart of the mediator refuses such a record.
+
+#### Scenario: three questions, one past its deadline
+
+- Given three open questions, opened in the order Q1, Q2 and Q3, where only Q2's deadline is at or before the time T
+- When the Accord is closed at T
+- Then four receipts are written: Q2's timeout at its deadline, a `closed` closing of Q1 at T, one of Q3 at T, and the close receipt last
+
+#### Scenario: a close cut short
+
+- Given a record whose last write was cut after its `closed` closings and before the close receipt, and another cut between two `closed` closings of one close
+- When each is closed at a later time
+- Then the first gains the close receipt alone, at the closings' `at`, and the second the closing still to write and then the close receipt, both at the `at` of the closing already written
+
+### close-2 The close receipt
+
+A close receipt is a DSSE 1.0 envelope as receipt-1 gives it, payload type `application/vnd.in-toto+json`, with one signature by the mediator. Its statement (`close.json`) has exactly `_type`, `https://in-toto.io/Statement/v1`; `subject`, a list of exactly one entry, `name` `accord` and `digest` an object with exactly `sha256`, the 64 lowercase hex digits of the Accord id, the SHA-256 of the founding set's canonical bytes; `predicateType`, `https://placket.tech/close/0.1`; and `predicate`, with exactly `accord`, the Accord id; `card`, the card hash; `mediator`, the mediator's reference; `at`, its time; `chains`, a list with one entry for each chain of the receipts before it, `from`, `to`, `seq` and `receipt`, that chain's last receipt's `seq` and id, ordered by `from` and then by `to` in actor-reference order; and `unfetched`, a list with one entry for each delivery not yet fetched at the close, `to`, its receiver, and `receipt`, the id of the receipt that queued it, in the order queued. Both lists are there when empty. A close has no `seq`, `prev`, `kind`, `envelope`, `verdict`, `reason` or `by`: it is in no chain and belongs to no question. Its id is the typed hash of its statement's canonical bytes.
+
+#### Scenario: the anatomy of a close
+
+- Given any close receipt
+- When its payload is decoded
+- Then its `predicateType` is `https://placket.tech/close/0.1`, its one subject is the Accord by the hex of its id, and the statement validates against `close.json` and is refused by `statement.json`
+
+#### Scenario: every chain and every delivery not fetched
+
+- Given a journal with three chains and a delivery never fetched
+- When the Accord is closed
+- Then the close is written at once, its `chains` names each chain's last receipt in pair order, and its `unfetched` names the delivery's receiver and the receipt that queued it
+
+### close-3 A closed Accord
+
+A closed Accord never reopens, and nothing extends it. A member's give and a member's answer are rejected with `closed`, right after membership, so a stranger is `not-a-member` still and learns nothing; nothing is written. No question is open, so an answerer is shown none (maybe-1), and the passing of time writes nothing. A fetch still hands out each delivery queued for the member, once, in order; once its queue is empty, every fetch returns the close receipt. A mediator restarted on a closed record comes up closed and writes nothing. Closing it again is refused.
+
+#### Scenario: a give and an answer after the close
+
+- Given a closed Accord
+- When a member gives and answers, and a stranger does
+- Then the member's give and answer are `closed`, the stranger's `not-a-member`, and nothing is written
+
+#### Scenario: fetches after the close
+
+- Given a closed Accord with one delivery queued for the applier
+- When the applier fetches three times
+- Then the first fetch returns the delivery, and the second and third each return the same close receipt
+
+#### Scenario: a restart on a closed record
+
+- Given a closed record
+- When its mediator starts again on it
+- Then it comes up closed, writes nothing, and refuses a give with `closed`
+
+### close-4 Verifying against a close
+
+Section 8 reads a close in its rows 1 to 5, and in two rows of its own. Row 8, `close`, over a whole list: the close's `chains` are exactly one entry for each chain of the receipts before it, at that chain's last `seq` and receipt id, in pair order, and no other; each entry of its `unfetched` names a distinct receipt before it that queued a delivery to the entry's `to`, one with verdict `pass` addressed to it, since a verifier cannot see a fetch; the closings with reason `closed` come together right before the close, each at the close's `at`, or end the list, as a close cut short leaves it. A close whose lists or `at` do not hold fails `close` at its index; a closing with reason `closed` followed by any receipt but another such closing or a close fails `close` at that receipt's index. Row 9, `after-close`: a receipt after a close fails at its index. Over a subset, a verifier checks a close's signature, its form and row 9, and of row 8 only that each chain the subset holds ends at the `seq` and receipt the close lists for it. An Accord with no receipts can be closed: its close is the first receipt, with both lists empty.
+
+A whole list that verifies and ends in its close is complete against that close; a subset is never complete, and a list with no close is not. Given also the founding set of a successor Accord, a verifier checks that the successor's policy `supersedes` names this Accord and this list's close; a successor with no `supersedes`, or one that names another Accord or another close, or a list with no close, fails the check. Completeness never claims that the mediator's key signed no other list for the Accord.
+
+#### Scenario: a receipt after the close
+
+- Given a list whose close is followed by one more receipt the mediator signed
+- When it is verified
+- Then it fails `after-close` at that receipt's index
+
+#### Scenario: a close that does not match its list
+
+- Given, each alone, a close whose `chains` names a `seq` that is not its chain's last, leaves out a chain or names one the list does not hold; whose `unfetched` names a receipt that queued nothing to its `to`, or one receipt twice; whose `at` is not its closings'; and a `closed` closing followed by a give
+- When each is verified
+- Then each fails `close`, at the close's index, or at the give's
+
+#### Scenario: complete against the close
+
+- Given a whole list that ends in its close, the same list's last two receipts, and a list with no close
+- When each is verified
+- Then the first is complete against its close, the second is a subset and claims no completeness, and the third claims none
+
+#### Scenario: a successor that pins the close
+
+- Given a closed list and the founding set of a new Accord whose `supersedes` names the old Accord and the list's close
+- When the list is verified with the successor's set
+- Then it is complete against its close, which the successor pins; and with a `supersedes` that names another close or another Accord, with a successor that supersedes nothing, or with a list that has no close, the check fails

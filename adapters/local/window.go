@@ -31,6 +31,10 @@ type Window struct {
 	Founding []byte
 	// Socket is the path the door listens on, and Journal the journal directory.
 	Socket, Journal string
+	// Close starts the window along mediator.Close, not Reload: it closes the journal's Accord,
+	// writing the closings of its open questions and the close receipt, then serves the closed Accord
+	// on Socket, or, with Socket empty, returns (close-1, docs/adr/0022-the-close.md).
+	Close bool
 	// Disk is what the journal writes through; nil is the operating system's.
 	Disk journal.Disk
 	// Now is the door's clock (door-owns-clock): read once per call, and at each idle tick.
@@ -48,6 +52,9 @@ type Window struct {
 	Idle time.Duration
 	// Ready, when set, is closed once the door listens.
 	Ready chan<- struct{}
+	// replyLimit is the most bytes a reply that carries the close may have; zero is MaxReply. Only
+	// a test sets it, to reach the bound without a queue that long.
+	replyLimit int
 }
 
 // What an Event is.
@@ -56,6 +63,9 @@ const (
 	EventStarted = "started"
 	// EventReloaded: a reload closed the questions a stop left open.
 	EventReloaded = "reloaded"
+	// EventClosed: a close wrote its closings and the close receipt, in one journal write; Outcomes
+	// holds the closings and Close the close's id (close-1).
+	EventClosed = "closed"
 	// EventCall: a call the door let through, with the receipts it wrote.
 	EventCall = "call"
 	// EventTick: the passing of time closed questions.
@@ -71,6 +81,10 @@ type Event struct {
 	// For started: whether the Accord was founded now, and its id and card.
 	Founded      bool
 	Accord, Card string
+	// For started on a closed Accord, and for closed: the close receipt's id, and its bytes in
+	// CloseReceipt.
+	Close        string
+	CloseReceipt []byte
 	// For a call: its op and caller.
 	Op, Caller string
 	// The receipts written, in order, and the index among them of a release receipt, or -1.
@@ -107,9 +121,16 @@ type request struct {
 // (journal-synced); so does a failure of the mediator outside a call's refusal, when it ticks, reads
 // a question it just asked or closes one nobody can answer. An accept that fails for a reason that
 // does not pass ends Run with CodeSocket. Run returns only once every goroutine it started has ended.
+//
+// With Close set it closes the Accord in place of the reload (close-1): an empty journal is
+// CodeJournal, unfounded; a closed one is mediator's *Error closed; it emits EventClosed. With Socket
+// empty it then lets the lock go and returns nil without listening; with Socket set it serves the
+// closed Accord as any start does.
 func Run(ctx context.Context, cfg Window) error {
-	if err := CheckSocket(cfg.Socket); err != nil {
-		return err
+	if !cfg.Close || cfg.Socket != "" {
+		if err := CheckSocket(cfg.Socket); err != nil {
+			return err
+		}
 	}
 	if cfg.Idle == 0 {
 		cfg.Idle = time.Second
@@ -134,12 +155,19 @@ func Run(ctx context.Context, cfg Window) error {
 	if err != nil {
 		return err
 	}
+	if cfg.Close && cfg.Socket == "" {
+		return nil
+	}
 	l, err := listen(cfg.Socket, nil)
 	if err != nil {
 		return err
 	}
 	defer l.Close()
-	cfg.Event(Event{Kind: EventStarted, Founded: founded, Accord: w.m.Accord(), Card: w.m.Card()})
+	started := Event{Kind: EventStarted, Founded: founded, Accord: w.m.Accord(), Card: w.m.Card()}
+	if c, ok := w.m.Closed(); ok {
+		started.Close, started.CloseReceipt = c.ID, c.Receipt
+	}
+	cfg.Event(started)
 	if cfg.Ready != nil {
 		close(cfg.Ready)
 	}
@@ -153,6 +181,9 @@ func (w *window) start() (bool, error) {
 		return false, err
 	}
 	at := Stamp(w.cfg.Now())
+	if rec.Empty && w.cfg.Close {
+		return false, &journal.Error{Code: journal.CodeJournal, Core: string(mediator.CodeUnfounded)}
+	}
 	if rec.Empty {
 		m, err := mediator.Found(w.cfg.Founding, w.cfg.Key, at)
 		if err != nil {
@@ -166,6 +197,9 @@ func (w *window) start() (bool, error) {
 	}
 	if id, err := canonical.TypedHash(w.cfg.Founding); err != nil || id != rec.Accord || rec.Mediator != w.cfg.Key.Reference() {
 		return false, &journal.Error{Code: journal.CodeJournal, File: journal.FileAccord, Line: 1, Core: "accord"}
+	}
+	if w.cfg.Close {
+		return false, w.close(rec, at)
 	}
 	m, outs, err := mediator.Reload(w.cfg.Founding, rec.Receipts, rec.Open, rec.Queued, rec.FoundedAt, w.cfg.Key, at)
 	if err != nil {
@@ -187,6 +221,54 @@ func (w *window) start() (bool, error) {
 	return false, nil
 }
 
+// close closes the journal's Accord at the time at (close-1): the closings and the close receipt in
+// one journal write, then EventClosed. A closed journal is mediator's *Error closed, returned as it
+// is; any other refusal is named as reloadError names it. A close receipt whose closeReply is longer
+// than MaxReply is CodeJournal, receipts.jsonl, CoreCloseSize, and nothing is written: every reply
+// that carries the close, and every line of the journal and of a state directory, holds it whole.
+func (w *window) close(rec *journal.Record, at string) error {
+	m, outs, closed, err := mediator.Close(w.cfg.Founding, rec.Receipts, rec.Open, rec.Queued, rec.FoundedAt, w.cfg.Key, at)
+	if err != nil {
+		var me *mediator.Error
+		if errors.As(err, &me) && me.Code == mediator.CodeClosed {
+			return err
+		}
+		return reloadError(err, rec)
+	}
+	if m.Card() != rec.Card {
+		return &journal.Error{Code: journal.CodeJournal, File: journal.FileAccord, Line: 1, Core: "card"}
+	}
+	limit := w.cfg.replyLimit
+	if limit == 0 {
+		limit = MaxReply
+	}
+	if b := closeReply(closed.Receipt); len(b) > limit || string(b) == internalReply {
+		return &journal.Error{Code: journal.CodeJournal, File: journal.FileReceipts, Core: CoreCloseSize}
+	}
+	w.m = m
+	if err := w.j.RemoveStrays(rec); err != nil {
+		return err
+	}
+	if err := w.j.AddReceipts(append(receiptsOf(outs), closed.Receipt)); err != nil {
+		return err
+	}
+	w.cfg.Event(Event{Kind: EventClosed, Accord: m.Accord(), Card: m.Card(), Outcomes: outs, Release: -1,
+		Close: closed.ID, CloseReceipt: closed.Receipt})
+	return nil
+}
+
+// CoreCloseSize follows error journal receipts.jsonl when a close receipt would not fit in the
+// largest reply that carries it: the members fetch what is queued for them, and the close runs again
+// (docs/adr/0022-the-close.md).
+const CoreCloseSize = "close-size"
+
+// closeReply is the largest reply that carries the close receipt c: the questions reply of a closed
+// Accord, the close beside an empty list. A get's reply, the close alone, is shorter.
+func closeReply(c []byte) []byte {
+	empty := []wireAsked{}
+	return encodeReply(wireReply{Questions: &empty, Close: c})
+}
+
 // reloadError names the file and line of what Reload refused.
 func reloadError(err error, rec *journal.Record) error {
 	var me *mediator.Error
@@ -204,6 +286,9 @@ func reloadError(err error, rec *journal.Record) error {
 		if errors.As(me, &re) {
 			e.Core = string(re.Code)
 		}
+	case mediator.CodeClose:
+		// A close cut short: its closed closings are in receipts.jsonl, with no close after them.
+		e.File = journal.FileReceipts
 	case mediator.CodeHeld:
 		e.File = journal.DirHeld
 		if me.Index >= 0 && me.Index < len(rec.HeldFiles) {
@@ -596,6 +681,10 @@ func (w *window) get(c Call, ev *Event) ([]byte, error) {
 		return refused(err, ev), nil
 	}
 	if d == nil {
+		// Once the Accord is closed, a fetch that finds nothing queued returns the close (close-3).
+		if cl, ok := w.m.Closed(); ok {
+			return encodeReply(wireReply{Close: cl.Receipt}), nil
+		}
 		return encodeReply(wireReply{}), nil
 	}
 	var head struct {
@@ -622,6 +711,11 @@ func (w *window) questions(c Call, ev *Event) []byte {
 	list := []wireAsked{}
 	if c.Caller == w.cfg.Key.Reference() {
 		return encodeReply(wireReply{Questions: &list})
+	}
+	// A closed Accord has no open question; the reply says why, with the close (close-3), so an
+	// answerer's command learns the Accord is closed before it signs anything.
+	if cl, ok := w.m.Closed(); ok {
+		return encodeReply(wireReply{Questions: &list, Close: cl.Receipt})
 	}
 	for _, id := range w.m.Pending() {
 		q, ok, err := w.m.Question(c.Caller, id)

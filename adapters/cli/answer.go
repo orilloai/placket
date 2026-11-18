@@ -35,6 +35,7 @@ type answering struct {
 // shown reads the question as the window shows it to this key's answerer and checks it before
 // anything is signed (asked). A question the window does not show is tool error asked too, whether
 // or not the window left some out of its reply: nothing is signed for a part that was not checked.
+// A closed Accord's reply, which carries its close, is the rejection closed.
 // It returns 0, or the exit code of a refusal or of tool error asked.
 func (s *session) shown(question string) int {
 	rep, err := s.client.Call(local.OpQuestions, nil)
@@ -43,6 +44,13 @@ func (s *session) shown(question string) int {
 	}
 	if code, refused := s.r.refusal(rep); refused {
 		return code
+	}
+	// A closed Accord shows no question, and takes no answer: the window would reject it with
+	// closed, right after membership, so nothing is signed (close-3).
+	if rep.Close != nil {
+		s.r.put(memberRejection, string(mediator.AccordClosed))
+		fmt.Fprintln(s.r.stderr, LineRejected+" "+string(mediator.AccordClosed))
+		return ExitRejected
 	}
 	for _, q := range rep.Questions {
 		if q.ID == question && s.asked(q) {

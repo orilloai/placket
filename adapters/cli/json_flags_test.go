@@ -113,6 +113,12 @@ var commandFlags = []commandRow{
 		"founding": {input, "the one founding set it runs", nil},
 		"socket":   {input, "the one socket it listens on", nil},
 		"journal":  {input, "the one journal it writes; its receipts are the results of the commands that call it", nil}}},
+	{words: []string{"window", "close"}, flags: map[string]flagUse{
+		"json": jsonFlag, "key": {input, "the one mediator key it closes under", nil},
+		"founding": {input, "the one founding set whose Accord it closes", nil},
+		"accord":   {input, "the one Accord id the founding set must have", nil},
+		"socket":   {input, "the one socket it serves the closed Accord on", nil},
+		"journal":  {input, "the one journal it closes; the closings and the close are its one write", nil}}},
 	{words: []string{"give"}, play: playGive, flags: withSocket(map[string]flagUse{
 		"to":    {input, "the one receiver of the one part it gives", nil},
 		"kind":  {input, "the kind of the one part", nil},
@@ -149,12 +155,13 @@ var commandFlags = []commandRow{
 		"json": jsonFlag, "receipt": {input, "the one receipt it shows", nil}}},
 	{words: []string{"verify"}, flags: map[string]flagUse{
 		"json": jsonFlag, "mediator": {input, "the one mediator whose journal it verifies", nil},
-		"receipts": {input, "the one journal it verifies", nil},
-		"founding": {input, "the founding set the one verification checks against", nil},
-		"accord":   {input, "the one Accord id the founding set is checked against", nil},
-		"answers":  {input, "the answer calls the one verification reads besides", nil},
-		"subset":   {input, "the one list is a subset", nil},
-		"delivery": {input, "the one delivery whose body is checked", nil}}},
+		"receipts":      {input, "the one journal it verifies", nil},
+		"founding":      {input, "the founding set the one verification checks against", nil},
+		"accord":        {input, "the one Accord id the founding set is checked against", nil},
+		"answers":       {input, "the answer calls the one verification reads besides", nil},
+		"subset":        {input, "the one list is a subset", nil},
+		"delivery":      {input, "the one delivery whose body is checked", nil},
+		"superseded-by": {input, "the one successor whose pin of the close is checked", nil}}},
 	{words: []string{"log"}, flags: map[string]flagUse{
 		"json": jsonFlag, "mediator": {input, "the one mediator whose journal it reads", nil},
 		"receipts": {input, "the one journal the log is of", nil},

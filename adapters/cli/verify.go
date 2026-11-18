@@ -49,23 +49,61 @@ func (r *run) notVerified(err error) int {
 	return r.tool(codeVerify)
 }
 
+// accordOf is the Accord id and the card hash a verified receipt names, a close's included.
+func accordOf(v receipts.Verified) (string, string) {
+	if c, ok := v.Close(); ok {
+		return c.Accord, c.Card
+	}
+	p := v.Statement().Predicate
+	return p.Accord, p.Card
+}
+
 // oneAccord reports the first receipt whose Accord or card is not the first receipt's: accord or
 // card, and its index. One journal is one Accord's, so a list of two is refused whole.
-func oneAccord(st []receipts.Statement) (string, int) {
-	for i, s := range st {
+func oneAccord(list []receipts.Verified) (string, int) {
+	if len(list) == 0 {
+		return "", -1
+	}
+	a0, c0 := accordOf(list[0])
+	for i, v := range list {
+		a, c := accordOf(v)
 		switch {
-		case s.Predicate.Accord != st[0].Predicate.Accord:
+		case a != a0:
 			return codeAccord, i
-		case s.Predicate.Card != st[0].Predicate.Card:
+		case c != c0:
 			return codeCard, i
 		}
 	}
 	return "", -1
 }
 
+// closeOf is the id of the close a verified list holds, its last receipt, or the empty string.
+func closeOf(list []receipts.Verified) string {
+	if len(list) == 0 {
+		return ""
+	}
+	c, _ := list[len(list)-1].Close()
+	return c.ID
+}
+
+// firstAt is the time of a list's first receipt, a close's when it is the first, read without
+// verifying, or the empty string.
+func firstAt(list [][]byte) string {
+	if len(list) == 0 {
+		return ""
+	}
+	if s, err := receipts.Decode(list[0]); err == nil {
+		return s.Predicate.At
+	}
+	if c, err := receipts.DecodeClose(list[0]); err == nil {
+		return c.At
+	}
+	return ""
+}
+
 // verifyCommand is `verify --receipts DIR (--mediator M | --accord A --founding F) [--founding F]
-// [--answers FILE] [--subset] [--delivery FILE] [--json]` (commands-4, commands-8, verify-1 to
-// verify-4): the journal's receipts checked for validity, under the mediator's reference alone, and,
+// [--answers FILE] [--subset] [--delivery FILE] [--superseded-by NEW] [--json]` (commands-4,
+// commands-8, verify-1 to verify-4, close-4): the journal's receipts checked for validity, under the mediator's reference alone, and,
 // with a founding set, for conformance to the Accord, without ever running a judge again. With
 // --accord the mediator's reference comes from the founding set whose typed hash is A, the one value
 // given out of band; with --mediator, a founding set given must name M and found the receipts'
@@ -82,12 +120,21 @@ func oneAccord(st []receipts.Statement) (string, int) {
 // valid, conforms and complete lines, the body line, the claim and the scope line. A validity failure
 // prints its code and line and none of these. A log that does not conform, and a body that is not the
 // part its receipt names, exit 1 with every line.
+//
+// The complete line claims completeness only for a whole list that ends in its close (close-4). With
+// --superseded-by, the founding set of a successor Accord, founded as founding founds a set, it also
+// checks that the successor's supersedes names this Accord and this list's close, and names the
+// successor on the complete line; a list with no close, a successor that supersedes nothing, or one
+// that names another Accord or close, is tool error verify superseded. It needs --accord and
+// --founding.
 func verifyCommand(r *run, args []string) int {
 	fs := flags("verify")
 	med, dir, founding := fs.String("mediator", "", "the mediator"), fs.String("receipts", "", "journal directory"), fs.String("founding", "", "the founding set")
 	accordFlag, answersFile := fs.String("accord", "", "the Accord id"), fs.String("answers", "", "a file of answer calls, one a line")
 	subset, deliveryFile := fs.Bool("subset", false, "the receipts are a subset"), fs.String("delivery", "", "a delivery, as get --json saved it")
-	if !r.parse(fs, args, "receipts") || (*med == "") == (*accordFlag == "") || (*accordFlag != "" && *founding == "") {
+	successor := fs.String("superseded-by", "", "the founding set of the Accord that supersedes this one")
+	if !r.parse(fs, args, "receipts") || (*med == "") == (*accordFlag == "") || (*accordFlag != "" && *founding == "") ||
+		(*successor != "" && *accordFlag == "") {
 		return r.tool(codeUsage)
 	}
 	list, err := journal.ReadReceipts(*dir, r.stderr)
@@ -128,10 +175,8 @@ func verifyCommand(r *run, args []string) int {
 		}
 		set = bytes.TrimSuffix(set, []byte{'\n'})
 		at := local.Stamp(r.env.Now())
-		if len(list) > 0 {
-			if s, err := receipts.Decode(list[0]); err == nil {
-				at = s.Predicate.At
-			}
+		if t := firstAt(list); t != "" {
+			at = t
 		}
 		id, herr := canonical.TypedHash(set)
 		if a, err = setup.Found(set, at); err != nil || herr != nil || (*accordFlag != "" && id != *accordFlag) ||
@@ -148,22 +193,42 @@ func verifyCommand(r *run, args []string) int {
 	if err != nil {
 		return r.notVerified(err)
 	}
+	// A close is in the list as a Verified whose statement is the zero one: it is no decision and no
+	// verdict, and rows of its own read it (close-4).
 	st := make([]receipts.Statement, len(sub.Verified))
 	for i, v := range sub.Verified {
 		st[i] = v.Statement()
 	}
-	if code, i := oneAccord(st); code != "" {
+	if code, i := oneAccord(sub.Verified); code != "" {
 		return r.tool(codeVerify, code, journal.FileReceipts, fmt.Sprintf("line %d", i+1))
 	}
 	accord, card := *accordFlag, ""
 	if len(st) > 0 {
-		accord, card = st[0].Predicate.Accord, st[0].Predicate.Card
+		accord, card = accordOf(sub.Verified[0])
 	}
 	if a != nil && len(st) > 0 && a.ID() != accord {
 		return r.tool(codeFound)
 	}
 	if a != nil {
 		accord = a.ID()
+	}
+	closeID := closeOf(sub.Verified)
+	pinned := ""
+	if *successor != "" {
+		b, err := os.ReadFile(*successor)
+		if err != nil {
+			return r.tool(codeFile, "superseded-by")
+		}
+		b = bytes.TrimSuffix(b, []byte{'\n'})
+		next, err := setup.Found(b, local.Stamp(r.env.Now()))
+		if err != nil {
+			return r.tool(codeFound)
+		}
+		acc, cl, ok := next.Supersedes()
+		if !ok || closeID == "" || acc != accord || cl != closeID {
+			return r.tool(codeVerify, detailSuperseded)
+		}
+		pinned = next.ID()
 	}
 
 	// Conformance (verify-2): rows 1 to 4, then the body, row 5.
@@ -227,6 +292,9 @@ func verifyCommand(r *run, args []string) int {
 	n := map[string]int{}
 	closed, released, blocked := 0, 0, 0
 	for i, s := range st {
+		if s.ID == "" {
+			continue
+		}
 		n[s.Predicate.Verdict]++
 		switch sub.Places[i].Role {
 		case receipts.RoleClosing:
@@ -298,8 +366,13 @@ func verifyCommand(r *run, args []string) int {
 		conforms = LineConformOtherModule
 	}
 	complete := LineNotComplete
-	if *subset {
+	switch {
+	case *subset:
 		complete = LineSubsetNotComplete
+	case pinned != "":
+		complete = fmt.Sprintf(LinePinnedComplete, closeID, pinned)
+	case closeID != "":
+		complete = fmt.Sprintf(LineComplete, closeID)
 	}
 	fmt.Fprintln(r.stderr, valid)
 	fmt.Fprintln(r.stderr, conforms)
@@ -351,8 +424,11 @@ func decisionLine(a *setup.Accord, s receipts.Statement, d conform.Decision, ans
 	case receipts.ByJudge:
 		return fmt.Sprintf(LineByJudge, s.ID, d.By.Judge)
 	case receipts.ByMediator:
-		if d.By.Event == receipts.EventDeadline {
+		switch d.By.Event {
+		case receipts.EventDeadline:
 			return fmt.Sprintf(LineByDeadline, s.ID)
+		case receipts.EventClose:
+			return fmt.Sprintf(LineByClose, s.ID)
 		}
 		return fmt.Sprintf(LineByUndeliverable, s.ID)
 	}

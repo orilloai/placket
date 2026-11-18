@@ -113,11 +113,15 @@ type Log struct {
 	Accord, Mediator string
 	Rows             []Row
 	All              bool
+	// Close is the id of the close receipt the journal ends in, and empty when it has none; the
+	// close is no row (close-2, docs/adr/0022-the-close.md).
+	Close string
 }
 
 // Closing is the word for how a question closed, read from its closing receipt alone: accepted or
-// changed for an answer that passed, by its kind; declined, cancelled, timeout or undeliverable by
-// the closing's reason; and blocked for an answer or a version that did not cross to the asker.
+// changed for an answer that passed, by its kind; declined, cancelled, timeout, undeliverable or
+// closed by the closing's reason (close-1); and blocked for an answer or a version that did not
+// cross to the asker.
 func Closing(p receipts.Predicate, s receipts.Subject) string {
 	if p.Verdict == string(composition.Pass) {
 		if s.Name == receipts.NameChanged {
@@ -126,7 +130,8 @@ func Closing(p receipts.Predicate, s receipts.Subject) string {
 		return string(answer.Accepted)
 	}
 	switch p.Reason {
-	case receipts.ReasonDeclined, receipts.ReasonCancelled, receipts.ReasonTimeout, receipts.ReasonUndeliverable:
+	case receipts.ReasonDeclined, receipts.ReasonCancelled, receipts.ReasonTimeout, receipts.ReasonUndeliverable,
+		receipts.ReasonClosed:
 		return p.Reason
 	}
 	return AnswerBlocked
@@ -169,15 +174,23 @@ func build(mediatorRef string, list, kept, answers [][]byte, all bool, note func
 		return Log{}, &Error{Code: CodeVerify, Index: -1}
 	}
 	st := make([]receipts.Statement, len(verified))
+	accords, cards := make([]string, len(verified)), make([]string, len(verified))
+	closeID := ""
 	for i, v := range verified {
 		st[i] = v.Statement()
+		accords[i], cards[i] = st[i].Predicate.Accord, st[i].Predicate.Card
+		// A close is no row of the log (RoleClose), but it names the Accord too (close-2).
+		if c, ok := v.Close(); ok {
+			accords[i], cards[i] = c.Accord, c.Card
+			closeID = c.ID
+		}
 	}
 	// One journal is one Accord's: receipts of two are refused whole.
-	for i, s := range st {
+	for i := range st {
 		switch {
-		case s.Predicate.Accord != st[0].Predicate.Accord:
+		case accords[i] != accords[0]:
 			return Log{}, &Error{Code: CodeAccord, Index: i}
-		case s.Predicate.Card != st[0].Predicate.Card:
+		case cards[i] != cards[0]:
 			return Log{}, &Error{Code: CodeCard, Index: i}
 		}
 	}
@@ -189,13 +202,15 @@ func build(mediatorRef string, list, kept, answers [][]byte, all bool, note func
 		}
 		return Log{}, &Error{Code: CodeVerify, Core: string(receipts.CodeRelease), Index: -1}
 	}
-	lg := Log{Mediator: mediatorRef, Rows: []Row{}, All: all}
+	lg := Log{Mediator: mediatorRef, Rows: []Row{}, All: all, Close: closeID}
 	if len(st) > 0 {
-		lg.Accord = st[0].Predicate.Accord
+		lg.Accord = accords[0]
 	}
 	byID := map[string]int{}
 	for i, s := range st {
-		byID[s.ID] = i
+		if s.ID != "" {
+			byID[s.ID] = i
+		}
 	}
 	var parts []keptPart
 	// The answer calls that read, by their typed hash (receipt-11): the journal's, the ones a key
@@ -591,7 +606,11 @@ func (l Log) JSON(claim, notClaimed string, withWords, noWords bool) []byte {
 		o["receipts"] = append([]string{}, r.Receipts...)
 		rows = append(rows, o)
 	}
-	b, _ := json.Marshal(map[string]any{"accord": l.Accord, "mediator": l.Mediator, "claim": claim, "notClaimed": notClaimed, "rows": rows})
+	o := map[string]any{"accord": l.Accord, "mediator": l.Mediator, "claim": claim, "notClaimed": notClaimed, "rows": rows}
+	if l.Close != "" {
+		o["close"] = l.Close
+	}
+	b, _ := json.Marshal(o)
 	c, _ := canonical.Form(b)
 	return c
 }

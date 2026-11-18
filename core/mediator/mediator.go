@@ -13,8 +13,10 @@
 // call, checked before anything is written, and carried by every delivery it queues), receipt-11
 // (every receipt names its decider), crossing-5 (every closing and release echoes the question's
 // envelope), receipt-5 (the chain of each pair) and receipt-10 (the same inputs at the same times
-// write the same receipts). Decision record 0006 says what it holds and why, and
-// record 0008 how a reload rebuilds it.
+// write the same receipts), and close-1 to close-3 (closing the Accord: its open questions closed,
+// the close receipt written last, and a closed Accord that takes no give or answer). Decision record
+// 0006 says what it holds and why, record 0008 how a reload rebuilds it, and record 0022 how a close
+// ends it.
 package mediator
 
 import (
@@ -87,6 +89,10 @@ const (
 	AnswerBody RejectionCode = "answer-body"
 )
 
+// AccordClosed is the rejection of a member's give or answer once the Accord is closed, checked
+// right after membership (close-3, sections 4 and 6).
+const AccordClosed RejectionCode = "closed"
+
 // Rejection is a rejected operation: the code of the first row that failed. A rejected operation
 // changes nothing (crossing-7). It carries nothing of the input.
 type Rejection struct{ Code RejectionCode }
@@ -113,6 +119,11 @@ const (
 	// CodeQuestion: a reloaded open entry that names no question the receipts leave open, or a
 	// question they leave open that no entry names.
 	CodeQuestion ErrorCode = "question"
+	// CodeClosed: a Close of a record that already ends in its close (close-3).
+	CodeClosed ErrorCode = "closed"
+	// CodeClose: a Reload of a record cut inside a close, its closed closings with no close after
+	// them, which only Close completes (close-1).
+	CodeClose ErrorCode = "close"
 )
 
 // Error is a misuse of the mediator by its caller's program, a record a reload refuses, or an
@@ -199,6 +210,7 @@ type Mediator struct {
 	highest    map[string]int64
 	queues     map[string][]queued
 	questions  []*question
+	closed     *Closed
 }
 
 // founded reports whether Found or Reload made the mediator.
@@ -317,6 +329,10 @@ func (m *Mediator) Give(caller string, message, envelope []byte, judge *composit
 	}
 	if !shape.Timestamp(at) {
 		return Outcome{}, failure(CodeAt)
+	}
+	// Right after membership: a closed Accord takes no give (close-3).
+	if m.closed != nil && m.accord.Member(caller) {
+		return Outcome{}, &Rejection{Code: AccordClosed}
 	}
 	g, code := m.admit(caller, message, envelope)
 	if code != "" {
