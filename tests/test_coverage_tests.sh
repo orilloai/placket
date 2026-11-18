@@ -6,9 +6,10 @@
 #
 # A Go test is named in an entry's "tests" as the directory of its package from the repository root,
 # a colon and its name, such as core/receipts:TestAForgedReceiptShowsAsARealOne
-# (vectors/README.md). It is run from its module's root with `go test -count=1 -run '^<name>$' -v`,
-# and passes only when the output holds its own "--- PASS" line: a test that is skipped, or a package
-# that merely builds, does not pass.
+# (vectors/README.md). The named tests of each module run in one go test from its root, given each
+# package and a pattern of exactly the names listed, `go test -count=1 -json -run '^(<name>|...)$'`,
+# so no test the list does not name runs beside them. A test passes only when the run reports a pass
+# of its own, in its own package: a test that is skipped, or a package that merely builds, does not.
 set -u
 
 root=$(cd "$(dirname "$0")/.." && pwd)
@@ -74,6 +75,7 @@ done
 jq -r '[.. | objects | select(has("tests")) | .tests | arrays | .[]] | unique | .[]' "$list" >"$tmp/tests" 2>/dev/null ||
 	{ say "FAIL: vectors/coverage.json: not JSON"; exit 1; }
 count=0
+: >"$tmp/named"
 while read -r t; do
 	dir=${t%%:*}
 	name=${t#*:}
@@ -94,14 +96,37 @@ while read -r t; do
 	fi
 	rel=./${dir#"$mod"}
 	rel=$(printf '%s' "$rel" | sed 's|^\./*|./|')
-	if (cd "$root/$mod" && go test -count=1 -run "^$name\$" "$rel" -v) >"$tmp/out" 2>&1 &&
-		grep -qE -- "^\s*--- PASS: $name " "$tmp/out"; then
-		say "ok   $t"
-	else
-		bad "$t: does not pass when run alone"
-		tail -n 5 "$tmp/out" | sed 's/^/    /'
-	fi
+	printf '%s\t%s\t%s\t%s\n' "$mod" "$rel" "$name" "$t" >>"$tmp/named"
 done <"$tmp/tests"
+
+# One go test per module, over the packages of its named tests, with the pattern of their names. Its
+# events are read by package, the module's path and the package's directory within it, and by test.
+cut -f1 "$tmp/named" | sort -u >"$tmp/modules"
+i=0
+while read -r mod; do
+	i=$((i + 1))
+	path=$(cd "$root/$mod" && go list -m) || { bad "$mod: go list -m failed"; continue; }
+	pkgs=$(awk -F'\t' -v m="$mod" '$1 == m { print $2 }' "$tmp/named" | sort -u)
+	names=$(awk -F'\t' -v m="$mod" '$1 == m { print $3 }' "$tmp/named" | sort -u | paste -sd'|' -)
+	# shellcheck disable=SC2086 # each package directory is a word of its own, with no space in it
+	(cd "$root/$mod" && go test -count=1 -json -run "^($names)\$" $pkgs) >"$tmp/$i.json" 2>"$tmp/$i.err" </dev/null
+	awk -F'\t' -v m="$mod" '$1 == m' "$tmp/named" | while IFS='	' read -r _ rel name t; do
+		sub=${rel#./}
+		pkg=$path${sub:+/$sub}
+		if jq -R -e --arg p "$pkg" --arg n "$name" 'fromjson? | select(.Package == $p and .Test == $n and .Action == "pass")' \
+			"$tmp/$i.json" >/dev/null 2>&1; then
+			say "ok   $t"
+		else
+			say "FAIL: $t: does not pass"
+			echo fail >>"$tmp/failed"
+			# The test's own output, or else its package's, such as why it did not build.
+			{ jq -R -j --arg p "$pkg" --arg n "$name" 'fromjson? | select(.Action == "output" or .Action == "build-output")
+				| select(.Test == $n or (.Test == null and ((.Package // .ImportPath // "") | split(" ")[0] | sub("_test$"; "")) == $p))
+				| select(.Package == $p or .Test == null) | .Output' "$tmp/$i.json" 2>/dev/null
+				cat "$tmp/$i.err"; } | tail -n 5 | sed 's/^/    /'
+		fi
+	done
+done <"$tmp/modules"
 
 [ -f "$tmp/failed" ] && failed=1
 say "$count Go tests named"
