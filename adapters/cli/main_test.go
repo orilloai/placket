@@ -305,11 +305,8 @@ func (a *accord) acceptOnce(t testing.TB) {
 	}
 }
 
-// acceptAll has every party view and accept its view at the Accord's socket, the last of which
-// founds the Accord.
-func (a *accord) acceptAll(t testing.TB) { t.Helper(); a.acceptAllOn(t, a.socket(), a.id) }
-
-// acceptAllOn is acceptAll at the window of the Accord id on the socket.
+// acceptAllOn has every party view and accept its view at the window of the Accord id on the
+// socket, the last of which founds the Accord.
 func (a *accord) acceptAllOn(t testing.TB, socket, id string) {
 	t.Helper()
 	for i, p := range a.parties {
