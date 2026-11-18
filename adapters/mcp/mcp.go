@@ -89,21 +89,6 @@ type served struct {
 	accepted bool
 }
 
-// Check reads each label the server is started with, as Serve does at its start, and returns, by
-// label, the code each is refused with under its row, or "" for one served. A label the config does
-// not name is CodeUnknownMediator, and Serve refuses to start.
-func (s *Server) Check() (map[string]string, error) {
-	list, err := s.serve()
-	if err != nil {
-		return nil, err
-	}
-	out := map[string]string{}
-	for _, v := range list {
-		out[v.name] = v.code
-	}
-	return out, nil
-}
-
 // serve reads each label the server is started with: its entry, its founding set and its key's
 // roles in it, and opens its client once, to check the key and the state directory. Nothing of a
 // label it is not started with is opened.
@@ -266,11 +251,12 @@ func (s *Server) Serve(ctx context.Context, in io.Reader, out io.Writer) error {
 		stop()
 		wg.Wait()
 	}()
+	// The reader ends when the input does, or once ctx is done and it has a line to hand over; a read
+	// of standard input cannot be cut short, so Serve does not wait for it, and the process's exit
+	// ends it (goroutines-owned).
 	lines := make(chan []byte)
 	readErr := make(chan error, 1)
-	wg.Add(1)
 	go func() {
-		defer wg.Done()
 		defer close(lines)
 		r := bufio.NewReaderSize(in, 64<<10)
 		for {
