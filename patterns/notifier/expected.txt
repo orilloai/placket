@@ -1,0 +1,17 @@
+
+== 1. keys, terms and the founding set
+
+== 2. the window, and the labels config
+mediators: approve
+mediators: propose
+
+== 3. the approver's watch, and two proposals
+proposer: gives a proposal: ask, exit 4
+proposer: gives a proposal: ask, exit 4
+watch: a proposal on approve
+notify: a question on approve
+watch: a proposal on approve
+notify: a question on approve
+
+== 4. the approver answers the first, from the line watch printed
+approver: accepts: answer pass, release released, exit 0
