@@ -20,13 +20,13 @@ import (
 // The arguments of each tool, as strict reads them: every member the tool's input schema names.
 type (
 	giveArgs struct {
-		Mediator *string        `json:"mediator"`
-		To       *string        `json:"to"`
-		Kind     *string        `json:"kind"`
-		Text     *string        `json:"text"`
+		Mediator *string         `json:"mediator"`
+		To       *string         `json:"to"`
+		Kind     *string         `json:"kind"`
+		Text     *string         `json:"text"`
 		Data     json.RawMessage `json:"data"`
-		Re       *string        `json:"re"`
-		Topic    *string        `json:"topic"`
+		Re       *string         `json:"re"`
+		Topic    *string         `json:"topic"`
 	}
 	getArgs struct {
 		Mediator *string `json:"mediator"`

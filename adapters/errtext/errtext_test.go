@@ -186,4 +186,3 @@ func TestSentencesStopAtTheCrossing(t *testing.T) {
 		}
 	}
 }
-
