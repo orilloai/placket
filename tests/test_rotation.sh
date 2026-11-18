@@ -77,6 +77,8 @@ window_pid=
 # Every sh block of the guide, in order, in one shell.
 awk '/^```sh$/ { on = 1; next } /^```$/ { on = 0; next } on' "$guide" >guide.sh
 [ -s guide.sh ] || fail "the guide has no sh block"
+# The close's guard is the operator's own record of the founding, never the journal it closes.
+grep -q 'journal/accord' guide.sh && fail "the guide reads the close's --accord from the journal it closes"
 if ! sh -eu guide.sh >"$tmp/out" 2>&1; then
 	fail "the guide's commands did not run to their end"
 fi

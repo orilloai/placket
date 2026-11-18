@@ -2,16 +2,16 @@
 
 A mediator's key signs every receipt of its Accord, so it cannot be swapped inside one Accord. To retire a key, close the Accord, and found a new one under a new key whose policy names the close it replaces. A verifier then checks the old journal against the close the new Accord pins (`spec/protocol.md`, section 13; `docs/adr/0022-the-close.md`).
 
-This guide uses the files of the worked example's founding steps (`README.md`, "Found an Accord"): the keys `mediator.key` and `principal.key`, the references `mediator.ref`, `operator.ref` and each party's, the parties' declarations, `policy.json`, `card.json`, `founding.json`, and the window's `journal`. Every command but the last two runs as written; `tests/test_rotation.sh` runs them in `make ci`.
+This guide uses the files of the worked example's founding steps (`README.md`, "Found an Accord"): the keys `mediator.key` and `principal.key`, the references `mediator.ref`, `operator.ref` and each party's, the parties' declarations, `policy.json`, `card.json`, `founding.json`, the window's `journal`, and `window.log`, the window's standard error from the start that founded the Accord. Every command but the last two runs as written; `tests/test_rotation.sh` runs them in `make ci`.
 
 ## 1. Stop the window, and close its Accord
 
 Stop the running window first, with Ctrl-C. A close runs on the journal of a stopped window: a running window holds the journal's lock, and the close is refused with `journal-locked`.
 
-The close needs the Accord's id, as a guard: a close cannot be undone.
+The close needs the Accord's id, as a guard: a close cannot be undone. Take the id from your own record of the founding, here the line `accord <id> founded` that the window printed when it founded the Accord, and never from the journal you are closing. An id read from that journal only says that the journal and the founding set agree, which the close checks anyway, so it no longer says which Accord you meant to close.
 
 ```sh
-accord=$(sed -n 's/^{"accord":"\(sha256:[0-9a-f]*\)".*/\1/p' journal/accord)
+accord=$(sed -n 's/^accord \(sha256:[0-9a-f]*\) founded$/\1/p' window.log)
 placket window close --key mediator.key --founding founding.json --journal journal --accord "$accord" 2>close.out
 close=$(sed -n 's/^close //p' close.out)
 ```
