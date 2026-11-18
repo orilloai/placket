@@ -46,20 +46,22 @@ cat >decider.terms <<T
 {"terms":[{"stance":"want","dir":"give","with":["role:proposer"],"select":{"kind":["answer","changed-version","comment"]}}]}
 T
 echo "{\"roles\":[\"proposer\",\"applier\",\"decider\"],\"principals\":[{\"principal\":\"$(cat principal.ref)\",\"roles\":[\"proposer\",\"applier\",\"decider\"]}]}" >policy.json
+mkdir openings
 for a in proposer applier decider; do
 	placket declare --key "$a.key" --terms "$a.terms" >"$a.declaration" || fail "declare $a"
+	placket seal --key "$a.key" --declaration "$a.declaration" --out openings >"$a.seal" 2>/dev/null || fail "seal $a"
 	placket bind --key principal.key --actor "$(cat "$a.ref")" --role "$a" --mediator "$(cat mediator.ref)" --until 2099-01-01T00:00:00Z \
 		--policy policy.json >"$a.binding" || fail "bind $a"
 done
 echo "{\"actor\":\"$(cat mediator.ref)\",\"operator\":\"$(cat operator.ref)\",\"runs\":\"process\"}" >mediator.json
 placket card --default >card.json 2>/dev/null
 placket founding --policy policy.json --mediator mediator.json --card card.json \
-	--declaration proposer.declaration --declaration applier.declaration --declaration decider.declaration \
-	--binding proposer.binding --binding applier.binding --binding decider.binding >founding.json 2>/dev/null || fail "founding"
+	--seal proposer.seal --seal applier.seal --seal decider.seal \
+	--binding proposer.binding --binding applier.binding --binding decider.binding >founding.json 2>founding.out || fail "founding"
 
 # The window, one ask left open, and a stop.
 sock=$sock_dir/s
-placket window --key mediator.key --founding founding.json --socket "$sock" --journal journal 2>window.log &
+placket window --key mediator.key --founding founding.json --openings openings --socket "$sock" --journal journal 2>window.log &
 window_pid=$!
 i=0
 until [ -S "$sock" ]; do
@@ -67,7 +69,14 @@ until [ -S "$sock" ]; do
 	[ "$i" -lt 200 ] || fail "the window did not start"
 	sleep 0.05 2>/dev/null || sleep 1
 done
+# The Accord is proposed until every party accepts its view.
+proposed=$(sed -n 's/^accord //p' founding.out)
+for a in proposer applier decider; do
+	placket view --key "$a.key" --socket "$sock" --accord "$proposed" >/dev/null 2>&1 || fail "view $a"
+	placket accept --key "$a.key" --socket "$sock" --accord "$proposed" >/dev/null 2>&1 || fail "accept $a"
+done
 id=$(sed -n 's/^accord \(sha256:[0-9a-f]*\) founded$/\1/p' window.log)
+[ "$id" = "$proposed" ] || fail "the window did not found the Accord"
 placket give --key proposer.key --socket "$sock" --accord "$id" --to "$(cat applier.ref)" --kind proposal --text "Rename total." >/dev/null 2>&1
 [ $? -eq 4 ] || fail "the ask did not stay open"
 kill "$window_pid"

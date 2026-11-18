@@ -17,6 +17,7 @@ import (
 const (
 	memberExit       = "exit"
 	memberRejection  = "rejection"
+	memberFounding   = "founding"
 	memberDoor       = LineDoor
 	memberError      = LineError
 	memberDetail     = "detail"

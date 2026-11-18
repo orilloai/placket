@@ -22,6 +22,7 @@ import (
 	"github.com/orilloai/placket/adapters/keyfile"
 	"github.com/orilloai/placket/adapters/local"
 	"github.com/orilloai/placket/adapters/mcp"
+	"github.com/orilloai/placket/adapters/state"
 	"github.com/orilloai/placket/core/answer"
 	"github.com/orilloai/placket/core/canonical"
 	"github.com/orilloai/placket/core/receipts"
@@ -72,6 +73,16 @@ func newWorld(t *testing.T) *world {
 		t.Fatal(err)
 	}
 	set = bytes.TrimSuffix(set, []byte{'\n'})
+	// Every party's opening; the second Accord seals the same declarations.
+	openings := map[string][]byte{}
+	files, _ := filepath.Glob(filepath.Join(worked, "*.opening.json"))
+	for _, f := range files {
+		b, err := os.ReadFile(f)
+		if err != nil {
+			t.Fatal(err)
+		}
+		openings["ed25519:"+strings.TrimSuffix(filepath.Base(f), ".opening.json")] = bytes.TrimSuffix(b, []byte{'\n'})
+	}
 	other := bytes.Replace(set, []byte(`"operator":"`+w.refs["operator"]+`"`), []byte(`"operator":"`+w.refs["principal"]+`"`), 1)
 	seed, _ := hex.DecodeString(ks.Keys["mediator"].Seed)
 	mk, err := signing.NewKey(seed)
@@ -88,7 +99,7 @@ func newWorld(t *testing.T) *world {
 		ctx, cancel := context.WithCancel(context.Background())
 		ready, done := make(chan struct{}), make(chan error, 1)
 		go func() {
-			done <- local.Run(ctx, local.Window{Key: mk, Founding: s, Socket: w.sockets[i], Journal: filepath.Join(d, "j"+strconv.Itoa(i)),
+			done <- local.Run(ctx, local.Window{Key: mk, Founding: s, Openings: openings, Socket: w.sockets[i], Journal: filepath.Join(d, "j"+strconv.Itoa(i)),
 				Now: time.Now, Idle: 20 * time.Millisecond, Ready: ready})
 		}()
 		select {
@@ -102,8 +113,28 @@ func newWorld(t *testing.T) *world {
 				t.Errorf("window %d ended with %v", i, err)
 			}
 		})
+		// The window starts the Accord proposed; each party views and accepts its view, which founds
+		// it, and keeps both in its state directory, where placket mcp reads them (setup-contract-15).
+		for _, n := range []string{"proposer", "applier", "decider"} {
+			w.accept(t, n, i)
+		}
 	}
 	return w
+}
+
+// accept has name view and accept its view of window i's Accord, kept in its state directory.
+func (w *world) accept(t *testing.T, name string, i int) {
+	t.Helper()
+	c, err := client.Open(w.entry("", name, i), client.Options{Now: time.Now, Rand: rand.Reader})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if r, err := c.View(context.Background()); err != nil || r.View == nil {
+		t.Fatalf("%s's view of window %d: %+v, %v", name, i, r, err)
+	}
+	if r, _, err := c.Accept(context.Background()); err != nil || !r.IsAccept {
+		t.Fatalf("%s's acceptance of window %d: %+v, %v", name, i, r, err)
+	}
 }
 
 // entry is a labels config entry for name's key on window i.
@@ -451,4 +482,39 @@ func exchange(t *testing.T, socket string, line []byte) []byte {
 		t.Fatal(err)
 	}
 	return b
+}
+
+// TestALabelWithNoAcceptedViewIsRefused is U17's founding case: placket mcp reads what a label's key
+// answers from the view it accepted, kept in its state directory (setup-contract-15). A label whose
+// state directory keeps no view, or keeps a view its acceptance does not name, is refused founding;
+// the label beside it, whose view was accepted, is served; and view and accept are no tools.
+func TestALabelWithNoAcceptedViewIsRefused(t *testing.T) {
+	t.Parallel()
+	w := newWorld(t)
+	none, changed := w.entry("none", "applier", 0), w.entry("changed", "proposer", 1)
+	if err := os.Remove(filepath.Join(state.DefaultPath(none.Key, none.Accord), state.FileView)); err != nil {
+		t.Fatal(err)
+	}
+	viewPath := filepath.Join(state.DefaultPath(changed.Key, changed.Accord), state.FileView)
+	b, err := os.ReadFile(viewPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(viewPath, bytes.Replace(b, []byte(`"crosses"`), []byte(`"blocked"`), 1), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	cfg := client.Config{Mediators: []client.Mediator{w.entry("merge", "proposer", 0), none, changed}}
+	s := serve(t, &mcp.Server{Config: cfg, Labels: []string{"merge", "none", "changed"}})
+	o, e := s.call(t, "mediators", map[string]any{})
+	list, _ := o["mediators"].([]any)
+	refused := errtext.Text(errtext.FromMCP, string(mcp.CodeFounding))
+	if e != "" || len(list) != 3 || list[0].(map[string]any)["served"] != true || list[1].(map[string]any)["refused"] != refused ||
+		list[2].(map[string]any)["refused"] != refused {
+		t.Fatalf("mediators: %v %s", o, e)
+	}
+	for _, tool := range []string{"view", "accept"} {
+		if r := s.request(t, "tools/call", map[string]any{"name": tool, "arguments": map[string]any{"mediator": "merge"}}); r["error"].(map[string]any)["code"] != float64(-32602) {
+			t.Fatalf("the tool %s: %v", tool, r)
+		}
+	}
 }

@@ -23,6 +23,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strconv"
+	"strings"
 )
 
 // The protocol's names, written here, not imported: this program must not read them from the code
@@ -32,6 +33,7 @@ const (
 	typeBinding     = "https://placket.tech/binding/0.1"
 	typeEnvelope    = "https://placket.tech/envelope/0.1"
 	typeAnswer      = "https://placket.tech/answer/0.1"
+	typeAcceptance  = "https://placket.tech/acceptance/0.1"
 	callPayload     = "application/vnd.placket.call+json"
 	extension       = "https://placket.tech/crossing/0.1"
 	roleUser        = "ROLE_USER"
@@ -107,17 +109,22 @@ func write(dir string) error {
 	for _, n := range names {
 		ps[n] = newParty(n)
 	}
-	set, accord := founding(ps)
+	set, accord, openings := founding(ps)
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return err
 	}
 	files := map[string][]byte{"founding.json": append(set, '\n')}
+	for n, o := range openings {
+		files[strings.TrimPrefix(ps[n].ref(), "ed25519:")+".opening.json"] = append(o, '\n')
+	}
+	views, acceptances := accepted(ps, accord, openings)
+	files["acceptances.json"] = append(acceptances, '\n')
 	keys := map[string]any{}
 	for _, n := range names {
 		keys[n] = map[string]any{"seed": hex.EncodeToString(ps[n].seed), "actor": ps[n].ref()}
 	}
 	files["keys.json"] = indent(map[string]any{"accord": accord, "keys": keys})
-	for op, w := range worked(ps, accord) {
+	for op, w := range worked(ps, accord, views) {
 		files[op+".json"] = indent(w)
 	}
 	for name, b := range files {
@@ -153,9 +160,10 @@ func term(stance, dir string, with, kinds []string) map[string]any {
 	return map[string]any{"stance": stance, "dir": dir, "with": sel, "select": map[string]any{"kind": ks}}
 }
 
-// founding is the worked founding set and its Accord id: the proposer asks the decider before a
-// proposal crosses to the applier, and gives the applier notes freely.
-func founding(ps map[string]party) ([]byte, string) {
+// founding is the worked founding set, its declarations sealed, its Accord id and each party's
+// opening: the proposer asks the decider before a proposal crosses to the applier, and gives the
+// applier notes freely.
+func founding(ps map[string]party) ([]byte, string, map[string][]byte) {
 	maybe := term("maybe", "give", []string{"applier"}, []string{"proposal"})
 	maybe["resolve"] = map[string]any{"to": []any{"role:decider"}, "timeout": 3600}
 	terms := map[string][]any{
@@ -173,10 +181,17 @@ func founding(ps map[string]party) ([]byte, string) {
 		decl, bind map[string]any
 	}
 	var es []entry
+	openings := map[string][]byte{}
 	for _, n := range []string{"proposer", "applier", "decider"} {
 		p := ps[n]
+		// The seal: the SHA-256 of a salt the actor mints and the signed declaration's canonical bytes,
+		// and the opening that opens it.
+		decl := p.signObject(map[string]any{"actor": p.ref(), "terms": terms[n]}, typeDeclaration)
+		salt := fixed("seal salt "+n, 32)
+		seal := sha256.Sum256(append(append([]byte(nil), salt...), encode(decl)...))
+		openings[n] = encode(map[string]any{"declaration": decl, "salt": hex.EncodeToString(salt)})
 		es = append(es, entry{p.ref(),
-			p.signObject(map[string]any{"actor": p.ref(), "terms": terms[n]}, typeDeclaration),
+			map[string]any{"actor": p.ref(), "seal": "sha256:" + hex.EncodeToString(seal[:])},
 			ps["principal"].signObject(map[string]any{"actor": p.ref(), "principal": ps["principal"].ref(), "roles": []any{n},
 				"policy": typedHash(encode(policy)), "mediator": ps["mediator"].ref(), "until": "2099-01-01T00:00:00Z"}, typeBinding)})
 	}
@@ -193,7 +208,72 @@ func founding(ps map[string]party) ([]byte, string) {
 			"judges": []any{}},
 		"declarations": decls, "bindings": binds,
 	})
-	return set, typedHash(set)
+	return set, typedHash(set), openings
+}
+
+// A row is one crossing of a view, as the protocol text derives it by hand from the worked terms: the
+// counterpart, the direction from the viewer, the kind and the outcome; an asked row's rule is the
+// proposal's, to the decider within 3600 seconds.
+type row struct{ with, dir, kind, outcome string }
+
+// views are the worked Accord's views by hand (setup-contract-14). The proposer's note crosses and its
+// proposal is asked; the answers it gets from the decider cross. The applier gets both from the
+// proposer, the proposal asked, and changed versions from the decider. The decider's every give
+// crosses, and it answers the proposer's proposals to the applier.
+var views = map[string][]row{
+	"proposer": {{"applier", "give", "note", "crosses"}, {"applier", "give", "proposal", "asked"},
+		{"decider", "get", "answer", "crosses"}, {"decider", "get", "changed-version", "crosses"}, {"decider", "get", "comment", "crosses"}},
+	"applier": {{"proposer", "get", "note", "crosses"}, {"proposer", "get", "proposal", "asked"},
+		{"decider", "get", "changed-version", "crosses"}},
+	"decider": {{"proposer", "give", "answer", "crosses"}, {"proposer", "give", "changed-version", "crosses"},
+		{"proposer", "give", "comment", "crosses"}, {"applier", "give", "changed-version", "crosses"}},
+}
+
+// accepted is each party's view, in its canonical bytes, and acceptances.json: every party's signed
+// acceptance of its view, in from order (setup-contract-15).
+func accepted(ps map[string]party, accord string, openings map[string][]byte) (map[string][]byte, []byte) {
+	out := map[string][]byte{}
+	type acc struct {
+		from string
+		o    map[string]any
+	}
+	var list []acc
+	for n, rows := range views {
+		// Rows in counterpart order, then direction and kind; the references are ASCII.
+		sort.Slice(rows, func(i, j int) bool {
+			a, b := rows[i], rows[j]
+			if ps[a.with].ref() != ps[b.with].ref() {
+				return ps[a.with].ref() < ps[b.with].ref()
+			}
+			if a.dir != b.dir {
+				return a.dir < b.dir
+			}
+			return a.kind < b.kind
+		})
+		crossings := []any{}
+		for _, r := range rows {
+			c := map[string]any{"counterpart": ps[r.with].ref(), "roles": []any{r.with}, "dir": r.dir, "kind": r.kind, "outcome": r.outcome}
+			if r.outcome == "asked" {
+				c["to"], c["timeout"] = []any{"role:decider"}, 3600
+			}
+			crossings = append(crossings, c)
+		}
+		answers := []any{}
+		if n == "decider" {
+			answers = append(answers, map[string]any{"asker": ps["proposer"].ref(), "receiver": ps["applier"].ref(), "kind": "proposal", "timeout": 3600})
+		}
+		var o struct{ Salt string }
+		_ = json.Unmarshal(openings[n], &o)
+		v := encode(map[string]any{"accord": accord, "viewer": ps[n].ref(), "salt": o.Salt, "crossings": crossings, "answers": answers})
+		out[n] = v
+		list = append(list, acc{ps[n].ref(), ps[n].signObject(map[string]any{"accord": accord, "view": typedHash(v), "from": ps[n].ref()}, typeAcceptance)})
+	}
+	sort.Slice(list, func(i, j int) bool { return list[i].from < list[j].from })
+	l := make([]any, len(list))
+	for i, a := range list {
+		l[i] = a.o
+	}
+	return out, encode(l)
 }
 
 // signCall is a call of op with args, as the party, at the worked time with the nonce: the call's
@@ -214,7 +294,7 @@ func uuid(b []byte) string {
 }
 
 // worked is each op's worked call.
-func worked(ps map[string]party, accord string) map[string]map[string]any {
+func worked(ps map[string]party, accord string, views map[string][]byte) map[string]map[string]any {
 	out := map[string]map[string]any{}
 	add := func(op, who string, nonce []byte, args map[string]any, more map[string]any) {
 		line, sig, b := signCall(ps[who], op, accord, nonce, args)
@@ -263,5 +343,13 @@ func worked(ps map[string]party, accord string) map[string]map[string]any {
 		map[string]any{"answer": answer, "text": answerText, "salt": hex.EncodeToString(answerSalt)},
 		map[string]any{"request": map[string]any{"question": none, "action": "accepted", "answer": answerText},
 			"answerSalt": hex.EncodeToString(answerSalt), "answerSig": answer["sig"]})
+
+	// view: the applier's own view, which the window serves it.
+	add("view", "applier", fixed("nonce view", 16), map[string]any{}, map[string]any{"view": json.RawMessage(views["applier"])})
+
+	// accept: the applier's acceptance of that view, signed under the acceptance's type URI.
+	acceptance := ps["applier"].signObject(map[string]any{"accord": accord, "view": typedHash(views["applier"]), "from": ps["applier"].ref()}, typeAcceptance)
+	add("accept", "applier", fixed("nonce accept", 16), map[string]any{"acceptance": acceptance},
+		map[string]any{"acceptanceSig": acceptance["sig"]})
 	return out
 }

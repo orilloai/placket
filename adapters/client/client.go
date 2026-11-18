@@ -4,7 +4,8 @@
 // (crossing-4) and the state directory's lock, in the command line's state directory, so the command
 // line and a client take turns on one key (state-lock); persists a fetched delivery to the state
 // directory before returning it; and checks every reply: a receipt names its own Accord, a delivery
-// is what its receipt says, and a question shown is the part its ask names.
+// is what its receipt says, a question shown is the part its ask names, and a view shown is the
+// key's own view of its Accord, which it keeps, as it keeps the acceptance it signs of it.
 //
 // The calls and their replies are described, for a client in any language, by the schemas under
 // api/ (docs/reference/mediator-api.md); this package takes the request layer, what a caller asks
@@ -30,6 +31,7 @@ import (
 	"github.com/orilloai/placket/core/answer"
 	"github.com/orilloai/placket/core/canonical"
 	"github.com/orilloai/placket/core/composition"
+	"github.com/orilloai/placket/core/founding"
 	"github.com/orilloai/placket/core/mediator"
 	"github.com/orilloai/placket/core/receipts"
 	"github.com/orilloai/placket/core/signing"
@@ -58,6 +60,9 @@ const (
 	CodeRand Code = "rand"
 	// CodeEnvelope: an envelope could not be signed.
 	CodeEnvelope Code = "envelope"
+	// CodeView: the key keeps no view of the Accord to accept, so accept signs nothing; view keeps one
+	// (setup-contract-15).
+	CodeView Code = "view"
 )
 
 // Error is a call that failed on the client's side: its code, and for a check across the labels
@@ -195,8 +200,75 @@ func Refused(r local.Reply) (member, code string, ok bool) {
 		return "error", string(r.Error), true
 	case r.Door != "":
 		return "door", string(r.Door), true
+	case r.Founding != "":
+		return "founding", r.Founding, true
 	}
 	return "", "", false
+}
+
+// View asks the window for the key's own view of the Accord (setup-contract-14) and keeps it as
+// view.json in the state directory, under its lock, replacing any view kept before. A view that is
+// not this key's view of this Accord is CodeReply, and nothing is kept. A refusal is in the reply.
+func (c *Client) View(ctx context.Context) (local.Reply, error) {
+	if err := c.Lock(); err != nil {
+		return local.Reply{}, err
+	}
+	defer c.Unlock()
+	rep, err := c.door.CallContext(ctx, local.OpView, nil)
+	if err != nil {
+		return local.Reply{}, err
+	}
+	if _, _, refused := Refused(rep); refused {
+		return rep, nil
+	}
+	var v struct {
+		Accord string `json:"accord"`
+		Viewer string `json:"viewer"`
+	}
+	if rep.View == nil || json.Unmarshal(rep.View, &v) != nil || v.Accord != c.m.Accord || v.Viewer != c.key.Reference() {
+		return local.Reply{}, fail(CodeReply)
+	}
+	if err := c.dir.KeepView(rep.View); err != nil {
+		return local.Reply{}, err
+	}
+	return rep, nil
+}
+
+// Accept signs the key's acceptance of the view the state directory keeps (founding.Accept,
+// setup-contract-15) and hands it to the window, under the state directory's lock. When the window
+// takes it, the acceptance is kept as acceptance.json beside the view, and it returns the acceptance
+// with the reply, which says whether the Accord is founded. With no view kept it is CodeView. A
+// refusal is in the reply, and nothing is kept.
+func (c *Client) Accept(ctx context.Context) (local.Reply, []byte, error) {
+	if err := c.Lock(); err != nil {
+		return local.Reply{}, nil, err
+	}
+	defer c.Unlock()
+	view, ok, err := c.dir.View()
+	if err != nil {
+		return local.Reply{}, nil, err
+	}
+	if !ok {
+		return local.Reply{}, nil, fail(CodeView)
+	}
+	acc, err := founding.Accept(c.m.Accord, view, c.key)
+	if err != nil {
+		return local.Reply{}, nil, fail(CodeView)
+	}
+	rep, err := c.door.CallContext(ctx, local.OpAccept, local.AcceptArgs(acc))
+	if err != nil {
+		return local.Reply{}, nil, err
+	}
+	if _, _, refused := Refused(rep); refused {
+		return rep, nil, nil
+	}
+	if !rep.IsAccept {
+		return local.Reply{}, nil, fail(CodeReply)
+	}
+	if err := c.dir.KeepAcceptance(acc); err != nil {
+		return local.Reply{}, nil, err
+	}
+	return rep, acc, nil
 }
 
 // A Body is the body of a part a client gives, in one of three forms: a text, a raw body's bytes, or

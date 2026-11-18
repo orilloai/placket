@@ -133,13 +133,17 @@ const socketLimit = len(syscall.RawSockaddrUnix{}.Path) - 1
 func TestALongSocketPathIsRefused(t *testing.T) {
 	t.Parallel()
 	a := newAccord(t, "p1", "p2")
+	// The parties accepted their views: p1's state directory goes, to show that nothing makes it.
+	if err := os.RemoveAll(a.key("p1") + ".state"); err != nil {
+		t.Fatal(err)
+	}
 	long := filepath.Join(a.dir, strings.Repeat("s", socketLimit-len(a.dir)))
 	if len(long) != socketLimit+1 {
 		t.Fatalf("the long path is %d bytes", len(long))
 	}
 	refused := "error socket-path limit " + strconv.Itoa(socketLimit) + "\n"
 	journal := filepath.Join(a.dir, "j-long")
-	r := run(t, env(), "window", "--key", a.key("mediator"), "--founding", filepath.Join(a.dir, "founding.json"), "--socket", long, "--journal", journal)
+	r := run(t, env(), "window", "--key", a.key("mediator"), "--founding", filepath.Join(a.dir, "founding.json"), "--openings", a.openings(), "--socket", long, "--journal", journal)
 	if r.code != 3 || r.stdout != "" || r.stderr != refused {
 		t.Fatalf("window: %v", r)
 	}

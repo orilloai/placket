@@ -1,0 +1,9 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://placket.tech/api/0.1/request/view.json",
+  "title": "view: the request",
+  "description": "Shows the key's own view of the Accord, and keeps it as view.json in the key's state directory. placket mcp lists no tool of it.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {}
+}

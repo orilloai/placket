@@ -1,0 +1,9 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://placket.tech/api/0.1/request/accept.json",
+  "title": "accept: the request",
+  "description": "Signs the key's acceptance of the view its state directory keeps, hands it to the window, and keeps it as acceptance.json. placket mcp lists no tool of it.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {}
+}

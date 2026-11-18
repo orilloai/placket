@@ -78,22 +78,26 @@ cat >policy.json <<P
 P
 # principal_of NAME: the key of the principal that binds NAME.
 principal_of() { if [ "$1" = receiver ]; then echo receiver-principal.key; else echo principal.key; fi; } # CHANGE: who binds whom
+# Each party seals its own declaration; its opening goes to whoever runs the window, and to no other
+# party.
+mkdir -p openings
 for a in proposer approver receiver; do
 	placket declare --key "$a.key" --terms "$a.terms" >"$a.declaration"
+	placket seal --key "$a.key" --declaration "$a.declaration" --out openings >"$a.seal" 2>/dev/null
 	placket bind --key "$(principal_of "$a")" --actor "$(ref "$a")" --role "$a" --mediator "$(ref mediator)" \
 		--until 2099-01-01T00:00:00Z --policy policy.json >"$a.binding" # CHANGE: how long each binding holds
 done
 echo "{\"actor\":\"$(ref mediator)\",\"operator\":\"$(ref operator)\",\"runs\":\"process\"}" >mediator.json
 placket card --default >card.json 2>/dev/null
 placket founding --json --policy policy.json --mediator mediator.json --card card.json \
-	--declaration proposer.declaration --declaration approver.declaration --declaration receiver.declaration \
+	--seal proposer.seal --seal approver.seal --seal receiver.seal \
 	--binding proposer.binding --binding approver.binding --binding receiver.binding >founding.out 2>/dev/null
 jq '.founding' founding.out >founding.json
 accord=$(jq -r '.accord' founding.out)
 say founding "three parties, roles $(jq -r '.roles | join(", ")' policy.json), under $(jq '.principals | length' policy.json) principals"
 
 step "2. the window"
-placket window --key mediator.key --founding founding.json --socket "$sock" --journal journal 2>window.log &
+placket window --key mediator.key --founding founding.json --openings openings --socket "$sock" --journal journal 2>window.log &
 window_pid=$!
 n=0
 until grep -q '^operator ' window.log 2>/dev/null; do
@@ -102,6 +106,12 @@ until grep -q '^operator ' window.log 2>/dev/null; do
 	pause
 done
 say window "started"
+# The Accord is proposed: each party views its own view and accepts it, and the last acceptance
+# founds it.
+for a in proposer approver receiver; do
+	placket view --key "$a.key" --socket "$sock" --accord "$accord" >/dev/null 2>&1
+	placket accept --key "$a.key" --socket "$sock" --accord "$accord" >/dev/null 2>&1
+done
 
 # as NAME: the flags of a socket command run by NAME.
 as() { echo "--key $1.key --socket $sock --accord $accord"; }

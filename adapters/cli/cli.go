@@ -240,6 +240,11 @@ func (r *run) refusal(rep local.Reply) (int, bool) {
 		r.put(memberDoor, string(rep.Door))
 		fmt.Fprintln(r.stderr, LineDoor+" "+string(rep.Door))
 		return ExitTool, true
+	case rep.Founding != "":
+		// An acceptance the window refused: the founding row it fails (setup-contract-15).
+		r.put(memberFounding, rep.Founding)
+		fmt.Fprintln(r.stderr, LineRejected+" "+memberFounding+" "+rep.Founding)
+		return ExitRejected, true
 	}
 	return 0, false
 }

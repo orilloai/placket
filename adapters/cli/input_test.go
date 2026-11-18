@@ -160,6 +160,10 @@ func TestGiveRefusesAsWithText(t *testing.T) {
 func TestAnAccordThatIsNotAnIDBuildsNoPath(t *testing.T) {
 	t.Parallel()
 	a := newAccord(t, "ann", "bob")
+	// The parties accepted their views: ann's state directory goes, to show that nothing makes it.
+	if err := os.RemoveAll(a.key("ann") + ".state"); err != nil {
+		t.Fatal(err)
+	}
 	// The state directory of ../../<name> would be beside the Accord's directory.
 	outside := filepath.Base(a.dir) + "-outside"
 	t.Cleanup(func() { _ = os.RemoveAll(filepath.Join(filepath.Dir(a.dir), outside)) })
@@ -194,7 +198,7 @@ func TestTheWindowEscapesAnUncheckedKernel(t *testing.T) {
 	if err := os.WriteFile(path, []byte(set), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	r := run(t, env(), "window", "--key", a.key("mediator"), "--founding", path, "--socket", a.socket(), "--journal", a.journal())
+	r := run(t, env(), "window", "--key", a.key("mediator"), "--founding", path, "--openings", a.openings(), "--socket", a.socket(), "--journal", a.journal())
 	want := otherLine(`0.1.0\x1b[2J`, composition.KernelHash()) + "\nerror founding kernel\n"
 	if r.code != 3 || r.stdout != "" || r.stderr != want {
 		t.Fatalf("window: %v\nwant stderr %q", r, want)
@@ -209,13 +213,13 @@ func TestFoundingNamesTheFirstUnreadableFile(t *testing.T) {
 	none := filepath.Join(a.dir, "none.json")
 	for i := 0; i < 30; i++ {
 		r := run(t, env(), "founding", "--policy", none, "--mediator", filepath.Join(a.dir, "mediator.json"), "--card", none,
-			"--declaration", none, "--binding", none)
+			"--seal", none, "--binding", none)
 		if r.code != 3 || r.stdout != "" || r.stderr != "error file policy\n" {
 			t.Fatalf("run %d: %v", i, r)
 		}
 	}
 	r := run(t, env(), "founding", "--policy", filepath.Join(a.dir, "policy.json"), "--mediator", filepath.Join(a.dir, "mediator.json"),
-		"--card", filepath.Join(a.dir, "card.json"), "--declaration", none, "--binding", none)
+		"--card", filepath.Join(a.dir, "card.json"), "--seal", none, "--binding", none)
 	if r.code != 3 || r.stderr != "error file declarations\n" {
 		t.Fatalf("declarations and bindings unreadable: %v", r)
 	}

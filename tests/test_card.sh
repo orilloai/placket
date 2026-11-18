@@ -46,12 +46,14 @@ for k in mediator operator principal party; do
 done
 echo '{"terms":[{"stance":"want","dir":"give","with":["role:peer"],"select":{"kind":["note"]}},{"stance":"want","dir":"get","with":["role:peer"],"select":{"kind":["note"]}}]}' >party.terms
 ./this declare --key party.key --terms party.terms >party.declaration || fail "declare"
+mkdir openings
+./this seal --key party.key --declaration party.declaration --out openings >party.seal 2>/dev/null || fail "seal"
 echo "{\"roles\":[\"peer\"],\"principals\":[{\"principal\":\"$(cat principal.ref)\",\"roles\":[\"peer\"]}]}" >policy.json
 ./this bind --key principal.key --actor "$(cat party.ref)" --role peer --mediator "$(cat mediator.ref)" --until 2099-01-01T00:00:00Z \
 	--policy policy.json >party.binding || fail "bind"
 echo "{\"actor\":\"$(cat mediator.ref)\",\"operator\":\"$(cat operator.ref)\",\"runs\":\"process\"}" >mediator.json
 found() {
-	"$1" founding --policy policy.json --mediator mediator.json --card "$2" --declaration party.declaration --binding party.binding >"$3" 2>"$tmp/out"
+	"$1" founding --policy policy.json --mediator mediator.json --card "$2" --seal party.seal --binding party.binding >"$3" 2>"$tmp/out"
 }
 
 if found ./this this.card this.set && [ "$(wc -l <"$tmp/out")" -eq 2 ]; then
@@ -67,7 +69,7 @@ else
 	fail "the other build founding under this build's card, want line 3: $want"
 fi
 
-./other window --key mediator.key --founding this.set --socket "$tmp/s" --journal "$tmp/j" >"$tmp/out.stdout" 2>"$tmp/out"
+./other window --key mediator.key --founding this.set --openings openings --socket "$tmp/s" --journal "$tmp/j" >"$tmp/out.stdout" 2>"$tmp/out"
 rc=$?
 if [ "$rc" -eq 3 ] && [ "$(cat "$tmp/out")" = "$want
 error founding kernel" ] && [ ! -e "$tmp/j" ]; then

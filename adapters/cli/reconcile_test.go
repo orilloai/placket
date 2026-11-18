@@ -86,11 +86,11 @@ func TestReconcileVerifyAndCancel(t *testing.T) {
 		t.Fatalf("the asker's cancel: %v", r)
 	}
 
-	r = must(t, "verify", "--mediator", s.refs["mediator"], "--receipts", s.journal(), "--founding", filepath.Join(s.dir, "founding.json"))
+	r = must(t, append([]string{"verify", "--mediator", s.refs["mediator"], "--receipts", s.journal(), "--founding", filepath.Join(s.dir, "founding.json")}, s.opens()...)...)
 	l := r.lines()
 	if l[1] != "operator "+s.refs["operator"]+" runs process" || l[2] != "module "+composition.KernelVersion+" "+composition.KernelHash() ||
 		l[6] != fmt.Sprintf(cli.LineCustody, s.refs["operator"], 0, 3) ||
-		l[7] != "pass 6 block 3 ask 5" || l[8] != "questions closed 5 open 0" || l[9] != "releases 2 blocked releases 0" ||
+		l[14] != "pass 6 block 3 ask 5" || l[15] != "questions closed 5 open 0" || l[16] != "releases 2 blocked releases 0" ||
 		!slices.Contains(l, fmt.Sprintf(cli.LineValid, 14, s.refs["mediator"])) || !slices.Contains(l, cli.LineConforms) {
 		t.Fatalf("verify --founding: %q", l)
 	}

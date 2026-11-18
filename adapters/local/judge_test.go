@@ -149,8 +149,7 @@ func newJudged(t testing.TB, names []string, rule []any, receiverOnly bool) *jud
 		"applier":  {judgedMaybe("get", "proposer", rule)},
 	})
 	w := newWorld(t)
-	w.set = set
-	w.accord, _ = canonical.TypedHash(set)
+	w.use(set)
 	j.world = w
 	return j
 }

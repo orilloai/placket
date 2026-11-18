@@ -141,8 +141,7 @@ func TestTheClientCallsOnlyASocket(t *testing.T) {
 func TestAMediatorKeyIsShownNoQuestion(t *testing.T) {
 	t.Parallel()
 	w := newWorld(t)
-	w.set = askAndLog(t, "applier")
-	w.accord = hashOf(w.set)
+	w.use(askAndLog(t, "applier"))
 	cfg := w.window(t)
 	cfg.Key = key(t, "applier")
 	start(t, cfg)
