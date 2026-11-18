@@ -92,6 +92,10 @@ const (
 	detailKernel = "kernel"
 	// detailLimit follows error socket-path, with the longest socket path the system takes.
 	detailLimit = "limit"
+	// codeJudge: a --judge file is not a judge's config, with ReadConfig's code after it; and,
+	// following error founding, the window's judge configs are not the ones its card lists.
+	codeJudge   = "judge"
+	detailJudge = codeJudge
 )
 
 // Env is what a command takes from the world.
@@ -110,6 +114,9 @@ type Env struct {
 	// Terminal reports whether a writer is a terminal, so that another party's bytes are escaped on
 	// it; nil takes a character device for one.
 	Terminal func(w io.Writer) bool
+	// Getenv reads the environment, for the judges' key only, once when a window starts; nil is no
+	// key. The command line never reads the environment another way (docs/adr/0023-judges.md).
+	Getenv func(string) string
 }
 
 // A run is one command's streams and Env.

@@ -65,6 +65,15 @@ const (
 	LineCloseSize = "the close would not fit in one reply: once members fetch what is queued for them, run placket window close again"
 )
 
+// The window's start-up lines of each judge the card lists, in card order, after its operator line
+// (docs/adr/0023-judges.md): the kinds it may be sent and where; that no term lists it, key or no
+// key; or that it has no key in the environment variable named, and so sends nothing.
+const (
+	LineJudgeSends  = "judge %s may send kinds %s to %s, model %s"
+	LineJudgeNoTerm = "judge %s sends nothing: no term lists it"
+	LineJudgeNoKey  = "judge %s has no key in %s: it sends nothing, and says none"
+)
+
 // The lines verify prints (commands-8, verify-1 to verify-4), each verb filled in order; under
 // --json each is also its member.
 const (

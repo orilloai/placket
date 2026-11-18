@@ -1,10 +1,15 @@
 package cli
 
 import (
+	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"os"
 
 	"github.com/orilloai/placket/adapters/internal/strict"
+	"github.com/orilloai/placket/adapters/judge"
+	"github.com/orilloai/placket/adapters/judge/jev"
 	"github.com/orilloai/placket/core/canonical"
 	"github.com/orilloai/placket/core/composition"
 )
@@ -13,12 +18,16 @@ func init() {
 	commands["card"] = cardCommand
 }
 
-// cardCommand is `card --default`: it prints this build's card on standard output, and its card hash
-// and the module it names on standard error (docs/adr/0012-the-kernel-hash.md). No other card is
-// built by the command line, so --default is required.
+// cardCommand is `card --default [--judge FILE]...`: it prints this build's card on standard output,
+// and its card hash and the module it names on standard error (docs/adr/0012-the-kernel-hash.md).
+// Each --judge is a judge's config: the card lists them in flag order, each by its name, this
+// adapter's version and the config's typed hash (setup-contract-4, docs/adr/0023-judges.md). No
+// other card is built by the command line, so --default is required.
 func cardCommand(r *run, args []string) int {
 	fs := flags("card")
 	def := fs.Bool("default", false, "this build's card")
+	var judges many
+	fs.Var(&judges, "judge", "a judge's config, once per judge")
 	if !r.parse(fs, args) {
 		return r.tool(codeUsage)
 	}
@@ -26,7 +35,14 @@ func cardCommand(r *run, args []string) int {
 		fmt.Fprintln(r.stderr, "usage: placket card: --default is required")
 		return r.tool(codeUsage)
 	}
-	card := composition.Card()
+	loaded, code := r.judgeConfigs(judges)
+	if code != 0 {
+		return code
+	}
+	card, ok := withJudges(composition.Card(), loaded)
+	if !ok {
+		return r.tool(codeCard)
+	}
 	h, err := canonical.TypedHash(card)
 	if err != nil {
 		return r.tool(codeCard)
@@ -35,6 +51,58 @@ func cardCommand(r *run, args []string) int {
 	fmt.Fprintln(r.stderr, "card "+h)
 	fmt.Fprintln(r.stderr, LabelModule+" "+composition.KernelVersion+" "+composition.KernelHash())
 	return ExitOK
+}
+
+// judgeConfigs reads each --judge file as a judge's config, one trailing line feed trimmed, as
+// window reads --founding. A file that cannot be read is tool error file judge; a config ReadConfig
+// refuses is tool error judge and its code.
+func (r *run) judgeConfigs(paths []string) ([]judge.Loaded, int) {
+	var out []judge.Loaded
+	for _, p := range paths {
+		b, err := os.ReadFile(p)
+		if err != nil {
+			return nil, r.tool(codeFile, codeJudge)
+		}
+		cfg, h, err := judge.ReadConfig(bytes.TrimSuffix(b, []byte{'\n'}))
+		var je *judge.Error
+		if errors.As(err, &je) {
+			return nil, r.tool(codeJudge, string(je.Code))
+		}
+		if err != nil {
+			return nil, r.tool(codeJudge)
+		}
+		out = append(out, judge.Loaded{Config: cfg, Hash: h})
+	}
+	return out, 0
+}
+
+// withJudges is the card with its judges the loaded configs, in order: each its name, jev.Version
+// and its hash, the shape of setup.CardJudge.
+func withJudges(card []byte, loaded []judge.Loaded) ([]byte, bool) {
+	var c map[string]json.RawMessage
+	if json.Unmarshal(card, &c) != nil {
+		return nil, false
+	}
+	type entry struct {
+		Name    string `json:"name"`
+		Version string `json:"version"`
+		Hash    string `json:"hash"`
+	}
+	list := []entry{}
+	for _, l := range loaded {
+		list = append(list, entry{Name: l.Config.Name, Version: jev.Version, Hash: l.Hash})
+	}
+	b, err := json.Marshal(list)
+	if err != nil {
+		return nil, false
+	}
+	c["judges"] = b
+	out, err := json.Marshal(c)
+	if err != nil {
+		return nil, false
+	}
+	f, err := canonical.Form(out)
+	return f, err == nil
 }
 
 // kernel is a card's kernel member, as the card holds it.

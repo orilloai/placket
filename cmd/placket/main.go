@@ -15,7 +15,7 @@ import (
 
 func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-	env := cli.Env{Now: time.Now, Rand: rand.Reader, Context: ctx}
+	env := cli.Env{Now: time.Now, Rand: rand.Reader, Context: ctx, Getenv: os.Getenv}
 	code := cli.Run(env, os.Args[1:], os.Stdin, os.Stdout, os.Stderr)
 	stop()
 	os.Exit(code)

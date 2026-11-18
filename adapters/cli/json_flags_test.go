@@ -106,13 +106,15 @@ var commandFlags = []commandRow{
 		"declaration": {input, "each declaration goes into the one set", nil},
 		"binding":     {input, "each binding goes into the one set", nil}}},
 	{words: []string{"card"}, flags: map[string]flagUse{
-		"json": jsonFlag, "default": {input, "which one card it prints", nil}}},
+		"json": jsonFlag, "default": {input, "which one card it prints", nil},
+		"judge": {input, "each judge's config goes into the one card", nil}}},
 	{words: []string{"version"}, flags: map[string]flagUse{"json": jsonFlag}},
 	{words: []string{"window"}, flags: map[string]flagUse{
 		"json": jsonFlag, "key": {input, "the one mediator key it runs under", nil},
 		"founding": {input, "the one founding set it runs", nil},
 		"socket":   {input, "the one socket it listens on", nil},
-		"journal":  {input, "the one journal it writes; its receipts are the results of the commands that call it", nil}}},
+		"journal":  {input, "the one journal it writes; its receipts are the results of the commands that call it", nil},
+		"judge":    {input, "each judge's config the one card lists", nil}}},
 	{words: []string{"window", "close"}, flags: map[string]flagUse{
 		"json": jsonFlag, "key": {input, "the one mediator key it closes under", nil},
 		"founding": {input, "the one founding set whose Accord it closes", nil},
