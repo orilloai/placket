@@ -171,3 +171,20 @@ func TestAWindowWithNoSocketListensOnTheDefault(t *testing.T) {
 		t.Fatalf("the default journal: %v", err)
 	}
 }
+
+// TestAWindowWithNoHomeNeedsItsJournal runs a window with no --journal, no XDG_STATE_HOME and no
+// HOME, from a directory of its own: it is tool error usage, starts nothing and writes nothing in
+// that directory.
+func TestAWindowWithNoHomeNeedsItsJournal(t *testing.T) {
+	a := newAccord(t, "proposer", "applier", "decider")
+	e := env()
+	e.Getenv = func(string) string { return "" }
+	t.Chdir(t.TempDir())
+	r := run(t, e, "window", "--key", a.key("mediator"), "--founding", filepath.Join(a.dir, "founding.json"), "--socket", a.socket())
+	if r.code != 3 || r.stderr != "error usage\n" {
+		t.Fatalf("a window with no journal to default to: %v", r)
+	}
+	if left, err := os.ReadDir("."); err != nil || len(left) != 0 {
+		t.Fatalf("left in the directory it ran in: %v, %v", left, err)
+	}
+}

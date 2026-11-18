@@ -95,6 +95,17 @@ func TestTheDefaultSocketFitsMacOS(t *testing.T) {
 	if got := local.DefaultJournal(w.accord); got != "/home/u/.local/state/placket/"+hex {
 		t.Fatalf("under HOME: %q", got)
 	}
+	// A relative value counts as unset, and with neither set there is no default journal.
+	t.Setenv("XDG_STATE_HOME", "state")
+	if got := local.DefaultJournal(w.accord); got != "/home/u/.local/state/placket/"+hex {
+		t.Fatalf("under a relative XDG_STATE_HOME: %q", got)
+	}
+	for _, home := range []string{"", "home"} {
+		t.Setenv("HOME", home)
+		if got := local.DefaultJournal(w.accord); got != "" {
+			t.Fatalf("with HOME %q and no absolute XDG_STATE_HOME: %q", home, got)
+		}
+	}
 }
 
 // TestASocketDirOfAnotherIsRefused makes the default socket's directory open to others, then a link

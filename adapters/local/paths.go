@@ -51,13 +51,18 @@ func DefaultJournal(accord string) string { return DefaultJournalWith(os.Getenv,
 
 // DefaultJournalWith is the default journal of the Accord under the environment getenv reads:
 // $XDG_STATE_HOME/placket/<the Accord id's hex>/, or else ~/.local/state/placket/<hex>/, with ~ the
-// HOME it reads. The whole id names it, since a journal's path has no length limit.
+// HOME it reads. The whole id names it, since a journal's path has no length limit. A value that is
+// not an absolute path counts as unset, and with neither it is the empty string: there is no default
+// journal, rather than one under whatever directory the window was started in.
 func DefaultJournalWith(getenv func(string) string, accord string) string {
 	h := strings.TrimPrefix(accord, canonical.HashPrefix)
-	if d := getenv("XDG_STATE_HOME"); d != "" {
+	if d := getenv("XDG_STATE_HOME"); filepath.IsAbs(d) {
 		return filepath.Join(d, "placket", h)
 	}
-	return filepath.Join(getenv("HOME"), ".local", "state", "placket", h)
+	if home := getenv("HOME"); filepath.IsAbs(home) {
+		return filepath.Join(home, ".local", "state", "placket", h)
+	}
+	return ""
 }
 
 // MakeSocketDir makes the directory a default socket is in, mode 0700, and checks it is this user's

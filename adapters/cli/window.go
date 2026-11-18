@@ -25,7 +25,9 @@ func init() {
 // windowCommand is `window --key F --founding S [--socket P] [--journal DIR]`: it runs the mediator
 // of the Accord S founds, behind its door on the socket, with its journal in DIR, until it is
 // interrupted. With no --socket it listens on the Accord's default socket, and with no --journal it
-// writes to the Accord's default journal (local.DefaultSocketWith, local.DefaultJournalWith). It prints the Accord id, the card hash and the operator, then one line per event:
+// writes to the Accord's default journal (local.DefaultSocketWith, local.DefaultJournalWith); with
+// neither an absolute XDG_STATE_HOME nor an absolute HOME there is none, and no --journal is tool
+// error usage. It prints the Accord id, the card hash and the operator, then one line per event:
 // ids, words and codes, never a body, a salt, a seed, a key or a question's part. A founding set
 // whose card names another module than this build's is tool error founding kernel, after a line
 // that names both (docs/adr/0012-the-kernel-hash.md).
@@ -80,7 +82,10 @@ func windowCommand(r *run, args []string) int {
 			return r.tool(codeFound, string(setup.NotCanonical))
 		}
 		if *dir == "" {
-			*dir = local.DefaultJournalWith(r.getenv, id)
+			// With no state directory to put it under, the journal must be named.
+			if *dir = local.DefaultJournalWith(r.getenv, id); *dir == "" {
+				return r.tool(codeUsage)
+			}
 		}
 		if *socket == "" {
 			*socket = local.DefaultSocketWith(r.getenv, id)
