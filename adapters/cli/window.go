@@ -213,6 +213,12 @@ func (r *run) event(e local.Event, operator string) {
 	case local.EventRefused:
 		fmt.Fprintln(r.stderr, LineDoor+" "+string(e.Door))
 		return
+	case local.EventAdvised:
+		// One line per advise judge, never its output (docs/adr/0023-judges.md).
+		for _, a := range e.Advice {
+			fmt.Fprintf(r.stderr, LineAdvised+"\n", field(a.Judge), a.Outcome, a.Receipt)
+		}
+		return
 	case local.EventClosed:
 		// The close's own line, then one per closing, as the window prints a reload's.
 		fmt.Fprintln(r.stderr, memberClose+" "+e.Close)

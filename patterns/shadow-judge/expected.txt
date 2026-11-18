@@ -7,8 +7,10 @@ window: judge review has no key in PLACKET_JEV_KEY: it sends nothing, and says n
 
 == 3. a proposal, asked of the approver
 proposer: gives a proposal: ask, exit 4
+window: advise review none, of the proposal's receipt
+judged: {"judge":"review","use":"advise","outcome":"none","error":"no-key"}
 
-== 4. the approver answers
+== 4. the approver answers, as the judge's advice is compared with it
 approver: reads Rename the column total to amount.
 approver: accepts: answer pass, release released, exit 0
 receiver: fetches a proposal

@@ -87,6 +87,9 @@ const (
 	EventTick = "tick"
 	// EventRefused: a call the door refused.
 	EventRefused = "refused"
+	// EventAdvised: a receipt's advise judges said what Advice holds, and their records are in its
+	// judged file (docs/adr/0023-judges.md).
+	EventAdvised = "advised"
 )
 
 // An Event is one thing the window did. It holds ids, codes and receipts, never a body, a salt, a
@@ -114,6 +117,14 @@ type Event struct {
 	// For started, on a window that can take a give: one Reach per judge the card lists, in card
 	// order.
 	Reach []Reach
+	// For advised: what each advise judge said of a receipt's part, in the rule's order.
+	Advice []Advice
+}
+
+// An Advice is what an advise judge said of a receipt's part: its name, the outcome, pass, block or
+// none, and the receipt's id. It holds nothing of the judge's output.
+type Advice struct {
+	Judge, Outcome, Receipt string
 }
 
 // A Reach is where a judge's requests may go, as the window prints it at start: the judge's name, the
@@ -143,14 +154,24 @@ type window struct {
 	done    <-chan struct{}
 }
 
-// A result is what a decide run settled for a give: the call, the time it arrived, the reply channel
-// its connection waits on, the judgment and the run's records.
+// A result is what a judge run left. For a decide run: the call, the time it arrived, the reply
+// channel its connection waits on, the judgment, the run's records, and the advise run to start once
+// the receipt is written, or nil. For an advise run: the receipt it was about, in receipt, and its
+// records.
 type result struct {
 	call     Call
 	at       string
 	reply    chan []byte
 	judgment *composition.Judgment
 	records  []judge.Record
+	advise   *advising
+	receipt  string
+}
+
+// An advising is the advise judges of a give's rule, and what they are asked.
+type advising struct {
+	stack judge.Stack
+	req   judge.Request
 }
 
 type request struct {
@@ -586,9 +607,19 @@ func (w *window) serve(ctx context.Context, l *net.UnixListener) error {
 				r.reply <- reply
 			}
 		case res := <-w.results:
+			// A run the stop cut short writes nothing: the window is stopping.
+			if ctx.Err() != nil {
+				return nil
+			}
+			if res.receipt != "" {
+				if err := w.advised(res); err != nil {
+					return err
+				}
+				continue
+			}
 			delete(w.busy, res.call.Caller)
 			ev := Event{Kind: EventCall, Op: OpGive, Caller: res.call.Caller, Release: -1}
-			reply, err := w.decide(res.call, res.at, &ev, res.judgment, res.records)
+			reply, err := w.decide(res.call, res.at, &ev, res.judgment, res.records, res.advise)
 			if err != nil {
 				return err
 			}
@@ -767,27 +798,31 @@ func (w *window) op(c Call, at string, ev *Event, reply chan []byte) ([]byte, er
 func (w *window) give(c Call, at string, ev *Event, reply chan []byte) ([]byte, error) {
 	jg, judged := w.m.Judges(c.Caller, c.Message, c.Envelope)
 	if !judged {
-		return w.decide(c, at, ev, nil, nil)
+		return w.decide(c, at, ev, nil, nil, nil)
 	}
 	if jg.Form == formRaw {
 		var recs []judge.Record
 		for _, j := range jg.Judges {
 			recs = append(recs, judge.Record{Judge: j.Name, Use: string(j.Use), Outcome: outcomeNone, Error: string(judge.CodeRawBody)})
 		}
-		return w.decide(c, at, ev, nil, recs)
+		return w.decide(c, at, ev, nil, recs, nil)
 	}
 	s := w.stack(jg.Judges)
+	req := judge.Request{Kind: jg.Kind, Body: jg.Body}
+	var adv *advising
+	if hasUse(s, setup.Advise) {
+		adv = &advising{stack: s, req: req}
+	}
 	if !hasUse(s, setup.Decide) {
-		return w.decide(c, at, ev, nil, nil)
+		return w.decide(c, at, ev, nil, nil, adv)
 	}
 	w.busy[c.Caller] = true
-	req := judge.Request{Kind: jg.Kind, Body: jg.Body}
 	w.wg.Add(1)
 	go func() {
 		defer w.wg.Done()
 		j, recs := judge.Run(w.runs, s, req, w.cfg.Budget)
 		select {
-		case w.results <- result{call: c, at: at, reply: reply, judgment: j, records: recs}:
+		case w.results <- result{call: c, at: at, reply: reply, judgment: j, records: recs, advise: adv}:
 		case <-w.done:
 		}
 	}()
@@ -823,8 +858,9 @@ func hasUse(s judge.Stack, u setup.Use) bool {
 }
 
 // decide gives the call's part with the judgment, journals its receipt and then the judges' records
-// of it, and returns the reply. A give the core rejects drops the records.
-func (w *window) decide(c Call, at string, ev *Event, judgment *composition.Judgment, recs []judge.Record) ([]byte, error) {
+// of it, starts the advise run, when there is one, and returns the reply. A give the core rejects
+// drops the records and advises nothing.
+func (w *window) decide(c Call, at string, ev *Event, judgment *composition.Judgment, recs []judge.Record, adv *advising) ([]byte, error) {
 	out, err := w.m.Give(c.Caller, c.Message, c.Envelope, judgment, at)
 	if err != nil {
 		return refused(err, ev), nil
@@ -872,7 +908,44 @@ func (w *window) decide(c Call, at string, ev *Event, judgment *composition.Judg
 			return nil, err
 		}
 	}
+	if adv != nil {
+		w.advise(out.ReceiptID, adv)
+	}
 	return encodeReply(wireReply{Outcome: wire(out)}), nil
+}
+
+// advise runs the advise judges of a receipt's part on a goroutine of the window's, each within its
+// own budget; their records come back on the results channel. They decide nothing, and the reply
+// does not wait on them (docs/adr/0023-judges.md).
+func (w *window) advise(receiptID string, adv *advising) {
+	w.wg.Add(1)
+	go func() {
+		defer w.wg.Done()
+		recs := judge.Advise(w.runs, adv.stack, adv.req, w.cfg.Budget)
+		select {
+		case w.results <- result{receipt: receiptID, records: recs}:
+		case <-w.done:
+		}
+	}()
+}
+
+// advised appends an advise run's records to its receipt's judged file, and emits EventAdvised. A
+// failed append is a failed journal write (journal-synced).
+func (w *window) advised(res result) error {
+	if len(res.records) == 0 {
+		return nil
+	}
+	lines := make([][]byte, len(res.records))
+	ev := Event{Kind: EventAdvised, Release: -1}
+	for i, r := range res.records {
+		lines[i] = judge.Line(r)
+		ev.Advice = append(ev.Advice, Advice{Judge: r.Judge, Outcome: r.Outcome, Receipt: res.receipt})
+	}
+	if err := w.j.AddJudged(res.receipt, lines); err != nil {
+		return err
+	}
+	w.cfg.Event(ev)
+	return nil
 }
 
 func (w *window) get(c Call, ev *Event) ([]byte, error) {

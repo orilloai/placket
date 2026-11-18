@@ -28,16 +28,18 @@ func judgeConfig(name, instruction string) string {
 	return `{"host":"h.example","instruction":"` + instruction + `","model":"m","name":"` + name + `","provider":"jev","threshold":80}`
 }
 
-// The terms of a judged Accord: the proposer's patches and proposals cross to the applier only once
-// the decider answers, and both sides list the judge review to decide.
-var judgedTerms = map[string]string{
-	"proposer": `{"terms":[
-		{"stance":"maybe","dir":"give","with":["role:applier"],"select":{"kind":["proposal","patch"]},"resolve":{"to":["role:decider"],"timeout":3600,"judges":[{"name":"review","use":"decide"}]}},
+// judgedTerms are the terms of a judged Accord: the proposer's patches and proposals cross to the
+// applier only once the decider answers, and both sides list the judge review with the use given.
+func judgedTerms(use string) map[string]string {
+	return map[string]string{
+		"proposer": `{"terms":[
+		{"stance":"maybe","dir":"give","with":["role:applier"],"select":{"kind":["proposal","patch"]},"resolve":{"to":["role:decider"],"timeout":3600,"judges":[{"name":"review","use":"` + use + `"}]}},
 		{"stance":"want","dir":"get","with":["role:decider"],"select":{"kind":["answer","changed-version","comment"]}}]}`,
-	"applier": `{"terms":[
-		{"stance":"maybe","dir":"get","with":["role:proposer"],"select":{"kind":["proposal","patch"]},"resolve":{"to":["role:decider"],"timeout":3600,"judges":[{"name":"review","use":"decide"}]}},
+		"applier": `{"terms":[
+		{"stance":"maybe","dir":"get","with":["role:proposer"],"select":{"kind":["proposal","patch"]},"resolve":{"to":["role:decider"],"timeout":3600,"judges":[{"name":"review","use":"` + use + `"}]}},
 		{"stance":"want","dir":"get","with":["role:decider"],"select":{"kind":["changed-version"]}}]}`,
-	"decider": sixTerms["decider"],
+		"decider": sixTerms["decider"],
+	}
 }
 
 // A judgedAccord is an Accord whose card lists the judges review and spare, made by the commands,
@@ -50,6 +52,12 @@ type judgedAccord struct {
 func (a *judgedAccord) config(name string) string { return filepath.Join(a.dir, name+".json") }
 
 func newJudgedAccord(t *testing.T) *judgedAccord {
+	t.Helper()
+	return newJudgedAccordOf(t, "decide")
+}
+
+// newJudgedAccordOf is newJudgedAccord with review's use in both terms given.
+func newJudgedAccordOf(t *testing.T, use string) *judgedAccord {
 	t.Helper()
 	d, err := os.MkdirTemp("/tmp", "plk")
 	if err != nil {
@@ -75,7 +83,7 @@ func newJudgedAccord(t *testing.T) *judgedAccord {
 	policy := write("policy.json", string(pb))
 	args := []string{"founding"}
 	for _, p := range parties {
-		decl := must(t, "declare", "--key", a.key(p), "--terms", write(p+".terms", judgedTerms[p])).stdout
+		decl := must(t, "declare", "--key", a.key(p), "--terms", write(p+".terms", judgedTerms(use)[p])).stdout
 		bind := must(t, "bind", "--key", a.key("principal"), "--actor", a.refs[p], "--role", p, "--mediator", a.refs["mediator"],
 			"--until", "2099-01-01T00:00:00Z", "--policy", policy).stdout
 		args = append(args, "--declaration", write(p+".declaration", decl), "--binding", write(p+".binding", bind))

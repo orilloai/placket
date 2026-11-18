@@ -109,8 +109,13 @@ rc=0
 placket give $(as proposer) --json --to "$(ref receiver)" --kind proposal --text "Rename the column total to amount." >give.out 2>/dev/null || rc=$?
 say proposer "gives a proposal: $(jq -r '.outcome.word' give.out), exit $rc"
 question=$(jq -r '.outcome.receiptId' give.out)
+# The window runs the judge after the receipt is written, and prints what it said, never its output.
+wait_for '^advise '
+sed -n 's/^\(advise [^ ]* [^ ]*\) .*/window: \1, of the proposal'"'"'s receipt/p' window.log
+# What the judge said is kept beside the receipt, in the journal's judged/ directory.
+say judged "$(jq -c '{judge, use, outcome, error}' "journal/judged/${question#sha256:}.jsonl")"
 
-step "4. the approver answers"
+step "4. the approver answers, as the judge's advice is compared with it"
 placket questions $(as approver) --json >questions.out 2>/dev/null
 say approver "reads $(jq -r '.questions[0].message' questions.out)"
 rc=0

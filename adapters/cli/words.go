@@ -72,6 +72,9 @@ const (
 	LineJudgeSends  = "judge %s may send kinds %s to %s, model %s"
 	LineJudgeNoTerm = "judge %s sends nothing: no term lists it"
 	LineJudgeNoKey  = "judge %s has no key in %s: it sends nothing, and says none"
+	// LineAdvised is what an advise judge said of a receipt's part: its name, pass, block or none,
+	// and the receipt's id, never its output.
+	LineAdvised = "advise %s %s %s"
 )
 
 // The lines verify prints (commands-8, verify-1 to verify-4), each verb filled in order; under
