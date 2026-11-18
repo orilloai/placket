@@ -475,3 +475,24 @@ func TestVerifyOpensASeal(t *testing.T) {
 		t.Fatalf("a false view with every opening: %v", r)
 	}
 }
+
+// TestVerifyRefusesAnOpeningOfNoSeal gives --open a second opening of one actor, and an opening
+// whose actor is no member: each opens no seal of the set, so verify says why, as a usage error.
+func TestVerifyRefusesAnOpeningOfNoSeal(t *testing.T) {
+	t.Parallel()
+	a, _ := accepted(t)
+	base := []string{"verify", "--receipts", a.journal(), "--accord", a.id, "--founding", a.founding()}
+	one := filepath.Join(a.openings(), cli.OpeningName(a.refs["decider"]))
+	if r := run(t, env(), append(base, "--open", one, "--open", one)...); r.code != cli.ExitTool || r.stderr != cli.LineOpenTwice+"\nerror usage\n" {
+		t.Fatalf("two openings of one actor: %v", r)
+	}
+	b, _ := os.ReadFile(one)
+	stranger := "ed25519:" + strings.Repeat("ab", 32)
+	other := filepath.Join(t.TempDir(), "stranger.opening.json")
+	if err := os.WriteFile(other, bytes.Replace(b, []byte(a.refs["decider"]), []byte(stranger), 1), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if r := run(t, env(), append(base, "--open", other)...); r.code != cli.ExitTool || r.stderr != cli.LineOpenNotMember+"\nerror usage\n" {
+		t.Fatalf("an opening of no member: %v", r)
+	}
+}

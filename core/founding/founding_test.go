@@ -519,6 +519,9 @@ func TestAcceptAndAccepted(t *testing.T) {
 	if _, err := founding.Accept(a.ID(), []byte(`{`), ptesting.Key(t, "applier")); codeOf(t, err) != setup.InvalidShape {
 		t.Fatalf("a view the canonical form refuses: %v", err)
 	}
+	if _, err := founding.Accept("\xfd", view, ptesting.Key(t, "applier")); codeOf(t, err) != setup.InvalidShape {
+		t.Fatalf("an Accord id that is not a typed hash: %v", err)
+	}
 	// Changing the Accord id or the view changes the acceptance (inputs-as-parameters).
 	again, _ := founding.Accept(a.ID(), view, ptesting.Key(t, "applier"))
 	if !bytes.Equal(again, acc) || bytes.Equal(wrongAccord, acc) || bytes.Equal(wrongView, acc) {
@@ -614,6 +617,80 @@ func FuzzAccepted(f *testing.F) {
 		}
 		if err == nil && !bytes.Contains(view, []byte(actor)) {
 			t.Fatalf("the view of %q does not name it", actor)
+		}
+	})
+}
+
+// FuzzAcceptances writes acceptances.json from any two entries. It never panics; a refusal is
+// invalid-shape, and a written list is canonical, holds both entries and is in strict from order
+// (setup-contract-15).
+func FuzzAcceptances(f *testing.F) {
+	in := sealed(f, twoParty(f))
+	v, _, _ := shape.Decode(in.Acceptances)
+	l := v.([]any)
+	f.Add(shape.Encode(l[0]), shape.Encode(l[1]))
+	f.Add(shape.Encode(l[1]), shape.Encode(l[0]))
+	f.Add(shape.Encode(l[0]), shape.Encode(l[0]))
+	f.Add([]byte(`{"from":"b","x":1}`), []byte(`{"from":"a"}`))
+	f.Add([]byte(`{"from":7}`), []byte(`[]`))
+	f.Add([]byte(`{"from":"a","from":"b"}`), []byte(`{`))
+	f.Fuzz(func(t *testing.T, a, b []byte) {
+		got, err := founding.Acceptances([][]byte{a, b})
+		if err != nil {
+			var se *setup.Error
+			if !errors.As(err, &se) || se.Code != setup.InvalidShape || got != nil {
+				t.Fatalf("got %q, %v", got, err)
+			}
+			return
+		}
+		v, c, err := shape.Decode(got)
+		list, ok := v.([]any)
+		if err != nil || !bytes.Equal(c, got) || !ok || len(list) != 2 {
+			t.Fatalf("written %q", got)
+		}
+		first, second := list[0].(shape.Object)["from"].(string), list[1].(shape.Object)["from"].(string)
+		if !canonical.Less(first, second) {
+			t.Fatalf("from %q before %q", first, second)
+		}
+	})
+}
+
+// FuzzAccept signs an acceptance of any view bytes under any Accord id. It never panics; a refusal
+// is invalid-shape, an id that is not a typed hash among them, and a signed acceptance names the id, the view's typed hash and the key, and its
+// signature verifies under the acceptance's type URI (setup-contract-15).
+func FuzzAccept(f *testing.F) {
+	in := sealed(f, twoParty(f))
+	a, err := setup.Found(in.Set, in.Openings, at)
+	if err != nil {
+		f.Fatal(err)
+	}
+	view, _ := founding.View(a, ref(f, "applier"))
+	f.Add(a.ID(), view)
+	f.Add("", []byte(`{}`))
+	f.Add("\xff", []byte(`{"a":1,"a":2}`))
+	f.Add("\xfd", []byte(`0`))
+	f.Add(a.ID(), []byte(`{`))
+	key := ptesting.Key(f, "applier")
+	f.Fuzz(func(t *testing.T, accord string, view []byte) {
+		acc, err := founding.Accept(accord, view, key)
+		if err != nil {
+			var se *setup.Error
+			if !errors.As(err, &se) || se.Code != setup.InvalidShape || acc != nil {
+				t.Fatalf("got %q, %v", acc, err)
+			}
+			return
+		}
+		h, err := canonical.TypedHash(view)
+		if err != nil {
+			t.Fatalf("signed a view the canonical form refuses: %v", err)
+		}
+		v, _, err := shape.Decode(acc)
+		o, ok := v.(shape.Object)
+		if err != nil || !ok || o["accord"] != accord || o["view"] != h || o["from"] != key.Reference() {
+			t.Fatalf("the acceptance %q", acc)
+		}
+		if !signing.Verify(acc, signing.TypeAcceptance, key.Reference()) {
+			t.Fatal("the acceptance's signature does not verify")
 		}
 	})
 }

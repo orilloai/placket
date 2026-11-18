@@ -398,3 +398,25 @@ func verifyAll(mediator string, list [][]byte) ([]receipts.Statement, error) {
 	}
 	return out, nil
 }
+
+// TestAMediatorDecidesOnlyOverOpenedTerms founds and reloads the Accord without its openings: a
+// mediator decides every crossing over the members' terms, so both are opening-missing, while a
+// close, which decides nothing, closes the record without them (setup-contract-13, close-1).
+func TestAMediatorDecidesOnlyOverOpenedTerms(t *testing.T) {
+	t.Parallel()
+	in, at := askAndLog(t)
+	sealedOnly := in
+	sealedOnly.Openings = setup.Openings{}
+	med := ptesting.Key(t, "mediator")
+	var se *setup.Error
+	if _, err := mediator.Found(sealedOnly, med, at); !errors.As(err, &se) || se.Code != setup.OpeningMissing {
+		t.Fatalf("founded without the openings: %v", err)
+	}
+	m := found(t)
+	if _, _, err := mediator.Reload(sealedOnly, m.Receipts(), nil, nil, at, med, "2026-11-13T09:00:00Z"); !errors.As(err, &se) || se.Code != setup.OpeningMissing {
+		t.Fatalf("reloaded without the openings: %v", err)
+	}
+	if _, _, _, err := mediator.Close(sealedOnly, m.Receipts(), nil, nil, at, med, "2026-11-13T09:00:00Z"); err != nil {
+		t.Fatalf("closed without the openings: %v", err)
+	}
+}

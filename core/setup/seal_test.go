@@ -59,7 +59,7 @@ func TestSealIsTheSaltedDigest(t *testing.T) {
 
 // sealedAskAndLog is the ask-and-log Accord's set sealed again with every opening, as foundClear
 // seals it, with the vectors' keys.
-func sealedAskAndLog(t *testing.T) ([]byte, map[string][]byte, string) {
+func sealedAskAndLog(t testing.TB) ([]byte, map[string][]byte, string) {
 	t.Helper()
 	clear, at := base(t, "ask-and-log")
 	in := ptesting.Sealed(t, encode(t, clear), at)
@@ -230,4 +230,50 @@ func code(t *testing.T, set []byte, o setup.Openings, at string) setup.Code {
 		t.Fatalf("not a founding refusal: %v", err)
 	}
 	return se.Code
+}
+
+// FuzzSeal seals any bytes under any salt. It never panics; a refusal is invalid-shape, and a seal
+// entry and its opening found under the opening's own seal: the entry names the declaration's actor
+// and its seal is the salted digest of the opening's declaration (setup-contract-12,
+// setup-contract-13).
+func FuzzSeal(f *testing.F) {
+	_, openings, _ := sealedAskAndLog(f)
+	for _, b := range openings {
+		v, _, _ := shape.Decode(b)
+		o := v.(shape.Object)
+		salt, _ := hex.DecodeString(o["salt"].(string))
+		f.Add(shape.Encode(o["declaration"]), salt)
+	}
+	f.Add([]byte(`{"actor":"x"}`), make([]byte, setup.SaltBytes))
+	f.Add([]byte(`{"actor":7}`), make([]byte, setup.SaltBytes))
+	f.Add([]byte(`{"actor":"x"}`), make([]byte, setup.SaltBytes-1))
+	f.Add([]byte(`{"actor":"x","actor":"y"}`), make([]byte, setup.SaltBytes))
+	f.Add([]byte(`[]`), []byte(nil))
+	f.Fuzz(func(t *testing.T, declaration, salt []byte) {
+		entry, opening, err := setup.Seal(declaration, salt)
+		if err != nil {
+			var se *setup.Error
+			if !errors.As(err, &se) || se.Code != setup.InvalidShape || entry != nil || opening != nil {
+				t.Fatalf("got %q, %q, %v", entry, opening, err)
+			}
+			return
+		}
+		ev, _, err := shape.Decode(entry)
+		if err != nil {
+			t.Fatalf("the entry is not canonical: %v", err)
+		}
+		ov, _, err := shape.Decode(opening)
+		if err != nil {
+			t.Fatalf("the opening is not canonical: %v", err)
+		}
+		e, o := ev.(shape.Object), ov.(shape.Object)
+		d := o["declaration"].(shape.Object)
+		if e["actor"] != d["actor"] || o["salt"] != hex.EncodeToString(salt) {
+			t.Fatal("the entry or the opening is not the declaration's")
+		}
+		sum := sha256.Sum256(append(append([]byte(nil), salt...), shape.Encode(d)...))
+		if e["seal"] != canonical.HashPrefix+hex.EncodeToString(sum[:]) {
+			t.Fatal("the seal is not the salted digest of the opened declaration")
+		}
+	})
 }

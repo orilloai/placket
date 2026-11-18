@@ -8,7 +8,9 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"testing"
+	"time"
 
 	"github.com/orilloai/placket/adapters/cli"
 	"github.com/orilloai/placket/core/canonical"
@@ -148,4 +150,54 @@ func memberOf(t *testing.T, b []byte, name string) string {
 	}
 	s, _ := m[name].(string)
 	return s
+}
+
+// TestWindowReadsOpeningsOnlyInItsDirectory starts a window whose opening is a FIFO, and one whose
+// set names an actor that is a path out of --openings, with a FIFO there: the first is error file
+// opening and the second is refused by founding, each at once, with no read that waits.
+func TestWindowReadsOpeningsOnlyInItsDirectory(t *testing.T) {
+	t.Parallel()
+	start := func(a *accord, set string) result {
+		t.Helper()
+		done := make(chan result, 1)
+		go func() {
+			done <- run(t, env(), "window", "--key", a.key("mediator"), "--founding", set, "--openings", a.openings(),
+				"--socket", a.socket(), "--journal", a.journal())
+		}()
+		select {
+		case r := <-done:
+			return r
+		case <-time.After(10 * time.Second):
+			t.Fatal("the window waits on a read")
+			return result{}
+		}
+	}
+
+	a := newAccord(t, "proposer", "applier")
+	fifo := filepath.Join(a.openings(), cli.OpeningName(a.refs["applier"]))
+	if err := os.Remove(fifo); err != nil {
+		t.Fatal(err)
+	}
+	if err := syscall.Mkfifo(fifo, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if r := start(a, a.founding()); r.code != cli.ExitTool || r.stderr != "error file opening\n" {
+		t.Fatalf("an opening that is a FIFO: %v", r)
+	}
+
+	b := newAccord(t, "proposer", "applier")
+	set, err := os.ReadFile(b.founding())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := syscall.Mkfifo(filepath.Join(b.dir, "x"+cli.OpeningSuffix), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	escaped := filepath.Join(b.dir, "escaped.json")
+	if err := os.WriteFile(escaped, bytes.Replace(set, []byte(`"actor":"`+b.refs["applier"]+`","seal"`), []byte(`"actor":"../x","seal"`), 1), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if r := start(b, escaped); r.code != cli.ExitTool || !strings.HasPrefix(r.stderr, "error founding ") {
+		t.Fatalf("an actor that is a path out of --openings: %v", r)
+	}
 }
