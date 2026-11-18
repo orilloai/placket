@@ -26,7 +26,7 @@ A group's vectors test the core packages in its row. Its generator must not impo
 | `canonical` | 1 | `canonical` |
 | `signatures` | 2 | `signing`, `receipts` |
 | `founding` | 3 | `setup`, `founding`, `composition` |
-| `view` | 3 | `setup`, `founding`, `composition` |
+| `view` | 3 | `founding`, `composition` |
 | `crossing` | 4, 5 | `composition`, `mediator` |
 | `receipts` | 7, 8, 9 | `receipts`, `mediator` |
 | `questions` | 6 | `mediator`, `receipts`, `answer` |

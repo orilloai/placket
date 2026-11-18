@@ -169,6 +169,16 @@ func main() {
 				{with: c, dir: "get", kind: "contract", outcome: "asked", to: l("approver"), timeout: 300},
 				{with: d, dir: "get", kind: "answer", outcome: "crosses"}}, nil),
 	}
+	// The ask-and-log Accord, whose found vector's acceptances sign these views.
+	p, ap, dc := kit.Proposer, kit.Applier, kit.Decider
+	vs = append(vs,
+		vector("ask-and-log-applier", "setup-contract-14: the applier's view of the ask-and-log Accord: notes cross, proposals are asked by the decider within 3600 seconds, and changed versions cross",
+			kit.AskAndLog(), ap, []row{{with: p, dir: "get", kind: "note", outcome: "crosses"}, {with: p, dir: "get", kind: "proposal", outcome: "asked", to: l("decider"), timeout: 3600},
+				{with: dc, dir: "get", kind: "changed-version", outcome: "crosses"}}, nil),
+		vector("ask-and-log-decider", "setup-contract-14: the decider's view of the ask-and-log Accord: its answers cross to the proposer and not to the applier, its changed versions cross to both, and it answers the proposer's proposals to the applier",
+			kit.AskAndLog(), dc, []row{{with: p, dir: "give", kind: "answer", outcome: "crosses"}, {with: p, dir: "give", kind: "changed-version", outcome: "crosses"},
+				{with: ap, dir: "give", kind: "answer", outcome: "blocked"}, {with: ap, dir: "give", kind: "changed-version", outcome: "crosses"}}, []ask{{p, ap, "proposal", 3600}}),
+	)
 	sealed, openings := kit.Seal(silent.Open())
 	vs = append(vs, kit.Vector{Name: "view/an-opening-missing", Tests: "setup-contract-14, setup-contract-13: a view is built from every opening, and a founder holding one member's opening and not the other's is opening-missing", Operation: "view", Members: kit.Obj{
 		"inputHex": kit.HexOf(kit.Canon(sealed)), "foundedAt": kit.FoundedAt, "openings": []any{openings[0]}, "viewer": a.Ref,
