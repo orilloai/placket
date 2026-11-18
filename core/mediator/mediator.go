@@ -28,6 +28,7 @@ import (
 	"github.com/orilloai/placket/core/answer"
 	"github.com/orilloai/placket/core/canonical"
 	"github.com/orilloai/placket/core/composition"
+	"github.com/orilloai/placket/core/founding"
 	"github.com/orilloai/placket/core/internal/crossing"
 	"github.com/orilloai/placket/core/internal/shape"
 	"github.com/orilloai/placket/core/receipts"
@@ -217,11 +218,13 @@ type Mediator struct {
 // founded reports whether Found or Reload made the mediator.
 func (m *Mediator) founded() bool { return m != nil && m.accord != nil }
 
-// Found founds the set at the founding time at, as the mediator whose key is key. A set founding
-// refuses returns setup's *Error; a set that names another mediator returns ErrOtherMediator
+// Found founds the Accord from its sealed set, the openings and the acceptances at the founding time
+// at, as the mediator whose key is key, by every row of founding's table (founding.Found,
+// setup-contract-15). The mediator decides crossings, so it needs every member's opening. Inputs
+// founding refuses return setup's *Error; a set that names another mediator returns ErrOtherMediator
 // (setup-contract-7).
-func Found(set []byte, key signing.Key, at string) (*Mediator, error) {
-	a, err := setup.Found(set, at)
+func Found(in founding.Inputs, key signing.Key, at string) (*Mediator, error) {
+	a, err := founding.Found(in, at)
 	if err != nil {
 		return nil, err
 	}

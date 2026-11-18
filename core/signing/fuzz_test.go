@@ -24,7 +24,7 @@ var (
 		`{"actor":"x","terms":[]}`, `{"sig":"00","seq":1}`, ` { "b" : 1 , "a" : [ ] } `, `[]`, `"x"`,
 		`{"a":1,"a":2}`, `{"a":1.5}`, "\xff", ``, `{"\ud800":1}`,
 	}
-	fuzzTypes = []string{TypeDeclaration, TypeBinding, TypeEnvelope, TypeAnswer, "application/vnd.in-toto+json", "", "\x00"}
+	fuzzTypes = []string{TypeDeclaration, TypeBinding, TypeEnvelope, TypeAnswer, TypeAcceptance, "application/vnd.in-toto+json", "", "\x00"}
 )
 
 // FuzzNewKey makes a key of any seed. It never panics; a seed of 32 bytes makes the key RFC 8032

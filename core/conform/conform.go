@@ -18,6 +18,7 @@ import (
 	"github.com/orilloai/placket/core/answer"
 	"github.com/orilloai/placket/core/canonical"
 	"github.com/orilloai/placket/core/composition"
+	"github.com/orilloai/placket/core/founding"
 	"github.com/orilloai/placket/core/internal/crossing"
 	"github.com/orilloai/placket/core/internal/shape"
 	"github.com/orilloai/placket/core/receipts"
@@ -25,13 +26,16 @@ import (
 )
 
 // Evidence is what a verifier is given (verify-1): the Accord id; the mediator's reference, used
-// only when no founding set is given, and otherwise empty or the set's; the founding set; the
-// receipts in the order the mediator wrote them; answer calls, each a call's bytes; whether the
+// only when no founding set is given, and otherwise empty or the set's; the founding set, its
+// acceptances and the openings the verifier holds, none, some or every member's (setup-contract-16);
+// the receipts in the order the mediator wrote them; answer calls, each a call's bytes; whether the
 // receipts are a subset; and Kernel, the kernel hash whose module this verifier trusts to decide
 // again.
 type Evidence struct {
 	Accord, Mediator  string
 	Founding          []byte
+	Acceptances       []byte
+	Openings          setup.Openings
 	Receipts, Answers [][]byte
 	Subset            bool
 	Kernel            string
@@ -71,6 +75,9 @@ type Report struct {
 	Operator                     string
 	OperatorPrincipalOf, Members int
 	Unmatched                    int
+	// Terms is whether every member's seal was opened, so the decision row could read every
+	// crossing's terms (setup-contract-16, verify-1).
+	Terms bool
 }
 
 // Code is a conformance code of section 8's second table (verify-2).
@@ -155,7 +162,7 @@ func Check(e Evidence) (Report, error) {
 			at = c.At
 		}
 	}
-	a, err := setup.Found(e.Founding, at)
+	a, err := founding.Found(founding.Inputs{Set: e.Founding, Openings: e.Openings, Acceptances: e.Acceptances}, at)
 	if id, herr := canonical.TypedHash(e.Founding); err != nil || herr != nil || id != e.Accord ||
 		(e.Mediator != "" && e.Mediator != a.Mediator()) {
 		return Report{}, &Error{Code: CodeFounding, Index: -1}
@@ -165,7 +172,7 @@ func Check(e Evidence) (Report, error) {
 		return Report{}, err
 	}
 	r := Report{Mediator: a.Mediator(), Subset: sub, Module: kernelOf(e.Founding) == e.Kernel && e.Kernel != "",
-		Operator: a.Operator(), Members: len(a.Members())}
+		Operator: a.Operator(), Members: len(a.Members()), Terms: a.TermsChecked()}
 	for _, m := range a.Members() {
 		if a.Principal(m) == r.Operator {
 			r.OperatorPrincipalOf++
@@ -286,8 +293,9 @@ func (c *checker) receipt(i int) Code {
 	if failed == "" && (!c.a.Member(p.To) || (!c.a.Member(p.From) && !byMediator)) {
 		failed = CodeParty
 	}
-	// Row 3: the decision, by the module the verifier trusts.
-	if failed == "" && c.r.Module && d.Checked && !c.decided(i, s, place, q) {
+	// Row 3: the decision, by the module the verifier trusts, over terms the verifier holds: it runs
+	// only when every member whose terms the decision reads was opened (verify-1, setup-contract-16).
+	if failed == "" && c.r.Module && d.Checked && c.reads(s, q) && !c.decided(i, s, place, q) {
 		failed = CodeDecision
 	}
 	// Row 4: the witness of an answer. It is read even after a failed row, for the report.
@@ -305,6 +313,22 @@ func (c *checker) receipt(i int) Code {
 	}
 	c.r.Decisions = append(c.r.Decisions, d)
 	return failed
+}
+
+// reads reports whether the verifier holds the terms row 3 reads for a receipt: those of each member
+// among its from and to and, for a question's closing or release, among the question's asker and
+// receiver. The mediator, a sender of some closings, is no member and has no terms.
+func (c *checker) reads(s receipts.Statement, q *question) bool {
+	who := []string{s.Predicate.From, s.Predicate.To}
+	if q != nil {
+		who = append(who, q.ask.Predicate.From, q.ask.Predicate.To)
+	}
+	for _, m := range who {
+		if c.a.Member(m) && !c.a.Opened(m) {
+			return false
+		}
+	}
+	return true
 }
 
 // decided is row 3 for the receipt at index i: decided again as the module decides it, with the

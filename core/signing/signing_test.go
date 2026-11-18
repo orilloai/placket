@@ -329,3 +329,35 @@ func TestTheAnswerCallIsAnObjectType(t *testing.T) {
 		t.Fatal("a payload signature under TypeAnswer verifies")
 	}
 }
+
+// TestTheAcceptanceIsAnObjectType signs and verifies an acceptance under TypeAcceptance, the fifth
+// object type of signing-4, refuses it under another type URI, and refuses a payload signature under
+// it (setup-contract-15).
+func TestTheAcceptanceIsAnObjectType(t *testing.T) {
+	t.Parallel()
+	k := testKey(t, "applier")
+	acc := []byte(`{"accord":"sha256:` + strings.Repeat("ab", 32) + `","from":"` + k.Reference() + `","view":"sha256:` + strings.Repeat("cd", 32) + `"}`)
+	sig, err := Sign(acc, TypeAcceptance, k)
+	if err != nil {
+		t.Fatalf("Sign under TypeAcceptance: %v", err)
+	}
+	signed := append(append([]byte(nil), acc[:len(acc)-1]...), []byte(`,"sig":"`+sig+`"}`)...)
+	if !Verify(signed, TypeAcceptance, k.Reference()) {
+		t.Fatal("an acceptance signed under TypeAcceptance does not verify")
+	}
+	for _, other := range []string{TypeDeclaration, TypeBinding, TypeEnvelope, TypeAnswer} {
+		if Verify(signed, other, k.Reference()) {
+			t.Fatalf("an acceptance verifies under %s", other)
+		}
+	}
+	if TypeAcceptance != "https://placket.tech/acceptance/0.1" {
+		t.Fatalf("TypeAcceptance = %q", TypeAcceptance)
+	}
+	var e *Error
+	if _, err := SignPayload(TypeAcceptance, acc, k); !errors.As(err, &e) || e.Code != CodeTypeURI {
+		t.Fatalf("SignPayload under TypeAcceptance = %v, want type-uri", err)
+	}
+	if VerifyPayload(TypeAcceptance, acc, make([]byte, 64), k.Reference()) {
+		t.Fatal("a payload signature under TypeAcceptance verifies")
+	}
+}

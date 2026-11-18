@@ -4,6 +4,7 @@ import (
 	"errors"
 	"sort"
 
+	"github.com/orilloai/placket/core/founding"
 	"github.com/orilloai/placket/core/internal/crossing"
 	"github.com/orilloai/placket/core/internal/shape"
 	"github.com/orilloai/placket/core/receipts"
@@ -41,8 +42,8 @@ type Open struct {
 // A record that ends in its close is a closed Accord (close-3): Reload returns a closed mediator and
 // writes nothing. A record that holds closed closings with no close after them was cut inside a close
 // (close-1), and only Close completes it: Reload refuses it with close.
-func Reload(founding []byte, list [][]byte, open []Open, deliveries []Queued, foundedAt string, key signing.Key, at string) (*Mediator, []Outcome, error) {
-	r, err := rebuild(founding, list, open, deliveries, foundedAt, key, at)
+func Reload(in founding.Inputs, list [][]byte, open []Open, deliveries []Queued, foundedAt string, key signing.Key, at string) (*Mediator, []Outcome, error) {
+	r, err := rebuild(in, list, open, deliveries, foundedAt, key, at)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -95,13 +96,13 @@ func (r record) question(qi int) *question {
 // rebuild is what Reload and Close share (record 0008, record 0022): it checks the record in
 // Reload's order and makes the mediator its receipts leave, with nothing written. A close in the
 // list makes the mediator closed.
-func rebuild(founding []byte, list [][]byte, open []Open, deliveries []Queued, foundedAt string, key signing.Key, at string) (record, error) {
+func rebuild(in founding.Inputs, list [][]byte, open []Open, deliveries []Queued, foundedAt string, key signing.Key, at string) (record, error) {
 	fail := func(err error) (record, error) { return record{}, err }
 
 	if !shape.Timestamp(at) {
 		return fail(failure(CodeAt))
 	}
-	m, err := Found(founding, key, foundedAt)
+	m, err := Found(in, key, foundedAt)
 	if err != nil {
 		return fail(err)
 	}

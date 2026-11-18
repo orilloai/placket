@@ -7,6 +7,8 @@ import (
 	"strconv"
 
 	"github.com/orilloai/placket/core/canonical"
+	"github.com/orilloai/placket/core/founding"
+	"github.com/orilloai/placket/core/setup"
 )
 
 // registered holds the handler of each operation the core can run. Each handler's file adds its own
@@ -98,3 +100,33 @@ func jsonOf(v any) []byte {
 }
 
 func bad(name, why string) []Part { return []Part{{Name: name, Failure: why}} }
+
+// inputsOf reads the founding inputs beside a vector's set (setup-contract-15, setup-contract-16):
+// openings, a list of each opening under its actor's reference, given in one of the opening's forms,
+// every member's when the vector has the member and none when it does not; and acceptances, the
+// acceptance list in one of its forms, or none.
+func inputsOf(m members, set []byte) (founding.Inputs, bool) {
+	in := founding.Inputs{Set: set}
+	if m.has("openings") {
+		var items []members
+		if json.Unmarshal(m["openings"], &items) != nil {
+			return in, false
+		}
+		in.Openings = setup.Openings{ByActor: map[string][]byte{}}
+		for _, it := range items {
+			b, ok := bytesOf(it, "opening", "openingText", "openingHex")
+			if !ok {
+				return in, false
+			}
+			in.Openings.ByActor[it.str("actor")] = b
+		}
+	}
+	if m.has("acceptances") || m.has("acceptancesText") || m.has("acceptancesHex") {
+		b, ok := bytesOf(m, "acceptances", "acceptancesText", "acceptancesHex")
+		if !ok {
+			return in, false
+		}
+		in.Acceptances = b
+	}
+	return in, true
+}

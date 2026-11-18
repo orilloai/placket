@@ -4,6 +4,7 @@ import (
 	"sort"
 
 	"github.com/orilloai/placket/core/canonical"
+	"github.com/orilloai/placket/core/founding"
 	"github.com/orilloai/placket/core/receipts"
 	"github.com/orilloai/placket/core/signing"
 )
@@ -38,8 +39,8 @@ func (m *Mediator) Closed() (Closed, bool) {
 // time of the closings already written, not at at: every question still open is closed at that time,
 // and the close receipt written at it. It returns the closed mediator, the closings' outcomes in
 // order, and the close.
-func Close(founding []byte, list [][]byte, open []Open, deliveries []Queued, foundedAt string, key signing.Key, at string) (*Mediator, []Outcome, Closed, error) {
-	r, err := rebuild(founding, list, open, deliveries, foundedAt, key, at)
+func Close(in founding.Inputs, list [][]byte, open []Open, deliveries []Queued, foundedAt string, key signing.Key, at string) (*Mediator, []Outcome, Closed, error) {
+	r, err := rebuild(in, list, open, deliveries, foundedAt, key, at)
 	if err != nil {
 		return nil, nil, Closed{}, err
 	}
