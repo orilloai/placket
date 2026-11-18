@@ -9,6 +9,7 @@ A pattern is a runnable template for one caller's job: a proposer, an approver, 
 One line per pattern: its directory, the job it does, and the Placket version it was last checked against.
 
 - `guarded-export`: a receiver's guard exports a value only when exactly that value was released to it. Checked against placket main@6620793.
+- `shadow-judge`: a judge reads each part the terms ask a person about and decides nothing, beside the person's answer. Checked against placket e3972d6.
 
 ## What a pattern is made of
 
@@ -22,14 +23,16 @@ Each pattern is a directory `patterns/<job>/`, named for the caller's job in low
 - `pattern.sh`, the template. It is a POSIX `sh` script that uses Placket's command line and `jq`, beside the shell's own utilities, and nothing else. Every line a caller changes for their own use carries the comment `# CHANGE`, with what to put there. As it is, it runs from start to end on invented data: it makes its own keys, terms and founding set in the directory it runs in, starts its own window on a socket under `$TMPDIR`, does its job, and stops its window before it exits, on failure too.
 - `expected.txt`, exactly what a run of `pattern.sh` prints, standard output and standard error together. A run prints the same each time, so a pattern prints no key, hash, salt or time: it picks what it shows with `jq`.
 
-A pattern depends on nothing else: only the `placket` binary and `jq` on `PATH`, never a file elsewhere in this repository. So `patterns/` can move to a repository of its own as it is.
+A pattern may also hold data files of its own, such as `shadow-judge/judge.json`, which its `pattern.sh` reads from its own directory.
+
+A pattern depends on nothing else: only the `placket` binary and `jq` on `PATH`, and its own files, never a file elsewhere in this repository. So `patterns/` can move to a repository of its own as it is.
 
 ## How make ci runs them
 
 `tests/test_patterns.sh` finds every `patterns/*/pattern.sh`. A new pattern needs no change to `make ci`. For each one it:
 
 - checks the shape above: the three files, the four sections, at least one `# CHANGE` line, and one line in the list above for each pattern and none for a pattern that is not here;
-- copies the pattern's directory to a fresh directory and runs `sh pattern.sh` there, with the `placket` it built from the tree first on `PATH` and a fresh `TMPDIR` of the pattern's own;
+- copies the pattern's directory to a fresh directory and runs `sh pattern.sh` there, with the `placket` it built from the tree first on `PATH`, a fresh `TMPDIR` of the pattern's own, and no `PLACKET_JEV_KEY`, so no pattern reaches a judge's host;
 - passes the pattern when it exits 0 within 60 seconds, prints exactly its `expected.txt`, and leaves no process running.
 
 Each run has a process group of its own, which the test kills whatever happens, so a pattern that fails or hangs leaves no window behind. With no patterns, the test passes.

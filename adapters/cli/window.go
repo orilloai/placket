@@ -6,8 +6,11 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/orilloai/placket/adapters/journal"
+	"github.com/orilloai/placket/adapters/judge"
+	"github.com/orilloai/placket/adapters/judge/jev"
 	"github.com/orilloai/placket/adapters/keyfile"
 	"github.com/orilloai/placket/adapters/local"
 	"github.com/orilloai/placket/core/canonical"
@@ -29,6 +32,12 @@ func init() {
 // On a closed journal it prints `accord <id> closed <close id>` and serves the closed Accord. A
 // journal whose close was cut short is tool error journal, receipts.jsonl, close, after a line that
 // says to run `placket window close`. `window close` is closeCommand.
+//
+// Each --judge is the config of a judge the card lists (docs/adr/0023-judges.md): a window that can
+// take a give needs exactly the card's, each at the card's hash, or it is tool error founding judge
+// and starts nothing. The judges' key is read once, from jev.KeyEnv. After the operator line the
+// window prints, for each judge the card lists, which kinds may go to which host and model, or that
+// it sends nothing.
 func windowCommand(r *run, args []string) int {
 	if len(args) > 0 && args[0] == "close" {
 		return closeCommand(r, args[1:])
@@ -36,8 +45,14 @@ func windowCommand(r *run, args []string) int {
 	fs := flags("window")
 	keyPath, founding := fs.String("key", "", "the mediator's key file"), fs.String("founding", "", "the founding set")
 	socket, dir := fs.String("socket", "", "socket"), fs.String("journal", "", "journal directory")
+	var judges many
+	fs.Var(&judges, "judge", "a judge's config, once per judge the card lists")
 	if !r.parse(fs, args, "key", "founding", "socket", "journal") {
 		return r.tool(codeUsage)
+	}
+	loaded, code := r.judgeConfigs(judges)
+	if code != 0 {
+		return code
 	}
 	k, err := keyfile.Read(*keyPath)
 	if err != nil {
@@ -57,10 +72,18 @@ func windowCommand(r *run, args []string) int {
 		}
 	}
 	operator := memberString(set, "mediator", "operator")
+	// The key is read once, here, and held only by the judges' adapters (docs/adr/0023-judges.md).
+	key := ""
+	if r.env.Getenv != nil {
+		key = r.env.Getenv(jev.KeyEnv)
+	}
 	err = local.Run(r.env.Context, local.Window{
 		Key: k, Founding: set, Socket: *socket, Journal: *dir, Disk: r.env.Disk,
 		Now: r.env.Now, Stderr: r.stderr, Ready: r.env.Ready,
-		Event: func(e local.Event) { r.event(e, operator) },
+		Event:    func(e local.Event) { r.event(e, operator) },
+		Judges:   loaded,
+		NewJudge: func(c judge.Config) judge.Judge { return jev.New(c, key, nil) },
+		Keyed:    key != "",
 	})
 	return r.windowError(err)
 }
@@ -74,7 +97,10 @@ func (r *run) windowError(err error) int {
 	var se *setup.Error
 	var me *mediator.Error
 	var je *journal.Error
+	var le *local.Error
 	switch {
+	case errors.As(err, &le) && le.Code == local.CodeJudge:
+		return r.tool(codeFound, detailJudge)
 	case errors.As(err, &se):
 		return r.tool(codeFound, string(se.Code))
 	case errors.Is(err, mediator.ErrOtherMediator):
@@ -135,6 +161,24 @@ func closeCommand(r *run, args []string) int {
 	return r.windowError(err)
 }
 
+// reachLine is the start-up line of a judge's reach: the kinds it may be sent and to which host and
+// model, that it sends nothing since no term lists it, or that it sends nothing for want of a key.
+// The name, the kinds, the host and the model come from files the operator was handed, so each is
+// escaped as a field.
+func reachLine(x local.Reach) string {
+	if len(x.Kinds) == 0 {
+		return fmt.Sprintf(LineJudgeNoTerm, field(x.Judge))
+	}
+	if !x.Keyed {
+		return fmt.Sprintf(LineJudgeNoKey, field(x.Judge), jev.KeyEnv)
+	}
+	kinds := make([]string, len(x.Kinds))
+	for i, k := range x.Kinds {
+		kinds[i] = field(k)
+	}
+	return fmt.Sprintf(LineJudgeSends, field(x.Judge), strings.Join(kinds, ", "), field(x.Host), field(x.Model))
+}
+
 // closeObject is the close as the --json object of window and window close holds it, in both modes:
 // its id and its receipt, as an outcome is.
 func closeObject(e local.Event) map[string]any {
@@ -158,6 +202,9 @@ func (r *run) event(e local.Event, operator string) {
 		}
 		fmt.Fprintln(r.stderr, "card "+e.Card)
 		fmt.Fprintln(r.stderr, "operator "+operator)
+		for _, x := range e.Reach {
+			fmt.Fprintln(r.stderr, reachLine(x))
+		}
 		r.put(memberAccord, e.Accord)
 		r.put(memberCard, e.Card)
 		r.put(memberOperator, operator)
@@ -165,6 +212,12 @@ func (r *run) event(e local.Event, operator string) {
 		return
 	case local.EventRefused:
 		fmt.Fprintln(r.stderr, LineDoor+" "+string(e.Door))
+		return
+	case local.EventAdvised:
+		// One line per advise judge, never its output (docs/adr/0023-judges.md).
+		for _, a := range e.Advice {
+			fmt.Fprintf(r.stderr, LineAdvised+"\n", field(a.Judge), a.Outcome, a.Receipt)
+		}
 		return
 	case local.EventClosed:
 		// The close's own line, then one per closing, as the window prints a reload's.

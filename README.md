@@ -99,6 +99,17 @@ mediator ed25519:45ab60359f021810335f6d356444bde8b6dfc42e1ef8210e524f0b10d9e511d
 envelope of ed25519:09a2c472e9fa29ae1ae30e50e4ad1d571b29b560fa2e421a3757e5777b5f1882, seq 1, hash sha256:0ee8df76c9eee8455da37f9866e4ec766307c9421442c7cfd2f30bdda776bb71
 ```
 
+## Judges
+
+A `maybe` term may list judges, each to `decide` or to `advise`, where the terms would ask a person. When both sides' matching terms list the same judges, the window asks the `decide` judges in order, within 20 seconds for them all: the first pass or block decides the part, and when every judge says none the part is asked as before. An `advise` judge runs after the receipt is written, and decides nothing. A judge never answers a question and never runs at release. In v0.1.0 the one judge provider is Jev, called with your own key.
+
+```
+placket card --default --judge judge.json >card.json
+PLACKET_JEV_KEY=... placket window --key mediator.key --founding founding.json --socket /tmp/plk.s --journal journal --judge judge.json
+```
+
+`judge.json` is the judge's config: its name, provider, host, model, threshold and instruction. Its hash goes into the card, and the window runs only the configs its card lists. The key is read once from `PLACKET_JEV_KEY` and written nowhere; at start the window prints which kinds may go to which host, or that a judge with no key sends nothing. A request carries the part's kind, its body and the instruction, and nothing else; a raw body is never sent. What each judge said goes in the journal's `judged/` directory, never in a receipt. `patterns/shadow-judge/` runs a judge to advise, with no key; `docs/security/threat-model.md` says what a judge can and cannot be trusted with.
+
 ## Where to start
 
 The repository's layout and rules come first:

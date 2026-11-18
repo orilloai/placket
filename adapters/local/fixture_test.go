@@ -66,6 +66,13 @@ func maybe(with, kinds []string, to string) map[string]any {
 // nobody holds. The mediator's key is named mediator; mediatorName names another for a second Accord.
 func askAndLog(t testing.TB, mediatorName string) []byte {
 	t.Helper()
+	return askAndLogWith(t, mediatorName, []any{}, nil)
+}
+
+// askAndLogWith is askAndLog with the card's judges given, and each party's terms that more names
+// added after its own.
+func askAndLogWith(t testing.TB, mediatorName string, judges []any, more map[string][]map[string]any) []byte {
+	t.Helper()
 	med, op, pr := key(t, mediatorName), key(t, "operator"), key(t, "principal")
 	parties := []struct {
 		name  string
@@ -101,9 +108,9 @@ func askAndLog(t testing.TB, mediatorName string) []byte {
 	var es []entry
 	for _, p := range parties {
 		k := key(t, p.name)
-		terms := make([]any, len(p.terms))
-		for i, x := range p.terms {
-			terms[i] = x
+		terms := make([]any, 0, len(p.terms))
+		for _, x := range append(p.terms, more[p.name]...) {
+			terms = append(terms, x)
 		}
 		es = append(es, entry{k.Reference(),
 			signed(t, map[string]any{"actor": k.Reference(), "terms": terms}, signing.TypeDeclaration, k),
@@ -119,7 +126,7 @@ func askAndLog(t testing.TB, mediatorName string) []byte {
 		"policy":   policy,
 		"mediator": map[string]any{"actor": med.Reference(), "operator": op.Reference(), "runs": "process"},
 		"card": map[string]any{"spec": "0.1", "kernel": map[string]any{"version": "0.1.0", "hash": "sha256:" + hex.EncodeToString(make([]byte, 32))},
-			"judges": []any{}},
+			"judges": judges},
 		"declarations": decls, "bindings": binds,
 	})
 	c, err := canonical.Form(b)

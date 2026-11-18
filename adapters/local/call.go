@@ -51,6 +51,12 @@ const (
 // (rejection-vs-error; docs/adr/0017-the-doors-own-code.md).
 const Internal DoorCode = "door-internal"
 
+// JudgeBusy is the door's code for a caller's give while its last give is with a judge. It is checked
+// after the nonce, so the refused call's nonce is spent, and before the tick, so the refused give
+// writes nothing. It is about the order of the caller's calls: a later give never reaches the core
+// before an earlier one (crossing-4, docs/adr/0023-judges.md).
+const JudgeBusy DoorCode = "judge-busy"
+
 // MaxReply is the most bytes of a reply, before its line feed, a client reads. It is enough for one
 // delivery, whose body came in a call under MaxCall, with its receipt and the answer call inside it
 // (docs/adr/0017-the-doors-own-code.md).

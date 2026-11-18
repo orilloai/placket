@@ -1,0 +1,16 @@
+
+== 1. keys, terms, the judge and the founding set
+card: lists judge review, version 0.1.0
+
+== 2. the window, and where the judge's requests may go
+window: judge review has no key in PLACKET_JEV_KEY: it sends nothing, and says none
+
+== 3. a proposal, asked of the approver
+proposer: gives a proposal: ask, exit 4
+window: advise review none, of the proposal's receipt
+judged: {"judge":"review","use":"advise","outcome":"none","error":"no-key"}
+
+== 4. the approver answers, as the judge's advice is compared with it
+approver: reads Rename the column total to amount.
+approver: accepts: answer pass, release released, exit 0
+receiver: fetches a proposal

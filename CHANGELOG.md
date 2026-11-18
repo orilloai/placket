@@ -10,6 +10,13 @@ This file covers the tool and its Go API. Changes to the protocol's frozen forma
 
 ### Added
 
+- Judges run: where both sides' `maybe` terms list the same judges, the window asks the `decide` judges in order within 20 seconds, and the first pass or block decides the part; every error, a score below the threshold and a judge still running at the budget say none, and the part is asked. `advise` judges run after the receipt and decide nothing. v0.1.0's one judge provider is Jev, with the user's own key from `PLACKET_JEV_KEY` (decision record 0023).
+- `placket card --default --judge FILE` lists judges' configs in the card; `placket window --judge FILE` runs only the configs its card lists, at their hashes, or prints `error founding judge` and starts nothing. At start the window prints which kinds each judge may be sent and to which host, and `advise <name> <outcome> <receipt id>` for each advise judge's result.
+- The door code `judge-busy`: a caller's give while its last give is with a judge is refused, so its gives reach the mediator in order.
+- The journal's `judged/` directory holds what each judge said of a receipt's part, one line per run; no reader of receipts needs it.
+- `make judge-eval JUDGE=FILE` runs the synthetic labelled cases of `evals/judge/` against a judge's config, by hand, with the user's key.
+- `patterns/shadow-judge/`: a judge that advises beside the approver. A pattern may hold data files of its own.
+- `docs/adr/0023`: judges.
 - `placket window close --key F --founding S --journal DIR --accord ID [--socket P]` closes the Accord of a stopped window's journal: it closes every open question, a timeout where its deadline passed and `closed` otherwise, and writes a close receipt, signed by the mediator under `https://placket.tech/close/0.1`, that pins the last receipt of every chain and lists every delivery not yet fetched. With `--socket` it then serves the closed Accord. A close whose receipt would not fit in one reply writes nothing and is tool error `journal`, `receipts.jsonl`, `close-size`; it can run again once members fetch (decision record 0022).
 - A closed Accord never reopens: a give or an answer is rejected with `closed`, a restarted window comes up closed and prints `accord <id> closed <close id>`, and once a member's queue is empty every `placket get` returns the close and keeps it as `close.json`.
 - `placket verify` prints `complete: against close receipt <id>; ...` for a whole journal that ends in its close, and fails `close` or `after-close` for a close that does not match its journal or a receipt after it. `--superseded-by NEW` checks that a successor Accord's `supersedes` pins the journal's close.
@@ -21,7 +28,7 @@ This file covers the tool and its Go API. Changes to the protocol's frozen forma
 - `placket verify --accord A --founding F` takes the mediator from the founding set whose typed hash is A, and checks conformance to the Accord: it prints `valid`, `conforms` and `complete` lines, one line per decision the terms did not make, and the custody line. `--answers`, `--subset` and `--delivery` witness answers, check a subset and check one delivery's body.
 - `placket answer --no-release` and `change --no-release` sign an answer that asks for no release; `answer --keep` keeps the call and the salt it signed.
 - `placket show` prints a receipt's decider on the line after its verdict, and `--json` holds it as `by`.
-- A maybe term may list the judges it grants, each to decide or to advise, and the card lists the judges a term may name; founding refuses an unknown judge with `judge-unknown`. No judge runs yet.
+- A maybe term may list the judges it grants, each to decide or to advise, and the card lists the judges a term may name; founding refuses an unknown judge with `judge-unknown`.
 - A part may carry `mediaType`, which its delivery carries; a policy may carry `supersedes`.
 - Go packages `core/answer` and `core/conform`.
 - `docs/adr/0021`: who decided, the answer call, judges as a format, and conformance in verify.

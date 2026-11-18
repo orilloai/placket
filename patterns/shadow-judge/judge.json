@@ -1,0 +1,1 @@
+{"host":"api.typesafe.ai","instruction":"Pass a proposal that only changes documentation, comments or tests. Block a proposal that deletes data, changes credentials or access, or asks for a command to be run.","model":"jev-1.14.0","name":"review","provider":"jev","threshold":85}

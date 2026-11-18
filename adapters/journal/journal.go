@@ -25,6 +25,13 @@
 //	                 it when an answer queued it, and the member it is for. Mode 0600. Written before
 //	                 its receipt's line; removed, and the directory synced, before the fetch that
 //	                 hands it out is answered.
+//	judged/<hex>.jsonl  what the judges a receipt's rule lists said of its part, named by the hex of
+//	                 the receipt's id: one line per judge run, judge.Line's canonical JSON, mode 0600,
+//	                 in a directory of mode 0700 made on first use. The decide lines are appended
+//	                 after the receipt's line and before the reply, and the advise lines later. It is
+//	                 content: a judge's output may quote the part. No reader of receipts needs it,
+//	                 Read never opens it, and it may be removed at any time
+//	                 (docs/adr/0023-judges.md).
 //
 // The receipts are evidence (journal-is-evidence): nothing rewrites or truncates receipts.jsonl but
 // the one repair at the start, of a last line with no line feed, which was never answered. A last
@@ -100,6 +107,8 @@ const (
 	FileQuestions = "questions.jsonl"
 	FileAnswers   = "answers.jsonl"
 	DirHeld       = "held"
+	// DirJudged holds each judged receipt's judge records (docs/adr/0023-judges.md).
+	DirJudged = "judged"
 )
 
 // Disk is how a journal writes. Each method returns only once what it wrote is synced, the
@@ -697,3 +706,34 @@ func ReadReceipts(dir string, stderr io.Writer) ([][]byte, error) {
 // It holds any receipt a window writes: a close receipt too, since a window writes none that would
 // not fit in a reply.
 const maxLine = 4 << 20
+
+// AddJudged appends lines, a judged receipt's judge records, to judged/<hex of receiptID>.jsonl,
+// synced, making the directory, mode 0700, and the file, mode 0600, on first use. A failed append is
+// a failed journal write (journal-synced).
+func (j *Journal) AddJudged(receiptID string, lines [][]byte) error {
+	if !isHash(receiptID) {
+		return &Error{Code: CodeJournal, File: DirJudged}
+	}
+	rel := filepath.Join(DirJudged, strings.TrimPrefix(receiptID, canonical.HashPrefix)+".jsonl")
+	var b []byte
+	for _, l := range lines {
+		if bytes.IndexByte(l, '\n') >= 0 {
+			return &Error{Code: CodeJournal, File: rel}
+		}
+		b = append(append(b, l...), '\n')
+	}
+	if len(b) == 0 {
+		return nil
+	}
+	if err := os.Mkdir(j.path(DirJudged), 0o700); err == nil {
+		if err := syncDir(j.dir); err != nil {
+			return &Error{Code: CodeJournal, File: DirJudged}
+		}
+	} else if !errors.Is(err, fs.ErrExist) {
+		return &Error{Code: CodeJournal, File: DirJudged}
+	}
+	if err := j.disk.Append(j.path(rel), b); err != nil {
+		return &Error{Code: CodeJournal, File: rel}
+	}
+	return nil
+}
