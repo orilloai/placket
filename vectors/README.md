@@ -92,7 +92,7 @@ The runner prints every open entry and every entry with a `rest` on each run, an
 - an entry, or its `tests` or `rest`, does not have the form above;
 - no vector is found while the list names one.
 
-`tests/test_coverage_tests.sh`, which `make ci` runs, checks the Go tests: each one the list names exists and passes when run alone, and each scenario no vector operation can run names one.
+`tests/test_coverage_tests.sh`, which `make ci` runs, checks the Go tests: each one the list names exists and passes in a run of its module's named tests alone, one `go test` per module, and each scenario no vector operation can run names one.
 
 ## Format notes
 
