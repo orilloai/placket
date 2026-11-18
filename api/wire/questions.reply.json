@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://placket.tech/api/0.1/wire/questions.reply.json",
   "title": "questions: the reply",
-  "description": "The questions, as many whole ones as fit in 4 MiB, with more when some were left out; the cursor of the last one carried, or of the newest ask when it carries none; the close, beside an empty list, on a closed Accord; or a refusal.",
+  "description": "The questions, as many whole ones as fit in 4 MiB, with more when some were left out; the cursor of the last one carried, or the after given when it carries none; the close, beside an empty list, on a closed Accord; or a refusal.",
   "oneOf": [
     {
       "type": "object",

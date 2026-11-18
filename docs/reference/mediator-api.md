@@ -310,7 +310,7 @@ Every code `placket mcp` can return, by where it comes from: a code in a door re
 | `adapters/keyfile` | `key-mode` | The key file can be read by others; make it mode 0600. |
 | `adapters/keyfile` | `key-read` | The key file could not be read; check its path and its owner. |
 | `adapters/keyfile` | `key-write` | The key file could not be written; check the directory. |
-| `adapters/local` | `cursor` | The window could not draw its cursors' random value; start it again. |
+| `adapters/local` | `cursor` | The window could not draw its cursors' key; start it again. |
 | `adapters/local` | `judge` | The window's judge configs are not the ones its card lists; start it with the card's judges. |
 | `adapters/local` | `reply` | What the window sent is not a reply; check the socket is a placket window's. |
 | `adapters/local` | `socket` | The window could not be reached, or went away before it replied; start the window, or check the socket path. |

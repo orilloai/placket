@@ -1,6 +1,7 @@
 package local
 
 import (
+	"crypto/aes"
 	"encoding/json"
 	"errors"
 	"io/fs"
@@ -122,7 +123,7 @@ func TestAQuestionsReplyLeavesOutWhatItsSizeCannotHold(t *testing.T) {
 			Receipt: json.RawMessage(`{}`), Salt: str(strings.Repeat("00", 32))}
 	}
 	var ev Event
-	b, _ := (&window{epoch: strings.Repeat("0", 32)}).questionsReply(list, make([]int, len(list)), 0, &ev)
+	b, _ := cursorWindow(t).questionsReply(list, make([]int, len(list)), 0, &ev)
 	if len(b) > MaxReply || ev.Door != "" {
 		t.Fatalf("a reply of %d bytes, door %q", len(b), ev.Door)
 	}
@@ -234,7 +235,7 @@ func TestAQuestionsReplyCountsTheCommas(t *testing.T) {
 		t.Fatalf("the fourth question takes %d bytes, not %d", encodedLen(list[3]), room)
 	}
 	var ev Event
-	b, _ := (&window{epoch: strings.Repeat("0", 32)}).questionsReply(list, make([]int, len(list)), 0, &ev)
+	b, _ := cursorWindow(t).questionsReply(list, make([]int, len(list)), 0, &ev)
 	if len(b) > MaxReply || ev.Door != "" {
 		t.Fatalf("a reply of %d bytes, door %q", len(b), ev.Door)
 	}
@@ -242,4 +243,14 @@ func TestAQuestionsReplyCountsTheCommas(t *testing.T) {
 	if err := json.Unmarshal(b, &r); err != nil || r.Questions == nil || len(*r.Questions) != 3 || r.More == nil || !*r.More {
 		t.Fatalf("read as %v, with questions %v", err, r.Questions != nil)
 	}
+}
+
+// cursorWindow is a window with only the key of its cursors, all zero bytes.
+func cursorWindow(t *testing.T) *window {
+	t.Helper()
+	k, err := aes.NewCipher(make([]byte, aes.BlockSize))
+	if err != nil {
+		t.Fatal(err)
+	}
+	return &window{curKey: k}
 }

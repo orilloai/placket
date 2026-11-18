@@ -3,17 +3,19 @@ package local
 import (
 	"bufio"
 	"context"
+	"crypto/aes"
+	"crypto/cipher"
 	"crypto/rand"
+	"crypto/subtle"
+	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"io"
 	"io/fs"
-	"math"
 	"net"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"sync"
 	"syscall"
@@ -70,9 +72,9 @@ type Window struct {
 	// Budget is how long a give's decide judges have together, and each advise run; zero is
 	// judge.Budget.
 	Budget time.Duration
-	// CursorRand is read once at each start for the random value of the cursors the questions
-	// replies carry, so a cursor from before a restart is never taken for one of this start's; nil is
-	// crypto/rand.
+	// CursorRand is read once at each start for the key of the cursors the questions replies carry,
+	// so a cursor shows nothing of the position it holds, and one from before a restart is never taken
+	// for one of this start's; nil is crypto/rand.
 	CursorRand io.Reader
 	// Deadline is how long a connection may take to send its call and read its reply, when the call
 	// does not wait; one that waits has its wait plus WaitSlack, when that is longer. Zero is 30
@@ -163,11 +165,11 @@ type window struct {
 	busy   map[string]bool
 	// The calls parked until they have something to return or their wait ends, oldest first; the
 	// deliveries queued for each member, as the journal holds them, so a get that waits learns of
-	// one without taking it; and, for the cursors, this start's random value, the number of asks
-	// journaled since the start, and the position of each among them.
+	// one without taking it; and, for the cursors, this start's key, the number of asks journaled
+	// since the start, and the position of each among them.
 	parked []*parked
 	queued map[string]int
-	epoch  string
+	curKey cipher.Block
 	asks   int
 	askAt  map[string]int
 	// What the judge runs need of serve: the context that stops them, the group that waits for
@@ -265,11 +267,13 @@ func Run(ctx context.Context, cfg Window) error {
 		cfg.CursorRand = rand.Reader
 	}
 	w := &window{cfg: cfg, j: j, nonces: map[string]time.Time{}, busy: map[string]bool{}, queued: map[string]int{}, askAt: map[string]int{}}
-	e := make([]byte, 16)
-	if _, err := io.ReadFull(cfg.CursorRand, e); err != nil {
+	key := make([]byte, 16)
+	if _, err := io.ReadFull(cfg.CursorRand, key); err != nil {
 		return &Error{Code: CodeCursor}
 	}
-	w.epoch = hex.EncodeToString(e)
+	if w.curKey, err = aes.NewCipher(key); err != nil {
+		return &Error{Code: CodeCursor}
+	}
 	founded, err := w.start()
 	if err != nil {
 		return err
@@ -428,12 +432,12 @@ func (w *window) close(rec *journal.Record, at string) error {
 const CoreCloseSize = "close-size"
 
 // closeReply is the largest reply that carries the close receipt c: the questions reply of a closed
-// Accord, the close beside an empty list and the longest cursor a window mints. A get's reply, the
-// close alone, is shorter.
+// Accord, the close beside an empty list and a cursor, which always has cursorLen bytes. A get's
+// reply, the close alone, is shorter.
 func closeReply(c []byte) []byte {
 	empty := []wireAsked{}
-	longest := (&window{epoch: strings.Repeat("0", 32)}).cursor(math.MaxInt64)
-	return encodeReply(wireReply{Questions: &empty, Close: c, Cursor: &longest})
+	cur := strings.Repeat("0", cursorLen)
+	return encodeReply(wireReply{Questions: &empty, Close: c, Cursor: &cur})
 }
 
 // reloadError names the file and line of what Reload refused.
@@ -1146,23 +1150,23 @@ func (w *window) get(c Call, ev *Event) ([]byte, error) {
 //
 // A call whose after is a cursor of this start's is shown only the questions asked after the last
 // one that cursor's reply carried; any other after is taken for none. Every reply carries a cursor:
-// the position of the last question it carries, or, when it carries none, of the newest ask
-// journaled, or after's when that is later.
+// the position of the last question it carries, or, when it carries none, after's own. So a reply
+// with no question hands back what it was given, and passing it back still asks for the questions
+// opened after the last one this caller was shown.
 func (w *window) questions(c Call, ev *Event) ([]byte, bool) {
 	if _, _, err := w.m.Question(c.Caller, ""); err != nil {
 		return refused(err, ev), true
 	}
 	after, _ := w.cursorAt(c.After)
 	list := []wireAsked{}
-	newest := max(w.asks, after)
 	if c.Caller == w.cfg.Key.Reference() {
-		cur := w.cursor(newest)
+		cur := w.cursor(after)
 		return encodeReply(wireReply{Questions: &list, Cursor: &cur}), false
 	}
 	// A closed Accord has no open question; the reply says why, with the close (close-3), so an
 	// answerer's command learns the Accord is closed before it signs anything.
 	if cl, ok := w.m.Closed(); ok {
-		cur := w.cursor(newest)
+		cur := w.cursor(after)
 		return encodeReply(wireReply{Questions: &list, Close: cl.Receipt, Cursor: &cur}), true
 	}
 	var at []int
@@ -1183,30 +1187,42 @@ func (w *window) questions(c Call, ev *Event) ([]byte, bool) {
 		list = append(list, wireAskedOf(q))
 		at = append(at, w.askAt[id])
 	}
-	return w.questionsReply(list, at, newest, ev)
+	return w.questionsReply(list, at, after, ev)
 }
 
-// cursor is the cursor of the position n among this start's asks: the start's random value and n.
-func (w *window) cursor(n int) string { return w.epoch + "-" + strconv.Itoa(n) }
+// cursorLen is the length of every cursor a window mints: one AES block in lowercase hex.
+const cursorLen = 2 * aes.BlockSize
+
+// cursor is the cursor of the position n among this start's asks: n's eight bytes, big-endian, then
+// eight zero bytes, as one AES block under this start's key, in lowercase hex. Only this start's
+// window can read it back.
+func (w *window) cursor(n int) string {
+	var b [aes.BlockSize]byte
+	binary.BigEndian.PutUint64(b[:8], uint64(n))
+	w.curKey.Encrypt(b[:], b[:])
+	return hex.EncodeToString(b[:])
+}
 
 // cursorAt reads a cursor of this start's: its position, and true. Anything else, a cursor of
 // another start's or one no window minted, is position 0, as no after at all.
 func (w *window) cursorAt(s string) (int, bool) {
-	e, n, ok := strings.Cut(s, "-")
-	if !ok || e != w.epoch || n == "" || len(n) > 19 || (len(n) > 1 && n[0] == '0') {
+	if len(s) != cursorLen {
 		return 0, false
 	}
-	at := 0
-	for i := 0; i < len(n); i++ {
-		if n[i] < '0' || n[i] > '9' {
-			return 0, false
-		}
-		at = at*10 + int(n[i]-'0')
-	}
-	if at > w.asks {
+	b, err := hex.DecodeString(s)
+	if err != nil || hex.EncodeToString(b) != s {
 		return 0, false
 	}
-	return at, true
+	w.curKey.Decrypt(b, b)
+	var zero [8]byte
+	if subtle.ConstantTimeCompare(b[8:], zero[:]) != 1 {
+		return 0, false
+	}
+	n := binary.BigEndian.Uint64(b[:8])
+	if n > uint64(w.asks) {
+		return 0, false
+	}
+	return int(n), true
 }
 
 // wireAskedOf is an open question as the questions reply names it to an answerer (maybe-1): its
@@ -1234,13 +1250,13 @@ func wireAskedOf(q mediator.Question) wireAsked {
 // reply the window sends, however many questions are open and however large their parts. Each
 // question goes whole, oldest first, while the reply fits; the first that does not fit is left out
 // with every one after it, and the reply says more, so the client answers and asks again. Its cursor
-// is the position, in at, of the last question kept, or newest when it keeps none; it reports
-// whether it keeps one.
-func (w *window) questionsReply(list []wireAsked, at []int, newest int, ev *Event) ([]byte, bool) {
+// is the position, in at, of the last question kept, or after when it keeps none; it reports whether
+// it keeps one.
+func (w *window) questionsReply(list []wireAsked, at []int, after int, ev *Event) ([]byte, bool) {
 	t := true
 	empty := []wireAsked{}
-	longest := w.cursor(math.MaxInt64)
-	used := len(encodeReply(wireReply{Questions: &empty, More: &t, Cursor: &longest}))
+	cur := w.cursor(after)
+	used := len(encodeReply(wireReply{Questions: &empty, More: &t, Cursor: &cur}))
 	var more *bool
 	for i := range list {
 		n := encodedLen(list[i])
@@ -1253,7 +1269,6 @@ func (w *window) questionsReply(list []wireAsked, at []int, newest int, ev *Even
 		}
 		used += n
 	}
-	cur := w.cursor(newest)
 	if len(list) > 0 {
 		cur = w.cursor(at[len(list)-1])
 	}

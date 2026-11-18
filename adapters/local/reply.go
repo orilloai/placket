@@ -34,7 +34,7 @@ const (
 	// CodeSocketPath: the socket path is longer than MaxSocketPath, so it can be neither bound nor
 	// connected to.
 	CodeSocketPath Code = "socket-path"
-	// CodeCursor: the window could not draw the random value of its cursors; it started nothing.
+	// CodeCursor: the window could not draw the key of its cursors; it started nothing.
 	CodeCursor Code = "cursor"
 	// CodeJudge: the window's judge configs are not the ones its card lists, at their hashes and this
 	// adapter's version; it started nothing (docs/adr/0023-judges.md).

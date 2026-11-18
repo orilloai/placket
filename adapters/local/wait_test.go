@@ -117,16 +117,32 @@ func TestQuestionsAfterACursor(t *testing.T) {
 	if got := ids(second); len(got) != 1 || got[0] != q2 {
 		t.Fatalf("after the first cursor: %v, want only %s", got, q2)
 	}
-	// An empty reply's cursor, passed back, waits again: both questions are still open, and older.
+	// An empty reply hands back the cursor it was given, which, passed back, waits again: both
+	// questions are still open, and older.
 	none := w.call(t, "decider", local.OpQuestions, map[string]any{"after": second.Cursor, "wait": 1})
-	if len(none.Questions) != 0 || none.Cursor == "" {
-		t.Fatalf("after the second cursor: %v", ids(none))
+	if len(none.Questions) != 0 || none.Cursor != second.Cursor {
+		t.Fatalf("after the second cursor: %v, cursor %q, want %q", ids(none), none.Cursor, second.Cursor)
 	}
 	again := w.callLater(t, "decider", local.OpQuestions, map[string]any{"after": none.Cursor, "wait": 2})
 	if r := within(t, again, 4*time.Second).rep; len(r.Questions) != 0 {
 		t.Fatalf("after an empty reply's cursor: %v", ids(r))
 	}
-	for _, after := range []string{"nothing a window minted", strings.Repeat("0", 32) + "-1", first.Cursor + "0"} {
+	// Every cursor is 32 lowercase hex digits; one changed in any digit, or of another length, is
+	// taken for none.
+	for _, c := range []string{first.Cursor, second.Cursor} {
+		if len(c) != 32 || strings.Trim(c, "0123456789abcdef") != "" {
+			t.Fatalf("a cursor of another form: %q", c)
+		}
+	}
+	flip := func(c string, i int) string {
+		d := "1"
+		if c[i] == '1' {
+			d = "2"
+		}
+		return c[:i] + d + c[i+1:]
+	}
+	for _, after := range []string{"nothing a window minted", strings.Repeat("0", 32), first.Cursor + "0", first.Cursor[:31],
+		flip(first.Cursor, 0), flip(first.Cursor, 15), flip(first.Cursor, 31), strings.ToUpper(first.Cursor)} {
 		if got := ids(w.call(t, "decider", local.OpQuestions, map[string]any{"after": after})); len(got) != 2 || got[0] != q1 || got[1] != q2 {
 			t.Fatalf("after %q: %v", after, got)
 		}

@@ -107,7 +107,7 @@ var table = map[key]string{
 	{FromLocal, "reply"}:       "What the window sent is not a reply; check the socket is a placket window's.",
 	{FromLocal, "socket-path"}: "The socket path is longer than the system takes; use a shorter one.",
 	{FromLocal, "judge"}:       "The window's judge configs are not the ones its card lists; start it with the card's judges.",
-	{FromLocal, "cursor"}:      "The window could not draw its cursors' random value; start it again.",
+	{FromLocal, "cursor"}:      "The window could not draw its cursors' key; start it again.",
 }
 
 // Sentence is the sentence of the code from where it comes from, and whether it has one.
