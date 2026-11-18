@@ -352,3 +352,30 @@ func TestNoHiddenTextReadsTrackedFiles(t *testing.T) {
 		t.Fatalf("below the top of a work tree; want:\n%s\ngot:\n%s", wantAll, got)
 	}
 }
+
+// hasHidden finds a hidden character wherever it stands after a run of ASCII, at every offset from
+// an eight-byte boundary, and a NUL byte anywhere; it passes over a byte that is not valid UTF-8 and
+// a visible character outside ASCII. It reads a file without allocating, ASCII or not: no-hidden-text
+// reads every file of the tree, and each of the checker's cases reads the whole tree again.
+func TestHasHiddenReadsInPlace(t *testing.T) {
+	for _, tail := range []string{"\u202e", "\u200b", "\ufe0f", "\U000e0041", "\x00"} {
+		for n := range 24 {
+			b := []byte(strings.Repeat("a", n) + tail + "z")
+			if !hasHidden(b) {
+				t.Fatalf("%q after %d ASCII bytes: not found", tail, n)
+			}
+		}
+	}
+	for _, s := range []string{"", "plain text\n", strings.Repeat("abcdefg\n", 9), "caf\u00e9 \u00bd \xff\xfe ok", "\xe2\x80"} {
+		if hasHidden([]byte(s)) {
+			t.Fatalf("%q: found a hidden character in visible text", s)
+		}
+	}
+	ascii := []byte(strings.Repeat("every file of the tree\n", 1<<12))
+	other := []byte(strings.Repeat("caf\u00e9 \u00bd\n", 1<<12))
+	for name, b := range map[string][]byte{"ASCII": ascii, "not ASCII": other} {
+		if n := testing.AllocsPerRun(10, func() { hasHidden(b) }); n != 0 {
+			t.Fatalf("hasHidden on %s text allocates %v times; want none", name, n)
+		}
+	}
+}

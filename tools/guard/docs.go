@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"encoding/binary"
 	"fmt"
 	"path"
 	"regexp"
@@ -302,11 +303,39 @@ func runes(b []byte) []rune {
 	return out
 }
 
+// hasHidden reports whether b holds a character hidden names. Every one of them but NUL is outside
+// ASCII, so a file that is ASCII with no NUL byte, as nearly every file of the tree is, is passed over
+// eight bytes at a time and never decoded. Any other file is decoded in place, one character at a
+// time, passing over a byte that is not valid UTF-8 as runes does.
 func hasHidden(b []byte) bool {
-	for _, r := range runes(b) {
-		if hidden(r) != "" {
+	if bytes.IndexByte(b, 0) >= 0 {
+		return true
+	}
+	if isASCII(b) {
+		return false
+	}
+	for len(b) > 0 {
+		r, n := utf8.DecodeRune(b)
+		if (r != utf8.RuneError || n > 1) && hidden(r) != "" {
 			return true
 		}
+		b = b[n:]
 	}
 	return false
+}
+
+// isASCII reports whether every byte of b is below 0x80, reading it eight bytes at a time.
+func isASCII(b []byte) bool {
+	for len(b) >= 8 {
+		if binary.LittleEndian.Uint64(b)&0x8080808080808080 != 0 {
+			return false
+		}
+		b = b[8:]
+	}
+	for _, c := range b {
+		if c >= utf8.RuneSelf {
+			return false
+		}
+	}
+	return true
 }
