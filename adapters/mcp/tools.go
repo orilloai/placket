@@ -290,7 +290,9 @@ func (s *Server) get(ctx context.Context, c *client.Client, wait int) map[string
 }
 
 // questions lists the open questions the key may answer, each as questions prints it with its ask's
-// receipt, and the cursor to pass back as after.
+// receipt, and the cursor to pass back as after. A question the window shows that is not the part
+// its ask's receipt names is left out, and its id listed in misstated, so the agent learns of it and
+// still gets the questions after it, and a cursor past them all.
 func (s *Server) questions(ctx context.Context, c *client.Client, wait int, after string) map[string]any {
 	shown, err := c.Questions(ctx, wait, after)
 	if err != nil {
@@ -318,8 +320,8 @@ func (s *Server) questions(ctx context.Context, c *client.Client, wait int, afte
 	if shown.Close != nil {
 		o["close"] = json.RawMessage(shown.Close)
 	}
-	if shown.Misstated {
-		return toolError(errtext.FromClient, string(client.CodeAsked))
+	if len(shown.Misstated) > 0 {
+		o["misstated"] = shown.Misstated
 	}
 	return toolResult(o)
 }

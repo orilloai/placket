@@ -1,14 +1,19 @@
 package cli_test
 
 import (
+	"bufio"
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
+	"net"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/orilloai/placket/adapters/cli"
+	"github.com/orilloai/placket/adapters/keyfile"
+	"github.com/orilloai/placket/adapters/local"
 )
 
 // A proc is a command that runs until it ends or is stopped, in this process: its output as it
@@ -147,5 +152,63 @@ func TestWatchPrintsEachQuestionOnce(t *testing.T) {
 	again := background(t, e, strings.NewReader(""), "watch", "--label", "approve", "--count", "1")
 	if code := again.wait(t, 10*time.Second); code != 0 || !strings.HasPrefix(again.stdout.String(), "question "+asked[1]+"\n") {
 		t.Fatalf("a second watch: %d, %q", code, again.stdout.String())
+	}
+}
+
+// shownQuestions is the questions a window shows name's key, as its reply carries them.
+func shownQuestions(t testing.TB, a *accord, name string) []any {
+	t.Helper()
+	k, err := keyfile.Read(a.key(name))
+	if err != nil {
+		t.Fatal(err)
+	}
+	call, err := local.SignCall(k, local.OpQuestions, a.id, time.Now(), []byte(strings.Repeat("n", 16)), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	c, err := net.Dial("unix", a.socket())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer c.Close()
+	if _, err := c.Write(append(call, '\n')); err != nil {
+		t.Fatal(err)
+	}
+	b, err := bufio.NewReader(c).ReadBytes('\n')
+	if err != nil {
+		t.Fatal(err)
+	}
+	var rep struct{ Questions []any }
+	if err := json.Unmarshal(b, &rep); err != nil {
+		t.Fatal(err)
+	}
+	return rep.Questions
+}
+
+// TestWatchSaysWhatTheWindowMisstates watches a window that shows two questions, the first under a
+// salt that does not make its ask's receipt's digest: watch prints the second, says once on standard
+// error that it left the first out, with its label and id, and exits 0 at --count 1.
+func TestWatchSaysWhatTheWindowMisstates(t *testing.T) {
+	t.Parallel()
+	a := newAccord(t, "proposer", "applier", "decider")
+	a.start(t)
+	q1, q2 := a.openOne(t, "One."), a.openOne(t, "Two.")
+	shown := shownQuestions(t, a, "decider")
+	if len(shown) != 2 {
+		t.Fatalf("the window shows %d questions", len(shown))
+	}
+	shown[0].(map[string]any)["salt"] = strings.Repeat("ab", 32)
+	f := newFakeWindow(t, a.dir)
+	f.set(t, map[string]any{"ok": true, "questions": shown, "cursor": "c"})
+	entry := a.entry("decider", "approve")
+	entry["socket"] = f.socket
+	e, _ := labelsEnv(t, entry)
+	w := background(t, e, strings.NewReader(""), "watch", "--label", "approve", "--count", "1")
+	if code := w.wait(t, 10*time.Second); code != 0 || !strings.HasPrefix(w.stdout.String(), "question "+q2+"\n") ||
+		strings.Contains(w.stdout.String(), q1) {
+		t.Fatalf("watch: %d, %q", code, w.stdout.String())
+	}
+	if got, want := w.stderr.String(), fmt.Sprintf(cli.LineMisstated+"\n", "approve", q1); got != want {
+		t.Fatalf("watch said %q, want %q", got, want)
 	}
 }

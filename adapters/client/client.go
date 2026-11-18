@@ -495,13 +495,14 @@ func keptLine(delivery []byte) []byte {
 }
 
 // Shown is what a questions call showed: the reply, a refusal in it; the questions the key may
-// answer, each the part its ask's receipt names; whether the window showed one that is not
-// (Misstated), left out here; whether it left some out to keep the reply under local.MaxReply
-// (More); the cursor to pass back as after; and the close, on a closed Accord.
+// answer, each the part its ask's receipt names; the ids of those the window showed that are not
+// (Misstated), left out of Questions, as the window wrote them; whether it left some out to keep the
+// reply under local.MaxReply (More); the cursor to pass back as after, which is past the questions
+// left out too; and the close, on a closed Accord.
 type Shown struct {
 	Reply     local.Reply
 	Questions []local.Asked
-	Misstated bool
+	Misstated []string
 	More      bool
 	Cursor    string
 	Close     []byte
@@ -528,7 +529,7 @@ func (c *Client) Questions(ctx context.Context, wait int, after string) (Shown, 
 	s := Shown{Reply: rep, Questions: []local.Asked{}, More: rep.More, Cursor: rep.Cursor, Close: rep.Close}
 	for _, q := range rep.Questions {
 		if !c.Asked(q) {
-			s.Misstated = true
+			s.Misstated = append(s.Misstated, q.ID)
 			continue
 		}
 		s.Questions = append(s.Questions, q)

@@ -56,7 +56,7 @@ func questionsCommand(r *run, args []string) int {
 		}
 		list = append(list, j)
 	}
-	if shown.Misstated {
+	if len(shown.Misstated) > 0 {
 		return r.tool(string(client.CodeAsked))
 	}
 	return ExitOK

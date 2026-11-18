@@ -8,6 +8,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"io"
+	"net"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -18,6 +19,7 @@ import (
 
 	"github.com/orilloai/placket/adapters/client"
 	"github.com/orilloai/placket/adapters/errtext"
+	"github.com/orilloai/placket/adapters/keyfile"
 	"github.com/orilloai/placket/adapters/local"
 	"github.com/orilloai/placket/adapters/mcp"
 	"github.com/orilloai/placket/core/answer"
@@ -371,4 +373,82 @@ func TestCancelWithdrawsOnlyTheKeysOwnQuestion(t *testing.T) {
 	if o, e := s.call(t, "result", map[string]any{"mediator": "merge", "question": q2}); e != "" || o["open"] != true {
 		t.Fatalf("the question after another key's cancel: %v %s", o, e)
 	}
+}
+
+// TestQuestionsLeavesOutWhatTheWindowMisstates asks two proposals, then serves the decider's label
+// from a window that shows both, the first under a salt that does not make its ask's receipt's
+// digest: questions returns the second and the window's cursor, and lists the first in misstated.
+func TestQuestionsLeavesOutWhatTheWindowMisstates(t *testing.T) {
+	t.Parallel()
+	w := newWorld(t)
+	s := serve(t, &mcp.Server{Config: client.Config{Mediators: []client.Mediator{w.entry("merge", "proposer", 0)}}, Labels: []string{"merge"}})
+	var asked []string
+	for _, text := range []string{"One.", "Two."} {
+		o, e := s.call(t, "give", map[string]any{"mediator": "merge", "to": w.refs["applier"], "kind": "proposal", "text": text})
+		if e != "" {
+			t.Fatal(e)
+		}
+		asked = append(asked, o["question"].(string))
+	}
+	k, err := keyfile.Read(w.key("decider"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	call, err := local.SignCall(k, local.OpQuestions, w.accords[0], time.Now(), []byte(strings.Repeat("n", 16)), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var rep struct{ Questions []map[string]any }
+	if err := json.Unmarshal(exchange(t, w.sockets[0], call), &rep); err != nil || len(rep.Questions) != 2 {
+		t.Fatalf("the window shows %d questions: %v", len(rep.Questions), err)
+	}
+	rep.Questions[0]["salt"] = strings.Repeat("ab", 32)
+	reply, _ := json.Marshal(map[string]any{"ok": true, "questions": rep.Questions, "cursor": "c"})
+	reply, _ = canonical.Form(reply)
+	fake := filepath.Join(w.dir, "fake")
+	l, err := net.Listen("unix", fake)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = l.Close() })
+	go func() {
+		for {
+			c, err := l.Accept()
+			if err != nil {
+				return
+			}
+			_, _ = bufio.NewReader(c).ReadBytes('\n')
+			_, _ = c.Write(append(reply, '\n'))
+			_ = c.Close()
+		}
+	}()
+	approve := w.entry("approve", "decider", 0)
+	approve.Socket = fake
+	d := serve(t, &mcp.Server{Config: client.Config{Mediators: []client.Mediator{approve}}, Labels: []string{"approve"}, AllowAnswering: true})
+	o, e := d.call(t, "questions", map[string]any{"mediator": "approve"})
+	list, _ := o["questions"].([]any)
+	if e != "" || len(list) != 1 || list[0].(map[string]any)["id"] != asked[1] || o["cursor"] != "c" {
+		t.Fatalf("questions: %v %s", o, e)
+	}
+	if m, _ := o["misstated"].([]any); len(m) != 1 || m[0] != asked[0] {
+		t.Fatalf("misstated: %v", o["misstated"])
+	}
+}
+
+// exchange sends one line to the socket and returns the line it answers with.
+func exchange(t *testing.T, socket string, line []byte) []byte {
+	t.Helper()
+	c, err := net.Dial("unix", socket)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer c.Close()
+	if _, err := c.Write(append(line, '\n')); err != nil {
+		t.Fatal(err)
+	}
+	b, err := bufio.NewReader(c).ReadBytes('\n')
+	if err != nil {
+		t.Fatal(err)
+	}
+	return b
 }

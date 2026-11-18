@@ -14,12 +14,14 @@ func init() {
 	commands["watch"] = watchCommand
 }
 
-// A sighting is a question one watched mediator showed, or the failure that ended its loop.
+// A sighting is a question one watched mediator showed, the id of one it showed that is not the part
+// its ask's receipt names, or the failure that ended its loop.
 type sighting struct {
-	label string
-	q     local.Asked
-	rep   local.Reply
-	err   error
+	label     string
+	q         local.Asked
+	misstated string
+	rep       local.Reply
+	err       error
 }
 
 // watchCommand is `watch --label L... [--count N] [--json]`: it waits on the questions of each
@@ -31,7 +33,9 @@ type sighting struct {
 // (state-lock). A question already printed is not printed again; it keeps no state between runs, so
 // after a restart it prints the questions still open again. With --count it exits 0 once it has
 // printed N; it runs until interrupted otherwise, and exits 0 then. The first failure of any label's
-// loop, a refusal or an error, ends it with that refusal's or error's exit.
+// loop, a refusal or an error, ends it with that refusal's or error's exit. A question the window
+// shows that is not the part its ask's receipt names is not printed: watch says so on standard error,
+// once, with LineMisstated, and goes on.
 //
 // With --json each question is one object on a line of its own, as it opens: label, id, kind, asker,
 // deadline, form, the part as questions shows it, and commands, the three lines; the command's
@@ -88,6 +92,10 @@ func watchCommand(r *run, args []string) int {
 			if code, refused := r.refusal(s.rep); refused {
 				return code
 			}
+			if s.misstated != "" {
+				fmt.Fprintf(r.stderr, LineMisstated+"\n", s.label, field(s.misstated))
+				continue
+			}
 			r.printQuestion(s.label, s.q)
 			if printed++; *count > 0 && printed == *count {
 				return ExitOK
@@ -97,7 +105,8 @@ func watchCommand(r *run, args []string) int {
 }
 
 // watchOne is one label's loop: questions with the longest wait, after the last reply's cursor, each
-// new question sent on seen once. It ends when ctx does, on a closed Accord, which opens no question,
+// new question sent on seen once, and the id of each the window showed that is not its ask's part,
+// once too. It ends when ctx does, on a closed Accord, which opens no question,
 // and after sending a failure.
 func watchOne(ctx context.Context, label string, c *client.Client, seen chan<- sighting) {
 	send := func(s sighting) bool {
@@ -108,7 +117,7 @@ func watchOne(ctx context.Context, label string, c *client.Client, seen chan<- s
 			return false
 		}
 	}
-	printed := map[string]bool{}
+	printed, misstated := map[string]bool{}, map[string]bool{}
 	cursor := ""
 	for {
 		shown, err := c.Questions(ctx, local.MaxWait, cursor)
@@ -122,6 +131,15 @@ func watchOne(ctx context.Context, label string, c *client.Client, seen chan<- s
 		if _, _, refused := client.Refused(shown.Reply); refused {
 			send(sighting{label: label, rep: shown.Reply})
 			return
+		}
+		for _, id := range shown.Misstated {
+			if misstated[id] {
+				continue
+			}
+			misstated[id] = true
+			if !send(sighting{label: label, misstated: id}) {
+				return
+			}
 		}
 		for _, q := range shown.Questions {
 			if printed[q.ID] {

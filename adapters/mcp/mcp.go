@@ -423,7 +423,7 @@ func known(name string) bool {
 var descriptions = map[string]string{
 	ToolGive:      "Give one part to a member of a mediator's Accord. Returns its receipt; when the part is asked about, the question's id at once: follow with result and its wait.",
 	ToolGet:       "Fetch the next delivery queued for the key, recorded before it is returned. With wait, wait for one.",
-	ToolQuestions: "List the open questions the key may answer. With after, the cursor of an earlier result, only those opened since; with wait, wait for one.",
+	ToolQuestions: "List the open questions the key may answer. With after, the cursor of an earlier result, only those opened since; with wait, wait for one. A question the window shows that is not the part its ask's receipt names is left out, its id listed in misstated.",
 	ToolResult:    "How a question the key asked closed, and the answer or version after an accept or a change. With wait, wait for the closing.",
 	ToolCancel:    "Withdraw a question the key asked. It never accepts, changes or declines.",
 	ToolMediators: "List the mediators of the labels config, and whether each is served here.",
