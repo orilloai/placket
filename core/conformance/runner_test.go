@@ -1,12 +1,14 @@
 package conformance
 
 import (
+	"crypto/sha256"
 	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
 	"reflect"
 	"strings"
+	"sync"
 	"testing"
 	"testing/fstest"
 )
@@ -55,7 +57,45 @@ func fixture(t *testing.T, name string, h Handlers) Report {
 	t.Helper()
 	spec := tree(t, filepath.Join("testdata", name, "spec"), tree(t, "testdata/spec-small", tree(t, repoSpec, nil)))
 	vectors := tree(t, filepath.Join("testdata", name, "vectors"), nil)
-	return Run(spec, vectors, h)
+	return run(spec, vectors, h)
+}
+
+// loads holds each load of spec/schema/ the tests have made, by the content of its files, so that the
+// many runs over one spec compile its schemas and check their examples once.
+var loads sync.Map // string -> *schemaLoad
+
+// A schemaLoad is what loadSchema returned for one content of spec/schema/, made once.
+type schemaLoad struct {
+	once     sync.Once
+	schema   *node
+	problems []string
+}
+
+// run is Run for the tests, with each content of spec/schema/ loaded once: the key is the name and
+// bytes of every file under it, a superset of what loadSchema reads, so two specs share a load only
+// when loadSchema would read the same bytes from both. A spec whose schema/ cannot be walked goes to
+// Run as it is. Run itself runs in TestVectors.
+func run(spec, vectors fs.FS, h Handlers) Report {
+	sum := sha256.New()
+	err := fs.WalkDir(spec, "schema", func(p string, d fs.DirEntry, err error) error {
+		if err != nil || d.IsDir() {
+			return err
+		}
+		b, err := fs.ReadFile(spec, p)
+		if err != nil {
+			return err
+		}
+		fmt.Fprintf(sum, "%d %s %d ", len(p), p, len(b))
+		sum.Write(b)
+		return nil
+	})
+	if err != nil {
+		return Run(spec, vectors, h)
+	}
+	v, _ := loads.LoadOrStore(string(sum.Sum(nil)), &schemaLoad{})
+	l := v.(*schemaLoad)
+	l.once.Do(func() { l.schema, l.problems = loadSchema(spec) })
+	return runLoaded(spec, vectors, h, l.schema, l.problems)
 }
 
 // expect compares the whole report, line by line, and its verdict.

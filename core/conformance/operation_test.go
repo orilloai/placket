@@ -26,7 +26,7 @@ func TestAVectorWithNoStringOperationFails(t *testing.T) {
 			"founding/no-operation.json": {Data: []byte(`{"vector":"founding/no-operation","spec":"0.1",` +
 				`"tests":"a vector with no operation","inputText":"{}"` + op + `}`)},
 		}
-		r := Run(spec, vectors, Default())
+		r := run(spec, vectors, Default())
 		expect(t, r, false,
 			`fail: vectors/founding/no-operation.json: operation: no member "operation" that is a string, so no part of the vector can run`,
 			`open: receipt-6: M1`, `open: receipt-6: scenario "a chain that verifies": M1`,

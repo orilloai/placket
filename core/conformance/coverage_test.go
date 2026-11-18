@@ -46,7 +46,7 @@ func TestCoverageListIsExact(t *testing.T) {
 func TestCoverageListMissing(t *testing.T) {
 	t.Parallel()
 	spec := tree(t, "testdata/spec-small", tree(t, repoSpec, nil))
-	r := Run(spec, fstest.MapFS{}, Default())
+	r := run(spec, fstest.MapFS{}, Default())
 	expect(t, r, false,
 		`fail: vectors/coverage.json: missing or unreadable; it says what covers each requirement`,
 		`0 vectors: 0 passed, 0 failed; 1 other failure; 0 entries open`)
@@ -77,7 +77,7 @@ func TestCoverageEntryShapes(t *testing.T) {
 		{`{"canonical-1": {"open": "M1", "scenarios": {"members sorted": {"open": "M1", "scenarios": {}}}}, ` + receipt6 + `}`,
 			[]string{`vectors/coverage.json: canonical-1: scenario "members sorted": a member "scenarios" an entry does not have`}},
 	} {
-		r := Run(spec, fstest.MapFS{"coverage.json": {Data: []byte(c.list)}}, Default())
+		r := run(spec, fstest.MapFS{"coverage.json": {Data: []byte(c.list)}}, Default())
 		if r.Passed() {
 			t.Errorf("%s: the run passed", c.list)
 		}
