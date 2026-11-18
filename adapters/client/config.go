@@ -1,6 +1,7 @@
 package client
 
 import (
+	"encoding/json"
 	"errors"
 	"io"
 	"io/fs"
@@ -43,11 +44,23 @@ type configFile struct {
 }
 
 type configEntry struct {
-	Accord   *string `json:"accord"`
-	Key      *string `json:"key"`
-	Founding *string `json:"founding"`
-	Socket   *string `json:"socket"`
-	Label    *string `json:"label"`
+	Accord   json.RawMessage `json:"accord"`
+	Key      json.RawMessage `json:"key"`
+	Founding json.RawMessage `json:"founding"`
+	Socket   json.RawMessage `json:"socket"`
+	Label    json.RawMessage `json:"label"`
+}
+
+// member reads an entry's member as a string: whether it is there, and whether it is a string, which
+// null is not.
+func member(raw json.RawMessage) (s string, there, ok bool) {
+	if len(raw) == 0 {
+		return "", false, true
+	}
+	if raw[0] != '"' || json.Unmarshal(raw, &s) != nil {
+		return "", true, false
+	}
+	return s, true, true
 }
 
 // ReadConfig reads the labels config of the config directory getenv names. A missing file, or no
@@ -99,16 +112,18 @@ func DecodeConfig(b []byte, dir string, getenv func(string) string) (Config, err
 	}
 	var c Config
 	for _, e := range *f.Mediators {
-		if e.Accord == nil || !AccordID(*e.Accord) || !nonEmpty(e.Key) || !nonEmpty(e.Founding) ||
-			(e.Socket != nil && *e.Socket == "") || (e.Label != nil && !Label(*e.Label)) {
+		accord, hasAccord, ok1 := member(e.Accord)
+		key, hasKey, ok2 := member(e.Key)
+		founding, hasFounding, ok3 := member(e.Founding)
+		socket, hasSocket, ok4 := member(e.Socket)
+		label, hasLabel, ok5 := member(e.Label)
+		if !ok1 || !ok2 || !ok3 || !ok4 || !ok5 || !hasAccord || !AccordID(accord) || !hasKey || key == "" ||
+			!hasFounding || founding == "" || (hasSocket && socket == "") || (hasLabel && !Label(label)) {
 			return Config{}, fail(CodeBadConfig)
 		}
-		m := Mediator{Accord: *e.Accord, Key: path(*e.Key), Founding: path(*e.Founding)}
-		if e.Label != nil {
-			m.Label = *e.Label
-		}
-		if e.Socket != nil {
-			m.Socket = path(*e.Socket)
+		m := Mediator{Accord: accord, Key: path(key), Founding: path(founding), Label: label}
+		if hasSocket {
+			m.Socket = path(socket)
 		} else {
 			m.Socket = filepath.Clean(local.DefaultSocketWith(getenv, m.Accord))
 		}
@@ -135,8 +150,6 @@ func DecodeConfig(b []byte, dir string, getenv func(string) string) (Config, err
 	}
 	return c, nil
 }
-
-func nonEmpty(s *string) bool { return s != nil && *s != "" }
 
 // Find returns the entry name names: the entry of that label, or, when name is an Accord id, the
 // entry of that Accord with no label. A labelled entry is named by its label only. Any other name is

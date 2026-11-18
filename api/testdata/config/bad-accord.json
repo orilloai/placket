@@ -1,0 +1,9 @@
+{
+  "mediators": [
+    {
+      "accord": "sha256:ABC",
+      "key": "proposer.key",
+      "founding": "founding.json"
+    }
+  ]
+}

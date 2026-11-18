@@ -1,0 +1,28 @@
+{
+  "mediators": [
+    {
+      "accord": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "key": "proposer.key",
+      "founding": "founding.json",
+      "socket": "/s/1"
+    },
+    {
+      "accord": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "key": "proposer.key",
+      "founding": "founding.json",
+      "socket": "/s/2"
+    },
+    {
+      "accord": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "key": "proposer.key",
+      "founding": "founding.json",
+      "socket": "/s/2"
+    },
+    {
+      "accord": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      "key": "proposer.key",
+      "founding": "founding.json",
+      "socket": "/s/1"
+    }
+  ]
+}

@@ -1,0 +1,25 @@
+{
+  "at": "2026-11-18T09:00:00Z",
+  "bytes": "{\"call\":{\"accord\":\"sha256:d9e291d242d98b4566b618e04bf48a3e5114cb2426fc6c61d258ce26628fce0e\",\"args\":{\"wait\":1},\"at\":\"2026-11-18T09:00:00Z\",\"caller\":\"ed25519:cfa6e8e88109895dcf44b63602c6a2cd74229c54ff8eb9603486cb510db5f912\",\"nonce\":\"3bd45fb1aad830096122425a8de22bb9\",\"op\":\"get\"},\"sig\":\"G7ipBhLTlMDrdNjrzPApB8h8/YkG1FQQqNt6ker7TDXg5xfbagA7fNCEnzsFv+yDYZJ3l9lufurP4LNAQBKhDw==\"}",
+  "call": {
+    "call": {
+      "accord": "sha256:d9e291d242d98b4566b618e04bf48a3e5114cb2426fc6c61d258ce26628fce0e",
+      "args": {
+        "wait": 1
+      },
+      "at": "2026-11-18T09:00:00Z",
+      "caller": "ed25519:cfa6e8e88109895dcf44b63602c6a2cd74229c54ff8eb9603486cb510db5f912",
+      "nonce": "3bd45fb1aad830096122425a8de22bb9",
+      "op": "get"
+    },
+    "sig": "G7ipBhLTlMDrdNjrzPApB8h8/YkG1FQQqNt6ker7TDXg5xfbagA7fNCEnzsFv+yDYZJ3l9lufurP4LNAQBKhDw=="
+  },
+  "key": "applier",
+  "nonce": "3bd45fb1aad830096122425a8de22bb9",
+  "op": "get",
+  "request": {
+    "wait": 1
+  },
+  "seed": "cb873bd46dfc5887e77116d5bc30fab38884820abadfc73651d10881417ba24d",
+  "sig": "G7ipBhLTlMDrdNjrzPApB8h8/YkG1FQQqNt6ker7TDXg5xfbagA7fNCEnzsFv+yDYZJ3l9lufurP4LNAQBKhDw=="
+}

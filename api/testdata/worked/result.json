@@ -1,0 +1,25 @@
+{
+  "at": "2026-11-18T09:00:00Z",
+  "bytes": "{\"call\":{\"accord\":\"sha256:d9e291d242d98b4566b618e04bf48a3e5114cb2426fc6c61d258ce26628fce0e\",\"args\":{\"question\":\"sha256:44d966d717f9030123d7a10012e761ad0918f3f255cb472a752cc76e49e0ca3e\"},\"at\":\"2026-11-18T09:00:00Z\",\"caller\":\"ed25519:57a941f7e1d6cd7d3eb516cbb1020a666362504de45dd87c3b91abca7f9afa68\",\"nonce\":\"78e319fb81310a2ad73b53d5001cd4bc\",\"op\":\"result\"},\"sig\":\"CtP8HHkQ3yZuGeO9MWEW8KF7K4f8LCDPMe6jMo95+fxB9iKJOyt8GoFEFxzysvNZoy4+h9RQFvfREPRzW7vEBg==\"}",
+  "call": {
+    "call": {
+      "accord": "sha256:d9e291d242d98b4566b618e04bf48a3e5114cb2426fc6c61d258ce26628fce0e",
+      "args": {
+        "question": "sha256:44d966d717f9030123d7a10012e761ad0918f3f255cb472a752cc76e49e0ca3e"
+      },
+      "at": "2026-11-18T09:00:00Z",
+      "caller": "ed25519:57a941f7e1d6cd7d3eb516cbb1020a666362504de45dd87c3b91abca7f9afa68",
+      "nonce": "78e319fb81310a2ad73b53d5001cd4bc",
+      "op": "result"
+    },
+    "sig": "CtP8HHkQ3yZuGeO9MWEW8KF7K4f8LCDPMe6jMo95+fxB9iKJOyt8GoFEFxzysvNZoy4+h9RQFvfREPRzW7vEBg=="
+  },
+  "key": "proposer",
+  "nonce": "78e319fb81310a2ad73b53d5001cd4bc",
+  "op": "result",
+  "request": {
+    "question": "sha256:44d966d717f9030123d7a10012e761ad0918f3f255cb472a752cc76e49e0ca3e"
+  },
+  "seed": "f91e0d49f983ff1dc6f9cfeb671bd041f25e4d504843d4850b2d142439994787",
+  "sig": "CtP8HHkQ3yZuGeO9MWEW8KF7K4f8LCDPMe6jMo95+fxB9iKJOyt8GoFEFxzysvNZoy4+h9RQFvfREPRzW7vEBg=="
+}

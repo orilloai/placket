@@ -1,0 +1,39 @@
+{
+  "answerSalt": "5c50eb645542e3515964a7a3c6f03a44ea7e681364a6b19ee6c8979e11da6858",
+  "answerSig": "648246e9325c98e4ef63742abcad816a7a9a9d4d0acc5830aff4150380c21211d8a99170b991f1d6fa756c86b8097f0b880b15dc5edb46b561544755a9046b0a",
+  "at": "2026-11-18T09:00:00Z",
+  "bytes": "{\"call\":{\"accord\":\"sha256:d9e291d242d98b4566b618e04bf48a3e5114cb2426fc6c61d258ce26628fce0e\",\"args\":{\"answer\":{\"accord\":\"sha256:d9e291d242d98b4566b618e04bf48a3e5114cb2426fc6c61d258ce26628fce0e\",\"action\":\"accepted\",\"digest\":\"2e18c229d9c5c22b6206ca86b03adb92e3e05748787534d3641dc62393292a27\",\"from\":\"ed25519:05f6a57493f4535e8660b75b0c3f9d82d9b0225a833a1322e3938d63456d09e1\",\"question\":\"sha256:44d966d717f9030123d7a10012e761ad0918f3f255cb472a752cc76e49e0ca3e\",\"release\":true,\"sig\":\"648246e9325c98e4ef63742abcad816a7a9a9d4d0acc5830aff4150380c21211d8a99170b991f1d6fa756c86b8097f0b880b15dc5edb46b561544755a9046b0a\"},\"salt\":\"5c50eb645542e3515964a7a3c6f03a44ea7e681364a6b19ee6c8979e11da6858\",\"text\":\"Yes, rename it.\"},\"at\":\"2026-11-18T09:00:00Z\",\"caller\":\"ed25519:05f6a57493f4535e8660b75b0c3f9d82d9b0225a833a1322e3938d63456d09e1\",\"nonce\":\"7f4cc961fe9154281690c5745b95157c\",\"op\":\"resolve\"},\"sig\":\"ek2CCl5zxw/FqPufdNW18g30EyhFK4PvqbcLv4F5J23Be5FUskwcLPh9fb3GoeANENvbhJgyCLhnfSvLOc/oCA==\"}",
+  "call": {
+    "call": {
+      "accord": "sha256:d9e291d242d98b4566b618e04bf48a3e5114cb2426fc6c61d258ce26628fce0e",
+      "args": {
+        "answer": {
+          "accord": "sha256:d9e291d242d98b4566b618e04bf48a3e5114cb2426fc6c61d258ce26628fce0e",
+          "action": "accepted",
+          "digest": "2e18c229d9c5c22b6206ca86b03adb92e3e05748787534d3641dc62393292a27",
+          "from": "ed25519:05f6a57493f4535e8660b75b0c3f9d82d9b0225a833a1322e3938d63456d09e1",
+          "question": "sha256:44d966d717f9030123d7a10012e761ad0918f3f255cb472a752cc76e49e0ca3e",
+          "release": true,
+          "sig": "648246e9325c98e4ef63742abcad816a7a9a9d4d0acc5830aff4150380c21211d8a99170b991f1d6fa756c86b8097f0b880b15dc5edb46b561544755a9046b0a"
+        },
+        "salt": "5c50eb645542e3515964a7a3c6f03a44ea7e681364a6b19ee6c8979e11da6858",
+        "text": "Yes, rename it."
+      },
+      "at": "2026-11-18T09:00:00Z",
+      "caller": "ed25519:05f6a57493f4535e8660b75b0c3f9d82d9b0225a833a1322e3938d63456d09e1",
+      "nonce": "7f4cc961fe9154281690c5745b95157c",
+      "op": "resolve"
+    },
+    "sig": "ek2CCl5zxw/FqPufdNW18g30EyhFK4PvqbcLv4F5J23Be5FUskwcLPh9fb3GoeANENvbhJgyCLhnfSvLOc/oCA=="
+  },
+  "key": "decider",
+  "nonce": "7f4cc961fe9154281690c5745b95157c",
+  "op": "resolve",
+  "request": {
+    "action": "accepted",
+    "answer": "Yes, rename it.",
+    "question": "sha256:44d966d717f9030123d7a10012e761ad0918f3f255cb472a752cc76e49e0ca3e"
+  },
+  "seed": "c54a1d2a311bea31edcbf3e5b903cc878cfb63aa4222bf671449317d21a6b023",
+  "sig": "ek2CCl5zxw/FqPufdNW18g30EyhFK4PvqbcLv4F5J23Be5FUskwcLPh9fb3GoeANENvbhJgyCLhnfSvLOc/oCA=="
+}

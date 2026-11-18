@@ -1,0 +1,29 @@
+{
+  "accord": "sha256:d9e291d242d98b4566b618e04bf48a3e5114cb2426fc6c61d258ce26628fce0e",
+  "keys": {
+    "applier": {
+      "actor": "ed25519:cfa6e8e88109895dcf44b63602c6a2cd74229c54ff8eb9603486cb510db5f912",
+      "seed": "cb873bd46dfc5887e77116d5bc30fab38884820abadfc73651d10881417ba24d"
+    },
+    "decider": {
+      "actor": "ed25519:05f6a57493f4535e8660b75b0c3f9d82d9b0225a833a1322e3938d63456d09e1",
+      "seed": "c54a1d2a311bea31edcbf3e5b903cc878cfb63aa4222bf671449317d21a6b023"
+    },
+    "mediator": {
+      "actor": "ed25519:e427e5158962e776c0ed072d9f0679848c25a393505b3240753b1c940fda24b6",
+      "seed": "c9705377b6d91f80bce0feed7b9df141f2a2ffe72c1a00ae103e03b0d2fe5b15"
+    },
+    "operator": {
+      "actor": "ed25519:f1114a6443b3c2df959dc7513a0bacfe4548afbc614aa053fb3bd87068bd3764",
+      "seed": "5f2852317868471ee784018b9e791765f917ea5ea73cc92d3d648fc2c30cfe3d"
+    },
+    "principal": {
+      "actor": "ed25519:a153558e851530e7a36db8059d0b5e58074f724fbe2c72fb6a04d7f06a4aa412",
+      "seed": "45890a676417c8b963db5f35e1c0c3a546761011dfdd2d50e20c6c308abe7648"
+    },
+    "proposer": {
+      "actor": "ed25519:57a941f7e1d6cd7d3eb516cbb1020a666362504de45dd87c3b91abca7f9afa68",
+      "seed": "f91e0d49f983ff1dc6f9cfeb671bd041f25e4d504843d4850b2d142439994787"
+    }
+  }
+}
