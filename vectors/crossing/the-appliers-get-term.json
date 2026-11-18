@@ -1,22 +1,42 @@
 {
+  "acceptances": [
+    {
+      "accord": "sha256:924dff5065970a8e9173b639f9256915dc1df529fe352b4a485c8021fc4653d3",
+      "from": "ed25519:375dea8c4519dbae84fc9eb513e97eb4b693968ef37d52ac10da7b79250c6a22",
+      "sig": "079067e1876fb51d0bd7c7244e75ac2adfc6efd62eae70a195cd4ce3ecf45ff51f7333b4ab9565beab514dbcdb94d593267779186258d64e6a4f1f14d81dfe0c",
+      "view": "sha256:bedd4b5fe4f7148ec03c893f7e73b8aa395c317b060fd4ff63755a0193f0b1f3"
+    },
+    {
+      "accord": "sha256:924dff5065970a8e9173b639f9256915dc1df529fe352b4a485c8021fc4653d3",
+      "from": "ed25519:7cf35b36b9d57c62b9f3d5be2eb4d39147afa1b7625cd0032443523254df3bea",
+      "sig": "17407676c46cc5596cb28a4882d09315dd8634d05f52b8b1060d1a80d38bbb948b10e1c5f63fc732fec13d4287f1be991e2379e885fbe01daa713badf0e9e60d",
+      "view": "sha256:e98cb326281d7ce92bb36e1fd52ee8516d138b0069584f37ed7536024f1d88a8"
+    },
+    {
+      "accord": "sha256:924dff5065970a8e9173b639f9256915dc1df529fe352b4a485c8021fc4653d3",
+      "from": "ed25519:a80586279ba17c5360b029018bf025be0169fdb02087e77301774c99eed92117",
+      "sig": "517a23f979ae64fe847adbf09a5b1ab58dd550443a84fce69a2ceff661b57bfccf4f3a8db7e5d524c7891990d41103865d44a37b8cb92fbf4fa68f6bce561904",
+      "view": "sha256:e4ca9b8b665eafb57458bfb8c0d59f3ea5e971b0e51efbc1d1cabb7897209398"
+    }
+  ],
   "final": {
     "delivered": {},
     "pending": [
-      "sha256:b351a4e40d4b12aa2504e691b8f0e441cedbae369ac11b66dfa06e9d4100b98f"
+      "sha256:4e5295d2c71a40e5c04a0232cc174917e63319aa89ad3a231866e169309095a7"
     ],
     "receipts": [
       {
         "receipt": {
-          "payload": "eyJfdHlwZSI6Imh0dHBzOi8vaW4tdG90by5pby9TdGF0ZW1lbnQvdjEiLCJwcmVkaWNhdGUiOnsiYWNjb3JkIjoic2hhMjU2OjA0ZjcxZjliOTliNzI5ZDA3YmM4MjRiY2FlNzQyYWJjOWY1MWYzMWQyYjlkNTllOTY4YTVjMTY5ZTE1YjkzMDMiLCJhdCI6IjIwMjYtMTEtMTJUMDk6MDA6MDBaIiwiYnkiOiJ0ZXJtcyIsImNhcmQiOiJzaGEyNTY6Y2RlMzlkYzNmYWU2MTJiM2I5YTVmZmE0NmFkYTE1ZWU4MmMyZjgzZGNkOWQzMThhMTU0NjYzZWI5YjlmYWFjMSIsImVudmVsb3BlIjp7Imhhc2giOiJzaGEyNTY6MWU1M2FmNWRmMjAxODFmYjRjMTIyNGNhYjZjMGMzMWNiODM1ZGNmNDIxNTk4MTk4ZDNjZjZlZTA0NmI3OWFmNiIsInNlbmRlciI6ImVkMjU1MTk6N2NmMzViMzZiOWQ1N2M2MmI5ZjNkNWJlMmViNGQzOTE0N2FmYTFiNzYyNWNkMDAzMjQ0MzUyMzI1NGRmM2JlYSIsInNlcSI6MX0sImZyb20iOiJlZDI1NTE5OjdjZjM1YjM2YjlkNTdjNjJiOWYzZDViZTJlYjRkMzkxNDdhZmExYjc2MjVjZDAwMzI0NDM1MjMyNTRkZjNiZWEiLCJraW5kIjoiY3Jvc3NpbmciLCJtZWRpYXRvciI6ImVkMjU1MTk6ODQyNTRmOWQ1OTNiMGY3ODExYjE4YzAwYjY1NmE3MGZlMWE5NTk1ZWQzNTNjNzMyODZlYTgzZDMwMDIyNmVkMyIsInJlYXNvbiI6Im1heWJlIiwic2VxIjoxLCJ0byI6ImVkMjU1MTk6YTgwNTg2Mjc5YmExN2M1MzYwYjAyOTAxOGJmMDI1YmUwMTY5ZmRiMDIwODdlNzczMDE3NzRjOTllZWQ5MjExNyIsInZlcmRpY3QiOiJlc2NhbGF0ZSJ9LCJwcmVkaWNhdGVUeXBlIjoiaHR0cHM6Ly9wbGFja2V0LnRlY2gvcmVjZWlwdC8wLjEiLCJzdWJqZWN0IjpbeyJkaWdlc3QiOnsic2FsdGVkLXNoYTI1NiI6ImIxNDVjZmVhNTVmMDA2OGVlYjE3M2JkYmNjMDBlNTY0ZTE1N2E4YmJhMmZmNTM2YWQ2ZjVmY2ZkMjNhMDc2ZmMifSwibmFtZSI6InByb3Bvc2FsIn1dfQ==",
+          "payload": "eyJfdHlwZSI6Imh0dHBzOi8vaW4tdG90by5pby9TdGF0ZW1lbnQvdjEiLCJwcmVkaWNhdGUiOnsiYWNjb3JkIjoic2hhMjU2OjkyNGRmZjUwNjU5NzBhOGU5MTczYjYzOWY5MjU2OTE1ZGMxZGY1MjlmZTM1MmI0YTQ4NWM4MDIxZmM0NjUzZDMiLCJhdCI6IjIwMjYtMTEtMTJUMDk6MDA6MDBaIiwiYnkiOiJ0ZXJtcyIsImNhcmQiOiJzaGEyNTY6Y2RlMzlkYzNmYWU2MTJiM2I5YTVmZmE0NmFkYTE1ZWU4MmMyZjgzZGNkOWQzMThhMTU0NjYzZWI5YjlmYWFjMSIsImVudmVsb3BlIjp7Imhhc2giOiJzaGEyNTY6NDFmM2RlZWE1MmFkMDJlMjBmYmI2NTNkOTM5YTE4N2Q0NDgzNjdlYmEzOGY1NDk5OTgyMzk1YmRlZjljZTUyYiIsInNlbmRlciI6ImVkMjU1MTk6N2NmMzViMzZiOWQ1N2M2MmI5ZjNkNWJlMmViNGQzOTE0N2FmYTFiNzYyNWNkMDAzMjQ0MzUyMzI1NGRmM2JlYSIsInNlcSI6MX0sImZyb20iOiJlZDI1NTE5OjdjZjM1YjM2YjlkNTdjNjJiOWYzZDViZTJlYjRkMzkxNDdhZmExYjc2MjVjZDAwMzI0NDM1MjMyNTRkZjNiZWEiLCJraW5kIjoiY3Jvc3NpbmciLCJtZWRpYXRvciI6ImVkMjU1MTk6ODQyNTRmOWQ1OTNiMGY3ODExYjE4YzAwYjY1NmE3MGZlMWE5NTk1ZWQzNTNjNzMyODZlYTgzZDMwMDIyNmVkMyIsInJlYXNvbiI6Im1heWJlIiwic2VxIjoxLCJ0byI6ImVkMjU1MTk6YTgwNTg2Mjc5YmExN2M1MzYwYjAyOTAxOGJmMDI1YmUwMTY5ZmRiMDIwODdlNzczMDE3NzRjOTllZWQ5MjExNyIsInZlcmRpY3QiOiJlc2NhbGF0ZSJ9LCJwcmVkaWNhdGVUeXBlIjoiaHR0cHM6Ly9wbGFja2V0LnRlY2gvcmVjZWlwdC8wLjEiLCJzdWJqZWN0IjpbeyJkaWdlc3QiOnsic2FsdGVkLXNoYTI1NiI6ImIxNDVjZmVhNTVmMDA2OGVlYjE3M2JkYmNjMDBlNTY0ZTE1N2E4YmJhMmZmNTM2YWQ2ZjVmY2ZkMjNhMDc2ZmMifSwibmFtZSI6InByb3Bvc2FsIn1dfQ==",
           "payloadType": "application/vnd.in-toto+json",
           "signatures": [
             {
               "keyid": "ed25519:84254f9d593b0f7811b18c00b656a70fe1a9595ed353c73286ea83d300226ed3",
-              "sig": "Mtr3H9+/yCCGgcllt/xiRxRy+tZHyP+yspHRRFKEgpTnUFFRULYPC/40vCqkY4DREi4gClfdtIXvC0PX6gZMDQ=="
+              "sig": "saYlKnjMu9IWRQCD7IciFWcx+C2mY7xfO4/30/W4+lMakP3E1rOlz+tIOzUBoF1iZV3FEIIse2iionTexTFNCw=="
             }
           ]
         },
-        "receiptId": "sha256:b351a4e40d4b12aa2504e691b8f0e441cedbae369ac11b66dfa06e9d4100b98f"
+        "receiptId": "sha256:4e5295d2c71a40e5c04a0232cc174917e63319aa89ad3a231866e169309095a7"
       }
     ]
   },
@@ -68,103 +88,15 @@
     "declarations": [
       {
         "actor": "ed25519:375dea8c4519dbae84fc9eb513e97eb4b693968ef37d52ac10da7b79250c6a22",
-        "sig": "55642d296e6f6b5086f3157132eb5fe5b36001b7141b8812f41a8b9ecd0bfa031e8c34dc7bb5a88ff54a11cc392f08a3c2260d83d9e9911e7166f667cf83bb06",
-        "terms": [
-          {
-            "dir": "give",
-            "select": {
-              "kind": [
-                "answer",
-                "changed-version"
-              ]
-            },
-            "stance": "want",
-            "with": [
-              "role:proposer",
-              "role:applier"
-            ]
-          }
-        ]
+        "seal": "sha256:6b3a3176cd22b483d94e020a3e3014a776649a3b7e4ab612cc56bea99354ac40"
       },
       {
         "actor": "ed25519:7cf35b36b9d57c62b9f3d5be2eb4d39147afa1b7625cd0032443523254df3bea",
-        "sig": "d6859290e0f713addea89f5d7d54cf5161fa13a42b24d337785f7111c6486421cc9e5c4d51653a5ade8be2e6b7697d6ad13d43121a0f1ebce9c3a56bb9699a07",
-        "terms": [
-          {
-            "dir": "give",
-            "resolve": {
-              "timeout": 3600,
-              "to": [
-                "role:decider"
-              ]
-            },
-            "select": {
-              "kind": [
-                "proposal"
-              ]
-            },
-            "stance": "maybe",
-            "with": [
-              "role:applier"
-            ]
-          },
-          {
-            "dir": "give",
-            "select": {
-              "kind": [
-                "note"
-              ]
-            },
-            "stance": "want",
-            "with": [
-              "role:applier"
-            ]
-          },
-          {
-            "dir": "get",
-            "select": {
-              "kind": [
-                "answer",
-                "changed-version"
-              ]
-            },
-            "stance": "want",
-            "with": [
-              "role:decider"
-            ]
-          }
-        ]
+        "seal": "sha256:90dbd3c153773625df2f0e616ab9673d26b6f2035a1fce9ab4bcf192867f3c19"
       },
       {
         "actor": "ed25519:a80586279ba17c5360b029018bf025be0169fdb02087e77301774c99eed92117",
-        "sig": "8620748e7e658b3e7759ccc3471449096cd76c93a3cb77e74537c30ada0df811ab77ae2133ee229da2867ef318a78a23697c562ea25df35de333a1f5c1f86c06",
-        "terms": [
-          {
-            "dir": "get",
-            "select": {
-              "kind": [
-                "proposal",
-                "note"
-              ]
-            },
-            "stance": "want",
-            "with": [
-              "role:proposer"
-            ]
-          },
-          {
-            "dir": "get",
-            "select": {
-              "kind": [
-                "changed-version"
-              ]
-            },
-            "stance": "want",
-            "with": [
-              "role:decider"
-            ]
-          }
-        ]
+        "seal": "sha256:9e21939b7f1513db173724936625fd43d05bcbbb822a4f89ecbfab38a6354f84"
       }
     ],
     "mediator": {
@@ -198,29 +130,149 @@
     "stranger": "ccad0b2ffc9e7230a33399883af8bf4f662163554ad3f39547a66d29953fedeb"
   },
   "mediator": "mediator",
+  "openings": [
+    {
+      "actor": "ed25519:375dea8c4519dbae84fc9eb513e97eb4b693968ef37d52ac10da7b79250c6a22",
+      "opening": {
+        "declaration": {
+          "actor": "ed25519:375dea8c4519dbae84fc9eb513e97eb4b693968ef37d52ac10da7b79250c6a22",
+          "sig": "55642d296e6f6b5086f3157132eb5fe5b36001b7141b8812f41a8b9ecd0bfa031e8c34dc7bb5a88ff54a11cc392f08a3c2260d83d9e9911e7166f667cf83bb06",
+          "terms": [
+            {
+              "dir": "give",
+              "select": {
+                "kind": [
+                  "answer",
+                  "changed-version"
+                ]
+              },
+              "stance": "want",
+              "with": [
+                "role:proposer",
+                "role:applier"
+              ]
+            }
+          ]
+        },
+        "salt": "672f3e62cbb05c6f8c3c128689ae81ad1518b501784f3b681a8a326c93f0f420"
+      }
+    },
+    {
+      "actor": "ed25519:7cf35b36b9d57c62b9f3d5be2eb4d39147afa1b7625cd0032443523254df3bea",
+      "opening": {
+        "declaration": {
+          "actor": "ed25519:7cf35b36b9d57c62b9f3d5be2eb4d39147afa1b7625cd0032443523254df3bea",
+          "sig": "d6859290e0f713addea89f5d7d54cf5161fa13a42b24d337785f7111c6486421cc9e5c4d51653a5ade8be2e6b7697d6ad13d43121a0f1ebce9c3a56bb9699a07",
+          "terms": [
+            {
+              "dir": "give",
+              "resolve": {
+                "timeout": 3600,
+                "to": [
+                  "role:decider"
+                ]
+              },
+              "select": {
+                "kind": [
+                  "proposal"
+                ]
+              },
+              "stance": "maybe",
+              "with": [
+                "role:applier"
+              ]
+            },
+            {
+              "dir": "give",
+              "select": {
+                "kind": [
+                  "note"
+                ]
+              },
+              "stance": "want",
+              "with": [
+                "role:applier"
+              ]
+            },
+            {
+              "dir": "get",
+              "select": {
+                "kind": [
+                  "answer",
+                  "changed-version"
+                ]
+              },
+              "stance": "want",
+              "with": [
+                "role:decider"
+              ]
+            }
+          ]
+        },
+        "salt": "53c4568964dc1383b0007a8913e14f23ff29fb13b82a5996afa38e2b39ae8e6a"
+      }
+    },
+    {
+      "actor": "ed25519:a80586279ba17c5360b029018bf025be0169fdb02087e77301774c99eed92117",
+      "opening": {
+        "declaration": {
+          "actor": "ed25519:a80586279ba17c5360b029018bf025be0169fdb02087e77301774c99eed92117",
+          "sig": "8620748e7e658b3e7759ccc3471449096cd76c93a3cb77e74537c30ada0df811ab77ae2133ee229da2867ef318a78a23697c562ea25df35de333a1f5c1f86c06",
+          "terms": [
+            {
+              "dir": "get",
+              "select": {
+                "kind": [
+                  "proposal",
+                  "note"
+                ]
+              },
+              "stance": "want",
+              "with": [
+                "role:proposer"
+              ]
+            },
+            {
+              "dir": "get",
+              "select": {
+                "kind": [
+                  "changed-version"
+                ]
+              },
+              "stance": "want",
+              "with": [
+                "role:decider"
+              ]
+            }
+          ]
+        },
+        "salt": "18afd8cee3d8005b581183f51269a6bc65814b88474c7861d0dc3a697c9d0445"
+      }
+    }
+  ],
   "operation": "scenario",
   "spec": "0.1",
   "steps": [
     {
       "as": "proposer",
       "at": "2026-11-12T09:00:00Z",
-      "envelopeHex": "7b2268617368223a227368613235363a31653533616635646632303138316662346331323234636162366330633331636238333564636634323135393831393864336366366565303436623739616636222c22736571223a312c22736967223a223236373432326631646363356366366363663762383864323564393866393166383130363864363966343166646533623464336636393462396363316631373439616239613065376462656234343465646165633039396430306137373934383161643765666462303463306463386338643861666538623965353736613034227d",
+      "envelopeHex": "7b2268617368223a227368613235363a34316633646565613532616430326532306662623635336439333961313837643434383336376562613338663534393939383233393562646566396365353262222c22736571223a312c22736967223a223137613932653835343931636533316132393730316365666430366636666330336534386630373532313365353563323463643365636237396235336539663039636466303764613361366563336633346566386231333430336463386232613561373731333834343432663336373839616265313463633736396364643035227d",
       "expect": {
         "reason": "maybe",
         "receipt": {
-          "payload": "eyJfdHlwZSI6Imh0dHBzOi8vaW4tdG90by5pby9TdGF0ZW1lbnQvdjEiLCJwcmVkaWNhdGUiOnsiYWNjb3JkIjoic2hhMjU2OjA0ZjcxZjliOTliNzI5ZDA3YmM4MjRiY2FlNzQyYWJjOWY1MWYzMWQyYjlkNTllOTY4YTVjMTY5ZTE1YjkzMDMiLCJhdCI6IjIwMjYtMTEtMTJUMDk6MDA6MDBaIiwiYnkiOiJ0ZXJtcyIsImNhcmQiOiJzaGEyNTY6Y2RlMzlkYzNmYWU2MTJiM2I5YTVmZmE0NmFkYTE1ZWU4MmMyZjgzZGNkOWQzMThhMTU0NjYzZWI5YjlmYWFjMSIsImVudmVsb3BlIjp7Imhhc2giOiJzaGEyNTY6MWU1M2FmNWRmMjAxODFmYjRjMTIyNGNhYjZjMGMzMWNiODM1ZGNmNDIxNTk4MTk4ZDNjZjZlZTA0NmI3OWFmNiIsInNlbmRlciI6ImVkMjU1MTk6N2NmMzViMzZiOWQ1N2M2MmI5ZjNkNWJlMmViNGQzOTE0N2FmYTFiNzYyNWNkMDAzMjQ0MzUyMzI1NGRmM2JlYSIsInNlcSI6MX0sImZyb20iOiJlZDI1NTE5OjdjZjM1YjM2YjlkNTdjNjJiOWYzZDViZTJlYjRkMzkxNDdhZmExYjc2MjVjZDAwMzI0NDM1MjMyNTRkZjNiZWEiLCJraW5kIjoiY3Jvc3NpbmciLCJtZWRpYXRvciI6ImVkMjU1MTk6ODQyNTRmOWQ1OTNiMGY3ODExYjE4YzAwYjY1NmE3MGZlMWE5NTk1ZWQzNTNjNzMyODZlYTgzZDMwMDIyNmVkMyIsInJlYXNvbiI6Im1heWJlIiwic2VxIjoxLCJ0byI6ImVkMjU1MTk6YTgwNTg2Mjc5YmExN2M1MzYwYjAyOTAxOGJmMDI1YmUwMTY5ZmRiMDIwODdlNzczMDE3NzRjOTllZWQ5MjExNyIsInZlcmRpY3QiOiJlc2NhbGF0ZSJ9LCJwcmVkaWNhdGVUeXBlIjoiaHR0cHM6Ly9wbGFja2V0LnRlY2gvcmVjZWlwdC8wLjEiLCJzdWJqZWN0IjpbeyJkaWdlc3QiOnsic2FsdGVkLXNoYTI1NiI6ImIxNDVjZmVhNTVmMDA2OGVlYjE3M2JkYmNjMDBlNTY0ZTE1N2E4YmJhMmZmNTM2YWQ2ZjVmY2ZkMjNhMDc2ZmMifSwibmFtZSI6InByb3Bvc2FsIn1dfQ==",
+          "payload": "eyJfdHlwZSI6Imh0dHBzOi8vaW4tdG90by5pby9TdGF0ZW1lbnQvdjEiLCJwcmVkaWNhdGUiOnsiYWNjb3JkIjoic2hhMjU2OjkyNGRmZjUwNjU5NzBhOGU5MTczYjYzOWY5MjU2OTE1ZGMxZGY1MjlmZTM1MmI0YTQ4NWM4MDIxZmM0NjUzZDMiLCJhdCI6IjIwMjYtMTEtMTJUMDk6MDA6MDBaIiwiYnkiOiJ0ZXJtcyIsImNhcmQiOiJzaGEyNTY6Y2RlMzlkYzNmYWU2MTJiM2I5YTVmZmE0NmFkYTE1ZWU4MmMyZjgzZGNkOWQzMThhMTU0NjYzZWI5YjlmYWFjMSIsImVudmVsb3BlIjp7Imhhc2giOiJzaGEyNTY6NDFmM2RlZWE1MmFkMDJlMjBmYmI2NTNkOTM5YTE4N2Q0NDgzNjdlYmEzOGY1NDk5OTgyMzk1YmRlZjljZTUyYiIsInNlbmRlciI6ImVkMjU1MTk6N2NmMzViMzZiOWQ1N2M2MmI5ZjNkNWJlMmViNGQzOTE0N2FmYTFiNzYyNWNkMDAzMjQ0MzUyMzI1NGRmM2JlYSIsInNlcSI6MX0sImZyb20iOiJlZDI1NTE5OjdjZjM1YjM2YjlkNTdjNjJiOWYzZDViZTJlYjRkMzkxNDdhZmExYjc2MjVjZDAwMzI0NDM1MjMyNTRkZjNiZWEiLCJraW5kIjoiY3Jvc3NpbmciLCJtZWRpYXRvciI6ImVkMjU1MTk6ODQyNTRmOWQ1OTNiMGY3ODExYjE4YzAwYjY1NmE3MGZlMWE5NTk1ZWQzNTNjNzMyODZlYTgzZDMwMDIyNmVkMyIsInJlYXNvbiI6Im1heWJlIiwic2VxIjoxLCJ0byI6ImVkMjU1MTk6YTgwNTg2Mjc5YmExN2M1MzYwYjAyOTAxOGJmMDI1YmUwMTY5ZmRiMDIwODdlNzczMDE3NzRjOTllZWQ5MjExNyIsInZlcmRpY3QiOiJlc2NhbGF0ZSJ9LCJwcmVkaWNhdGVUeXBlIjoiaHR0cHM6Ly9wbGFja2V0LnRlY2gvcmVjZWlwdC8wLjEiLCJzdWJqZWN0IjpbeyJkaWdlc3QiOnsic2FsdGVkLXNoYTI1NiI6ImIxNDVjZmVhNTVmMDA2OGVlYjE3M2JkYmNjMDBlNTY0ZTE1N2E4YmJhMmZmNTM2YWQ2ZjVmY2ZkMjNhMDc2ZmMifSwibmFtZSI6InByb3Bvc2FsIn1dfQ==",
           "payloadType": "application/vnd.in-toto+json",
           "signatures": [
             {
               "keyid": "ed25519:84254f9d593b0f7811b18c00b656a70fe1a9595ed353c73286ea83d300226ed3",
-              "sig": "Mtr3H9+/yCCGgcllt/xiRxRy+tZHyP+yspHRRFKEgpTnUFFRULYPC/40vCqkY4DREi4gClfdtIXvC0PX6gZMDQ=="
+              "sig": "saYlKnjMu9IWRQCD7IciFWcx+C2mY7xfO4/30/W4+lMakP3E1rOlz+tIOzUBoF1iZV3FEIIse2iionTexTFNCw=="
             }
           ]
         },
-        "receiptId": "sha256:b351a4e40d4b12aa2504e691b8f0e441cedbae369ac11b66dfa06e9d4100b98f",
+        "receiptId": "sha256:4e5295d2c71a40e5c04a0232cc174917e63319aa89ad3a231866e169309095a7",
         "verdict": "escalate"
       },
-      "messageHex": "7b22657874656e73696f6e73223a5b2268747470733a2f2f706c61636b65742e746563682f63726f7373696e672f302e31225d2c226d6573736167654964223a2270726f706f73616c2d31222c226d65746164617461223a7b2268747470733a2f2f706c61636b65742e746563682f63726f7373696e672f302e31223a7b226163636f7264223a227368613235363a30346637316639623939623732396430376263383234626361653734326162633966353166333164326239643539653936386135633136396531356239333033222c22746f223a22656432353531393a61383035383632373962613137633533363062303239303138626630323562653031363966646230323038376537373330313737346339396565643932313137227d7d2c227061727473223a5b7b226d65746164617461223a7b2268747470733a2f2f706c61636b65742e746563682f63726f7373696e672f302e31223a7b226b696e64223a2270726f706f73616c222c2273616c74223a2261313366653738393862356266613065333264386565643233373531393130313330343137663064613231656435336431656234383839336237633165333164227d7d2c2274657874223a225468652070726f706f73616c2070726f706f73616c2d312e227d5d2c22726f6c65223a22524f4c455f55534552227d",
+      "messageHex": "7b22657874656e73696f6e73223a5b2268747470733a2f2f706c61636b65742e746563682f63726f7373696e672f302e31225d2c226d6573736167654964223a2270726f706f73616c2d31222c226d65746164617461223a7b2268747470733a2f2f706c61636b65742e746563682f63726f7373696e672f302e31223a7b226163636f7264223a227368613235363a39323464666635303635393730613865393137336236333966393235363931356463316466353239666533353262346134383563383032316663343635336433222c22746f223a22656432353531393a61383035383632373962613137633533363062303239303138626630323562653031363966646230323038376537373330313737346339396565643932313137227d7d2c227061727473223a5b7b226d65746164617461223a7b2268747470733a2f2f706c61636b65742e746563682f63726f7373696e672f302e31223a7b226b696e64223a2270726f706f73616c222c2273616c74223a2261313366653738393862356266613065333264386565643233373531393130313330343137663064613231656435336431656234383839336237633165333164227d7d2c2274657874223a225468652070726f706f73616c2070726f706f73616c2d312e227d5d2c22726f6c65223a22524f4c455f55534552227d",
       "op": "give"
     }
   ],

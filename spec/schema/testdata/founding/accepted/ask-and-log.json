@@ -45,103 +45,15 @@
   "declarations": [
     {
       "actor": "ed25519:375dea8c4519dbae84fc9eb513e97eb4b693968ef37d52ac10da7b79250c6a22",
-      "sig": "316c890d952df9fddbb2b50ea255bf2fb584d32cc8cf73d0226eff87cce4036f500277b2469c875a9037adbb901ceac72354874b93e4774d75103b7e8fccc00e",
-      "terms": [
-        {
-          "dir": "give",
-          "select": {
-            "kind": [
-              "answer",
-              "changed-version"
-            ]
-          },
-          "stance": "want",
-          "with": [
-            "role:proposer",
-            "role:applier"
-          ]
-        }
-      ]
+      "seal": "sha256:5b76c89c084cd2667eba0195ba37f038af3e4eed8606f97d8e35897dddeb1995"
     },
     {
       "actor": "ed25519:7cf35b36b9d57c62b9f3d5be2eb4d39147afa1b7625cd0032443523254df3bea",
-      "sig": "2f0b765521a0114cf2c7a6c534c2fdee936383adb5ae306e129909efa045fd86884e8de2fc6440f3528303cde34e47808f71b6d9867b0cc9098f49c80e138102",
-      "terms": [
-        {
-          "dir": "give",
-          "resolve": {
-            "timeout": 3600,
-            "to": [
-              "role:decider"
-            ]
-          },
-          "select": {
-            "kind": [
-              "proposal"
-            ]
-          },
-          "stance": "maybe",
-          "with": [
-            "role:applier"
-          ]
-        },
-        {
-          "dir": "give",
-          "select": {
-            "kind": [
-              "note"
-            ]
-          },
-          "stance": "want",
-          "with": [
-            "role:applier"
-          ]
-        },
-        {
-          "dir": "get",
-          "select": {
-            "kind": [
-              "answer",
-              "changed-version"
-            ]
-          },
-          "stance": "want",
-          "with": [
-            "role:decider"
-          ]
-        }
-      ]
+      "seal": "sha256:4c74ba19a8071bbeedfe9457873eb4af6f83275336b5b3e92cb6fd115d229ee6"
     },
     {
       "actor": "ed25519:a80586279ba17c5360b029018bf025be0169fdb02087e77301774c99eed92117",
-      "sig": "a8de4390b6d13517b7304fca7faa74223a4a244d96a6b2f0f3d0c65931c308c385f89f5c0b5ef6e119d1e183526631bd0ff955287e885826a53dc0c64ca1850f",
-      "terms": [
-        {
-          "dir": "get",
-          "select": {
-            "kind": [
-              "proposal",
-              "note"
-            ]
-          },
-          "stance": "want",
-          "with": [
-            "role:proposer"
-          ]
-        },
-        {
-          "dir": "get",
-          "select": {
-            "kind": [
-              "changed-version"
-            ]
-          },
-          "stance": "want",
-          "with": [
-            "role:decider"
-          ]
-        }
-      ]
+      "seal": "sha256:fe2d775dc47a275f1421f736df6db42b33185e0c9ca502dad2920653e57eb7ad"
     }
   ],
   "mediator": {

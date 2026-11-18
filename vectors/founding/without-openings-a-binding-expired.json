@@ -1,0 +1,91 @@
+{
+  "expect": {
+    "code": "binding-expired"
+  },
+  "foundedAt": "2026-11-12T08:00:00Z",
+  "input": {
+    "bindings": [
+      {
+        "actor": "ed25519:375dea8c4519dbae84fc9eb513e97eb4b693968ef37d52ac10da7b79250c6a22",
+        "mediator": "ed25519:84254f9d593b0f7811b18c00b656a70fe1a9595ed353c73286ea83d300226ed3",
+        "policy": "sha256:9be7866811163fb218273cc74fffb0b0ec6d5fa57ed79dd2bd2b599e9da56550",
+        "principal": "ed25519:7953e3ee4311c21f4990662dbe506689868533db6fb93a77351351e8d6119574",
+        "roles": [
+          "decider"
+        ],
+        "sig": "88bd79d04722ef3e1db729e5a23580769c3ca83485ebeb8eb62e785c92445a45661d0aa0cf28525f3ad6d4b54da4ba02ab6204c377d23282c13bd67207e4790b",
+        "until": "2027-11-12T00:00:00Z"
+      },
+      {
+        "actor": "ed25519:7cf35b36b9d57c62b9f3d5be2eb4d39147afa1b7625cd0032443523254df3bea",
+        "mediator": "ed25519:84254f9d593b0f7811b18c00b656a70fe1a9595ed353c73286ea83d300226ed3",
+        "policy": "sha256:9be7866811163fb218273cc74fffb0b0ec6d5fa57ed79dd2bd2b599e9da56550",
+        "principal": "ed25519:7953e3ee4311c21f4990662dbe506689868533db6fb93a77351351e8d6119574",
+        "roles": [
+          "proposer"
+        ],
+        "sig": "68da7239b6f2509b6cf0bc3a607ddcdf065d10a5bce45ec393bd8268cad8ce1e1dca57daddc310d5749f1884169c96a06f7a921b8466fac8e62578c1a2905706",
+        "until": "2026-11-12T08:00:00Z"
+      },
+      {
+        "actor": "ed25519:a80586279ba17c5360b029018bf025be0169fdb02087e77301774c99eed92117",
+        "mediator": "ed25519:84254f9d593b0f7811b18c00b656a70fe1a9595ed353c73286ea83d300226ed3",
+        "policy": "sha256:9be7866811163fb218273cc74fffb0b0ec6d5fa57ed79dd2bd2b599e9da56550",
+        "principal": "ed25519:7953e3ee4311c21f4990662dbe506689868533db6fb93a77351351e8d6119574",
+        "roles": [
+          "applier"
+        ],
+        "sig": "8e1ddf94618df7d7460d2a20d3a03f594de9c03b25f2dc8efc88c2a3571934b953559d412ca585708b6d4ee9c760c55bc51c5b368923b3e775b152b7a0c52a04",
+        "until": "2027-11-12T00:00:00Z"
+      }
+    ],
+    "card": {
+      "judges": [],
+      "kernel": {
+        "hash": "sha256:a8755bef6ff188c2dc6b74377a73c6a49d612fc44915675db9d2795bb5b99475",
+        "version": "0.1.0"
+      },
+      "spec": "0.1"
+    },
+    "declarations": [
+      {
+        "actor": "ed25519:375dea8c4519dbae84fc9eb513e97eb4b693968ef37d52ac10da7b79250c6a22",
+        "seal": "sha256:6b3a3176cd22b483d94e020a3e3014a776649a3b7e4ab612cc56bea99354ac40"
+      },
+      {
+        "actor": "ed25519:7cf35b36b9d57c62b9f3d5be2eb4d39147afa1b7625cd0032443523254df3bea",
+        "seal": "sha256:90dbd3c153773625df2f0e616ab9673d26b6f2035a1fce9ab4bcf192867f3c19"
+      },
+      {
+        "actor": "ed25519:a80586279ba17c5360b029018bf025be0169fdb02087e77301774c99eed92117",
+        "seal": "sha256:9e21939b7f1513db173724936625fd43d05bcbbb822a4f89ecbfab38a6354f84"
+      }
+    ],
+    "mediator": {
+      "actor": "ed25519:84254f9d593b0f7811b18c00b656a70fe1a9595ed353c73286ea83d300226ed3",
+      "operator": "ed25519:30f97501d13dd5589fc04e36ba98ccca1e44f52c1b3f578f1aca3c57c2181fbc",
+      "runs": "process"
+    },
+    "policy": {
+      "principals": [
+        {
+          "principal": "ed25519:7953e3ee4311c21f4990662dbe506689868533db6fb93a77351351e8d6119574",
+          "roles": [
+            "proposer",
+            "applier",
+            "decider"
+          ]
+        }
+      ],
+      "roles": [
+        "proposer",
+        "applier",
+        "decider"
+      ]
+    }
+  },
+  "operation": "found",
+  "spec": "0.1",
+  "tests": "setup-contract-16: with no opening the bindings are still checked, and one that expires at the founding time is binding-expired",
+  "vector": "founding/without-openings-a-binding-expired"
+}

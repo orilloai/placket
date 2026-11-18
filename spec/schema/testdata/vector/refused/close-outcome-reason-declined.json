@@ -1,4 +1,5 @@
 {
+  "acceptances": [],
   "final": {
     "delivered": {},
     "pending": [],
@@ -144,122 +145,15 @@
     "declarations": [
       {
         "actor": "ed25519:375dea8c4519dbae84fc9eb513e97eb4b693968ef37d52ac10da7b79250c6a22",
-        "sig": "55642d296e6f6b5086f3157132eb5fe5b36001b7141b8812f41a8b9ecd0bfa031e8c34dc7bb5a88ff54a11cc392f08a3c2260d83d9e9911e7166f667cf83bb06",
-        "terms": [
-          {
-            "dir": "give",
-            "select": {
-              "kind": [
-                "answer",
-                "changed-version"
-              ]
-            },
-            "stance": "want",
-            "with": [
-              "role:proposer",
-              "role:applier"
-            ]
-          }
-        ]
+        "seal": "sha256:ee12053b5dd5ea2017fef2d8233f95b3dfc5cb35d8bf09f1da84d077dda8573d"
       },
       {
         "actor": "ed25519:7cf35b36b9d57c62b9f3d5be2eb4d39147afa1b7625cd0032443523254df3bea",
-        "sig": "aea3d589c1a1e203e4358d4243fdb2ae50a90b671cc9f3ce99e7a8505677ff65af2e3a1045da207e0aabaf29fcc46639b5141e4fcb30bcced1a45e8e081d0803",
-        "terms": [
-          {
-            "dir": "give",
-            "resolve": {
-              "timeout": 3600,
-              "to": [
-                "role:decider"
-              ]
-            },
-            "select": {
-              "kind": [
-                "proposal"
-              ]
-            },
-            "stance": "maybe",
-            "with": [
-              "role:applier"
-            ]
-          },
-          {
-            "dir": "give",
-            "select": {
-              "kind": [
-                "note"
-              ]
-            },
-            "stance": "want",
-            "with": [
-              "role:applier"
-            ]
-          },
-          {
-            "dir": "get",
-            "select": {
-              "kind": [
-                "answer",
-                "changed-version"
-              ]
-            },
-            "stance": "want",
-            "with": [
-              "role:decider"
-            ]
-          },
-          {
-            "dir": "give",
-            "resolve": {
-              "timeout": 60,
-              "to": [
-                "role:decider"
-              ]
-            },
-            "select": {
-              "kind": [
-                "brief"
-              ]
-            },
-            "stance": "maybe",
-            "with": [
-              "role:applier"
-            ]
-          }
-        ]
+        "seal": "sha256:48404d623e8ee7970c7b4b4cd4bdddfa124ad68087e373d08654521b214ecadb"
       },
       {
         "actor": "ed25519:a80586279ba17c5360b029018bf025be0169fdb02087e77301774c99eed92117",
-        "sig": "1560e03236421588ee3e8ecf14c365372b4dd158df9d0f3f3f1f5688dc3a7dadec0a0d653dc28cefec5308fad506ab313332ed585a43ec89366b7ee277389f05",
-        "terms": [
-          {
-            "dir": "get",
-            "select": {
-              "kind": [
-                "proposal",
-                "note",
-                "brief"
-              ]
-            },
-            "stance": "want",
-            "with": [
-              "role:proposer"
-            ]
-          },
-          {
-            "dir": "get",
-            "select": {
-              "kind": [
-                "changed-version"
-              ]
-            },
-            "stance": "want",
-            "with": [
-              "role:decider"
-            ]
-          }
-        ]
+        "seal": "sha256:3c4e2aff38a30b4a77958d5a6f7cee0f2cdae827f64fa7b2d7a3a821e9afcd90"
       }
     ],
     "mediator": {
@@ -293,6 +187,7 @@
     "stranger": "ccad0b2ffc9e7230a33399883af8bf4f662163554ad3f39547a66d29953fedeb"
   },
   "mediator": "mediator",
+  "openings": [],
   "operation": "scenario",
   "spec": "0.1",
   "steps": [

@@ -1,4 +1,24 @@
 {
+  "acceptances": [
+    {
+      "accord": "sha256:924dff5065970a8e9173b639f9256915dc1df529fe352b4a485c8021fc4653d3",
+      "from": "ed25519:375dea8c4519dbae84fc9eb513e97eb4b693968ef37d52ac10da7b79250c6a22",
+      "sig": "079067e1876fb51d0bd7c7244e75ac2adfc6efd62eae70a195cd4ce3ecf45ff51f7333b4ab9565beab514dbcdb94d593267779186258d64e6a4f1f14d81dfe0c",
+      "view": "sha256:bedd4b5fe4f7148ec03c893f7e73b8aa395c317b060fd4ff63755a0193f0b1f3"
+    },
+    {
+      "accord": "sha256:924dff5065970a8e9173b639f9256915dc1df529fe352b4a485c8021fc4653d3",
+      "from": "ed25519:7cf35b36b9d57c62b9f3d5be2eb4d39147afa1b7625cd0032443523254df3bea",
+      "sig": "17407676c46cc5596cb28a4882d09315dd8634d05f52b8b1060d1a80d38bbb948b10e1c5f63fc732fec13d4287f1be991e2379e885fbe01daa713badf0e9e60d",
+      "view": "sha256:e98cb326281d7ce92bb36e1fd52ee8516d138b0069584f37ed7536024f1d88a8"
+    },
+    {
+      "accord": "sha256:924dff5065970a8e9173b639f9256915dc1df529fe352b4a485c8021fc4653d3",
+      "from": "ed25519:a80586279ba17c5360b029018bf025be0169fdb02087e77301774c99eed92117",
+      "sig": "517a23f979ae64fe847adbf09a5b1ab58dd550443a84fce69a2ceff661b57bfccf4f3a8db7e5d524c7891990d41103865d44a37b8cb92fbf4fa68f6bce561904",
+      "view": "sha256:e4ca9b8b665eafb57458bfb8c0d59f3ea5e971b0e51efbc1d1cabb7897209398"
+    }
+  ],
   "final": {
     "delivered": {
       "applier": [
@@ -6,16 +26,16 @@
           "kind": "note",
           "messageId": "note-1",
           "receipt": {
-            "payload": "eyJfdHlwZSI6Imh0dHBzOi8vaW4tdG90by5pby9TdGF0ZW1lbnQvdjEiLCJwcmVkaWNhdGUiOnsiYWNjb3JkIjoic2hhMjU2OjA0ZjcxZjliOTliNzI5ZDA3YmM4MjRiY2FlNzQyYWJjOWY1MWYzMWQyYjlkNTllOTY4YTVjMTY5ZTE1YjkzMDMiLCJhdCI6IjIwMjYtMTEtMTJUMDk6MDY6MDBaIiwiYnkiOiJ0ZXJtcyIsImNhcmQiOiJzaGEyNTY6Y2RlMzlkYzNmYWU2MTJiM2I5YTVmZmE0NmFkYTE1ZWU4MmMyZjgzZGNkOWQzMThhMTU0NjYzZWI5YjlmYWFjMSIsImVudmVsb3BlIjp7Imhhc2giOiJzaGEyNTY6YTFjNTVmMzIyNTZmZTg5YjQ2OTc5NjEwOGQ5NDBjODY2MmNmMGFhMzdlOGY2OGM3MjA3M2M3ZWJkMGU5Y2JmMSIsInNlbmRlciI6ImVkMjU1MTk6N2NmMzViMzZiOWQ1N2M2MmI5ZjNkNWJlMmViNGQzOTE0N2FmYTFiNzYyNWNkMDAzMjQ0MzUyMzI1NGRmM2JlYSIsInNlcSI6MX0sImZyb20iOiJlZDI1NTE5OjdjZjM1YjM2YjlkNTdjNjJiOWYzZDViZTJlYjRkMzkxNDdhZmExYjc2MjVjZDAwMzI0NDM1MjMyNTRkZjNiZWEiLCJraW5kIjoiY3Jvc3NpbmciLCJtZWRpYXRvciI6ImVkMjU1MTk6ODQyNTRmOWQ1OTNiMGY3ODExYjE4YzAwYjY1NmE3MGZlMWE5NTk1ZWQzNTNjNzMyODZlYTgzZDMwMDIyNmVkMyIsInJlYXNvbiI6Im9rIiwic2VxIjoxLCJ0byI6ImVkMjU1MTk6YTgwNTg2Mjc5YmExN2M1MzYwYjAyOTAxOGJmMDI1YmUwMTY5ZmRiMDIwODdlNzczMDE3NzRjOTllZWQ5MjExNyIsInZlcmRpY3QiOiJwYXNzIn0sInByZWRpY2F0ZVR5cGUiOiJodHRwczovL3BsYWNrZXQudGVjaC9yZWNlaXB0LzAuMSIsInN1YmplY3QiOlt7ImRpZ2VzdCI6eyJzYWx0ZWQtc2hhMjU2IjoiYTNmMmI3OGZkMDMzZDExNmNhM2E0NDcxMzgyYWQwMWI4OWU5MGVjNTkzYjk4YWE4NTQ5YTcwNTc1YTZjOWY3ZCJ9LCJuYW1lIjoibm90ZSJ9XX0=",
+            "payload": "eyJfdHlwZSI6Imh0dHBzOi8vaW4tdG90by5pby9TdGF0ZW1lbnQvdjEiLCJwcmVkaWNhdGUiOnsiYWNjb3JkIjoic2hhMjU2OjkyNGRmZjUwNjU5NzBhOGU5MTczYjYzOWY5MjU2OTE1ZGMxZGY1MjlmZTM1MmI0YTQ4NWM4MDIxZmM0NjUzZDMiLCJhdCI6IjIwMjYtMTEtMTJUMDk6MDY6MDBaIiwiYnkiOiJ0ZXJtcyIsImNhcmQiOiJzaGEyNTY6Y2RlMzlkYzNmYWU2MTJiM2I5YTVmZmE0NmFkYTE1ZWU4MmMyZjgzZGNkOWQzMThhMTU0NjYzZWI5YjlmYWFjMSIsImVudmVsb3BlIjp7Imhhc2giOiJzaGEyNTY6Yzc5N2Q1ODljODZlM2ZhMzZiMDE0NTVkNjIwM2YxZmI5MzQzOTY3MmE1YTk2YzZkMWU2NTE4MGE0ZWMwY2ViOSIsInNlbmRlciI6ImVkMjU1MTk6N2NmMzViMzZiOWQ1N2M2MmI5ZjNkNWJlMmViNGQzOTE0N2FmYTFiNzYyNWNkMDAzMjQ0MzUyMzI1NGRmM2JlYSIsInNlcSI6MX0sImZyb20iOiJlZDI1NTE5OjdjZjM1YjM2YjlkNTdjNjJiOWYzZDViZTJlYjRkMzkxNDdhZmExYjc2MjVjZDAwMzI0NDM1MjMyNTRkZjNiZWEiLCJraW5kIjoiY3Jvc3NpbmciLCJtZWRpYXRvciI6ImVkMjU1MTk6ODQyNTRmOWQ1OTNiMGY3ODExYjE4YzAwYjY1NmE3MGZlMWE5NTk1ZWQzNTNjNzMyODZlYTgzZDMwMDIyNmVkMyIsInJlYXNvbiI6Im9rIiwic2VxIjoxLCJ0byI6ImVkMjU1MTk6YTgwNTg2Mjc5YmExN2M1MzYwYjAyOTAxOGJmMDI1YmUwMTY5ZmRiMDIwODdlNzczMDE3NzRjOTllZWQ5MjExNyIsInZlcmRpY3QiOiJwYXNzIn0sInByZWRpY2F0ZVR5cGUiOiJodHRwczovL3BsYWNrZXQudGVjaC9yZWNlaXB0LzAuMSIsInN1YmplY3QiOlt7ImRpZ2VzdCI6eyJzYWx0ZWQtc2hhMjU2IjoiYTNmMmI3OGZkMDMzZDExNmNhM2E0NDcxMzgyYWQwMWI4OWU5MGVjNTkzYjk4YWE4NTQ5YTcwNTc1YTZjOWY3ZCJ9LCJuYW1lIjoibm90ZSJ9XX0=",
             "payloadType": "application/vnd.in-toto+json",
             "signatures": [
               {
                 "keyid": "ed25519:84254f9d593b0f7811b18c00b656a70fe1a9595ed353c73286ea83d300226ed3",
-                "sig": "+iFBAnB8D4pn5e9BJvJlaDYqfjMeZcwyHPHbOjKGLbb4YM1xf2b5qyrG3OYTMmsyGh/w9evPnlxvQsBR/lk3CA=="
+                "sig": "+14qTylPLKUtkZJCB8gu0qHi/gCAg9+LTELWkXOjvbJP4PpEzEU+2B1m02gfC3zHgkGfI2jAz7DltcS1WfgbBQ=="
               }
             ]
           },
-          "receiptId": "sha256:9b955e31c14d116937e92d3a346d33b1d8c1d52cb99468b4441a20aa2839eea2",
+          "receiptId": "sha256:b44a4e79b7a3fa475c6e1d6193b2c7bd813c5ec60d98c9d1f8c20460a0d027c8",
           "salt": "8712d2c8787900325f8b36ee75c5e83abcfede823dd0b0af38d636d170ee3bf3",
           "text": "Good."
         }
@@ -25,16 +45,16 @@
     "receipts": [
       {
         "receipt": {
-          "payload": "eyJfdHlwZSI6Imh0dHBzOi8vaW4tdG90by5pby9TdGF0ZW1lbnQvdjEiLCJwcmVkaWNhdGUiOnsiYWNjb3JkIjoic2hhMjU2OjA0ZjcxZjliOTliNzI5ZDA3YmM4MjRiY2FlNzQyYWJjOWY1MWYzMWQyYjlkNTllOTY4YTVjMTY5ZTE1YjkzMDMiLCJhdCI6IjIwMjYtMTEtMTJUMDk6MDY6MDBaIiwiYnkiOiJ0ZXJtcyIsImNhcmQiOiJzaGEyNTY6Y2RlMzlkYzNmYWU2MTJiM2I5YTVmZmE0NmFkYTE1ZWU4MmMyZjgzZGNkOWQzMThhMTU0NjYzZWI5YjlmYWFjMSIsImVudmVsb3BlIjp7Imhhc2giOiJzaGEyNTY6YTFjNTVmMzIyNTZmZTg5YjQ2OTc5NjEwOGQ5NDBjODY2MmNmMGFhMzdlOGY2OGM3MjA3M2M3ZWJkMGU5Y2JmMSIsInNlbmRlciI6ImVkMjU1MTk6N2NmMzViMzZiOWQ1N2M2MmI5ZjNkNWJlMmViNGQzOTE0N2FmYTFiNzYyNWNkMDAzMjQ0MzUyMzI1NGRmM2JlYSIsInNlcSI6MX0sImZyb20iOiJlZDI1NTE5OjdjZjM1YjM2YjlkNTdjNjJiOWYzZDViZTJlYjRkMzkxNDdhZmExYjc2MjVjZDAwMzI0NDM1MjMyNTRkZjNiZWEiLCJraW5kIjoiY3Jvc3NpbmciLCJtZWRpYXRvciI6ImVkMjU1MTk6ODQyNTRmOWQ1OTNiMGY3ODExYjE4YzAwYjY1NmE3MGZlMWE5NTk1ZWQzNTNjNzMyODZlYTgzZDMwMDIyNmVkMyIsInJlYXNvbiI6Im9rIiwic2VxIjoxLCJ0byI6ImVkMjU1MTk6YTgwNTg2Mjc5YmExN2M1MzYwYjAyOTAxOGJmMDI1YmUwMTY5ZmRiMDIwODdlNzczMDE3NzRjOTllZWQ5MjExNyIsInZlcmRpY3QiOiJwYXNzIn0sInByZWRpY2F0ZVR5cGUiOiJodHRwczovL3BsYWNrZXQudGVjaC9yZWNlaXB0LzAuMSIsInN1YmplY3QiOlt7ImRpZ2VzdCI6eyJzYWx0ZWQtc2hhMjU2IjoiYTNmMmI3OGZkMDMzZDExNmNhM2E0NDcxMzgyYWQwMWI4OWU5MGVjNTkzYjk4YWE4NTQ5YTcwNTc1YTZjOWY3ZCJ9LCJuYW1lIjoibm90ZSJ9XX0=",
+          "payload": "eyJfdHlwZSI6Imh0dHBzOi8vaW4tdG90by5pby9TdGF0ZW1lbnQvdjEiLCJwcmVkaWNhdGUiOnsiYWNjb3JkIjoic2hhMjU2OjkyNGRmZjUwNjU5NzBhOGU5MTczYjYzOWY5MjU2OTE1ZGMxZGY1MjlmZTM1MmI0YTQ4NWM4MDIxZmM0NjUzZDMiLCJhdCI6IjIwMjYtMTEtMTJUMDk6MDY6MDBaIiwiYnkiOiJ0ZXJtcyIsImNhcmQiOiJzaGEyNTY6Y2RlMzlkYzNmYWU2MTJiM2I5YTVmZmE0NmFkYTE1ZWU4MmMyZjgzZGNkOWQzMThhMTU0NjYzZWI5YjlmYWFjMSIsImVudmVsb3BlIjp7Imhhc2giOiJzaGEyNTY6Yzc5N2Q1ODljODZlM2ZhMzZiMDE0NTVkNjIwM2YxZmI5MzQzOTY3MmE1YTk2YzZkMWU2NTE4MGE0ZWMwY2ViOSIsInNlbmRlciI6ImVkMjU1MTk6N2NmMzViMzZiOWQ1N2M2MmI5ZjNkNWJlMmViNGQzOTE0N2FmYTFiNzYyNWNkMDAzMjQ0MzUyMzI1NGRmM2JlYSIsInNlcSI6MX0sImZyb20iOiJlZDI1NTE5OjdjZjM1YjM2YjlkNTdjNjJiOWYzZDViZTJlYjRkMzkxNDdhZmExYjc2MjVjZDAwMzI0NDM1MjMyNTRkZjNiZWEiLCJraW5kIjoiY3Jvc3NpbmciLCJtZWRpYXRvciI6ImVkMjU1MTk6ODQyNTRmOWQ1OTNiMGY3ODExYjE4YzAwYjY1NmE3MGZlMWE5NTk1ZWQzNTNjNzMyODZlYTgzZDMwMDIyNmVkMyIsInJlYXNvbiI6Im9rIiwic2VxIjoxLCJ0byI6ImVkMjU1MTk6YTgwNTg2Mjc5YmExN2M1MzYwYjAyOTAxOGJmMDI1YmUwMTY5ZmRiMDIwODdlNzczMDE3NzRjOTllZWQ5MjExNyIsInZlcmRpY3QiOiJwYXNzIn0sInByZWRpY2F0ZVR5cGUiOiJodHRwczovL3BsYWNrZXQudGVjaC9yZWNlaXB0LzAuMSIsInN1YmplY3QiOlt7ImRpZ2VzdCI6eyJzYWx0ZWQtc2hhMjU2IjoiYTNmMmI3OGZkMDMzZDExNmNhM2E0NDcxMzgyYWQwMWI4OWU5MGVjNTkzYjk4YWE4NTQ5YTcwNTc1YTZjOWY3ZCJ9LCJuYW1lIjoibm90ZSJ9XX0=",
           "payloadType": "application/vnd.in-toto+json",
           "signatures": [
             {
               "keyid": "ed25519:84254f9d593b0f7811b18c00b656a70fe1a9595ed353c73286ea83d300226ed3",
-              "sig": "+iFBAnB8D4pn5e9BJvJlaDYqfjMeZcwyHPHbOjKGLbb4YM1xf2b5qyrG3OYTMmsyGh/w9evPnlxvQsBR/lk3CA=="
+              "sig": "+14qTylPLKUtkZJCB8gu0qHi/gCAg9+LTELWkXOjvbJP4PpEzEU+2B1m02gfC3zHgkGfI2jAz7DltcS1WfgbBQ=="
             }
           ]
         },
-        "receiptId": "sha256:9b955e31c14d116937e92d3a346d33b1d8c1d52cb99468b4441a20aa2839eea2"
+        "receiptId": "sha256:b44a4e79b7a3fa475c6e1d6193b2c7bd813c5ec60d98c9d1f8c20460a0d027c8"
       }
     ]
   },
@@ -86,103 +106,15 @@
     "declarations": [
       {
         "actor": "ed25519:375dea8c4519dbae84fc9eb513e97eb4b693968ef37d52ac10da7b79250c6a22",
-        "sig": "55642d296e6f6b5086f3157132eb5fe5b36001b7141b8812f41a8b9ecd0bfa031e8c34dc7bb5a88ff54a11cc392f08a3c2260d83d9e9911e7166f667cf83bb06",
-        "terms": [
-          {
-            "dir": "give",
-            "select": {
-              "kind": [
-                "answer",
-                "changed-version"
-              ]
-            },
-            "stance": "want",
-            "with": [
-              "role:proposer",
-              "role:applier"
-            ]
-          }
-        ]
+        "seal": "sha256:6b3a3176cd22b483d94e020a3e3014a776649a3b7e4ab612cc56bea99354ac40"
       },
       {
         "actor": "ed25519:7cf35b36b9d57c62b9f3d5be2eb4d39147afa1b7625cd0032443523254df3bea",
-        "sig": "d6859290e0f713addea89f5d7d54cf5161fa13a42b24d337785f7111c6486421cc9e5c4d51653a5ade8be2e6b7697d6ad13d43121a0f1ebce9c3a56bb9699a07",
-        "terms": [
-          {
-            "dir": "give",
-            "resolve": {
-              "timeout": 3600,
-              "to": [
-                "role:decider"
-              ]
-            },
-            "select": {
-              "kind": [
-                "proposal"
-              ]
-            },
-            "stance": "maybe",
-            "with": [
-              "role:applier"
-            ]
-          },
-          {
-            "dir": "give",
-            "select": {
-              "kind": [
-                "note"
-              ]
-            },
-            "stance": "want",
-            "with": [
-              "role:applier"
-            ]
-          },
-          {
-            "dir": "get",
-            "select": {
-              "kind": [
-                "answer",
-                "changed-version"
-              ]
-            },
-            "stance": "want",
-            "with": [
-              "role:decider"
-            ]
-          }
-        ]
+        "seal": "sha256:90dbd3c153773625df2f0e616ab9673d26b6f2035a1fce9ab4bcf192867f3c19"
       },
       {
         "actor": "ed25519:a80586279ba17c5360b029018bf025be0169fdb02087e77301774c99eed92117",
-        "sig": "8620748e7e658b3e7759ccc3471449096cd76c93a3cb77e74537c30ada0df811ab77ae2133ee229da2867ef318a78a23697c562ea25df35de333a1f5c1f86c06",
-        "terms": [
-          {
-            "dir": "get",
-            "select": {
-              "kind": [
-                "proposal",
-                "note"
-              ]
-            },
-            "stance": "want",
-            "with": [
-              "role:proposer"
-            ]
-          },
-          {
-            "dir": "get",
-            "select": {
-              "kind": [
-                "changed-version"
-              ]
-            },
-            "stance": "want",
-            "with": [
-              "role:decider"
-            ]
-          }
-        ]
+        "seal": "sha256:9e21939b7f1513db173724936625fd43d05bcbbb822a4f89ecbfab38a6354f84"
       }
     ],
     "mediator": {
@@ -216,6 +148,126 @@
     "stranger": "ccad0b2ffc9e7230a33399883af8bf4f662163554ad3f39547a66d29953fedeb"
   },
   "mediator": "mediator",
+  "openings": [
+    {
+      "actor": "ed25519:375dea8c4519dbae84fc9eb513e97eb4b693968ef37d52ac10da7b79250c6a22",
+      "opening": {
+        "declaration": {
+          "actor": "ed25519:375dea8c4519dbae84fc9eb513e97eb4b693968ef37d52ac10da7b79250c6a22",
+          "sig": "55642d296e6f6b5086f3157132eb5fe5b36001b7141b8812f41a8b9ecd0bfa031e8c34dc7bb5a88ff54a11cc392f08a3c2260d83d9e9911e7166f667cf83bb06",
+          "terms": [
+            {
+              "dir": "give",
+              "select": {
+                "kind": [
+                  "answer",
+                  "changed-version"
+                ]
+              },
+              "stance": "want",
+              "with": [
+                "role:proposer",
+                "role:applier"
+              ]
+            }
+          ]
+        },
+        "salt": "672f3e62cbb05c6f8c3c128689ae81ad1518b501784f3b681a8a326c93f0f420"
+      }
+    },
+    {
+      "actor": "ed25519:7cf35b36b9d57c62b9f3d5be2eb4d39147afa1b7625cd0032443523254df3bea",
+      "opening": {
+        "declaration": {
+          "actor": "ed25519:7cf35b36b9d57c62b9f3d5be2eb4d39147afa1b7625cd0032443523254df3bea",
+          "sig": "d6859290e0f713addea89f5d7d54cf5161fa13a42b24d337785f7111c6486421cc9e5c4d51653a5ade8be2e6b7697d6ad13d43121a0f1ebce9c3a56bb9699a07",
+          "terms": [
+            {
+              "dir": "give",
+              "resolve": {
+                "timeout": 3600,
+                "to": [
+                  "role:decider"
+                ]
+              },
+              "select": {
+                "kind": [
+                  "proposal"
+                ]
+              },
+              "stance": "maybe",
+              "with": [
+                "role:applier"
+              ]
+            },
+            {
+              "dir": "give",
+              "select": {
+                "kind": [
+                  "note"
+                ]
+              },
+              "stance": "want",
+              "with": [
+                "role:applier"
+              ]
+            },
+            {
+              "dir": "get",
+              "select": {
+                "kind": [
+                  "answer",
+                  "changed-version"
+                ]
+              },
+              "stance": "want",
+              "with": [
+                "role:decider"
+              ]
+            }
+          ]
+        },
+        "salt": "53c4568964dc1383b0007a8913e14f23ff29fb13b82a5996afa38e2b39ae8e6a"
+      }
+    },
+    {
+      "actor": "ed25519:a80586279ba17c5360b029018bf025be0169fdb02087e77301774c99eed92117",
+      "opening": {
+        "declaration": {
+          "actor": "ed25519:a80586279ba17c5360b029018bf025be0169fdb02087e77301774c99eed92117",
+          "sig": "8620748e7e658b3e7759ccc3471449096cd76c93a3cb77e74537c30ada0df811ab77ae2133ee229da2867ef318a78a23697c562ea25df35de333a1f5c1f86c06",
+          "terms": [
+            {
+              "dir": "get",
+              "select": {
+                "kind": [
+                  "proposal",
+                  "note"
+                ]
+              },
+              "stance": "want",
+              "with": [
+                "role:proposer"
+              ]
+            },
+            {
+              "dir": "get",
+              "select": {
+                "kind": [
+                  "changed-version"
+                ]
+              },
+              "stance": "want",
+              "with": [
+                "role:decider"
+              ]
+            }
+          ]
+        },
+        "salt": "18afd8cee3d8005b581183f51269a6bc65814b88474c7861d0dc3a697c9d0445"
+      }
+    }
+  ],
   "operation": "scenario",
   "spec": "0.1",
   "steps": [
@@ -223,9 +275,9 @@
       "as": "proposer",
       "at": "2026-11-12T09:00:00Z",
       "envelope": {
-        "hash": "sha256:33aa54d5528cce1fdf86952adda01100a35b143338cfd1d85eb01573b0e79a14",
+        "hash": "sha256:6fc02e1c2b2b7b3c2c5d424122c81616874e1a1b4af7d69a0b7f05a41b1455cb",
         "seq": 1,
-        "sig": "70c3cce4e340b3f9c7194cf3a5a702d31d2cbf62252964e667881738f17ebe4a324bd79624379cff82d1ea6df992e540349bd1d5ea1c895c1765570e8665ba0a"
+        "sig": "8078d34499fe55ffd4fb5fc027997806ae0b6c4de343e741c38f570bc8d2962cab60b530b7dc2846277b897680ae18247c6513acc30ad981599009e8c28d6602"
       },
       "expect": {
         "rejection": "extension-missing"
@@ -237,7 +289,7 @@
         "messageId": "defect-a",
         "metadata": {
           "https://placket.tech/crossing/0.1": {
-            "accord": "sha256:04f71f9b99b729d07bc824bcae742abc9f51f31d2b9d59e968a5c169e15b9303",
+            "accord": "sha256:924dff5065970a8e9173b639f9256915dc1df529fe352b4a485c8021fc4653d3",
             "to": "ed25519:a80586279ba17c5360b029018bf025be0169fdb02087e77301774c99eed92117"
           }
         },
@@ -260,9 +312,9 @@
       "as": "proposer",
       "at": "2026-11-12T09:01:00Z",
       "envelope": {
-        "hash": "sha256:344fc385f5bbaeed37a78f64f410f320b6b38b1960449bd115c1440ce210baf0",
+        "hash": "sha256:7d03ded4c9e287821e18b2ab10512109c4e50e14b926781e1aafa36eb5d41ddd",
         "seq": 1,
-        "sig": "6441ec8f3d22894eef92100f38a8b77a32546293a51eb0b7647c507f580b63dec7c69d074a38a8c18c0c94ff91a5a68ed166ca9e0624ee60c32c39f51436a606"
+        "sig": "06f0114ba28a3a87d77bb5030f55d674502e8586f7b4fcf5456962b1f9580583339320dfd48fca40d9529ff34d30b1e26c8b94f3dcb7028e9d28d0384dea600a"
       },
       "expect": {
         "rejection": "receiver-unknown"
@@ -274,7 +326,7 @@
         "messageId": "defect-b",
         "metadata": {
           "https://placket.tech/crossing/0.1": {
-            "accord": "sha256:04f71f9b99b729d07bc824bcae742abc9f51f31d2b9d59e968a5c169e15b9303",
+            "accord": "sha256:924dff5065970a8e9173b639f9256915dc1df529fe352b4a485c8021fc4653d3",
             "to": "ed25519:2108ae3a477fbfdd11cbc878effff5cda4cc633a88f8b2e74380915a13d18b71"
           }
         },
@@ -297,9 +349,9 @@
       "as": "proposer",
       "at": "2026-11-12T09:02:00Z",
       "envelope": {
-        "hash": "sha256:53542016b8e10a1cd872e610100882658ada9dc91799ca3fd3afc10f04925d8c",
+        "hash": "sha256:1372b982e05b78096ee5f2a809e376a8f52270af0a03893c705437dadd84be1b",
         "seq": 1,
-        "sig": "65d105f65a38a6f91b15905f58a03ffe9e60cc6582b8606e51d58c5500ac2cdbe16c5ff43a829cec489152c0596f1af8812a11b1d892942b618fe1d9e12cd602"
+        "sig": "cf85da0988e6e3237683513b9486b54cbe1a8bd58b9c52865d4e18ba3f5b63b78e22a0abac9c3fc452b0f12695d6aaa32139cae22e207f896f7e6a84ab1e5606"
       },
       "expect": {
         "rejection": "accord-mismatch"
@@ -311,7 +363,7 @@
         "messageId": "defect-c",
         "metadata": {
           "https://placket.tech/crossing/0.1": {
-            "accord": "sha256:81c368036043f4de5c6ce90e749391ac5209d6a52fbe98562ff087a93b071cb1",
+            "accord": "sha256:41123c455e8c200bcd461d79981aca155b1065504467833637109084b3dadd25",
             "to": "ed25519:a80586279ba17c5360b029018bf025be0169fdb02087e77301774c99eed92117"
           }
         },
@@ -334,9 +386,9 @@
       "as": "proposer",
       "at": "2026-11-12T09:03:00Z",
       "envelope": {
-        "hash": "sha256:a129323c01bbbc5ca4bc498b6eb80520e6613a2ac3b1fc3ada59b58f68489056",
+        "hash": "sha256:98d2c03aaffc4f7092f80b927f24988e8944f1355cdff42b26be4d02d82608db",
         "seq": 1,
-        "sig": "9c9ffc625cff73bd50613946176a0cbabde07efd8499ef06ced3c60d7e53767e4dcb73c3ba8e97e705b4479e55f3b29195b0af55e66d45398b7a54149cfc7d03"
+        "sig": "4ed728afed0396847c16e34e3a10b9dbb60709a2954ddcad61f5d3267db420d0f4964a1d1b8a4fc76ddaf0c9ab02375acea6623d294e4fe6a293d2ac6d8b8e04"
       },
       "expect": {
         "rejection": "one-part"
@@ -348,7 +400,7 @@
         "messageId": "defect-d",
         "metadata": {
           "https://placket.tech/crossing/0.1": {
-            "accord": "sha256:04f71f9b99b729d07bc824bcae742abc9f51f31d2b9d59e968a5c169e15b9303",
+            "accord": "sha256:924dff5065970a8e9173b639f9256915dc1df529fe352b4a485c8021fc4653d3",
             "to": "ed25519:a80586279ba17c5360b029018bf025be0169fdb02087e77301774c99eed92117"
           }
         },
@@ -361,9 +413,9 @@
       "as": "proposer",
       "at": "2026-11-12T09:04:00Z",
       "envelope": {
-        "hash": "sha256:9283264c763c4eda91e281b153d705e8ec5ec682f290f36d574da389ff013ec4",
+        "hash": "sha256:cb399473a594b320726a0cef2ae47f4dea0b516802e83f47a0038c4a1851d5ac",
         "seq": 1,
-        "sig": "5f63f62953adb95cd979d01ea18c54aa91578ea0567669275983c9a4581a75f589b228c90c6a7a30459d80894f7df29a213fb8908ac26eaad044244fd941aa00"
+        "sig": "d96e986adbc17a36d77db60a25c954b68fa6c1491a7a59ede324fd81efc01c1119172a57e9cf1eb80da610788e050080d6f9f7b2a391019310aadf68ab961504"
       },
       "expect": {
         "rejection": "one-body"
@@ -375,7 +427,7 @@
         "messageId": "defect-e",
         "metadata": {
           "https://placket.tech/crossing/0.1": {
-            "accord": "sha256:04f71f9b99b729d07bc824bcae742abc9f51f31d2b9d59e968a5c169e15b9303",
+            "accord": "sha256:924dff5065970a8e9173b639f9256915dc1df529fe352b4a485c8021fc4653d3",
             "to": "ed25519:a80586279ba17c5360b029018bf025be0169fdb02087e77301774c99eed92117"
           }
         },
@@ -397,9 +449,9 @@
       "as": "proposer",
       "at": "2026-11-12T09:05:00Z",
       "envelope": {
-        "hash": "sha256:24d133031e94737682416fb2cb5a57f5309d805ab3306c744d6f26cf5acafa66",
+        "hash": "sha256:db15471bcdfda491ff3e2181b8be15613305e9775931c01dbb15e5aa98e9b011",
         "seq": 1,
-        "sig": "3b961a5fa587bd440908e92b83d8f41a73265688542b6f99053792441f78ba2e37c1aa44055ad38c5721d4e6d1893cd6d20b2f7f2c3251bba1154320c5f2c804"
+        "sig": "cbbff1e81b02401ff316c518aafdc1cdbb9f50c248f0dd2bff731a95b9ccad5d02aa31977db2035c63477a197c84d1622fcd1615729b1c9c55f22fab9c41bb01"
       },
       "expect": {
         "rejection": "part-metadata"
@@ -411,7 +463,7 @@
         "messageId": "defect-f",
         "metadata": {
           "https://placket.tech/crossing/0.1": {
-            "accord": "sha256:04f71f9b99b729d07bc824bcae742abc9f51f31d2b9d59e968a5c169e15b9303",
+            "accord": "sha256:924dff5065970a8e9173b639f9256915dc1df529fe352b4a485c8021fc4653d3",
             "to": "ed25519:a80586279ba17c5360b029018bf025be0169fdb02087e77301774c99eed92117"
           }
         },
@@ -433,23 +485,23 @@
     {
       "as": "proposer",
       "at": "2026-11-12T09:06:00Z",
-      "envelopeHex": "7b2268617368223a227368613235363a61316335356633323235366665383962343639373936313038643934306338363632636630616133376538663638633732303733633765626430653963626631222c22736571223a312c22736967223a223564626664323736663066326632356531353039366439313361313963656266383733303362313231333137303135356631363337636130303863356363666536336366393634626633643966656134363866316533383066313465393437373032656164396365616539326334343132313531646266616164393237373039227d",
+      "envelopeHex": "7b2268617368223a227368613235363a63373937643538396338366533666133366230313435356436323033663166623933343339363732613561393663366431653635313830613465633063656239222c22736571223a312c22736967223a226632656431306536623738643837306639616630613533323138393336383832643162626234616265623437613632633838336431633538656437366432306262613561346538633264353339633962616133326138366565376234346430326538353037373637656364633636633762626336373632373235356562613062227d",
       "expect": {
         "reason": "ok",
         "receipt": {
-          "payload": "eyJfdHlwZSI6Imh0dHBzOi8vaW4tdG90by5pby9TdGF0ZW1lbnQvdjEiLCJwcmVkaWNhdGUiOnsiYWNjb3JkIjoic2hhMjU2OjA0ZjcxZjliOTliNzI5ZDA3YmM4MjRiY2FlNzQyYWJjOWY1MWYzMWQyYjlkNTllOTY4YTVjMTY5ZTE1YjkzMDMiLCJhdCI6IjIwMjYtMTEtMTJUMDk6MDY6MDBaIiwiYnkiOiJ0ZXJtcyIsImNhcmQiOiJzaGEyNTY6Y2RlMzlkYzNmYWU2MTJiM2I5YTVmZmE0NmFkYTE1ZWU4MmMyZjgzZGNkOWQzMThhMTU0NjYzZWI5YjlmYWFjMSIsImVudmVsb3BlIjp7Imhhc2giOiJzaGEyNTY6YTFjNTVmMzIyNTZmZTg5YjQ2OTc5NjEwOGQ5NDBjODY2MmNmMGFhMzdlOGY2OGM3MjA3M2M3ZWJkMGU5Y2JmMSIsInNlbmRlciI6ImVkMjU1MTk6N2NmMzViMzZiOWQ1N2M2MmI5ZjNkNWJlMmViNGQzOTE0N2FmYTFiNzYyNWNkMDAzMjQ0MzUyMzI1NGRmM2JlYSIsInNlcSI6MX0sImZyb20iOiJlZDI1NTE5OjdjZjM1YjM2YjlkNTdjNjJiOWYzZDViZTJlYjRkMzkxNDdhZmExYjc2MjVjZDAwMzI0NDM1MjMyNTRkZjNiZWEiLCJraW5kIjoiY3Jvc3NpbmciLCJtZWRpYXRvciI6ImVkMjU1MTk6ODQyNTRmOWQ1OTNiMGY3ODExYjE4YzAwYjY1NmE3MGZlMWE5NTk1ZWQzNTNjNzMyODZlYTgzZDMwMDIyNmVkMyIsInJlYXNvbiI6Im9rIiwic2VxIjoxLCJ0byI6ImVkMjU1MTk6YTgwNTg2Mjc5YmExN2M1MzYwYjAyOTAxOGJmMDI1YmUwMTY5ZmRiMDIwODdlNzczMDE3NzRjOTllZWQ5MjExNyIsInZlcmRpY3QiOiJwYXNzIn0sInByZWRpY2F0ZVR5cGUiOiJodHRwczovL3BsYWNrZXQudGVjaC9yZWNlaXB0LzAuMSIsInN1YmplY3QiOlt7ImRpZ2VzdCI6eyJzYWx0ZWQtc2hhMjU2IjoiYTNmMmI3OGZkMDMzZDExNmNhM2E0NDcxMzgyYWQwMWI4OWU5MGVjNTkzYjk4YWE4NTQ5YTcwNTc1YTZjOWY3ZCJ9LCJuYW1lIjoibm90ZSJ9XX0=",
+          "payload": "eyJfdHlwZSI6Imh0dHBzOi8vaW4tdG90by5pby9TdGF0ZW1lbnQvdjEiLCJwcmVkaWNhdGUiOnsiYWNjb3JkIjoic2hhMjU2OjkyNGRmZjUwNjU5NzBhOGU5MTczYjYzOWY5MjU2OTE1ZGMxZGY1MjlmZTM1MmI0YTQ4NWM4MDIxZmM0NjUzZDMiLCJhdCI6IjIwMjYtMTEtMTJUMDk6MDY6MDBaIiwiYnkiOiJ0ZXJtcyIsImNhcmQiOiJzaGEyNTY6Y2RlMzlkYzNmYWU2MTJiM2I5YTVmZmE0NmFkYTE1ZWU4MmMyZjgzZGNkOWQzMThhMTU0NjYzZWI5YjlmYWFjMSIsImVudmVsb3BlIjp7Imhhc2giOiJzaGEyNTY6Yzc5N2Q1ODljODZlM2ZhMzZiMDE0NTVkNjIwM2YxZmI5MzQzOTY3MmE1YTk2YzZkMWU2NTE4MGE0ZWMwY2ViOSIsInNlbmRlciI6ImVkMjU1MTk6N2NmMzViMzZiOWQ1N2M2MmI5ZjNkNWJlMmViNGQzOTE0N2FmYTFiNzYyNWNkMDAzMjQ0MzUyMzI1NGRmM2JlYSIsInNlcSI6MX0sImZyb20iOiJlZDI1NTE5OjdjZjM1YjM2YjlkNTdjNjJiOWYzZDViZTJlYjRkMzkxNDdhZmExYjc2MjVjZDAwMzI0NDM1MjMyNTRkZjNiZWEiLCJraW5kIjoiY3Jvc3NpbmciLCJtZWRpYXRvciI6ImVkMjU1MTk6ODQyNTRmOWQ1OTNiMGY3ODExYjE4YzAwYjY1NmE3MGZlMWE5NTk1ZWQzNTNjNzMyODZlYTgzZDMwMDIyNmVkMyIsInJlYXNvbiI6Im9rIiwic2VxIjoxLCJ0byI6ImVkMjU1MTk6YTgwNTg2Mjc5YmExN2M1MzYwYjAyOTAxOGJmMDI1YmUwMTY5ZmRiMDIwODdlNzczMDE3NzRjOTllZWQ5MjExNyIsInZlcmRpY3QiOiJwYXNzIn0sInByZWRpY2F0ZVR5cGUiOiJodHRwczovL3BsYWNrZXQudGVjaC9yZWNlaXB0LzAuMSIsInN1YmplY3QiOlt7ImRpZ2VzdCI6eyJzYWx0ZWQtc2hhMjU2IjoiYTNmMmI3OGZkMDMzZDExNmNhM2E0NDcxMzgyYWQwMWI4OWU5MGVjNTkzYjk4YWE4NTQ5YTcwNTc1YTZjOWY3ZCJ9LCJuYW1lIjoibm90ZSJ9XX0=",
           "payloadType": "application/vnd.in-toto+json",
           "signatures": [
             {
               "keyid": "ed25519:84254f9d593b0f7811b18c00b656a70fe1a9595ed353c73286ea83d300226ed3",
-              "sig": "+iFBAnB8D4pn5e9BJvJlaDYqfjMeZcwyHPHbOjKGLbb4YM1xf2b5qyrG3OYTMmsyGh/w9evPnlxvQsBR/lk3CA=="
+              "sig": "+14qTylPLKUtkZJCB8gu0qHi/gCAg9+LTELWkXOjvbJP4PpEzEU+2B1m02gfC3zHgkGfI2jAz7DltcS1WfgbBQ=="
             }
           ]
         },
-        "receiptId": "sha256:9b955e31c14d116937e92d3a346d33b1d8c1d52cb99468b4441a20aa2839eea2",
+        "receiptId": "sha256:b44a4e79b7a3fa475c6e1d6193b2c7bd813c5ec60d98c9d1f8c20460a0d027c8",
         "verdict": "pass"
       },
-      "messageHex": "7b22657874656e73696f6e73223a5b2268747470733a2f2f706c61636b65742e746563682f63726f7373696e672f302e31225d2c226d6573736167654964223a226e6f74652d31222c226d65746164617461223a7b2268747470733a2f2f706c61636b65742e746563682f63726f7373696e672f302e31223a7b226163636f7264223a227368613235363a30346637316639623939623732396430376263383234626361653734326162633966353166333164326239643539653936386135633136396531356239333033222c22746f223a22656432353531393a61383035383632373962613137633533363062303239303138626630323562653031363966646230323038376537373330313737346339396565643932313137227d7d2c227061727473223a5b7b226d65746164617461223a7b2268747470733a2f2f706c61636b65742e746563682f63726f7373696e672f302e31223a7b226b696e64223a226e6f7465222c2273616c74223a2238373132643263383738373930303332356638623336656537356335653833616263666564653832336464306230616633386436333664313730656533626633227d7d2c2274657874223a22476f6f642e227d5d2c22726f6c65223a22524f4c455f55534552227d",
+      "messageHex": "7b22657874656e73696f6e73223a5b2268747470733a2f2f706c61636b65742e746563682f63726f7373696e672f302e31225d2c226d6573736167654964223a226e6f74652d31222c226d65746164617461223a7b2268747470733a2f2f706c61636b65742e746563682f63726f7373696e672f302e31223a7b226163636f7264223a227368613235363a39323464666635303635393730613865393137336236333966393235363931356463316466353239666533353262346134383563383032316663343635336433222c22746f223a22656432353531393a61383035383632373962613137633533363062303239303138626630323562653031363966646230323038376537373330313737346339396565643932313137227d7d2c227061727473223a5b7b226d65746164617461223a7b2268747470733a2f2f706c61636b65742e746563682f63726f7373696e672f302e31223a7b226b696e64223a226e6f7465222c2273616c74223a2238373132643263383738373930303332356638623336656537356335653833616263666564653832336464306230616633386436333664313730656533626633227d7d2c2274657874223a22476f6f642e227d5d2c22726f6c65223a22524f4c455f55534552227d",
       "op": "give"
     }
   ],

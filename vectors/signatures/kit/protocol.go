@@ -170,10 +170,17 @@ func contains(l []string, s string) bool {
 	return false
 }
 
-// Build writes the set: the policy, the mediator, the card, and each party's declaration and binding,
-// signed by its principal for the set's policy, both lists in actor-reference order
-// (setup-contract-9, setup-contract-10).
+// Build writes the sealed set: Open's set with each declaration replaced by its seal entry
+// (setup-contract-12). Openings and Acceptances find its openings and every member's acceptance.
 func (s Set) Build() Obj {
+	sealed, _ := Seal(s.Open())
+	return sealed
+}
+
+// Open writes the set in the clear: the policy, the mediator, the card, and each party's declaration
+// and binding, signed by its principal for the set's policy, both lists in actor-reference order
+// (setup-contract-9, setup-contract-10).
+func (s Set) Open() Obj {
 	policy := s.Policy()
 	var decls, binds []Obj
 	for _, p := range s.Parties {
@@ -713,6 +720,7 @@ func (s *Scene) Vector(name, tests string, set Obj) Vector {
 	pending := append([]any{}, s.pending...)
 	return Vector{Name: name, Tests: tests, Operation: "scenario", Members: Obj{
 		"keys": keys, "mediator": s.Mediator.Name, "founding": set, "foundedAt": s.FoundedAt,
+		"openings": Openings(set), "acceptances": Acceptances(set),
 		"steps": append([]any(nil), s.steps...),
 		"final": Obj{"receipts": receipts, "delivered": delivered, "pending": pending},
 	}}

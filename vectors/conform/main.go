@@ -43,6 +43,10 @@ type evidence struct {
 	kernel   string
 	subset   bool
 	delivery kit.Obj
+	// sealed gives the verifier no opening; opened, when set, gives it only these members' openings,
+	// as a dispute's verifier holds them; otherwise it holds every one (setup-contract-16).
+	sealed bool
+	opened []kit.Key
 }
 
 func of(set kit.Obj, s *kit.Scene, calls ...kit.Obj) evidence {
@@ -58,7 +62,22 @@ func (e evidence) vector(name, tests string, expect kit.Obj) kit.Vector {
 	for i, c := range e.calls {
 		cs[i] = kit.Obj{"call": c}
 	}
-	m := kit.Obj{"accord": e.accord, "founding": e.set, "receipts": rs, "answers": cs, "kernel": e.kernel, "expect": expect}
+	m := kit.Obj{"accord": e.accord, "founding": e.set, "acceptances": kit.Acceptances(e.set), "receipts": rs, "answers": cs, "kernel": e.kernel, "expect": expect}
+	switch {
+	case e.sealed:
+	case e.opened != nil:
+		var l []any
+		for _, o := range kit.Openings(e.set) {
+			for _, k := range e.opened {
+				if o.(kit.Obj)["actor"] == k.Ref {
+					l = append(l, o)
+				}
+			}
+		}
+		m["openings"] = l
+	default:
+		m["openings"] = kit.Openings(e.set)
+	}
 	if e.subset {
 		m["subset"] = true
 	}
@@ -67,6 +86,9 @@ func (e evidence) vector(name, tests string, expect kit.Obj) kit.Vector {
 	}
 	return kit.Vector{Name: "conform/" + name, Tests: tests, Operation: "conform", Members: m}
 }
+
+// notChecked marks a conforms expectation as found without every opening (setup-contract-16).
+func notChecked(o kit.Obj) kit.Obj { o["terms"] = "not-checked"; return o }
 
 func fails(code string, index int) kit.Obj { return kit.Obj{"code": code, "index": index} }
 
@@ -145,6 +167,25 @@ func main() {
 		e := of(askAndLog, s)
 		e.kernel = kit.HashOf("conform: another module")
 		add(e.vector("another-module", "verify-2: under a card whose kernel is not the trusted one the decision row is skipped, and the same receipt conforms", conforms(0, 0, 0, false)))
+	}
+	{
+		// Founding without the openings, and with some (setup-contract-16, verify-1): the decision row
+		// reads only terms whose seals are opened.
+		s := scene(askAndLog)
+		s.Give(at(0), kit.Proposer, 1, message(askAndLog, "tests-1", "tests", kit.Applier), kit.Applier, "pass", "ok")
+		e := of(askAndLog, s)
+		e.sealed = true
+		add(e.vector("sealed-a-pass-the-terms-block", "verify-1, setup-contract-16: with no opening the terms are not checked, the decision row is skipped, and a pass the terms would block conforms", notChecked(conforms(0, 0, 0, true))))
+		e = of(askAndLog, s)
+		e.opened = []kit.Key{kit.Proposer}
+		add(e.vector("sealed-one-side-opened", "verify-1, setup-contract-16: with the sender's opening alone the receiver's terms are sealed, so the decision row is skipped for that pass and it conforms", notChecked(conforms(0, 0, 0, true))))
+		e = of(askAndLog, s)
+		e.opened = []kit.Key{kit.Proposer, kit.Applier}
+		add(e.vector("sealed-both-sides-opened", "verify-1, setup-contract-16: with the openings of both sides of the pass, though not the decider's, the decision row reads it again and it is decision", fails("decision", 0)))
+		w, call := worked()
+		e = of(askAndLog, w, call)
+		e.sealed = true
+		add(e.vector("sealed-a-worked-journal-conforms", "verify-1, verify-3, setup-contract-16: the worked journal with no opening conforms with its terms not checked, and the decider's call witnesses the accept and its release", notChecked(conforms(2, 0, 0, true))))
 	}
 	{
 		s := scene(askAndLog)

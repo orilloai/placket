@@ -12,7 +12,7 @@ import (
 
 // A refusal set differs from the ask-and-log set in one defect, unless its vector says otherwise.
 
-func base() kit.Obj { return kit.AskAndLog().Build() }
+func base() kit.Obj { return kit.AskAndLog().Open() }
 
 // list returns a set's list member as objects.
 func list(set kit.Obj, name string) []kit.Obj {
@@ -114,17 +114,45 @@ func twoPrincipals() kit.Set {
 	return s
 }
 
-func accepted(name, tests string, set kit.Obj, at string) kit.Vector {
-	return kit.Vector{Name: "founding/" + name, Tests: tests, Operation: "found", Members: kit.Obj{
-		"inputHex": kit.HexOf(kit.Canon(set)), "foundedAt": at,
-		"expect": kit.Obj{"accord": kit.HashOf(set), "card": kit.HashOf(set["card"])},
-	}}
+// vector writes a found vector of a sealed set, given as hex when it founds and as a JSON value when
+// it is refused, with the openings and the acceptances given, each left out when nil; acceptances
+// given as a string are given as text.
+func vector(name, tests string, sealed kit.Obj, at string, openings []any, acceptances any, expect kit.Obj) kit.Vector {
+	m := kit.Obj{"foundedAt": at, "expect": expect}
+	if _, ok := expect["accord"]; ok {
+		m["inputHex"] = kit.HexOf(kit.Canon(sealed))
+	} else {
+		m["input"] = sealed
+	}
+	if openings != nil {
+		m["openings"] = openings
+	}
+	switch a := acceptances.(type) {
+	case nil:
+	case string:
+		m["acceptancesText"] = a
+	default:
+		m["acceptances"] = a
+	}
+	return kit.Vector{Name: "founding/" + name, Tests: tests, Operation: "found", Members: m}
 }
 
-func refused(name, tests string, set kit.Obj, code string) kit.Vector {
-	return kit.Vector{Name: "founding/" + name, Tests: tests, Operation: "found", Members: kit.Obj{
-		"input": set, "foundedAt": kit.FoundedAt, "expect": kit.Obj{"code": code},
-	}}
+// founds is the expectation of a set that founds: its Accord id and card hash.
+func founds(sealed kit.Obj) kit.Obj {
+	return kit.Obj{"accord": kit.HashOf(sealed), "card": kit.HashOf(sealed["card"])}
+}
+
+// accepted seals a set given in the clear and founds it with every opening and every acceptance.
+func accepted(name, tests string, open kit.Obj, at string) kit.Vector {
+	sealed, openings := kit.Seal(open)
+	return vector(name, tests, sealed, at, openings, kit.Acceptances(sealed), founds(sealed))
+}
+
+// refused seals a set given in the clear and founds it with every opening and no acceptance, for a
+// defect rows 1 to 17 find.
+func refused(name, tests string, open kit.Obj, code string) kit.Vector {
+	sealed, openings := kit.Seal(open)
+	return vector(name, tests, sealed, kit.FoundedAt, openings, nil, kit.Obj{"code": code})
 }
 
 func main() {
@@ -139,7 +167,7 @@ func main() {
 			{Key: kit.Proposer, Roles: []string{"proposer", "decider"}, Terms: proposerTerms()},
 			{Key: kit.Applier, Roles: []string{"applier"}, Terms: kit.AskAndLog().Parties[1].Terms},
 		},
-	}.Build()
+	}.Open()
 
 	otherOperator := base()
 	otherOperator["mediator"].(kit.Obj)["operator"] = kit.OtherMediator.Ref
@@ -171,7 +199,7 @@ func main() {
 		kit.Binding(kit.Proposer, kit.Principal, kit.Mediator, kit.HashOf(noRoles["policy"]), kit.Until, "proposer"))
 	// The first declaration's binding gives decider, which its principal may not grant, and names
 	// another mediator; then the same with another policy's hash in place of the mediator.
-	twoSet := twoPrincipals().Build()
+	twoSet := twoPrincipals().Open()
 	firstTwo := keyOf(list(twoSet, "declarations")[0]["actor"].(string))
 	firstBy := kit.Principal
 	if firstTwo.Ref == kit.Decider.Ref {
@@ -181,15 +209,15 @@ func main() {
 	if firstBy.Ref == kit.OtherPrincipal.Ref {
 		ungrantedRole = "proposer"
 	}
-	roleAndMediator := replace(twoPrincipals().Build(), "bindings", firstTwo,
+	roleAndMediator := replace(twoPrincipals().Open(), "bindings", firstTwo,
 		kit.Binding(firstTwo, firstBy, kit.OtherMediator, kit.HashOf(twoSet["policy"]), kit.Until, ungrantedRole))
-	roleAndPolicy := replace(twoPrincipals().Build(), "bindings", firstTwo,
+	roleAndPolicy := replace(twoPrincipals().Open(), "bindings", firstTwo,
 		kit.Binding(firstTwo, firstBy, kit.Mediator, kit.HashOf(base()["policy"]), kit.Until, ungrantedRole))
 	// The proposer's binding gives decider, which its principal may not grant, and its signature is
 	// the proposer's good binding's, so the signature fails first.
 	badSigRole := kit.Binding(kit.Proposer, kit.Principal, kit.Mediator, kit.HashOf(twoSet["policy"]), kit.Until, "proposer", "decider")
 	badSigRole["sig"] = kit.Binding(kit.Proposer, kit.Principal, kit.Mediator, kit.HashOf(twoSet["policy"]), kit.Until, "proposer", "applier")["sig"]
-	badSigRole = replace(twoPrincipals().Build(), "bindings", kit.Proposer, badSigRole)
+	badSigRole = replace(twoPrincipals().Open(), "bindings", kit.Proposer, badSigRole)
 	// The proposer's binding, by the policy's principal, is signed for the policy with no roles and
 	// names another mediator; then the same binding expired at founding in place of the mediator.
 	policyAndMediator := replace(base(), "bindings", kit.Proposer,
@@ -259,7 +287,7 @@ func main() {
 	judgeNameTwice := base()
 	judgeNameTwice["card"].(kit.Obj)["judges"] = []any{kit.Jev, kit.Obj{"name": "jev", "version": "1.0.0", "hash": kit.HashOf("another build of jev")}}
 	// A policy whose supersedes names a close that is not a typed hash, the bindings signed again.
-	badClose := kit.Superseding().Build()
+	badClose := kit.Superseding().Open()
 	badClose["policy"].(kit.Obj)["supersedes"].(kit.Obj)["close"] = "a close receipt"
 	badClose = rebind(badClose)
 	cardModels := base()
@@ -363,21 +391,21 @@ func main() {
 	vs := []kit.Vector{
 		accepted("ask-and-log", "setup-contract-5: the ask-and-log set founds to the typed hash of its canonical bytes", base(), at),
 		accepted("ask-and-log-later", "setup-contract-5: the same set founded at another time founds to the same Accord id", base(), "2027-06-01T12:30:00Z"),
-		accepted("compose", "setup-contract-5: the set of the composition scenarios founds", kit.Compose().Build(), at),
-		accepted("own-no", "setup-contract-5: the set of the scenario in which the sender refuses founds", kit.OwnNo().Build(), at),
-		accepted("long-wait", "setup-contract-5: the set whose maybe term waits the largest timeout founds", kit.LongWait().Build(), at),
-		accepted("unanswered", "setup-contract-5: a set whose maybe rule names a role no binding gives founds, since only the policy's roles must be held", kit.Unanswered().Build(), at),
-		accepted("judged", "setup-contract-1, setup-contract-4: the set of the judge scenarios, whose card lists jev and whose maybe terms list it to decide or to advise, founds", kit.Judged().Build(), at),
-		accepted("supersedes", "setup-contract-11: a set whose policy supersedes an earlier Accord, by its id and its close receipt's id, founds", kit.Superseding().Build(), at),
-		accepted("answer-under-maybe", "setup-contract-5: the set in which the asker gets answers under a maybe term founds", kit.AnswerUnderMaybe().Build(), at),
-		accepted("two-waits", "setup-contract-5: the set of the close scenarios, whose two maybe terms wait 3600 and 60 seconds, founds", kit.TwoWaits().Build(), at),
+		accepted("compose", "setup-contract-5: the set of the composition scenarios founds", kit.Compose().Open(), at),
+		accepted("own-no", "setup-contract-5: the set of the scenario in which the sender refuses founds", kit.OwnNo().Open(), at),
+		accepted("long-wait", "setup-contract-5: the set whose maybe term waits the largest timeout founds", kit.LongWait().Open(), at),
+		accepted("unanswered", "setup-contract-5: a set whose maybe rule names a role no binding gives founds, since only the policy's roles must be held", kit.Unanswered().Open(), at),
+		accepted("judged", "setup-contract-1, setup-contract-4: the set of the judge scenarios, whose card lists jev and whose maybe terms list it to decide or to advise, founds", kit.Judged().Open(), at),
+		accepted("supersedes", "setup-contract-11: a set whose policy supersedes an earlier Accord, by its id and its close receipt's id, founds", kit.Superseding().Open(), at),
+		accepted("answer-under-maybe", "setup-contract-5: the set in which the asker gets answers under a maybe term founds", kit.AnswerUnderMaybe().Open(), at),
+		accepted("two-waits", "setup-contract-5: the set of the close scenarios, whose two maybe terms wait 3600 and 60 seconds, founds", kit.TwoWaits().Open(), at),
 		accepted("one-binding-two-roles", "setup-contract-2: one binding gives an actor two of the policy's three roles, the third held by another", twoRoles, at),
 		accepted("operator-changes-the-id", "setup-contract-7: a set differing from ask-and-log only in its operator founds to another id", otherOperator, at),
 		accepted("policy-without-roles", "setup-contract-5: a policy whose roles are empty founds", noRoles, at),
-		accepted("two-principals", "setup-contract-2: a principal per side, one that may grant proposer and applier and binds those two, the other that may grant decider and binds the decider, founds", twoPrincipals().Build(), at),
-		accepted("two-entries-one-role", "setup-contract-9: two policy entries that both list decider found, the decider bound by the second", oneRoleTwice.Build(), at),
-		accepted("a-role-held-not-required", "setup-contract-5: a binding gives proposer and auditor, both its principal's entry lists, under a policy that requires proposer alone, and the set founds", notRequired.Build(), at),
-		refused("binding-role-not-granted", "setup-contract-3: a binding by the principal whose entry lists proposer and applier gives decider, and is binding-role", ungranted.Build(), "binding-role"),
+		accepted("two-principals", "setup-contract-2: a principal per side, one that may grant proposer and applier and binds those two, the other that may grant decider and binds the decider, founds", twoPrincipals().Open(), at),
+		accepted("two-entries-one-role", "setup-contract-9: two policy entries that both list decider found, the decider bound by the second", oneRoleTwice.Open(), at),
+		accepted("a-role-held-not-required", "setup-contract-5: a binding gives proposer and auditor, both its principal's entry lists, under a policy that requires proposer alone, and the set founds", notRequired.Open(), at),
+		refused("binding-role-not-granted", "setup-contract-3: a binding by the principal whose entry lists proposer and applier gives decider, and is binding-role", ungranted.Open(), "binding-role"),
 		refused("binding-other-policy", "setup-contract-3: a binding signed for the hash of another policy is binding-policy", otherPolicy, "binding-policy"),
 		refused("ungranted-role-and-other-mediator", "setup-contract-8: the first declaration's binding gives a role its principal may not grant and names another mediator, and the role comes first", roleAndMediator, "binding-role"),
 		refused("ungranted-role-and-other-policy", "setup-contract-8: a binding that gives a role its principal may not grant and names another policy's hash is binding-role, which comes first", roleAndPolicy, "binding-role"),
@@ -442,6 +470,7 @@ func main() {
 		refused("small-order-actor", "signing-1: a declaration whose actor is a point of order 8 is declaration-signature", smallOrder, "declaration-signature"),
 		refused("binding-under-declaration-uri", "signing-2: a binding signed under the declaration type URI is binding-signature", wrongURI, "binding-signature"),
 	}
+	vs = append(vs, sealedVectors(at)...)
 	kit.Main("founding", vs)
 }
 
