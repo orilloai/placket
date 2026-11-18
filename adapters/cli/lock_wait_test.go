@@ -55,19 +55,36 @@ func TestAWaitHoldsNoLock(t *testing.T) {
 	}
 }
 
-// mcpSession is a placket mcp run in this process, with a pipe for its input.
+// mcpSession is a placket mcp run in this process, with a pipe for its input, which a goroutine of
+// the session's writes, in order, so a command that never reads its input holds up no test.
 type mcpSession struct {
-	p  *proc
-	in *io.PipeWriter
-	n  int
+	p     *proc
+	lines chan []byte
+	n     int
 }
 
 func startMCP(t testing.TB, e cli.Env, args ...string) *mcpSession {
 	t.Helper()
 	r, w := io.Pipe()
-	s := &mcpSession{p: background(t, e, r, append([]string{"mcp"}, args...)...), in: w}
-	t.Cleanup(func() { _ = w.Close() })
+	s := &mcpSession{p: background(t, e, r, append([]string{"mcp"}, args...)...), lines: make(chan []byte, 16)}
+	go func() {
+		defer w.Close()
+		for b := range s.lines {
+			if _, err := w.Write(b); err != nil {
+				return
+			}
+		}
+	}()
+	t.Cleanup(s.close)
 	return s
+}
+
+// close ends the session's input, once.
+func (s *mcpSession) close() {
+	if s.lines != nil {
+		close(s.lines)
+		s.lines = nil
+	}
 }
 
 // send writes one request and returns its id.
@@ -75,9 +92,7 @@ func (s *mcpSession) send(t testing.TB, method string, params any) int {
 	t.Helper()
 	s.n++
 	b, _ := json.Marshal(map[string]any{"jsonrpc": "2.0", "id": s.n, "method": method, "params": params})
-	if _, err := s.in.Write(append(b, '\n')); err != nil {
-		t.Fatal(err)
-	}
+	s.lines <- append(b, '\n')
 	return s.n
 }
 
@@ -101,7 +116,7 @@ func TestAResultParkedInMCPHoldsNoLock(t *testing.T) {
 	if n := strings.Count(s.p.stdout.String(), "\n"); n != 1 {
 		t.Fatalf("the parked result replied: %q", s.p.stdout.String())
 	}
-	_ = s.in.Close()
+	s.close()
 	if code := s.p.wait(t, 10*time.Second); code != 0 {
 		t.Fatalf("placket mcp exited %d: %s", code, s.p.stderr.String())
 	}
