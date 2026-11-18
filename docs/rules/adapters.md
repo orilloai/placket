@@ -76,9 +76,9 @@ Checked by: the reviewer.
 
 ## `state-lock`
 
-Every socket command takes the state directory's exclusive lock before reading its sequence number and keeps it until the reply is handled.
+A `give` or a `resolve` takes the state directory's exclusive lock before it reads the sequence number, or anything it writes from, and keeps it until the reply is handled. A `get` and a `result` take it only to fetch and persist what they fetch. A call that waits at the door holds no lock while it waits, and `questions`, which reads no sequence number and writes nothing, takes none (`docs/adr/0024-the-mediator-api.md`).
 
-Why: two commands at once must not reuse a sequence number.
+Why: two commands at once must not reuse a sequence number, and a call that waits for up to a minute must not stop the same key's answer or give.
 
 Checked by: the reviewer.
 
