@@ -149,8 +149,14 @@ func plural(n int, noun string) string {
 // coverage list. A vector is every .json file under vectors/ but vectors/coverage.json
 // (conformance-vectors-10, record 0004).
 func Run(spec, vectors fs.FS, h Handlers) Report {
-	var r Report
 	schema, problems := loadSchema(spec)
+	return runLoaded(spec, vectors, h, schema, problems)
+}
+
+// runLoaded is Run with spec/schema/ already loaded: schema and problems are what loadSchema
+// returned for spec. It reads schema only, so one load serves any number of runs.
+func runLoaded(spec, vectors fs.FS, h Handlers, schema *node, problems []string) Report {
+	var r Report
 	r.Problems = append(r.Problems, problems...)
 
 	var files []string

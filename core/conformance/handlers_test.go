@@ -140,7 +140,7 @@ func TestResolveAndTickStepsCompareExactly(t *testing.T) {
 // conformance-vectors-7, runner-no-silent-pass).
 func TestEveryVectorRunsAndNoEntryIsOpen(t *testing.T) {
 	t.Parallel()
-	r := Run(os.DirFS(repoSpec), os.DirFS(repoVectors), Default())
+	r := run(os.DirFS(repoSpec), os.DirFS(repoVectors), Default())
 	if !r.Passed() || len(r.Results) == 0 {
 		t.Fatalf("the run failed: %q", r.Problems)
 	}
@@ -171,7 +171,7 @@ func TestARefusedVectorExampleThatValidatesFails(t *testing.T) {
 	}
 	spec := tree(t, "testdata/spec-small", tree(t, repoSpec, nil))
 	spec["schema/testdata/vector/refused/a-valid-vector.json"] = &fstest.MapFile{Data: b}
-	r := Run(spec, tree(t, "testdata/coverage-tests/vectors", nil), Default())
+	r := run(spec, tree(t, "testdata/coverage-tests/vectors", nil), Default())
 	want := []string{"spec/schema/testdata/vector/refused/a-valid-vector.json: a refused example the schema accepts"}
 	if !reflect.DeepEqual(r.Problems, want) || r.Passed() {
 		t.Fatalf("problems %q", r.Problems)
@@ -220,7 +220,7 @@ func TestCoverageTestEntryShapes(t *testing.T) {
 			[]string{`vectors/coverage.json: canonical-1: an entry has either "vectors" or "open", and this has neither`}},
 	} {
 		list := `{"canonical-1": ` + c.entry + `, ` + receipt6 + `}`
-		r := Run(spec, fstest.MapFS{"coverage.json": {Data: []byte(list)}}, Default())
+		r := run(spec, fstest.MapFS{"coverage.json": {Data: []byte(list)}}, Default())
 		if r.Passed() || !reflect.DeepEqual(r.Problems, c.want) {
 			t.Errorf("%s:\n  got  %q\n  want %q", c.entry, r.Problems, c.want)
 		}
