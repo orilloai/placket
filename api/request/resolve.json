@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://placket.tech/api/0.1/request/resolve.json",
+  "title": "resolve: the request",
+  "description": "Answers a question the key may answer: accepted or changed with the answer, declined, or cancelled by its asker. The client checks the question shown, mints the answer's salt and signs the answer call.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "question": {
+      "description": "The question's id, a typed hash.",
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "action": {
+      "enum": [
+        "accepted",
+        "changed",
+        "declined",
+        "cancelled"
+      ]
+    },
+    "answer": {
+      "description": "For accepted, the text accepted; for changed, the version.",
+      "type": "string",
+      "minLength": 1
+    }
+  },
+  "required": [
+    "action",
+    "question"
+  ],
+  "if": {
+    "properties": {
+      "action": {
+        "enum": [
+          "accepted",
+          "changed"
+        ]
+      }
+    }
+  },
+  "then": {
+    "required": [
+      "answer"
+    ]
+  },
+  "else": {
+    "not": {
+      "required": [
+        "answer"
+      ]
+    }
+  }
+}

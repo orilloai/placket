@@ -1,16 +1,13 @@
 package cli
 
 import (
-	"encoding/hex"
-	"encoding/json"
 	"fmt"
-	"io"
 	"unicode/utf8"
 
+	"github.com/orilloai/placket/adapters/client"
 	"github.com/orilloai/placket/adapters/local"
 	"github.com/orilloai/placket/core/answer"
 	"github.com/orilloai/placket/core/composition"
-	"github.com/orilloai/placket/core/mediator"
 	"github.com/orilloai/placket/core/receipts"
 )
 
@@ -18,115 +15,29 @@ func init() {
 	commands["answer"] = answerCommand
 }
 
-// A signedAnswer is what resolve signed and minted: the answer call's bytes and the answer's salt,
-// nil for a decline or a cancel.
-type signedAnswer struct{ call, salt []byte }
-
 // An answering is what one answer signs and sends: the question, the action, for an accept or a
 // change the text and whether it asks for release, and whether the key keeps the call it signed.
-type answering struct {
-	question string
-	action   answer.Action
-	text     string
-	release  bool
-	keep     bool
-}
+type answering = client.Answering
 
-// shown reads the question as the window shows it to this key's answerer and checks it before
-// anything is signed (asked). A question the window does not show is tool error asked too, whether
-// or not the window left some out of its reply: nothing is signed for a part that was not checked.
-// A closed Accord's reply, which carries its close, is the rejection closed.
-// It returns 0, or the exit code of a refusal or of tool error asked.
-func (s *session) shown(question string) int {
-	rep, err := s.client.Call(local.OpQuestions, nil)
+// resolve answers the question (maybe-11) through the client (client.Resolve): for an accept, a
+// change or a decline it first checks the question the window shows, and signs nothing for one it
+// does not show as its ask's receipt names it (tool error asked) or on a closed Accord (the rejection
+// closed). It prints the outcome, then the release's, and returns the reply and what it signed, or
+// nil and the exit code of a refusal.
+func (s *session) resolve(a answering) (*local.Reply, client.Signed, int) {
+	rep, signed, err := s.c.Resolve(s.r.env.Context, a)
 	if err != nil {
-		return s.r.failed(err)
+		return nil, client.Signed{}, s.r.failed(err)
 	}
 	if code, refused := s.r.refusal(rep); refused {
-		return code
+		return nil, client.Signed{}, code
 	}
-	// A closed Accord shows no question, and takes no answer: the window would reject it with
-	// closed, right after membership, so nothing is signed (close-3).
-	if rep.Close != nil {
-		s.r.put(memberRejection, string(mediator.AccordClosed))
-		fmt.Fprintln(s.r.stderr, LineRejected+" "+string(mediator.AccordClosed))
-		return ExitRejected
-	}
-	for _, q := range rep.Questions {
-		if q.ID == question && s.asked(q) {
-			return 0
-		}
-	}
-	return s.r.tool(codeAsked)
-}
-
-// asked reports whether a question the window shows is the part its ask's receipt names: the
-// receipt is the question's, under this Accord, of the kind shown, and its subject digest is the
-// salted digest of the body shown under the salt shown (crossing-3, maybe-1).
-func (s *session) asked(q local.Asked) bool {
-	st, err := receipts.Decode(q.Receipt)
-	return err == nil && st.ID == q.ID && st.Predicate.Accord == s.client.Accord && st.Subject.Name == q.Kind &&
-		receipts.Digest(q.Salt, askedBody(q)) == st.Subject.Digest
-}
-
-// askedBody is the bytes of an asked part's body as the digest reads them: a text's UTF-8, a data
-// body's canonical bytes, a raw body's bytes.
-func askedBody(q local.Asked) []byte {
-	if q.Raw != nil {
-		return q.Raw
-	}
-	if q.Message != nil {
-		return []byte(*q.Message)
-	}
-	return nil
-}
-
-// resolve answers the question (maybe-11): for an accept, a change or a decline it first checks the
-// question the window shows (shown); for an accept or a change it mints the answer's salt, 32
-// random bytes; it signs the answer call with the key, the answer's salted digest in it and never
-// its text; with keep it keeps the call and the salt; and it sends the call, with the text and the
-// salt beside it. It prints the outcome, then the release's, and returns the reply and what it
-// signed, or nil and the exit code of a refusal.
-func (s *session) resolve(a answering) (*local.Reply, signedAnswer, int) {
-	if a.action != answer.Cancelled {
-		if code := s.shown(a.question); code != 0 {
-			return nil, signedAnswer{}, code
-		}
-	}
-	call := answer.Call{Accord: s.client.Accord, Question: a.question, Action: a.action}
-	var salt []byte
-	if a.action == answer.Accepted || a.action == answer.Changed {
-		salt = make([]byte, mediator.SaltBytes)
-		if _, err := io.ReadFull(s.r.env.Rand, salt); err != nil {
-			return nil, signedAnswer{}, s.r.tool(codeRand)
-		}
-		call.Digest, call.Release = receipts.Digest(salt, []byte(a.text)), a.release
-	}
-	signed, err := answer.Sign(call, s.key)
-	if err != nil {
-		return nil, signedAnswer{}, s.r.tool(codeInternal)
-	}
-	if a.keep && salt != nil {
-		if err := s.dir.Keep(canonicalJSON(map[string]any{"answer": json.RawMessage(signed), "salt": hex.EncodeToString(salt)})); err != nil {
-			return nil, signedAnswer{}, s.r.failed(err)
-		}
-	}
-	rep, err := s.client.Call(local.OpResolve, local.ResolveArgs(signed, a.text, salt))
-	if err != nil {
-		return nil, signedAnswer{}, s.r.failed(err)
-	}
-	if code, refused := s.r.refusal(rep); refused {
-		return nil, signedAnswer{}, code
-	}
-	if rep.Outcome == nil {
-		return nil, signedAnswer{}, s.r.tool(codeReply)
-	}
-	s.r.put(memberQuestion, a.question)
+	s.r.put(memberQuestion, a.Question)
 	s.r.outcome(rep.Outcome, false, memberOutcome)
 	if rep.Release != nil {
 		s.r.outcome(rep.Release, true, memberRelease)
 	}
-	return &rep, signedAnswer{call: signed, salt: salt}, 0
+	return &rep, signed, 0
 }
 
 // passed reports whether an answer and its release, when it has one, both passed.
@@ -151,9 +62,9 @@ func (s *session) comment(rep *local.Reply, question, text string) int {
 	s.r.put(memberCrossed, false)
 	to, ok := asker(rep)
 	if !ok {
-		return s.r.tool(codeReply)
+		return s.r.tool(string(client.CodeReply))
 	}
-	out, code := s.send(to, "comment", body{form: "text", value: text}, question, "", true)
+	out, code := s.send(client.Message{To: to, Kind: "comment", Body: client.Body{Form: client.FormText, Text: text}, Re: question}, true)
 	if out == nil {
 		fmt.Fprintln(s.r.stderr, LineCommentNotCross)
 		return code
@@ -171,20 +82,20 @@ func (s *session) comment(rep *local.Reply, question, text string) int {
 // comment it gives are written under it, after any line a stop left unterminated is removed.
 func answerFlags(r *run, name string, args []string, more func(fs *flagSet)) (*session, string, int) {
 	fs := flags(name)
-	keyPath, socket, accord, stateDir := socketFlags(fs)
+	so := socketFlags(fs)
 	question := fs.String("question", "", "the question's id")
 	if more != nil {
 		more(fs)
 	}
 	// A question id that is not UTF-8 is refused, never repaired (parse-strict).
-	if !r.parse(fs, args, "key", "socket", "accord", "question") || !allUTF8(*question) {
+	if !r.parseSocket(fs, args, so, "question") || !allUTF8(*question) {
 		return nil, "", r.tool(codeUsage)
 	}
-	s, code := r.open(*keyPath, *socket, *accord, *stateDir)
+	s, code := r.open(so)
 	if s == nil {
 		return nil, "", code
 	}
-	if err := s.dir.Lock(); err != nil {
+	if err := s.c.Lock(); err != nil {
 		return nil, "", r.failed(err)
 	}
 	return s, *question, 0
@@ -203,11 +114,11 @@ func answerCommand(r *run, args []string) int {
 	if s == nil {
 		return code
 	}
-	defer s.dir.Unlock()
+	defer s.c.Unlock()
 	if !utf8.ValidString(*text) {
 		return r.tool(codeText)
 	}
-	rep, _, code := s.resolve(answering{question: question, action: answer.Accepted, text: *text, release: !*noRelease, keep: *keep})
+	rep, _, code := s.resolve(answering{Question: question, Action: answer.Accepted, Text: *text, Release: !*noRelease, Keep: *keep})
 	if rep == nil {
 		return code
 	}

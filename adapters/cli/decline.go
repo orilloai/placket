@@ -19,12 +19,12 @@ func declineCommand(r *run, args []string) int {
 	if s == nil {
 		return code
 	}
-	defer s.dir.Unlock()
+	defer s.c.Unlock()
 	// The comment is given only after the decline is sent, so it is checked first (parse-strict).
 	if *comment == "" || !utf8.ValidString(*comment) {
 		return r.tool(codeComment)
 	}
-	rep, _, code := s.resolve(answering{question: question, action: answer.Declined})
+	rep, _, code := s.resolve(answering{Question: question, Action: answer.Declined})
 	if rep == nil {
 		return code
 	}

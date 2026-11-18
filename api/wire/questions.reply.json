@@ -1,0 +1,115 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://placket.tech/api/0.1/wire/questions.reply.json",
+  "title": "questions: the reply",
+  "description": "The questions, as many whole ones as fit in 4 MiB, with more when some were left out; the cursor of the last one carried, or of the newest ask when it carries none; the close, beside an empty list, on a closed Accord; or a refusal.",
+  "oneOf": [
+    {
+      "type": "object",
+      "required": [
+        "cursor",
+        "ok",
+        "questions"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "ok": {
+          "const": true
+        },
+        "questions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "asker",
+              "deadline",
+              "form",
+              "id",
+              "kind",
+              "receipt",
+              "salt",
+              "size"
+            ],
+            "additionalProperties": false,
+            "description": "An open question the caller may answer, with the part it is about: a text as text, a data body as data, a raw body as raw, in standard base64.",
+            "properties": {
+              "asker": {
+                "$ref": "https://placket.tech/api/0.1/wire/common.json#/$defs/actor"
+              },
+              "deadline": {
+                "$ref": "https://placket.tech/api/0.1/wire/common.json#/$defs/timestamp"
+              },
+              "form": {
+                "enum": [
+                  "text",
+                  "data",
+                  "raw"
+                ]
+              },
+              "id": {
+                "$ref": "https://placket.tech/api/0.1/wire/common.json#/$defs/hash"
+              },
+              "kind": {
+                "$ref": "https://placket.tech/api/0.1/wire/common.json#/$defs/code"
+              },
+              "receipt": {
+                "$ref": "https://placket.tech/api/0.1/wire/common.json#/$defs/receipt",
+                "description": "The ask's receipt."
+              },
+              "salt": {
+                "description": "The part's salt, 32 bytes in lowercase hex.",
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              "size": {
+                "description": "The body's length in bytes.",
+                "type": "integer",
+                "minimum": 0
+              },
+              "text": {
+                "type": "string"
+              },
+              "data": {
+                "description": "Any JSON value."
+              },
+              "raw": {
+                "$ref": "https://placket.tech/api/0.1/wire/common.json#/$defs/base64"
+              }
+            },
+            "oneOf": [
+              {
+                "required": [
+                  "text"
+                ]
+              },
+              {
+                "required": [
+                  "data"
+                ]
+              },
+              {
+                "required": [
+                  "raw"
+                ]
+              }
+            ]
+          }
+        },
+        "cursor": {
+          "$ref": "https://placket.tech/api/0.1/wire/common.json#/$defs/cursor"
+        },
+        "more": {
+          "const": true,
+          "description": "Questions were left out to keep the reply under 4 MiB; ask again after the cursor."
+        },
+        "close": {
+          "description": "The Accord's close receipt, on a closed Accord.",
+          "type": "object"
+        }
+      }
+    },
+    {
+      "$ref": "https://placket.tech/api/0.1/wire/common.json#/$defs/refusal"
+    }
+  ]
+}

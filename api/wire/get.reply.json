@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://placket.tech/api/0.1/wire/get.reply.json",
+  "title": "get: the reply",
+  "description": "A delivery, taken from the queue; queued, to a get that waited, which takes none; the close, on a closed Accord with nothing queued; nothing; or a refusal.",
+  "oneOf": [
+    {
+      "$ref": "https://placket.tech/api/0.1/wire/common.json#/$defs/empty"
+    },
+    {
+      "type": "object",
+      "required": [
+        "delivery",
+        "ok"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "ok": {
+          "const": true
+        },
+        "delivery": {
+          "description": "The delivery, as the mediator returned it: its receipt and id, the message id, kind, salt, re, the body, and the answer call when an answer queued it.",
+          "type": "object"
+        }
+      }
+    },
+    {
+      "type": "object",
+      "required": [
+        "ok",
+        "queued"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "ok": {
+          "const": true
+        },
+        "queued": {
+          "const": true,
+          "description": "A delivery is queued for the caller; an ordinary get takes it."
+        }
+      }
+    },
+    {
+      "type": "object",
+      "required": [
+        "close",
+        "ok"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "ok": {
+          "const": true
+        },
+        "close": {
+          "description": "The Accord's close receipt: a frozen format, carried as the door carries it.",
+          "type": "object"
+        }
+      }
+    },
+    {
+      "$ref": "https://placket.tech/api/0.1/wire/common.json#/$defs/refusal"
+    }
+  ]
+}

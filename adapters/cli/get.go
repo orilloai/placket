@@ -1,20 +1,15 @@
 package cli
 
 import (
-	"encoding/base64"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 
-	"github.com/orilloai/placket/adapters/internal/strict"
+	"github.com/orilloai/placket/adapters/client"
 	"github.com/orilloai/placket/adapters/local"
-	"github.com/orilloai/placket/core/answer"
 	"github.com/orilloai/placket/core/canonical"
-	"github.com/orilloai/placket/core/composition"
-	"github.com/orilloai/placket/core/mediator"
 	"github.com/orilloai/placket/core/receipts"
 )
 
@@ -23,20 +18,7 @@ func init() {
 }
 
 // A delivery as a command reads it.
-type delivery struct {
-	ReceiptID string          `json:"receiptId"`
-	Receipt   json.RawMessage `json:"receipt"`
-	MessageID string          `json:"messageId"`
-	Kind      string          `json:"kind"`
-	Salt      string          `json:"salt"`
-	Re        string          `json:"re"`
-	Text      *string         `json:"text"`
-	Raw       *string         `json:"raw"`
-	Data      json.RawMessage `json:"data"`
-	MediaType *string         `json:"mediaType"`
-	// Answer is the answer call inside a delivery an answer queued (maybe-12).
-	Answer json.RawMessage `json:"answer"`
-}
+type delivery = client.Delivery
 
 // keptDelivery is a line of kept.jsonl for a fetched part, the delivery as it was fetched. An answer
 // line of kept.jsonl, {"answer","salt"}, reads as one with no receipt id, which no reader takes for a
@@ -45,98 +27,25 @@ type keptDelivery struct {
 	delivery
 }
 
-// bytes is the delivery's body as get writes it: a text's UTF-8, a raw body's decoded bytes, a data
-// body's canonical bytes.
-func (d delivery) bytes() []byte {
-	switch {
-	case d.Text != nil:
-		return []byte(*d.Text)
-	case d.Raw != nil:
-		b, _ := base64.StdEncoding.DecodeString(*d.Raw)
-		return b
-	}
-	c, _ := canonical.Form(d.Data)
-	return c
-}
-
-// oneBody reports whether the delivery holds exactly one body, a raw one in strict standard base64.
-func (d delivery) oneBody() bool {
-	bodies := 0
-	for _, has := range []bool{d.Text != nil, d.Raw != nil, len(d.Data) > 0} {
-		if has {
-			bodies++
-		}
-	}
-	if d.Raw != nil {
-		if _, err := base64.StdEncoding.Strict().DecodeString(*d.Raw); err != nil {
-			return false
-		}
-	}
-	return bodies == 1
-}
-
-// about reports whether a delivery is what its receipt says it is, before anything of it is
-// recorded, printed or written: a receipt that decodes (receipts.Decode, which verifies nothing),
-// that passed, to this key under this Accord, of the id and kind the delivery names, whose digest
-// is that of the delivery's salt, of exactly SaltBytes, and its one body. So a delivery's kind is a
-// label and its receipt id a typed hash, whatever window sent it; reconcile and verify, under the
-// mediator's key, are what show the receipt is the mediator's.
-func (s *session) about(d delivery) bool {
-	st, err := receipts.Decode(d.Receipt)
-	if err != nil {
-		return false
-	}
-	salt, ok := saltBytes(d.Salt)
-	p := st.Predicate
-	// The answer call inside the delivery is the one its receipt names, when an answer queued it.
-	answered := len(d.Answer) == 0 && p.By.Decider != receipts.ByAnswer ||
-		len(d.Answer) > 0 && p.By.Decider == receipts.ByAnswer && answer.ID(d.Answer) == p.By.Answer
-	return ok && answered && d.oneBody() && st.ID == d.ReceiptID && st.Subject.Name == d.Kind &&
-		p.Verdict == string(composition.Pass) && p.To == s.key.Reference() && p.Accord == s.client.Accord &&
-		receipts.Digest(salt, d.bytes()) == st.Subject.Digest
-}
-
-// saltBytes decodes a salt written in hex, and reports whether it is exactly SaltBytes long
-// (crossing-2). A salt of any other length matches no receipt.
-func saltBytes(s string) ([]byte, bool) {
-	b, err := hex.DecodeString(s)
-	return b, err == nil && len(b) == mediator.SaltBytes
-}
-
-// fetch gets the next delivery, under the state lock the caller holds, and records it: its receipt
-// in delivered.jsonl, its salt in salts.jsonl, and the delivery, the answer call inside it, in kept.jsonl when keep is
-// set. It returns the delivery and its kept.jsonl line, or nil when nothing is queued, leaving in
-// s.handed the close receipt the reply carried in its place, if any, for get to keep; a delivery
-// that is not what its receipt says is tool error reply, and nothing of it is recorded.
-func (s *session) fetch(keep bool) (*delivery, []byte, int) {
-	rep, err := s.client.Call(local.OpGet, nil)
+// fetch gets the next delivery, recorded by the client before it returns (client.Get): its receipt
+// in delivered.jsonl, its salt in salts.jsonl, and the delivery, the answer call inside it, in
+// kept.jsonl when keep is set. It returns the delivery and its kept.jsonl line, or nil when nothing
+// is queued, leaving in s.handed the close receipt the reply carried in its place, if any, for get
+// to keep; a delivery that is not what its receipt says is tool error reply, and nothing of it is
+// recorded. With wait it waits on the door, without the lock, for a delivery queued.
+func (s *session) fetch(wait int, keep bool) (*delivery, []byte, int) {
+	g, err := s.c.Get(s.r.env.Context, wait, keep)
 	if err != nil {
 		return nil, nil, s.r.failed(err)
 	}
-	if code, refused := s.r.refusal(rep); refused {
+	if code, refused := s.r.refusal(g.Reply); refused {
 		return nil, nil, code
 	}
-	if rep.Delivery == nil {
-		s.handed = rep.Close
+	if g.Delivery == nil {
+		s.handed = g.Close
 		return nil, nil, 0
 	}
-	var d delivery
-	if !strict.Decode(rep.Delivery, &d) || !s.about(d) {
-		return nil, nil, s.r.tool(codeReply)
-	}
-	if err := s.dir.AddDelivered(d.Receipt); err != nil {
-		return nil, nil, s.r.failed(err)
-	}
-	if err := s.dir.AddSalt(d.ReceiptID, d.Salt); err != nil {
-		return nil, nil, s.r.failed(err)
-	}
-	kl := keptLine(rep.Delivery)
-	if keep {
-		if err := s.dir.Keep(kl); err != nil {
-			return nil, nil, s.r.failed(err)
-		}
-	}
-	return &d, kl, 0
+	return g.Delivery, g.Kept, 0
 }
 
 // keepClose keeps the close receipt a fetch was handed on a closed Accord, whose queue is empty
@@ -146,9 +55,9 @@ func (s *session) fetch(keep bool) (*delivery, []byte, int) {
 func (s *session) keepClose(receipt []byte) int {
 	c, err := receipts.DecodeClose(receipt)
 	if err != nil {
-		return s.r.tool(codeReply)
+		return s.r.tool(string(client.CodeReply))
 	}
-	if err := s.dir.KeepClose(receipt); err != nil {
+	if err := s.c.Dir().KeepClose(receipt); err != nil {
 		return s.r.failed(err)
 	}
 	fmt.Fprintln(s.r.stderr, memberClose+" "+c.ID)
@@ -156,21 +65,11 @@ func (s *session) keepClose(receipt []byte) int {
 	return 0
 }
 
-// keptLine is a fetched delivery's line of kept.jsonl: the delivery as it came, the answer call
-// inside it when an answer queued it.
-func keptLine(delivery []byte) []byte {
-	var o map[string]json.RawMessage
-	if !strict.Decode(delivery, &o) {
-		return nil
-	}
-	return canonicalJSON(o)
-}
-
 // show prints a fetched delivery as get does: one line on standard error, each field escaped, and
 // its body on standard output, escaped on a terminal.
 func (r *run) show(d *delivery) {
 	r.head(d)
-	line(r.stdout, r.screen(d.bytes()))
+	line(r.stdout, r.screen(d.Bytes()))
 }
 
 // head is a fetched delivery's line on standard error.
@@ -206,7 +105,7 @@ func writeOut(d *delivery, out string) (string, bool) {
 	if err != nil {
 		return "", false
 	}
-	_, err = f.Write(d.bytes())
+	_, err = f.Write(d.Bytes())
 	serr := f.Sync()
 	if cerr := f.Close(); err != nil || serr != nil || cerr != nil {
 		_ = os.Remove(path)
@@ -215,8 +114,9 @@ func writeOut(d *delivery, out string) (string, bool) {
 	return path, true
 }
 
-// getCommand is `get [--all] [--out DIR] [--keep]`, with the socket flags: it fetches the next
-// delivery. With --out, a directory where no file can be made is tool error file before anything is
+// getCommand is `get [--all] [--out DIR] [--keep] [--wait N]`, with the socket flags: it fetches
+// the next delivery. With --wait it first waits, at most N seconds and holding no lock, until a
+// delivery is queued for the key; with none by then it prints no delivery and exits 0. With --out, a directory where no file can be made is tool error file before anything is
 // fetched. A body that is fetched and cannot then be written is kept in kept.jsonl, so it is not
 // lost, and the error says so: error file kept.
 //
@@ -228,28 +128,51 @@ func writeOut(d *delivery, out string) (string, bool) {
 // (commands-1, commands-3).
 func getCommand(r *run, args []string) int {
 	fs := flags("get")
-	keyPath, socket, accord, stateDir := socketFlags(fs)
+	so := socketFlags(fs)
 	out, keep := fs.String("out", "", "directory for the body"), fs.Bool("keep", false, "keep the part")
 	all := fs.Bool("all", false, "fetch every delivery")
-	if !r.parse(fs, args, "key", "socket", "accord") {
+	wait := fs.Int("wait", 0, "seconds to wait for a delivery, at most 60")
+	if !r.parseSocket(fs, args, so) || *wait < 0 || *wait > local.MaxWait {
 		return r.tool(codeUsage)
 	}
-	s, code := r.open(*keyPath, *socket, *accord, *stateDir)
+	s, code := r.open(so)
 	if s == nil {
 		return code
 	}
 	if *out != "" && !writable(*out) {
 		return r.tool(codeFile)
 	}
-	if err := s.dir.Lock(); err != nil {
-		return r.failed(err)
-	}
-	defer s.dir.Unlock()
 	if *all {
 		r.put(memberDeliveries, []any{})
 	}
+	// Every fetch is under the state lock, held across them under --all; a wait holds none, so with
+	// --wait the lock is taken once the first fetch is done (state-lock).
+	locked := false
+	lock := func() bool {
+		if err := s.c.Lock(); err != nil {
+			r.failed(err)
+			return false
+		}
+		locked = true
+		return true
+	}
+	defer func() {
+		if locked {
+			s.c.Unlock()
+		}
+	}()
+	if *wait == 0 && !lock() {
+		return ExitTool
+	}
 	for n := 0; ; n++ {
-		d, kept, code := s.fetch(*keep || *all)
+		w := 0
+		if n == 0 {
+			w = *wait
+		}
+		d, kept, code := s.fetch(w, *keep || *all)
+		if code == 0 && !locked && !lock() {
+			return ExitTool
+		}
 		if d == nil {
 			if code == 0 && s.handed != nil {
 				return s.keepClose(s.handed)
@@ -290,7 +213,7 @@ func (s *session) write(d *delivery, kept []byte, out string, keep, all bool) in
 	if !ok {
 		hold()
 		if !keep {
-			if err := s.dir.Keep(kept); err != nil {
+			if err := s.c.Dir().Keep(kept); err != nil {
 				return r.failed(err)
 			}
 		}

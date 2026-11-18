@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://placket.tech/api/0.1/request/cancel.json",
+  "title": "cancel: the request",
+  "description": "Withdraws a question the key asked: a resolve whose action is cancelled. It never accepts, changes or declines.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "question": {
+      "description": "The question's id, a typed hash.",
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    }
+  },
+  "required": [
+    "question"
+  ]
+}

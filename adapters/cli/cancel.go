@@ -13,8 +13,8 @@ func cancelCommand(r *run, args []string) int {
 	if s == nil {
 		return code
 	}
-	defer s.dir.Unlock()
-	if rep, _, code := s.resolve(answering{question: question, action: answer.Cancelled}); rep == nil {
+	defer s.c.Unlock()
+	if rep, _, code := s.resolve(answering{Question: question, Action: answer.Cancelled}); rep == nil {
 		return code
 	}
 	return ExitOK

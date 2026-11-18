@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://placket.tech/api/0.1/wire/resolve.reply.json",
+  "title": "resolve: the reply",
+  "description": "The answer's receipt and, when it had one, its release's, or a refusal.",
+  "oneOf": [
+    {
+      "$ref": "https://placket.tech/api/0.1/wire/common.json#/$defs/outcomes"
+    },
+    {
+      "$ref": "https://placket.tech/api/0.1/wire/common.json#/$defs/refusal"
+    }
+  ]
+}
