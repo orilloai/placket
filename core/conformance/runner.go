@@ -363,15 +363,33 @@ var (
 	messageForms  = []string{"message", "messageText", "messageHex"}
 	envelopeForms = []string{"envelope", "envelopeText", "envelopeHex"}
 	receiptForms  = []string{"receipt", "receiptText", "receiptHex"}
+	// The forms of an opening and of the acceptance list (setup-contract-13, setup-contract-15).
+	openingForms    = []string{"opening", "openingText", "openingHex"}
+	acceptanceForms = []string{"acceptances", "acceptancesText", "acceptancesHex"}
 )
 
 // checkInputs checks that each byte input of a vector is given exactly once, in one of its forms, and
 // that every hex form decodes. It returns why the vector fails, or "".
 func checkInputs(o *object) string {
 	op, _ := o.values["operation"].(string)
-	need := op == "canonical" || op == "sign" || op == "verify-signature" || op == "found"
+	need := op == "canonical" || op == "sign" || op == "verify-signature" || op == "found" || op == "view"
 	if r := once(o, "/", "the input", inputForms, need); r != "" {
 		return r
+	}
+	if r := once(o, "/", "the acceptances", acceptanceForms, false); r != "" {
+		return r
+	}
+	if l, ok := o.values["openings"].([]any); ok {
+		for i, x := range l {
+			item, ok := x.(*object)
+			at := pointer("/openings", strconv.Itoa(i))
+			if !ok {
+				return at + ": not an object holding an opening"
+			}
+			if r := once(item, at, "the opening", openingForms, true); r != "" {
+				return r
+			}
+		}
 	}
 	if op == "canonical" {
 		if _, ok := o.values["input"]; ok {

@@ -1,0 +1,17 @@
+{
+  "expect": {
+    "valid": true
+  },
+  "input": {
+    "accord": "sha256:924dff5065970a8e9173b639f9256915dc1df529fe352b4a485c8021fc4653d3",
+    "from": "ed25519:a80586279ba17c5360b029018bf025be0169fdb02087e77301774c99eed92117",
+    "sig": "517a23f979ae64fe847adbf09a5b1ab58dd550443a84fce69a2ceff661b57bfccf4f3a8db7e5d524c7891990d41103865d44a37b8cb92fbf4fa68f6bce561904",
+    "view": "sha256:e4ca9b8b665eafb57458bfb8c0d59f3ea5e971b0e51efbc1d1cabb7897209398"
+  },
+  "operation": "verify-signature",
+  "reference": "ed25519:a80586279ba17c5360b029018bf025be0169fdb02087e77301774c99eed92117",
+  "spec": "0.1",
+  "tests": "setup-contract-15, signing-2: an acceptance verifies under the acceptance type URI by its from",
+  "typeUri": "https://placket.tech/acceptance/0.1",
+  "vector": "signatures/acceptance-verifies"
+}

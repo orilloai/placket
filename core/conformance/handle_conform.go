@@ -29,6 +29,14 @@ func runConform(v Vector) []Part {
 			return bad("founding", "the founding set is not accepted by the canonical form")
 		}
 		e.Founding = set
+		in, ok := inputsOf(m, set)
+		if !ok {
+			return bad("openings", "an opening or the acceptances do not decode")
+		}
+		// A verifier holds the openings it was given: some members' or every member's
+		// (setup-contract-16).
+		e.Openings, e.Acceptances = in.Openings, in.Acceptances
+		e.Openings.Some = e.Openings.ByActor != nil
 	}
 	if m.has("answers") {
 		var items []members
@@ -66,6 +74,9 @@ func runConform(v Vector) []Part {
 		got = jsonOf(map[string]any{"error": err.Error()})
 	default:
 		o := map[string]any{"conforms": true, "module": r.Module, "unmatched": r.Unmatched}
+		if len(e.Founding) > 0 && !r.Terms {
+			o["terms"] = "not-checked"
+		}
 		counts := map[conform.Witness]int{}
 		for _, d := range r.Decisions {
 			counts[d.Witness]++

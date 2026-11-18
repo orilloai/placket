@@ -606,3 +606,74 @@ func writeFile(path string, b []byte) error {
 	}
 	return nil
 }
+
+// The files a member keeps of its consent to a proposed Accord (setup-contract-14,
+// setup-contract-15): the view the window showed it, and the acceptance it signed of it.
+const (
+	FileView       = "view.json"
+	FileAcceptance = "acceptance.json"
+)
+
+// maxView is the most bytes of a kept view or acceptance the directory reads: as much as a reply.
+const maxView = 4 << 20
+
+// KeepView keeps the member's view, its canonical bytes and a line feed, mode 0600, replacing any
+// view kept before: a view kept is the one the member last read.
+func (d *Dir) KeepView(view []byte) error {
+	if len(view) == 0 || bytes.ContainsAny(view, "\n") {
+		return &Error{Code: CodeState, File: FileView}
+	}
+	return writeFile(d.file(FileView), append(append([]byte(nil), view...), '\n'))
+}
+
+// KeepAcceptance keeps the acceptance the member signed and the window took, its canonical bytes and
+// a line feed, mode 0600.
+func (d *Dir) KeepAcceptance(acceptance []byte) error {
+	if len(acceptance) == 0 || bytes.ContainsAny(acceptance, "\n") {
+		return &Error{Code: CodeState, File: FileAcceptance}
+	}
+	return writeFile(d.file(FileAcceptance), append(append([]byte(nil), acceptance...), '\n'))
+}
+
+// View reads the kept view, its line feed removed; ok is false when none is kept.
+func (d *Dir) View() ([]byte, bool, error) { return readKept(d.path, FileView) }
+
+// Accepted reads the view the directory at path keeps as accepted (setup-contract-15): view.json,
+// and acceptance.json, whose view is the typed hash of view.json's bytes. ok is false when either
+// file is missing, or the acceptance does not name the kept view. It takes no lock and writes
+// nothing.
+func Accepted(path string) ([]byte, bool, error) {
+	view, ok, err := readKept(path, FileView)
+	if err != nil || !ok {
+		return nil, false, err
+	}
+	acc, ok, err := readKept(path, FileAcceptance)
+	if err != nil || !ok {
+		return nil, false, err
+	}
+	var a struct {
+		View string `json:"view"`
+	}
+	h, herr := canonical.TypedHash(view)
+	if json.Unmarshal(acc, &a) != nil || herr != nil || a.View != h {
+		return nil, false, nil
+	}
+	return view, true, nil
+}
+
+// readKept reads one kept file of the directory at path, its one line's line feed removed; ok is
+// false when it does not exist.
+func readKept(path, name string) ([]byte, bool, error) {
+	b, ok, err := lines.ReadAll(filepath.Join(path, name), maxView)
+	switch {
+	case errors.Is(err, fs.ErrNotExist):
+		return nil, false, nil
+	case err != nil || !ok:
+		return nil, false, &Error{Code: CodeState, File: name}
+	}
+	b, found := bytes.CutSuffix(b, []byte{'\n'})
+	if !found || bytes.ContainsAny(b, "\n") {
+		return nil, false, &Error{Code: CodeState, File: name}
+	}
+	return b, true, nil
+}

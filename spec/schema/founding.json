@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://placket.tech/schema/0.1/founding.json",
   "title": "Founding set",
-  "description": "Everything an Accord is founded from; its typed hash is the Accord id (setup-contract-5). The order of declarations and bindings, by actor reference, is a rule of the text (setup-contract-10) that a schema cannot state, and so are that no two policy entries name one principal and that every binding's policy is the typed hash of this set's policy (setup-contract-3).",
+  "description": "Everything an Accord is founded from; its typed hash is the Accord id (setup-contract-5). Each declaration is held as its seal (setup-contract-12). The order of declarations and bindings, by actor reference, is a rule of the text (setup-contract-10) that a schema cannot state, and so are that no two policy entries name one principal and that every binding's policy is the typed hash of this set's policy (setup-contract-3).",
   "type": "object",
   "properties": {
     "policy": {
@@ -93,7 +93,21 @@
       "type": "array",
       "minItems": 1,
       "items": {
-        "$ref": "declaration.json"
+        "description": "A seal entry: the actor and the seal of its declaration, sha256: and the hex of the SHA-256 of a 32-byte salt and the declaration's canonical bytes (setup-contract-12). The declaration and its salt are the opening (opening.json).",
+        "type": "object",
+        "properties": {
+          "actor": {
+            "$ref": "reference.json"
+          },
+          "seal": {
+            "$ref": "hash.json"
+          }
+        },
+        "required": [
+          "actor",
+          "seal"
+        ],
+        "additionalProperties": false
       }
     },
     "bindings": {

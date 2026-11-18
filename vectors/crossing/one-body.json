@@ -1,4 +1,24 @@
 {
+  "acceptances": [
+    {
+      "accord": "sha256:924dff5065970a8e9173b639f9256915dc1df529fe352b4a485c8021fc4653d3",
+      "from": "ed25519:375dea8c4519dbae84fc9eb513e97eb4b693968ef37d52ac10da7b79250c6a22",
+      "sig": "079067e1876fb51d0bd7c7244e75ac2adfc6efd62eae70a195cd4ce3ecf45ff51f7333b4ab9565beab514dbcdb94d593267779186258d64e6a4f1f14d81dfe0c",
+      "view": "sha256:bedd4b5fe4f7148ec03c893f7e73b8aa395c317b060fd4ff63755a0193f0b1f3"
+    },
+    {
+      "accord": "sha256:924dff5065970a8e9173b639f9256915dc1df529fe352b4a485c8021fc4653d3",
+      "from": "ed25519:7cf35b36b9d57c62b9f3d5be2eb4d39147afa1b7625cd0032443523254df3bea",
+      "sig": "17407676c46cc5596cb28a4882d09315dd8634d05f52b8b1060d1a80d38bbb948b10e1c5f63fc732fec13d4287f1be991e2379e885fbe01daa713badf0e9e60d",
+      "view": "sha256:e98cb326281d7ce92bb36e1fd52ee8516d138b0069584f37ed7536024f1d88a8"
+    },
+    {
+      "accord": "sha256:924dff5065970a8e9173b639f9256915dc1df529fe352b4a485c8021fc4653d3",
+      "from": "ed25519:a80586279ba17c5360b029018bf025be0169fdb02087e77301774c99eed92117",
+      "sig": "517a23f979ae64fe847adbf09a5b1ab58dd550443a84fce69a2ceff661b57bfccf4f3a8db7e5d524c7891990d41103865d44a37b8cb92fbf4fa68f6bce561904",
+      "view": "sha256:e4ca9b8b665eafb57458bfb8c0d59f3ea5e971b0e51efbc1d1cabb7897209398"
+    }
+  ],
   "final": {
     "delivered": {},
     "pending": [],
@@ -52,103 +72,15 @@
     "declarations": [
       {
         "actor": "ed25519:375dea8c4519dbae84fc9eb513e97eb4b693968ef37d52ac10da7b79250c6a22",
-        "sig": "55642d296e6f6b5086f3157132eb5fe5b36001b7141b8812f41a8b9ecd0bfa031e8c34dc7bb5a88ff54a11cc392f08a3c2260d83d9e9911e7166f667cf83bb06",
-        "terms": [
-          {
-            "dir": "give",
-            "select": {
-              "kind": [
-                "answer",
-                "changed-version"
-              ]
-            },
-            "stance": "want",
-            "with": [
-              "role:proposer",
-              "role:applier"
-            ]
-          }
-        ]
+        "seal": "sha256:6b3a3176cd22b483d94e020a3e3014a776649a3b7e4ab612cc56bea99354ac40"
       },
       {
         "actor": "ed25519:7cf35b36b9d57c62b9f3d5be2eb4d39147afa1b7625cd0032443523254df3bea",
-        "sig": "d6859290e0f713addea89f5d7d54cf5161fa13a42b24d337785f7111c6486421cc9e5c4d51653a5ade8be2e6b7697d6ad13d43121a0f1ebce9c3a56bb9699a07",
-        "terms": [
-          {
-            "dir": "give",
-            "resolve": {
-              "timeout": 3600,
-              "to": [
-                "role:decider"
-              ]
-            },
-            "select": {
-              "kind": [
-                "proposal"
-              ]
-            },
-            "stance": "maybe",
-            "with": [
-              "role:applier"
-            ]
-          },
-          {
-            "dir": "give",
-            "select": {
-              "kind": [
-                "note"
-              ]
-            },
-            "stance": "want",
-            "with": [
-              "role:applier"
-            ]
-          },
-          {
-            "dir": "get",
-            "select": {
-              "kind": [
-                "answer",
-                "changed-version"
-              ]
-            },
-            "stance": "want",
-            "with": [
-              "role:decider"
-            ]
-          }
-        ]
+        "seal": "sha256:90dbd3c153773625df2f0e616ab9673d26b6f2035a1fce9ab4bcf192867f3c19"
       },
       {
         "actor": "ed25519:a80586279ba17c5360b029018bf025be0169fdb02087e77301774c99eed92117",
-        "sig": "8620748e7e658b3e7759ccc3471449096cd76c93a3cb77e74537c30ada0df811ab77ae2133ee229da2867ef318a78a23697c562ea25df35de333a1f5c1f86c06",
-        "terms": [
-          {
-            "dir": "get",
-            "select": {
-              "kind": [
-                "proposal",
-                "note"
-              ]
-            },
-            "stance": "want",
-            "with": [
-              "role:proposer"
-            ]
-          },
-          {
-            "dir": "get",
-            "select": {
-              "kind": [
-                "changed-version"
-              ]
-            },
-            "stance": "want",
-            "with": [
-              "role:decider"
-            ]
-          }
-        ]
+        "seal": "sha256:9e21939b7f1513db173724936625fd43d05bcbbb822a4f89ecbfab38a6354f84"
       }
     ],
     "mediator": {
@@ -182,6 +114,126 @@
     "stranger": "ccad0b2ffc9e7230a33399883af8bf4f662163554ad3f39547a66d29953fedeb"
   },
   "mediator": "mediator",
+  "openings": [
+    {
+      "actor": "ed25519:375dea8c4519dbae84fc9eb513e97eb4b693968ef37d52ac10da7b79250c6a22",
+      "opening": {
+        "declaration": {
+          "actor": "ed25519:375dea8c4519dbae84fc9eb513e97eb4b693968ef37d52ac10da7b79250c6a22",
+          "sig": "55642d296e6f6b5086f3157132eb5fe5b36001b7141b8812f41a8b9ecd0bfa031e8c34dc7bb5a88ff54a11cc392f08a3c2260d83d9e9911e7166f667cf83bb06",
+          "terms": [
+            {
+              "dir": "give",
+              "select": {
+                "kind": [
+                  "answer",
+                  "changed-version"
+                ]
+              },
+              "stance": "want",
+              "with": [
+                "role:proposer",
+                "role:applier"
+              ]
+            }
+          ]
+        },
+        "salt": "672f3e62cbb05c6f8c3c128689ae81ad1518b501784f3b681a8a326c93f0f420"
+      }
+    },
+    {
+      "actor": "ed25519:7cf35b36b9d57c62b9f3d5be2eb4d39147afa1b7625cd0032443523254df3bea",
+      "opening": {
+        "declaration": {
+          "actor": "ed25519:7cf35b36b9d57c62b9f3d5be2eb4d39147afa1b7625cd0032443523254df3bea",
+          "sig": "d6859290e0f713addea89f5d7d54cf5161fa13a42b24d337785f7111c6486421cc9e5c4d51653a5ade8be2e6b7697d6ad13d43121a0f1ebce9c3a56bb9699a07",
+          "terms": [
+            {
+              "dir": "give",
+              "resolve": {
+                "timeout": 3600,
+                "to": [
+                  "role:decider"
+                ]
+              },
+              "select": {
+                "kind": [
+                  "proposal"
+                ]
+              },
+              "stance": "maybe",
+              "with": [
+                "role:applier"
+              ]
+            },
+            {
+              "dir": "give",
+              "select": {
+                "kind": [
+                  "note"
+                ]
+              },
+              "stance": "want",
+              "with": [
+                "role:applier"
+              ]
+            },
+            {
+              "dir": "get",
+              "select": {
+                "kind": [
+                  "answer",
+                  "changed-version"
+                ]
+              },
+              "stance": "want",
+              "with": [
+                "role:decider"
+              ]
+            }
+          ]
+        },
+        "salt": "53c4568964dc1383b0007a8913e14f23ff29fb13b82a5996afa38e2b39ae8e6a"
+      }
+    },
+    {
+      "actor": "ed25519:a80586279ba17c5360b029018bf025be0169fdb02087e77301774c99eed92117",
+      "opening": {
+        "declaration": {
+          "actor": "ed25519:a80586279ba17c5360b029018bf025be0169fdb02087e77301774c99eed92117",
+          "sig": "8620748e7e658b3e7759ccc3471449096cd76c93a3cb77e74537c30ada0df811ab77ae2133ee229da2867ef318a78a23697c562ea25df35de333a1f5c1f86c06",
+          "terms": [
+            {
+              "dir": "get",
+              "select": {
+                "kind": [
+                  "proposal",
+                  "note"
+                ]
+              },
+              "stance": "want",
+              "with": [
+                "role:proposer"
+              ]
+            },
+            {
+              "dir": "get",
+              "select": {
+                "kind": [
+                  "changed-version"
+                ]
+              },
+              "stance": "want",
+              "with": [
+                "role:decider"
+              ]
+            }
+          ]
+        },
+        "salt": "18afd8cee3d8005b581183f51269a6bc65814b88474c7861d0dc3a697c9d0445"
+      }
+    }
+  ],
   "operation": "scenario",
   "spec": "0.1",
   "steps": [
@@ -189,9 +241,9 @@
       "as": "proposer",
       "at": "2026-11-12T09:00:00Z",
       "envelope": {
-        "hash": "sha256:6266ef66d6db1a0ae3c74d9dfb6917d25f605828caaf646e63301b003b618c5e",
+        "hash": "sha256:676c823e3832011a42a3f08e60bd27d416cac844be9f65e0388174460720cf60",
         "seq": 1,
-        "sig": "84c28cd9cd072a77b09ed445261273a19b1eeba84ea8eb1b322fe9d6c34f375621f446ed7f014bc22af0f95f60b8021498c6f1154f7a8ee919e31d0f74e73802"
+        "sig": "33389eba09b0df70ddc9bfbb069a88e283e8a0714ab867479f6d4f8ee41652b7ee4af0ab712d765f0407eb9ddb82770307f82688496aae7689145d102c317701"
       },
       "expect": {
         "rejection": "one-body"
@@ -203,7 +255,7 @@
         "messageId": "body-a",
         "metadata": {
           "https://placket.tech/crossing/0.1": {
-            "accord": "sha256:04f71f9b99b729d07bc824bcae742abc9f51f31d2b9d59e968a5c169e15b9303",
+            "accord": "sha256:924dff5065970a8e9173b639f9256915dc1df529fe352b4a485c8021fc4653d3",
             "to": "ed25519:a80586279ba17c5360b029018bf025be0169fdb02087e77301774c99eed92117"
           }
         },
@@ -229,9 +281,9 @@
       "as": "proposer",
       "at": "2026-11-12T09:01:00Z",
       "envelope": {
-        "hash": "sha256:6a837c29346ed10e0e9524a1d41e32f533bcc76b87f2b113baaf832bfebb36bb",
+        "hash": "sha256:8d40bbcd73b3ddbf955ddc9d4fe60cc0a22564ad14c1912ce830ccd4c2ddc015",
         "seq": 1,
-        "sig": "98ac0862894c83075bd300a92350f266f86f398edbc2e3af48ff8fe98e61a96a30e467d0b520d7b85979331a680e4811fc4b1b8ee7a96cec844aade4d4cd350b"
+        "sig": "cf5d061237a3c90168f1fff5c6315832b23c9cd50291dbad54579c16b92fe7a7243b3b2b51ecbbd2646f53052bc577fd3dd28e00c366cbe7ba086cfd39989209"
       },
       "expect": {
         "rejection": "one-body"
@@ -243,7 +295,7 @@
         "messageId": "body-b",
         "metadata": {
           "https://placket.tech/crossing/0.1": {
-            "accord": "sha256:04f71f9b99b729d07bc824bcae742abc9f51f31d2b9d59e968a5c169e15b9303",
+            "accord": "sha256:924dff5065970a8e9173b639f9256915dc1df529fe352b4a485c8021fc4653d3",
             "to": "ed25519:a80586279ba17c5360b029018bf025be0169fdb02087e77301774c99eed92117"
           }
         },
@@ -265,9 +317,9 @@
       "as": "proposer",
       "at": "2026-11-12T09:02:00Z",
       "envelope": {
-        "hash": "sha256:20f53014f3865057b648d9bed2eb67fb2df29e97a458de15dd5471254a1e5c47",
+        "hash": "sha256:8932fce398a6e11e5d300148d7a1c674af01d51896d3c8ba46f4c7fa788b03d7",
         "seq": 1,
-        "sig": "dfd45e89594341f69eb9546d4ef292bd758a8642b92511901bc627a6a5269a8ef39521f94b3638614aeca18a001aa1b5e4a14751cd180cc0f4d51ae80c1da10c"
+        "sig": "75ead623b7b597cf2dd16865ea10ea3133e81990940487c8a8df1ae91b0ec2f80d99f1addfb42a18e06a8d60e6cf39d009ad720f5a4ffc1bbcbf1d3af195ac0e"
       },
       "expect": {
         "rejection": "one-body"
@@ -279,7 +331,7 @@
         "messageId": "body-c",
         "metadata": {
           "https://placket.tech/crossing/0.1": {
-            "accord": "sha256:04f71f9b99b729d07bc824bcae742abc9f51f31d2b9d59e968a5c169e15b9303",
+            "accord": "sha256:924dff5065970a8e9173b639f9256915dc1df529fe352b4a485c8021fc4653d3",
             "to": "ed25519:a80586279ba17c5360b029018bf025be0169fdb02087e77301774c99eed92117"
           }
         },
@@ -302,9 +354,9 @@
       "as": "proposer",
       "at": "2026-11-12T09:03:00Z",
       "envelope": {
-        "hash": "sha256:1d531ecdcaccb90819d4bc0d182190d1447031ae388002c9ce075ddc08b145c9",
+        "hash": "sha256:ad3914d72506e8d1d8f2929dd26126cfa5106b979b11744ef6b7ca1b77c6256d",
         "seq": 1,
-        "sig": "680a5659e5782b8d47e569760a013c281fde8a8c1a6622ecabb6c90e68073796668a64dcca782de22e979043b7940ab0dcca41acc148bc68e4846c1f7789bb05"
+        "sig": "3441148565ed03cac4433e47519d4fc29141c376f9b23274ffa71788932d15b1ad0b83e3e7ebb4f8ab2352b38498e076a715eb0ce4c21359ac773d7c0f11a807"
       },
       "expect": {
         "rejection": "one-body"
@@ -316,7 +368,7 @@
         "messageId": "body-d",
         "metadata": {
           "https://placket.tech/crossing/0.1": {
-            "accord": "sha256:04f71f9b99b729d07bc824bcae742abc9f51f31d2b9d59e968a5c169e15b9303",
+            "accord": "sha256:924dff5065970a8e9173b639f9256915dc1df529fe352b4a485c8021fc4653d3",
             "to": "ed25519:a80586279ba17c5360b029018bf025be0169fdb02087e77301774c99eed92117"
           }
         },
@@ -339,9 +391,9 @@
       "as": "proposer",
       "at": "2026-11-12T09:04:00Z",
       "envelope": {
-        "hash": "sha256:940191765486d131b77c8eb7de356c372e40d82ff2b1765e17f2a2c8c031f6aa",
+        "hash": "sha256:33dd31f0d6b472dc82c7c6e4f35366073c7ddb25c85ccc383493c0f5950aa8e0",
         "seq": 1,
-        "sig": "4375eda4d67254530a11d39049ed1389a0a844f32c0191438c581c61c3161dd079ee15c2e2a1c7cc311183340ce3ad3bdcaf85032b842a253f402883cb7d8904"
+        "sig": "5a0ee7fdf4bcdc111d42203d913990ae5631fb2ea7db13eeb6049f574aa763192cf601a7ec7b6ee641d6fd64ad167b7bcebc09011b0e156aad24693d3e724204"
       },
       "expect": {
         "rejection": "one-body"
@@ -353,7 +405,7 @@
         "messageId": "body-e",
         "metadata": {
           "https://placket.tech/crossing/0.1": {
-            "accord": "sha256:04f71f9b99b729d07bc824bcae742abc9f51f31d2b9d59e968a5c169e15b9303",
+            "accord": "sha256:924dff5065970a8e9173b639f9256915dc1df529fe352b4a485c8021fc4653d3",
             "to": "ed25519:a80586279ba17c5360b029018bf025be0169fdb02087e77301774c99eed92117"
           }
         },
@@ -376,9 +428,9 @@
       "as": "proposer",
       "at": "2026-11-12T09:05:00Z",
       "envelope": {
-        "hash": "sha256:f72411a24a7cbd3759d5de3aa7dcd4f2cec23d28086411f8245eb9533c959fbe",
+        "hash": "sha256:a2610a0eacd05691ebb718394fdc76f80da3fa9adaecac5cfdde21049945984b",
         "seq": 1,
-        "sig": "7fb7f9b760eb5495ff48c4aa39206ebeb1b677768529c7e149af800c2c11ba17762fa0c972c9cb7e20b3853a7444dc010b0999fcfbe78dd9306f7820870b7d0f"
+        "sig": "3a5ecdcb5b20a206b0d0897f7188012d792ad7ef5d835c9ce30190510b7a557737c65839699ecd2d470151efa716218303b2ac1427fd757144c65babe995ae08"
       },
       "expect": {
         "rejection": "one-body"
@@ -390,7 +442,7 @@
         "messageId": "body-f",
         "metadata": {
           "https://placket.tech/crossing/0.1": {
-            "accord": "sha256:04f71f9b99b729d07bc824bcae742abc9f51f31d2b9d59e968a5c169e15b9303",
+            "accord": "sha256:924dff5065970a8e9173b639f9256915dc1df529fe352b4a485c8021fc4653d3",
             "to": "ed25519:a80586279ba17c5360b029018bf025be0169fdb02087e77301774c99eed92117"
           }
         },
@@ -413,9 +465,9 @@
       "as": "proposer",
       "at": "2026-11-12T09:06:00Z",
       "envelope": {
-        "hash": "sha256:7da4b963e12507380c60239b98b895184d83d667c5a7fe28ff8ee577ce2b61e0",
+        "hash": "sha256:985b1a14cdd72c6d2730fb556dd0b119788d5b354c62e12606f716f1a547f928",
         "seq": 1,
-        "sig": "cae0f9c878c3449ba9681c12c62d226722f276f3c3f43c99a9cb8db50bc8f8ac57bac47aca0c8e8cb2124cb089a4b7db9d7985f89bcaff2eebe22690b7f16d00"
+        "sig": "a5e7a41137f0fc713440921899137acb228c501fdc5f9e612022f75159e01a2b7aacb1fad48e14b8c7295c3dc43187ad716e017c23a439aaa144c31ee4691007"
       },
       "expect": {
         "rejection": "one-body"
@@ -427,7 +479,7 @@
         "messageId": "body-g",
         "metadata": {
           "https://placket.tech/crossing/0.1": {
-            "accord": "sha256:04f71f9b99b729d07bc824bcae742abc9f51f31d2b9d59e968a5c169e15b9303",
+            "accord": "sha256:924dff5065970a8e9173b639f9256915dc1df529fe352b4a485c8021fc4653d3",
             "to": "ed25519:a80586279ba17c5360b029018bf025be0169fdb02087e77301774c99eed92117"
           }
         },

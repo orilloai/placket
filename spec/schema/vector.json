@@ -22,6 +22,7 @@
         "sign",
         "verify-signature",
         "found",
+        "view",
         "scenario",
         "verify",
         "reconcile",
@@ -63,6 +64,26 @@
     },
     "foundedAt": {
       "$ref": "timestamp.json"
+    },
+    "openings": {
+      "description": "The openings the founder holds (setup-contract-13, setup-contract-16): each opening under its actor's reference, given once in one of its forms. A found, view or scenario vector that has the member gives every member's; a conform vector gives the ones its verifier holds; without the member the founder holds none.",
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/openingBytes"
+      }
+    },
+    "acceptances": {
+      "description": "acceptances.json, the members' acceptances, as a JSON value (setup-contract-15).",
+      "type": "array"
+    },
+    "acceptancesText": {
+      "type": "string"
+    },
+    "acceptancesHex": {
+      "$ref": "#/$defs/hex"
+    },
+    "viewer": {
+      "$ref": "reference.json"
     },
     "steps": {
       "type": "array",
@@ -314,6 +335,10 @@
             "inputText",
             "inputHex",
             "foundedAt",
+            "openings",
+            "acceptances",
+            "acceptancesText",
+            "acceptancesHex",
             "expect"
           ]
         },
@@ -349,6 +374,60 @@
       "if": {
         "properties": {
           "operation": {
+            "const": "view"
+          }
+        }
+      },
+      "then": {
+        "propertyNames": {
+          "enum": [
+            "vector",
+            "spec",
+            "tests",
+            "operation",
+            "input",
+            "inputText",
+            "inputHex",
+            "foundedAt",
+            "openings",
+            "viewer",
+            "expect"
+          ]
+        },
+        "required": [
+          "foundedAt",
+          "openings",
+          "viewer",
+          "expect"
+        ],
+        "oneOf": [
+          {
+            "required": [
+              "input"
+            ]
+          },
+          {
+            "required": [
+              "inputText"
+            ]
+          },
+          {
+            "required": [
+              "inputHex"
+            ]
+          }
+        ],
+        "properties": {
+          "expect": {
+            "$ref": "#/$defs/viewExpect"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "operation": {
             "const": "scenario"
           }
         }
@@ -364,6 +443,8 @@
             "mediator",
             "founding",
             "foundedAt",
+            "openings",
+            "acceptances",
             "steps",
             "final"
           ]
@@ -373,6 +454,8 @@
           "mediator",
           "founding",
           "foundedAt",
+          "openings",
+          "acceptances",
           "steps",
           "final"
         ]
@@ -468,6 +551,8 @@
             "accord",
             "reference",
             "founding",
+            "openings",
+            "acceptances",
             "receipts",
             "answers",
             "subset",
@@ -489,7 +574,45 @@
           "expect": {
             "$ref": "#/$defs/conformExpect"
           }
-        }
+        },
+        "allOf": [
+          {
+            "if": {
+              "required": [
+                "founding"
+              ]
+            },
+            "then": {
+              "required": [
+                "acceptances"
+              ]
+            }
+          },
+          {
+            "if": {
+              "required": [
+                "openings"
+              ]
+            },
+            "then": {
+              "required": [
+                "founding"
+              ]
+            }
+          },
+          {
+            "if": {
+              "required": [
+                "acceptances"
+              ]
+            },
+            "then": {
+              "required": [
+                "founding"
+              ]
+            }
+          }
+        ]
       }
     }
   ],
@@ -601,6 +724,10 @@
             },
             "card": {
               "$ref": "hash.json"
+            },
+            "terms": {
+              "description": "Present when a seal was not opened, so the terms were not checked (setup-contract-16).",
+              "const": "not-checked"
             }
           },
           "required": [
@@ -618,6 +745,65 @@
                 "invalid-shape",
                 "binding-duplicate",
                 "actor-reference",
+                "opening-missing",
+                "seal-mismatch",
+                "declaration-signature",
+                "term-invalid",
+                "maybe-without-resolve",
+                "judge-unknown",
+                "binding-missing",
+                "binding-principal",
+                "binding-signature",
+                "binding-role",
+                "binding-policy",
+                "binding-mediator",
+                "binding-expired",
+                "declaration-missing",
+                "role-missing",
+                "acceptance-missing",
+                "acceptance-signature",
+                "acceptance-accord",
+                "acceptance-view"
+              ]
+            }
+          },
+          "required": [
+            "code"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "viewExpect": {
+      "description": "A view vector's result (setup-contract-14): the viewer's view and its typed hash, or the founding code of rows 1 to 17 that refused the set.",
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "view": {
+              "$ref": "view.json"
+            },
+            "hash": {
+              "$ref": "hash.json"
+            }
+          },
+          "required": [
+            "view",
+            "hash"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "code": {
+              "enum": [
+                "not-canonical",
+                "invalid-shape",
+                "binding-duplicate",
+                "actor-reference",
+                "opening-missing",
+                "seal-mismatch",
                 "declaration-signature",
                 "term-invalid",
                 "maybe-without-resolve",
@@ -1583,6 +1769,10 @@
             },
             "body": {
               "const": true
+            },
+            "terms": {
+              "description": "Present when a founding set was given and a seal was not opened, so the decision row read only the opened terms (setup-contract-16, verify-1).",
+              "const": "not-checked"
             }
           },
           "required": [
@@ -1671,6 +1861,43 @@
       "required": [
         "at",
         "expect"
+      ],
+      "additionalProperties": false
+    },
+    "openingBytes": {
+      "description": "One opening a founder holds, under its actor's reference, as a JSON value, text or hex (setup-contract-13, conformance-vectors-8).",
+      "type": "object",
+      "properties": {
+        "actor": {
+          "type": "string"
+        },
+        "opening": true,
+        "openingText": {
+          "type": "string"
+        },
+        "openingHex": {
+          "$ref": "#/$defs/hex"
+        }
+      },
+      "required": [
+        "actor"
+      ],
+      "oneOf": [
+        {
+          "required": [
+            "opening"
+          ]
+        },
+        {
+          "required": [
+            "openingText"
+          ]
+        },
+        {
+          "required": [
+            "openingHex"
+          ]
+        }
       ],
       "additionalProperties": false
     }

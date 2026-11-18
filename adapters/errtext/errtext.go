@@ -42,6 +42,7 @@ var table = map[key]string{
 	{FromDoor, "replayed"}:      "The window has seen the call's nonce already; call again with a fresh nonce.",
 	{FromDoor, "door-internal"}: "The window failed after the call passed its checks; call again, and see the window's log if it fails again.",
 	{FromDoor, "judge-busy"}:    "The caller's last give is still with a judge; wait for its reply, then give again.",
+	{FromDoor, "not-founded"}:   "The Accord is proposed, not founded: every member must view and accept its view first; run placket view and placket accept.",
 
 	// The mediator's rejections (core/mediator.RejectionCode).
 	{FromRejection, "not-a-member"}:       "The key is not a member of the Accord; use a key the founding set binds.",
@@ -84,6 +85,7 @@ var table = map[key]string{
 	{FromClient, "asked"}:              "The window does not show the question as its ask's receipt names it, so nothing was signed; list the questions again.",
 	{FromClient, "rand"}:               "The source of randomness failed; call again.",
 	{FromClient, "envelope"}:           "The envelope could not be signed; check the key file holds a key.",
+	{FromClient, "view"}:               "The key keeps no view of this Accord to accept; run placket view first.",
 
 	// adapters/mcp.Code.
 	{FromMCP, "answering-key"}: "The label's key answers questions under its Accord, and placket mcp holds proposing keys only; serve a proposing key, or start it with --allow-answering.",

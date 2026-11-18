@@ -205,9 +205,83 @@ The reply, `wire/result.reply.json`, one of:
   - `ok`: `false`.
 
 
+### view
+
+Asks for the caller's own view of the Accord: for each crossing its own terms select, whether it crosses, is asked or is blocked, and each question it answers. A proposed Accord serves it, and so does a founded one; only a member is shown one, and only its own.
+
+The call, `wire/view.call.json`:
+
+| Member | Value | Required | What it is |
+|---|---|---|---|
+| `call` | object | yes | What is signed: the call's canonical bytes. |
+| `call.accord` | hash, `^sha256:[0-9a-f]{64}$` | yes | The Accord id the caller expects the window to serve. |
+| `call.args` | object | yes |  |
+| `call.at` | timestamp, `^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$` | yes | The caller's clock; the door refuses a call more than 60 seconds from its own (stale). |
+| `call.caller` | actor, `^ed25519:[0-9a-f]{64}$` | yes | An actor reference: ed25519: and the public key in 64 lowercase hex digits. |
+| `call.nonce` | nonce, `^[0-9a-f]{32}$` | yes | 16 random bytes in lowercase hex, never sent twice within 120 seconds. |
+| `call.op` | `"view"` | yes |  |
+| `sig` | sig, `^[A-Za-z0-9+/]{86}==$` | yes | The call's signature: standard base64 of the 64-byte Ed25519 signature over the DSSE pre-authentication encoding of the payload type application/vnd.placket.call+json and the call's canonical bytes. |
+
+The reply, `wire/view.reply.json`, one of:
+
+- `{ok,view}`
+  - `ok`: `true`.
+  - `view`: object. The caller's view: accord, viewer, salt, crossings and answers.
+- `{ok,rejection}`
+  - `ok`: `false`.
+  - `rejection`: code, `^[a-z0-9]+(-[a-z0-9]+)*$`, at most 64 characters. A code: lowercase letters and digits in words joined by single hyphens.
+- `{error,ok}`
+  - `error`: code, `^[a-z0-9]+(-[a-z0-9]+)*$`, at most 64 characters. A code: lowercase letters and digits in words joined by single hyphens.
+  - `ok`: `false`.
+- `{door,ok}`
+  - `door`: code, `^[a-z0-9]+(-[a-z0-9]+)*$`, at most 64 characters. A code: lowercase letters and digits in words joined by single hyphens.
+  - `ok`: `false`.
+
+
+### accept
+
+Hands the window the caller's signed acceptance of its view. A proposed Accord is founded once every member's is taken; on a founded one, an acceptance that checks changes nothing.
+
+The call, `wire/accept.call.json`:
+
+| Member | Value | Required | What it is |
+|---|---|---|---|
+| `call` | object | yes | What is signed: the call's canonical bytes. |
+| `call.accord` | hash, `^sha256:[0-9a-f]{64}$` | yes | The Accord id the caller expects the window to serve. |
+| `call.args` | object | yes |  |
+| `call.args.acceptance` | object | yes | The caller's acceptance, signed under https://placket.tech/acceptance/0.1: the Accord id, the typed hash of its view, and from, the caller (setup-contract-15). |
+| `call.args.acceptance.accord` | hash, `^sha256:[0-9a-f]{64}$` | yes | A typed hash: sha256: and 64 lowercase hex digits. An Accord id, a receipt id and a question id are typed hashes. |
+| `call.args.acceptance.from` | actor, `^ed25519:[0-9a-f]{64}$` | yes | An actor reference: ed25519: and the public key in 64 lowercase hex digits. |
+| `call.args.acceptance.sig` | string, `^[0-9a-f]{128}$` | yes | The signature, 128 lowercase hex digits. |
+| `call.args.acceptance.view` | hash, `^sha256:[0-9a-f]{64}$` | yes | A typed hash: sha256: and 64 lowercase hex digits. An Accord id, a receipt id and a question id are typed hashes. |
+| `call.at` | timestamp, `^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$` | yes | The caller's clock; the door refuses a call more than 60 seconds from its own (stale). |
+| `call.caller` | actor, `^ed25519:[0-9a-f]{64}$` | yes | An actor reference: ed25519: and the public key in 64 lowercase hex digits. |
+| `call.nonce` | nonce, `^[0-9a-f]{32}$` | yes | 16 random bytes in lowercase hex, never sent twice within 120 seconds. |
+| `call.op` | `"accept"` | yes |  |
+| `sig` | sig, `^[A-Za-z0-9+/]{86}==$` | yes | The call's signature: standard base64 of the 64-byte Ed25519 signature over the DSSE pre-authentication encoding of the payload type application/vnd.placket.call+json and the call's canonical bytes. |
+
+The reply, `wire/accept.reply.json`, one of:
+
+- `{founded,ok}`
+  - `founded`: boolean.
+  - `ok`: `true`.
+- `{ok,rejection}`
+  - `ok`: `false`.
+  - `rejection`: code, `^[a-z0-9]+(-[a-z0-9]+)*$`, at most 64 characters. A code: lowercase letters and digits in words joined by single hyphens.
+- `{error,ok}`
+  - `error`: code, `^[a-z0-9]+(-[a-z0-9]+)*$`, at most 64 characters. A code: lowercase letters and digits in words joined by single hyphens.
+  - `ok`: `false`.
+- `{door,ok}`
+  - `door`: code, `^[a-z0-9]+(-[a-z0-9]+)*$`, at most 64 characters. A code: lowercase letters and digits in words joined by single hyphens.
+  - `ok`: `false`.
+
+- `{founding,ok}`
+  - `founding`: code, `^[a-z0-9]+(-[a-z0-9]+)*$`, at most 64 characters. The founding code of the row the acceptance fails, such as invalid-shape, acceptance-signature, acceptance-accord or acceptance-view, or of the row that kept the window from founding.
+  - `ok`: `false`.
+
 ## The request layer
 
-Each tool of `placket mcp` takes its request, and `mediator`: the label of a mediator it serves, or the Accord id of one with none. `resolve` is the client's alone: `placket mcp` lists only its asker's slice, `cancel`.
+Each tool of `placket mcp` takes its request, and `mediator`: the label of a mediator it serves, or the Accord id of one with none. `resolve` is the client's alone: `placket mcp` lists only its asker's slice, `cancel`. `view` and `accept` are the client's alone too: `placket mcp` lists neither, since a member consents to an Accord itself.
 
 ### give
 
@@ -276,6 +350,18 @@ Lists the mediators of the labels config, and whether each is served. It takes n
 
 It takes no member.
 
+### view
+
+Shows the key's own view of the Accord, and keeps it as view.json in the key's state directory. placket mcp lists no tool of it.
+
+It takes no member.
+
+### accept
+
+Signs the key's acceptance of the view its state directory keeps, hands it to the window, and keeps it as acceptance.json. placket mcp lists no tool of it.
+
+It takes no member.
+
 ## The labels config
 
 mediators.json in placket's config directory ($XDG_CONFIG_HOME/placket, else ~/.config/placket): the mediators one user reaches. A label is a local, human name, never signed. Relative paths are taken under the config directory. Entries must not collide: no two have one label, no two of different Accords use one socket, no two use one state directory, and no two of one Accord are both unlabelled; those checks are the client's, not this schema's.
@@ -305,6 +391,7 @@ Every code `placket mcp` can return, by where it comes from: a code in a door re
 | `adapters/client` | `rand` | The source of randomness failed; call again. |
 | `adapters/client` | `reply` | The window's reply is not what the call asked for; check the socket reaches this Accord's window. |
 | `adapters/client` | `unknown-mediator` | No mediator served has that name; name one by its label, or by its Accord id when it has none, as mediators lists them. |
+| `adapters/client` | `view` | The key keeps no view of this Accord to accept; run placket view first. |
 | `adapters/keyfile` | `key` | The key file does not hold a key; give the path of a key placket key new made. |
 | `adapters/keyfile` | `key-exists` | A file is already at the key's path; choose another path. |
 | `adapters/keyfile` | `key-mode` | The key file can be read by others; make it mode 0600. |
@@ -325,6 +412,7 @@ Every code `placket mcp` can return, by where it comes from: a code in a door re
 | `door` | `bad-signature` | The call's signature does not verify under its caller's key; sign it with the key it names. |
 | `door` | `door-internal` | The window failed after the call passed its checks; call again, and see the window's log if it fails again. |
 | `door` | `judge-busy` | The caller's last give is still with a judge; wait for its reply, then give again. |
+| `door` | `not-founded` | The Accord is proposed, not founded: every member must view and accept its view first; run placket view and placket accept. |
 | `door` | `replayed` | The window has seen the call's nonce already; call again with a fresh nonce. |
 | `door` | `stale` | The call's time is more than 60 seconds from the window's clock; set the clock right and call again. |
 | `door` | `too-large` | The call is longer than the door reads; send a smaller part. |

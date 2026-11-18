@@ -1,20 +1,40 @@
 {
+  "acceptances": [
+    {
+      "accord": "sha256:170a3b19d1085fc6f5676d325b99019d332808af97944c40b87d22c8efd32c38",
+      "from": "ed25519:375dea8c4519dbae84fc9eb513e97eb4b693968ef37d52ac10da7b79250c6a22",
+      "sig": "c320557a28442e7f9884904d0ce85f0fbaed2ac4ecd21d71dc747381a019512f9cf6808775c74fe06bb4ed541c3aa4ad744da6056fa74b2616100d89cd3d0301",
+      "view": "sha256:8dbc22daa000e5f5d5d5826e9269967a799a604a287eca0b13e2cb1a2e227e40"
+    },
+    {
+      "accord": "sha256:170a3b19d1085fc6f5676d325b99019d332808af97944c40b87d22c8efd32c38",
+      "from": "ed25519:7cf35b36b9d57c62b9f3d5be2eb4d39147afa1b7625cd0032443523254df3bea",
+      "sig": "af5a9a87f27cbd13ac9bd754fe712cfc4a647df25f0923cd013b8eb1432d7802c1f64e300fef9cd7720f80eca257afec4b6d61c9dae9baae92370203a7ca0a01",
+      "view": "sha256:89b0f04ec01ba8a23bec6050d5ad8c905c314baba5627e7cbeb0c40d507e0d36"
+    },
+    {
+      "accord": "sha256:170a3b19d1085fc6f5676d325b99019d332808af97944c40b87d22c8efd32c38",
+      "from": "ed25519:a80586279ba17c5360b029018bf025be0169fdb02087e77301774c99eed92117",
+      "sig": "ddec311198f41db5a916803aa6f779fee428b70b837b45c0b67b97acd47db3295b56665745075d48d9f11d69f1d66bfe5e1ec393100234cecafa29b99ec8cb09",
+      "view": "sha256:f663ed0c22fae6e8d6b7f3cf2f2f3ea0bdd4c0abfb3eea32358d69945e3dea46"
+    }
+  ],
   "final": {
     "delivered": {},
     "pending": [],
     "receipts": [
       {
         "receipt": {
-          "payload": "eyJfdHlwZSI6Imh0dHBzOi8vaW4tdG90by5pby9TdGF0ZW1lbnQvdjEiLCJwcmVkaWNhdGUiOnsiYWNjb3JkIjoic2hhMjU2OmFkMmNhNDViY2Q0ZWFlMTMyZDVhMDlhZDcyOWEzMWNlZjcyMWMyYjJkYmE0MTZmNGRkYThhOWEwMTdhMjZjZWIiLCJhdCI6IjIwMjYtMTEtMTJUMDk6MDA6MDBaIiwiYnkiOnsianVkZ2UiOiJqZXYifSwiY2FyZCI6InNoYTI1Njo0N2U4YWY2ZTQ2YTYzNjU3MTE2YzU1MjYzOGY5MTU1ZmM5YmYyZDNhNTg4NTQwZmExZjE5NTU4ZWE2NDZmZGI2IiwiZW52ZWxvcGUiOnsiaGFzaCI6InNoYTI1NjpjZGY3NWVjODE5ODcxYzgwNzMyNmY2ZTQzYzk0Zjk4ZWJlMWQxN2ViYTA4ZWZmM2VkZDJjNmY5Y2Q2YzRmNGJmIiwic2VuZGVyIjoiZWQyNTUxOTo3Y2YzNWIzNmI5ZDU3YzYyYjlmM2Q1YmUyZWI0ZDM5MTQ3YWZhMWI3NjI1Y2QwMDMyNDQzNTIzMjU0ZGYzYmVhIiwic2VxIjoxfSwiZnJvbSI6ImVkMjU1MTk6N2NmMzViMzZiOWQ1N2M2MmI5ZjNkNWJlMmViNGQzOTE0N2FmYTFiNzYyNWNkMDAzMjQ0MzUyMzI1NGRmM2JlYSIsImtpbmQiOiJjcm9zc2luZyIsIm1lZGlhdG9yIjoiZWQyNTUxOTo4NDI1NGY5ZDU5M2IwZjc4MTFiMThjMDBiNjU2YTcwZmUxYTk1OTVlZDM1M2M3MzI4NmVhODNkMzAwMjI2ZWQzIiwicmVhc29uIjoib2siLCJzZXEiOjEsInRvIjoiZWQyNTUxOTphODA1ODYyNzliYTE3YzUzNjBiMDI5MDE4YmYwMjViZTAxNjlmZGIwMjA4N2U3NzMwMTc3NGM5OWVlZDkyMTE3IiwidmVyZGljdCI6InBhc3MifSwicHJlZGljYXRlVHlwZSI6Imh0dHBzOi8vcGxhY2tldC50ZWNoL3JlY2VpcHQvMC4xIiwic3ViamVjdCI6W3siZGlnZXN0Ijp7InNhbHRlZC1zaGEyNTYiOiJkMmE3Y2IyYjgzMGJiNTcyMDU2MjVhMDg0NjkwODJhZGNkNjZhNmY0ZGU5ZjdmZTgzNDc1NTFlN2EwNTk5YTcyIn0sIm5hbWUiOiJyZXBvcnQifV19",
+          "payload": "eyJfdHlwZSI6Imh0dHBzOi8vaW4tdG90by5pby9TdGF0ZW1lbnQvdjEiLCJwcmVkaWNhdGUiOnsiYWNjb3JkIjoic2hhMjU2OjE3MGEzYjE5ZDEwODVmYzZmNTY3NmQzMjViOTkwMTlkMzMyODA4YWY5Nzk0NGM0MGI4N2QyMmM4ZWZkMzJjMzgiLCJhdCI6IjIwMjYtMTEtMTJUMDk6MDA6MDBaIiwiYnkiOnsianVkZ2UiOiJqZXYifSwiY2FyZCI6InNoYTI1Njo0N2U4YWY2ZTQ2YTYzNjU3MTE2YzU1MjYzOGY5MTU1ZmM5YmYyZDNhNTg4NTQwZmExZjE5NTU4ZWE2NDZmZGI2IiwiZW52ZWxvcGUiOnsiaGFzaCI6InNoYTI1Njo5OTlhYWU1YTA1ZmZiMGE2YzY5OTcwYWY4NWRhYTMxMWU1NWQ2NjBjZDhiMjc3NTM1YzJiMTA0YzUzYWY5Mzk4Iiwic2VuZGVyIjoiZWQyNTUxOTo3Y2YzNWIzNmI5ZDU3YzYyYjlmM2Q1YmUyZWI0ZDM5MTQ3YWZhMWI3NjI1Y2QwMDMyNDQzNTIzMjU0ZGYzYmVhIiwic2VxIjoxfSwiZnJvbSI6ImVkMjU1MTk6N2NmMzViMzZiOWQ1N2M2MmI5ZjNkNWJlMmViNGQzOTE0N2FmYTFiNzYyNWNkMDAzMjQ0MzUyMzI1NGRmM2JlYSIsImtpbmQiOiJjcm9zc2luZyIsIm1lZGlhdG9yIjoiZWQyNTUxOTo4NDI1NGY5ZDU5M2IwZjc4MTFiMThjMDBiNjU2YTcwZmUxYTk1OTVlZDM1M2M3MzI4NmVhODNkMzAwMjI2ZWQzIiwicmVhc29uIjoib2siLCJzZXEiOjEsInRvIjoiZWQyNTUxOTphODA1ODYyNzliYTE3YzUzNjBiMDI5MDE4YmYwMjViZTAxNjlmZGIwMjA4N2U3NzMwMTc3NGM5OWVlZDkyMTE3IiwidmVyZGljdCI6InBhc3MifSwicHJlZGljYXRlVHlwZSI6Imh0dHBzOi8vcGxhY2tldC50ZWNoL3JlY2VpcHQvMC4xIiwic3ViamVjdCI6W3siZGlnZXN0Ijp7InNhbHRlZC1zaGEyNTYiOiJkMmE3Y2IyYjgzMGJiNTcyMDU2MjVhMDg0NjkwODJhZGNkNjZhNmY0ZGU5ZjdmZTgzNDc1NTFlN2EwNTk5YTcyIn0sIm5hbWUiOiJyZXBvcnQifV19",
           "payloadType": "application/vnd.in-toto+json",
           "signatures": [
             {
               "keyid": "ed25519:84254f9d593b0f7811b18c00b656a70fe1a9595ed353c73286ea83d300226ed3",
-              "sig": "U/Q+tqgOKW8UbwqOCj/3vi5uM1ojnx1oeU4c0kAOEj9Q74g/2/kD+pOGzYJVIQQuF8svW4ElRqztHtCMl/97CQ=="
+              "sig": "TmuunoFq3tfw3KPuqiX0TVEwQlooQi4uuH2tM9O5/syiSXNEN1zVmdl1gHpVsPWiEDhE/hXcGj2Gk0J57XWHAQ=="
             }
           ]
         },
-        "receiptId": "sha256:1d3b6618e70f550fe203d3f2c76a763bcfe4765cfd19f2e0302ee83ebd69f348"
+        "receiptId": "sha256:d033a8fbf96768d7de925cfc0779193b573281b838e3be97858dcc09db3f4108"
       }
     ]
   },
@@ -72,179 +92,15 @@
     "declarations": [
       {
         "actor": "ed25519:375dea8c4519dbae84fc9eb513e97eb4b693968ef37d52ac10da7b79250c6a22",
-        "sig": "55642d296e6f6b5086f3157132eb5fe5b36001b7141b8812f41a8b9ecd0bfa031e8c34dc7bb5a88ff54a11cc392f08a3c2260d83d9e9911e7166f667cf83bb06",
-        "terms": [
-          {
-            "dir": "give",
-            "select": {
-              "kind": [
-                "answer",
-                "changed-version"
-              ]
-            },
-            "stance": "want",
-            "with": [
-              "role:proposer",
-              "role:applier"
-            ]
-          }
-        ]
+        "seal": "sha256:6b3a3176cd22b483d94e020a3e3014a776649a3b7e4ab612cc56bea99354ac40"
       },
       {
         "actor": "ed25519:7cf35b36b9d57c62b9f3d5be2eb4d39147afa1b7625cd0032443523254df3bea",
-        "sig": "246360ca3a19ad2152b12deca1c1db8c4ebbc5f48200ab14c80c1f6d5ee834190d9cc15481d6dada7b88ed2e77822b77155f72eea4b54cdeba81a811644fae02",
-        "terms": [
-          {
-            "dir": "give",
-            "resolve": {
-              "judges": [
-                {
-                  "name": "jev",
-                  "use": "decide"
-                }
-              ],
-              "timeout": 3600,
-              "to": [
-                "role:decider"
-              ]
-            },
-            "select": {
-              "kind": [
-                "report",
-                "review",
-                "survey",
-                "ledger"
-              ]
-            },
-            "stance": "maybe",
-            "with": [
-              "role:applier"
-            ]
-          },
-          {
-            "dir": "give",
-            "resolve": {
-              "judges": [
-                {
-                  "name": "jev",
-                  "use": "advise"
-                }
-              ],
-              "timeout": 3600,
-              "to": [
-                "role:decider"
-              ]
-            },
-            "select": {
-              "kind": [
-                "digest"
-              ]
-            },
-            "stance": "maybe",
-            "with": [
-              "role:applier"
-            ]
-          },
-          {
-            "dir": "give",
-            "select": {
-              "kind": [
-                "ledger"
-              ]
-            },
-            "stance": "want",
-            "with": [
-              "role:applier"
-            ]
-          },
-          {
-            "dir": "get",
-            "select": {
-              "kind": [
-                "answer",
-                "changed-version"
-              ]
-            },
-            "stance": "want",
-            "with": [
-              "role:decider"
-            ]
-          }
-        ]
+        "seal": "sha256:14539ede5134348bb65579597e001cf7f4594f0a6eda4efe94d469104c0ee008"
       },
       {
         "actor": "ed25519:a80586279ba17c5360b029018bf025be0169fdb02087e77301774c99eed92117",
-        "sig": "5721ee73d3c12a4b5467bad0af76d4eeb83930fc0e63e511b9c2b71518e941d0337318615039fc62d66a614c2acf91a3c855bea095087614a1d3501b670fac0a",
-        "terms": [
-          {
-            "dir": "get",
-            "resolve": {
-              "judges": [
-                {
-                  "name": "jev",
-                  "use": "decide"
-                }
-              ],
-              "timeout": 3600,
-              "to": [
-                "role:decider"
-              ]
-            },
-            "select": {
-              "kind": [
-                "report",
-                "ledger"
-              ]
-            },
-            "stance": "maybe",
-            "with": [
-              "role:proposer"
-            ]
-          },
-          {
-            "dir": "get",
-            "resolve": {
-              "timeout": 3600,
-              "to": [
-                "role:decider"
-              ]
-            },
-            "select": {
-              "kind": [
-                "review"
-              ]
-            },
-            "stance": "maybe",
-            "with": [
-              "role:proposer"
-            ]
-          },
-          {
-            "dir": "get",
-            "resolve": {
-              "judges": [
-                {
-                  "name": "jev",
-                  "use": "advise"
-                }
-              ],
-              "timeout": 3600,
-              "to": [
-                "role:decider"
-              ]
-            },
-            "select": {
-              "kind": [
-                "survey",
-                "digest"
-              ]
-            },
-            "stance": "maybe",
-            "with": [
-              "role:proposer"
-            ]
-          }
-        ]
+        "seal": "sha256:3057ea432da88c3a6cc741ba0057312e24cd96e982a9fb63cce85067e5f649de"
       }
     ],
     "mediator": {
@@ -278,33 +134,229 @@
     "stranger": "ccad0b2ffc9e7230a33399883af8bf4f662163554ad3f39547a66d29953fedeb"
   },
   "mediator": "mediator",
+  "openings": [
+    {
+      "actor": "ed25519:375dea8c4519dbae84fc9eb513e97eb4b693968ef37d52ac10da7b79250c6a22",
+      "opening": {
+        "declaration": {
+          "actor": "ed25519:375dea8c4519dbae84fc9eb513e97eb4b693968ef37d52ac10da7b79250c6a22",
+          "sig": "55642d296e6f6b5086f3157132eb5fe5b36001b7141b8812f41a8b9ecd0bfa031e8c34dc7bb5a88ff54a11cc392f08a3c2260d83d9e9911e7166f667cf83bb06",
+          "terms": [
+            {
+              "dir": "give",
+              "select": {
+                "kind": [
+                  "answer",
+                  "changed-version"
+                ]
+              },
+              "stance": "want",
+              "with": [
+                "role:proposer",
+                "role:applier"
+              ]
+            }
+          ]
+        },
+        "salt": "672f3e62cbb05c6f8c3c128689ae81ad1518b501784f3b681a8a326c93f0f420"
+      }
+    },
+    {
+      "actor": "ed25519:7cf35b36b9d57c62b9f3d5be2eb4d39147afa1b7625cd0032443523254df3bea",
+      "opening": {
+        "declaration": {
+          "actor": "ed25519:7cf35b36b9d57c62b9f3d5be2eb4d39147afa1b7625cd0032443523254df3bea",
+          "sig": "246360ca3a19ad2152b12deca1c1db8c4ebbc5f48200ab14c80c1f6d5ee834190d9cc15481d6dada7b88ed2e77822b77155f72eea4b54cdeba81a811644fae02",
+          "terms": [
+            {
+              "dir": "give",
+              "resolve": {
+                "judges": [
+                  {
+                    "name": "jev",
+                    "use": "decide"
+                  }
+                ],
+                "timeout": 3600,
+                "to": [
+                  "role:decider"
+                ]
+              },
+              "select": {
+                "kind": [
+                  "report",
+                  "review",
+                  "survey",
+                  "ledger"
+                ]
+              },
+              "stance": "maybe",
+              "with": [
+                "role:applier"
+              ]
+            },
+            {
+              "dir": "give",
+              "resolve": {
+                "judges": [
+                  {
+                    "name": "jev",
+                    "use": "advise"
+                  }
+                ],
+                "timeout": 3600,
+                "to": [
+                  "role:decider"
+                ]
+              },
+              "select": {
+                "kind": [
+                  "digest"
+                ]
+              },
+              "stance": "maybe",
+              "with": [
+                "role:applier"
+              ]
+            },
+            {
+              "dir": "give",
+              "select": {
+                "kind": [
+                  "ledger"
+                ]
+              },
+              "stance": "want",
+              "with": [
+                "role:applier"
+              ]
+            },
+            {
+              "dir": "get",
+              "select": {
+                "kind": [
+                  "answer",
+                  "changed-version"
+                ]
+              },
+              "stance": "want",
+              "with": [
+                "role:decider"
+              ]
+            }
+          ]
+        },
+        "salt": "53c4568964dc1383b0007a8913e14f23ff29fb13b82a5996afa38e2b39ae8e6a"
+      }
+    },
+    {
+      "actor": "ed25519:a80586279ba17c5360b029018bf025be0169fdb02087e77301774c99eed92117",
+      "opening": {
+        "declaration": {
+          "actor": "ed25519:a80586279ba17c5360b029018bf025be0169fdb02087e77301774c99eed92117",
+          "sig": "5721ee73d3c12a4b5467bad0af76d4eeb83930fc0e63e511b9c2b71518e941d0337318615039fc62d66a614c2acf91a3c855bea095087614a1d3501b670fac0a",
+          "terms": [
+            {
+              "dir": "get",
+              "resolve": {
+                "judges": [
+                  {
+                    "name": "jev",
+                    "use": "decide"
+                  }
+                ],
+                "timeout": 3600,
+                "to": [
+                  "role:decider"
+                ]
+              },
+              "select": {
+                "kind": [
+                  "report",
+                  "ledger"
+                ]
+              },
+              "stance": "maybe",
+              "with": [
+                "role:proposer"
+              ]
+            },
+            {
+              "dir": "get",
+              "resolve": {
+                "timeout": 3600,
+                "to": [
+                  "role:decider"
+                ]
+              },
+              "select": {
+                "kind": [
+                  "review"
+                ]
+              },
+              "stance": "maybe",
+              "with": [
+                "role:proposer"
+              ]
+            },
+            {
+              "dir": "get",
+              "resolve": {
+                "judges": [
+                  {
+                    "name": "jev",
+                    "use": "advise"
+                  }
+                ],
+                "timeout": 3600,
+                "to": [
+                  "role:decider"
+                ]
+              },
+              "select": {
+                "kind": [
+                  "survey",
+                  "digest"
+                ]
+              },
+              "stance": "maybe",
+              "with": [
+                "role:proposer"
+              ]
+            }
+          ]
+        },
+        "salt": "18afd8cee3d8005b581183f51269a6bc65814b88474c7861d0dc3a697c9d0445"
+      }
+    }
+  ],
   "operation": "scenario",
   "spec": "0.1",
   "steps": [
     {
       "as": "proposer",
       "at": "2026-11-12T09:00:00Z",
-      "envelopeHex": "7b2268617368223a227368613235363a63646637356563383139383731633830373332366636653433633934663938656265316431376562613038656666336564643263366639636436633466346266222c22736571223a312c22736967223a223233396364626566313166346463666633356235366136643766313165336533346662396463346135393065633332343464373031646130316364306534343065346531643732356436383362613437653337316666313561336133333733376432333065353166316331303530343735393563396466356163623863643038227d",
+      "envelopeHex": "7b2268617368223a227368613235363a39393961616535613035666662306136633639393730616638356461613331316535356436363063643862323737353335633262313034633533616639333938222c22736571223a312c22736967223a223935336530383336366265373539333034326261616664333737626363383466326439346430323861373532626439363835666535336465333061363165643534376233383239326430633563333635323231373465643130346161613131303764393338393634313036633136366334643835353339383139336266623037227d",
       "expect": {
         "reason": "ok",
         "receipt": {
-          "payload": "eyJfdHlwZSI6Imh0dHBzOi8vaW4tdG90by5pby9TdGF0ZW1lbnQvdjEiLCJwcmVkaWNhdGUiOnsiYWNjb3JkIjoic2hhMjU2OmFkMmNhNDViY2Q0ZWFlMTMyZDVhMDlhZDcyOWEzMWNlZjcyMWMyYjJkYmE0MTZmNGRkYThhOWEwMTdhMjZjZWIiLCJhdCI6IjIwMjYtMTEtMTJUMDk6MDA6MDBaIiwiYnkiOnsianVkZ2UiOiJqZXYifSwiY2FyZCI6InNoYTI1Njo0N2U4YWY2ZTQ2YTYzNjU3MTE2YzU1MjYzOGY5MTU1ZmM5YmYyZDNhNTg4NTQwZmExZjE5NTU4ZWE2NDZmZGI2IiwiZW52ZWxvcGUiOnsiaGFzaCI6InNoYTI1NjpjZGY3NWVjODE5ODcxYzgwNzMyNmY2ZTQzYzk0Zjk4ZWJlMWQxN2ViYTA4ZWZmM2VkZDJjNmY5Y2Q2YzRmNGJmIiwic2VuZGVyIjoiZWQyNTUxOTo3Y2YzNWIzNmI5ZDU3YzYyYjlmM2Q1YmUyZWI0ZDM5MTQ3YWZhMWI3NjI1Y2QwMDMyNDQzNTIzMjU0ZGYzYmVhIiwic2VxIjoxfSwiZnJvbSI6ImVkMjU1MTk6N2NmMzViMzZiOWQ1N2M2MmI5ZjNkNWJlMmViNGQzOTE0N2FmYTFiNzYyNWNkMDAzMjQ0MzUyMzI1NGRmM2JlYSIsImtpbmQiOiJjcm9zc2luZyIsIm1lZGlhdG9yIjoiZWQyNTUxOTo4NDI1NGY5ZDU5M2IwZjc4MTFiMThjMDBiNjU2YTcwZmUxYTk1OTVlZDM1M2M3MzI4NmVhODNkMzAwMjI2ZWQzIiwicmVhc29uIjoib2siLCJzZXEiOjEsInRvIjoiZWQyNTUxOTphODA1ODYyNzliYTE3YzUzNjBiMDI5MDE4YmYwMjViZTAxNjlmZGIwMjA4N2U3NzMwMTc3NGM5OWVlZDkyMTE3IiwidmVyZGljdCI6InBhc3MifSwicHJlZGljYXRlVHlwZSI6Imh0dHBzOi8vcGxhY2tldC50ZWNoL3JlY2VpcHQvMC4xIiwic3ViamVjdCI6W3siZGlnZXN0Ijp7InNhbHRlZC1zaGEyNTYiOiJkMmE3Y2IyYjgzMGJiNTcyMDU2MjVhMDg0NjkwODJhZGNkNjZhNmY0ZGU5ZjdmZTgzNDc1NTFlN2EwNTk5YTcyIn0sIm5hbWUiOiJyZXBvcnQifV19",
+          "payload": "eyJfdHlwZSI6Imh0dHBzOi8vaW4tdG90by5pby9TdGF0ZW1lbnQvdjEiLCJwcmVkaWNhdGUiOnsiYWNjb3JkIjoic2hhMjU2OjE3MGEzYjE5ZDEwODVmYzZmNTY3NmQzMjViOTkwMTlkMzMyODA4YWY5Nzk0NGM0MGI4N2QyMmM4ZWZkMzJjMzgiLCJhdCI6IjIwMjYtMTEtMTJUMDk6MDA6MDBaIiwiYnkiOnsianVkZ2UiOiJqZXYifSwiY2FyZCI6InNoYTI1Njo0N2U4YWY2ZTQ2YTYzNjU3MTE2YzU1MjYzOGY5MTU1ZmM5YmYyZDNhNTg4NTQwZmExZjE5NTU4ZWE2NDZmZGI2IiwiZW52ZWxvcGUiOnsiaGFzaCI6InNoYTI1Njo5OTlhYWU1YTA1ZmZiMGE2YzY5OTcwYWY4NWRhYTMxMWU1NWQ2NjBjZDhiMjc3NTM1YzJiMTA0YzUzYWY5Mzk4Iiwic2VuZGVyIjoiZWQyNTUxOTo3Y2YzNWIzNmI5ZDU3YzYyYjlmM2Q1YmUyZWI0ZDM5MTQ3YWZhMWI3NjI1Y2QwMDMyNDQzNTIzMjU0ZGYzYmVhIiwic2VxIjoxfSwiZnJvbSI6ImVkMjU1MTk6N2NmMzViMzZiOWQ1N2M2MmI5ZjNkNWJlMmViNGQzOTE0N2FmYTFiNzYyNWNkMDAzMjQ0MzUyMzI1NGRmM2JlYSIsImtpbmQiOiJjcm9zc2luZyIsIm1lZGlhdG9yIjoiZWQyNTUxOTo4NDI1NGY5ZDU5M2IwZjc4MTFiMThjMDBiNjU2YTcwZmUxYTk1OTVlZDM1M2M3MzI4NmVhODNkMzAwMjI2ZWQzIiwicmVhc29uIjoib2siLCJzZXEiOjEsInRvIjoiZWQyNTUxOTphODA1ODYyNzliYTE3YzUzNjBiMDI5MDE4YmYwMjViZTAxNjlmZGIwMjA4N2U3NzMwMTc3NGM5OWVlZDkyMTE3IiwidmVyZGljdCI6InBhc3MifSwicHJlZGljYXRlVHlwZSI6Imh0dHBzOi8vcGxhY2tldC50ZWNoL3JlY2VpcHQvMC4xIiwic3ViamVjdCI6W3siZGlnZXN0Ijp7InNhbHRlZC1zaGEyNTYiOiJkMmE3Y2IyYjgzMGJiNTcyMDU2MjVhMDg0NjkwODJhZGNkNjZhNmY0ZGU5ZjdmZTgzNDc1NTFlN2EwNTk5YTcyIn0sIm5hbWUiOiJyZXBvcnQifV19",
           "payloadType": "application/vnd.in-toto+json",
           "signatures": [
             {
               "keyid": "ed25519:84254f9d593b0f7811b18c00b656a70fe1a9595ed353c73286ea83d300226ed3",
-              "sig": "U/Q+tqgOKW8UbwqOCj/3vi5uM1ojnx1oeU4c0kAOEj9Q74g/2/kD+pOGzYJVIQQuF8svW4ElRqztHtCMl/97CQ=="
+              "sig": "TmuunoFq3tfw3KPuqiX0TVEwQlooQi4uuH2tM9O5/syiSXNEN1zVmdl1gHpVsPWiEDhE/hXcGj2Gk0J57XWHAQ=="
             }
           ]
         },
-        "receiptId": "sha256:1d3b6618e70f550fe203d3f2c76a763bcfe4765cfd19f2e0302ee83ebd69f348",
+        "receiptId": "sha256:d033a8fbf96768d7de925cfc0779193b573281b838e3be97858dcc09db3f4108",
         "verdict": "pass"
       },
       "judge": {
         "name": "jev",
         "verdict": "pass"
       },
-      "messageHex": "7b22657874656e73696f6e73223a5b2268747470733a2f2f706c61636b65742e746563682f63726f7373696e672f302e31225d2c226d6573736167654964223a227265706f72742d31222c226d65746164617461223a7b2268747470733a2f2f706c61636b65742e746563682f63726f7373696e672f302e31223a7b226163636f7264223a227368613235363a61643263613435626364346561653133326435613039616437323961333163656637323163326232646261343136663464646138613961303137613236636562222c22746f223a22656432353531393a61383035383632373962613137633533363062303239303138626630323562653031363966646230323038376537373330313737346339396565643932313137227d7d2c227061727473223a5b7b226d65746164617461223a7b2268747470733a2f2f706c61636b65742e746563682f63726f7373696e672f302e31223a7b226b696e64223a227265706f7274222c2273616c74223a2232363862633433643735343264643964393633306562323163333762336538316562323062306333363261656431626331303636363135333761316664306237227d7d2c2274657874223a22546865207265706f7274207265706f72742d312e227d5d2c22726f6c65223a22524f4c455f55534552227d",
+      "messageHex": "7b22657874656e73696f6e73223a5b2268747470733a2f2f706c61636b65742e746563682f63726f7373696e672f302e31225d2c226d6573736167654964223a227265706f72742d31222c226d65746164617461223a7b2268747470733a2f2f706c61636b65742e746563682f63726f7373696e672f302e31223a7b226163636f7264223a227368613235363a31373061336231396431303835666336663536373664333235623939303139643333323830386166393739343463343062383764323263386566643332633338222c22746f223a22656432353531393a61383035383632373962613137633533363062303239303138626630323562653031363966646230323038376537373330313737346339396565643932313137227d7d2c227061727473223a5b7b226d65746164617461223a7b2268747470733a2f2f706c61636b65742e746563682f63726f7373696e672f302e31223a7b226b696e64223a227265706f7274222c2273616c74223a2232363862633433643735343264643964393633306562323163333762336538316562323062306333363261656431626331303636363135333761316664306237227d7d2c2274657874223a22546865207265706f7274207265706f72742d312e227d5d2c22726f6c65223a22524f4c455f55534552227d",
       "op": "give"
     },
     {
@@ -314,16 +366,16 @@
           "kind": "report",
           "messageId": "report-1",
           "receipt": {
-            "payload": "eyJfdHlwZSI6Imh0dHBzOi8vaW4tdG90by5pby9TdGF0ZW1lbnQvdjEiLCJwcmVkaWNhdGUiOnsiYWNjb3JkIjoic2hhMjU2OmFkMmNhNDViY2Q0ZWFlMTMyZDVhMDlhZDcyOWEzMWNlZjcyMWMyYjJkYmE0MTZmNGRkYThhOWEwMTdhMjZjZWIiLCJhdCI6IjIwMjYtMTEtMTJUMDk6MDA6MDBaIiwiYnkiOnsianVkZ2UiOiJqZXYifSwiY2FyZCI6InNoYTI1Njo0N2U4YWY2ZTQ2YTYzNjU3MTE2YzU1MjYzOGY5MTU1ZmM5YmYyZDNhNTg4NTQwZmExZjE5NTU4ZWE2NDZmZGI2IiwiZW52ZWxvcGUiOnsiaGFzaCI6InNoYTI1NjpjZGY3NWVjODE5ODcxYzgwNzMyNmY2ZTQzYzk0Zjk4ZWJlMWQxN2ViYTA4ZWZmM2VkZDJjNmY5Y2Q2YzRmNGJmIiwic2VuZGVyIjoiZWQyNTUxOTo3Y2YzNWIzNmI5ZDU3YzYyYjlmM2Q1YmUyZWI0ZDM5MTQ3YWZhMWI3NjI1Y2QwMDMyNDQzNTIzMjU0ZGYzYmVhIiwic2VxIjoxfSwiZnJvbSI6ImVkMjU1MTk6N2NmMzViMzZiOWQ1N2M2MmI5ZjNkNWJlMmViNGQzOTE0N2FmYTFiNzYyNWNkMDAzMjQ0MzUyMzI1NGRmM2JlYSIsImtpbmQiOiJjcm9zc2luZyIsIm1lZGlhdG9yIjoiZWQyNTUxOTo4NDI1NGY5ZDU5M2IwZjc4MTFiMThjMDBiNjU2YTcwZmUxYTk1OTVlZDM1M2M3MzI4NmVhODNkMzAwMjI2ZWQzIiwicmVhc29uIjoib2siLCJzZXEiOjEsInRvIjoiZWQyNTUxOTphODA1ODYyNzliYTE3YzUzNjBiMDI5MDE4YmYwMjViZTAxNjlmZGIwMjA4N2U3NzMwMTc3NGM5OWVlZDkyMTE3IiwidmVyZGljdCI6InBhc3MifSwicHJlZGljYXRlVHlwZSI6Imh0dHBzOi8vcGxhY2tldC50ZWNoL3JlY2VpcHQvMC4xIiwic3ViamVjdCI6W3siZGlnZXN0Ijp7InNhbHRlZC1zaGEyNTYiOiJkMmE3Y2IyYjgzMGJiNTcyMDU2MjVhMDg0NjkwODJhZGNkNjZhNmY0ZGU5ZjdmZTgzNDc1NTFlN2EwNTk5YTcyIn0sIm5hbWUiOiJyZXBvcnQifV19",
+            "payload": "eyJfdHlwZSI6Imh0dHBzOi8vaW4tdG90by5pby9TdGF0ZW1lbnQvdjEiLCJwcmVkaWNhdGUiOnsiYWNjb3JkIjoic2hhMjU2OjE3MGEzYjE5ZDEwODVmYzZmNTY3NmQzMjViOTkwMTlkMzMyODA4YWY5Nzk0NGM0MGI4N2QyMmM4ZWZkMzJjMzgiLCJhdCI6IjIwMjYtMTEtMTJUMDk6MDA6MDBaIiwiYnkiOnsianVkZ2UiOiJqZXYifSwiY2FyZCI6InNoYTI1Njo0N2U4YWY2ZTQ2YTYzNjU3MTE2YzU1MjYzOGY5MTU1ZmM5YmYyZDNhNTg4NTQwZmExZjE5NTU4ZWE2NDZmZGI2IiwiZW52ZWxvcGUiOnsiaGFzaCI6InNoYTI1Njo5OTlhYWU1YTA1ZmZiMGE2YzY5OTcwYWY4NWRhYTMxMWU1NWQ2NjBjZDhiMjc3NTM1YzJiMTA0YzUzYWY5Mzk4Iiwic2VuZGVyIjoiZWQyNTUxOTo3Y2YzNWIzNmI5ZDU3YzYyYjlmM2Q1YmUyZWI0ZDM5MTQ3YWZhMWI3NjI1Y2QwMDMyNDQzNTIzMjU0ZGYzYmVhIiwic2VxIjoxfSwiZnJvbSI6ImVkMjU1MTk6N2NmMzViMzZiOWQ1N2M2MmI5ZjNkNWJlMmViNGQzOTE0N2FmYTFiNzYyNWNkMDAzMjQ0MzUyMzI1NGRmM2JlYSIsImtpbmQiOiJjcm9zc2luZyIsIm1lZGlhdG9yIjoiZWQyNTUxOTo4NDI1NGY5ZDU5M2IwZjc4MTFiMThjMDBiNjU2YTcwZmUxYTk1OTVlZDM1M2M3MzI4NmVhODNkMzAwMjI2ZWQzIiwicmVhc29uIjoib2siLCJzZXEiOjEsInRvIjoiZWQyNTUxOTphODA1ODYyNzliYTE3YzUzNjBiMDI5MDE4YmYwMjViZTAxNjlmZGIwMjA4N2U3NzMwMTc3NGM5OWVlZDkyMTE3IiwidmVyZGljdCI6InBhc3MifSwicHJlZGljYXRlVHlwZSI6Imh0dHBzOi8vcGxhY2tldC50ZWNoL3JlY2VpcHQvMC4xIiwic3ViamVjdCI6W3siZGlnZXN0Ijp7InNhbHRlZC1zaGEyNTYiOiJkMmE3Y2IyYjgzMGJiNTcyMDU2MjVhMDg0NjkwODJhZGNkNjZhNmY0ZGU5ZjdmZTgzNDc1NTFlN2EwNTk5YTcyIn0sIm5hbWUiOiJyZXBvcnQifV19",
             "payloadType": "application/vnd.in-toto+json",
             "signatures": [
               {
                 "keyid": "ed25519:84254f9d593b0f7811b18c00b656a70fe1a9595ed353c73286ea83d300226ed3",
-                "sig": "U/Q+tqgOKW8UbwqOCj/3vi5uM1ojnx1oeU4c0kAOEj9Q74g/2/kD+pOGzYJVIQQuF8svW4ElRqztHtCMl/97CQ=="
+                "sig": "TmuunoFq3tfw3KPuqiX0TVEwQlooQi4uuH2tM9O5/syiSXNEN1zVmdl1gHpVsPWiEDhE/hXcGj2Gk0J57XWHAQ=="
               }
             ]
           },
-          "receiptId": "sha256:1d3b6618e70f550fe203d3f2c76a763bcfe4765cfd19f2e0302ee83ebd69f348",
+          "receiptId": "sha256:d033a8fbf96768d7de925cfc0779193b573281b838e3be97858dcc09db3f4108",
           "salt": "268bc43d7542dd9d9630eb21c37b3e81eb20b0c362aed1bc106661537a1fd0b7",
           "text": "The report report-1."
         }

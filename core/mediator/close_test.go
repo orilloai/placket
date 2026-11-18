@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/orilloai/placket/core/canonical"
+	"github.com/orilloai/placket/core/founding"
 	ptesting "github.com/orilloai/placket/core/internal/testing"
 	"github.com/orilloai/placket/core/mediator"
 	"github.com/orilloai/placket/core/receipts"
@@ -332,7 +333,7 @@ func TestCloseOfAnEmptyRecord(t *testing.T) {
 		t.Fatalf("the close of an empty record: %+v", cl)
 	}
 	var e *mediator.Error
-	if _, _, _, err := mediator.Close([]byte("{}"), nil, nil, nil, foundedAt, med, foundedAt); errors.As(err, &e) {
+	if _, _, _, err := mediator.Close(founding.Inputs{Set: []byte("{}")}, nil, nil, nil, foundedAt, med, foundedAt); errors.As(err, &e) {
 		t.Fatalf("a set that does not found: %v, want founding's error", err)
 	}
 }
@@ -344,12 +345,13 @@ func FuzzClose(f *testing.F) {
 	m, q := opened(f)
 	q2 := ask(f, m, 2, "p-2", "2026-11-12T09:02:00Z")
 	list := m.Receipts()
-	set, foundedAt := askAndLog(f)
+	sealed, foundedAt := askAndLog(f)
+	set := sealed.Set
 	f.Add(set, foundedAt, uint8(9), list[0], q, "2026-11-12T10:00:00Z", q2, "decider", []byte(nil), "2026-11-12T09:30:00Z")
 	f.Add(set, foundedAt, uint8(0), list[1], q, "2026-11-12T10:00:00Z", q2, "decider", []byte(`{}`), "2026-11-12T11:00:00Z")
 	f.Add([]byte(`{}`), "", uint8(0), []byte(`{}`), "", "", "", "", []byte(nil), "")
 	med := ptesting.Key(f, "mediator")
-	f.Fuzz(func(t *testing.T, founding []byte, foundedAt string, at uint8, receipt []byte, question, deadline, question2, role string, delivery []byte, closeAt string) {
+	f.Fuzz(func(t *testing.T, set []byte, foundedAt string, at uint8, receipt []byte, question, deadline, question2, role string, delivery []byte, closeAt string) {
 		l := append([][]byte(nil), list...)
 		if int(at) < len(l) {
 			l[at] = receipt
@@ -360,7 +362,9 @@ func FuzzClose(f *testing.F) {
 		if delivery != nil {
 			queued = []mediator.Queued{{To: ptesting.Key(t, "applier").Reference(), Delivery: delivery}}
 		}
-		c, outs, closed, err := mediator.Close(founding, l, open, queued, foundedAt, med, closeAt)
+		in := sealed
+		in.Set = set
+		c, outs, closed, err := mediator.Close(in, l, open, queued, foundedAt, med, closeAt)
 		if err != nil {
 			if c != nil || outs != nil || closed.Receipt != nil {
 				t.Fatal("a refused close returned a mediator")

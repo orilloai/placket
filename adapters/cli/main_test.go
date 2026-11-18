@@ -15,6 +15,9 @@ import (
 	"time"
 
 	"github.com/orilloai/placket/adapters/cli"
+	"github.com/orilloai/placket/adapters/keyfile"
+	"github.com/orilloai/placket/core/founding"
+	"github.com/orilloai/placket/core/setup"
 )
 
 // bin is the placket binary, built once for the tests that need processes of their own, with the
@@ -84,11 +87,17 @@ type accord struct {
 	dir, id, card string
 	refs          map[string]string
 	window        *window
+	// parties are the members, by name, each of which accepts its view the first time the window
+	// starts, before which the Accord is proposed (setup-contract-15).
+	parties []string
 }
 
 func (a *accord) key(name string) string { return filepath.Join(a.dir, name+".key") }
 func (a *accord) socket() string         { return filepath.Join(a.dir, "s") }
 func (a *accord) journal() string        { return filepath.Join(a.dir, "j") }
+func (a *accord) openings() string       { return filepath.Join(a.dir, "openings") }
+func (a *accord) founding() string       { return filepath.Join(a.dir, "founding.json") }
+func (a *accord) acceptances() string    { return filepath.Join(a.dir, "acceptances.json") }
 func (a *accord) state(name string) string {
 	return filepath.Join(a.dir, name+".key.state", strings.TrimPrefix(a.id, "sha256:"))
 }
@@ -139,7 +148,10 @@ func newAccordBy(t testing.TB, by map[string]string, parties ...string) *accord 
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = os.RemoveAll(d) })
-	a := &accord{dir: d, refs: map[string]string{}}
+	a := &accord{dir: d, refs: map[string]string{}, parties: parties}
+	if err := os.Mkdir(a.openings(), 0o700); err != nil {
+		t.Fatal(err)
+	}
 	names := []string{"mediator", "operator", "principal", "stranger"}
 	for _, p := range parties {
 		if pr := principalOf(p); !contains(names, pr) {
@@ -191,8 +203,9 @@ func newAccordBy(t testing.TB, by map[string]string, parties ...string) *accord 
 	for _, p := range parties {
 		terms, role := termsOf(p)
 		decl := must(t, "declare", "--key", a.key(p), "--terms", write(p+".terms", terms)).stdout
+		entry := must(t, "seal", "--key", a.key(p), "--declaration", write(p+".declaration", decl), "--out", a.openings()).stdout
 		bind := must(t, "bind", "--key", a.key(principalOf(p)), "--actor", a.refs[p], "--role", role, "--mediator", a.refs["mediator"], "--until", "2099-01-01T00:00:00Z", "--policy", policy).stdout
-		args = append(args, "--declaration", write(p+".declaration", decl), "--binding", write(p+".binding", bind))
+		args = append(args, "--seal", write(p+".seal", entry), "--binding", write(p+".binding", bind))
 	}
 	args = append(args,
 		"--policy", policy,
@@ -207,6 +220,7 @@ func newAccordBy(t testing.TB, by map[string]string, parties ...string) *accord 
 			a.card = f[1]
 		}
 	}
+	a.acceptOnce(t)
 	return a
 }
 
@@ -238,7 +252,9 @@ func (s *syncBuffer) Write(p []byte) (int, error) {
 }
 func (s *syncBuffer) String() string { s.mu.Lock(); defer s.mu.Unlock(); return s.b.String() }
 
-// start runs the Accord's window until the test ends or stop is called.
+// start runs the Accord's window until the test ends or stop is called. It takes the
+// acceptances.json beside the founding set, so it is founded at once; with that file removed, the
+// Accord starts proposed.
 func (a *accord) start(t testing.TB) *window {
 	t.Helper()
 	ctx, cancel := context.WithCancel(context.Background())
@@ -247,8 +263,8 @@ func (a *accord) start(t testing.TB) *window {
 	e.Context, e.Ready = ctx, ready
 	w := &window{cancel: cancel, done: make(chan int, 1), stderr: &syncBuffer{}}
 	go func() {
-		w.done <- cli.Run(e, []string{"window", "--key", a.key("mediator"), "--founding", filepath.Join(a.dir, "founding.json"),
-			"--socket", a.socket(), "--journal", a.journal()}, strings.NewReader(""), &bytes.Buffer{}, w.stderr)
+		w.done <- cli.Run(e, []string{"window", "--key", a.key("mediator"), "--founding", a.founding(),
+			"--openings", a.openings(), "--socket", a.socket(), "--journal", a.journal()}, strings.NewReader(""), &bytes.Buffer{}, w.stderr)
 	}()
 	select {
 	case <-ready:
@@ -260,6 +276,47 @@ func (a *accord) start(t testing.TB) *window {
 	a.window = w
 	t.Cleanup(func() { w.stop(t) })
 	return w
+}
+
+// acceptOnce has every party accept its view in a window of its own, on a socket and journal of its
+// own, which writes acceptances.json beside the founding set, and stops it: every window started
+// after it is founded at once. Each party keeps its view and acceptance in its state directory.
+func (a *accord) acceptOnce(t testing.TB) {
+	t.Helper()
+	ctx, cancel := context.WithCancel(context.Background())
+	ready := make(chan struct{})
+	e := env()
+	e.Context, e.Ready = ctx, ready
+	done, stderr := make(chan int, 1), &syncBuffer{}
+	socket := filepath.Join(a.dir, "p")
+	go func() {
+		done <- cli.Run(e, []string{"window", "--key", a.key("mediator"), "--founding", a.founding(), "--openings", a.openings(),
+			"--socket", socket, "--journal", filepath.Join(a.dir, "pj")}, strings.NewReader(""), &bytes.Buffer{}, stderr)
+	}()
+	select {
+	case <-ready:
+	case code := <-done:
+		t.Fatalf("the proposed window exited %d: %s", code, stderr.String())
+	}
+	a.acceptAllOn(t, socket, a.id)
+	cancel()
+	if code := <-done; code != 0 {
+		t.Fatalf("the proposed window exited %d: %s", code, stderr.String())
+	}
+}
+
+// acceptAllOn has every party view and accept its view at the window of the Accord id on the
+// socket, the last of which founds the Accord.
+func (a *accord) acceptAllOn(t testing.TB, socket, id string) {
+	t.Helper()
+	for i, p := range a.parties {
+		as := []string{"--key", a.key(p), "--socket", socket, "--accord", id}
+		must(t, append([]string{"view"}, as...)...)
+		r := must(t, append([]string{"accept"}, as...)...)
+		if last := i == len(a.parties)-1; strings.Contains(r.stderr, cli.LineFounded) != last {
+			t.Fatalf("%s's acceptance: %v", p, r)
+		}
+	}
 }
 
 func (w *window) stop(t testing.TB) {
@@ -370,4 +427,80 @@ func six(t testing.TB) *sixRun {
 		s.drain(t, who)
 	}
 	return s
+}
+
+// opens are verify's --open flags for every party's opening.
+func (a *accord) opens() []string {
+	var out []string
+	for _, p := range a.parties {
+		out = append(out, "--open", filepath.Join(a.openings(), cli.OpeningName(a.refs[p])))
+	}
+	return out
+}
+
+// acceptancesOf has every party accept its view of the founding set at setPath, built from the
+// Accord's openings with the core alone, and writes acceptances.json's bytes to a file beside it of
+// its own name; it returns the file's path. A set whose card names another module, which no window
+// serves, is accepted so too.
+func (a *accord) acceptancesOf(t testing.TB, setPath string) string {
+	t.Helper()
+	return a.acceptWith(t, setPath, setPath+".acceptances", func(p string) string { return p })
+}
+
+// falseAcceptances are the Accord's acceptances, but for who's, which signs the view of whose, and
+// returns the path of their file.
+func (a *accord) falseAcceptances(t testing.TB, who, whose string) string {
+	t.Helper()
+	return a.acceptWith(t, a.founding(), filepath.Join(a.dir, "false.acceptances"), func(p string) string {
+		if p == who {
+			return whose
+		}
+		return p
+	})
+}
+
+// acceptWith writes to out the acceptances of the set at setPath, each party signing the view of the
+// party viewOf names.
+func (a *accord) acceptWith(t testing.TB, setPath, out string, viewOf func(string) string) string {
+	t.Helper()
+	set, err := os.ReadFile(setPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	openings := map[string][]byte{}
+	for _, p := range a.parties {
+		b, err := os.ReadFile(filepath.Join(a.openings(), cli.OpeningName(a.refs[p])))
+		if err != nil {
+			t.Fatal(err)
+		}
+		openings[a.refs[p]] = bytes.TrimSuffix(b, []byte("\n"))
+	}
+	acc, err := setup.Found(bytes.TrimSuffix(set, []byte("\n")), setup.Openings{ByActor: openings}, "2026-11-18T09:00:00Z")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var list [][]byte
+	for _, p := range a.parties {
+		v, err := founding.View(acc, a.refs[viewOf(p)])
+		if err != nil {
+			t.Fatal(err)
+		}
+		k, err := keyfile.Read(a.key(p))
+		if err != nil {
+			t.Fatal(err)
+		}
+		b, err := founding.Accept(acc.ID(), v, k)
+		if err != nil {
+			t.Fatal(err)
+		}
+		list = append(list, b)
+	}
+	b, err := founding.Acceptances(list)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(out, append(b, '\n'), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	return out
 }

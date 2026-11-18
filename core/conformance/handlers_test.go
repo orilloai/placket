@@ -24,7 +24,7 @@ func TestDefaultRunsEveryOperation(t *testing.T) {
 		ops = append(ops, op)
 	}
 	sort.Strings(ops)
-	want := []string{"canonical", "conform", "found", "reconcile", "scenario", "sign", "verify", "verify-signature"}
+	want := []string{"canonical", "conform", "found", "reconcile", "scenario", "sign", "verify", "verify-signature", "view"}
 	if !reflect.DeepEqual(ops, want) {
 		t.Fatalf("handlers for %v, want %v", ops, want)
 	}

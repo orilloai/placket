@@ -1,6 +1,7 @@
 package setup_test
 
 import (
+	"errors"
 	"slices"
 	"testing"
 
@@ -15,7 +16,7 @@ import (
 func TestEachPartyItsOwnPrincipal(t *testing.T) {
 	t.Parallel()
 	set, at := base(t, "two-principals")
-	a, err := setup.Found(encode(t, set), at)
+	a, err := foundClear(t, encode(t, set), at)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -52,7 +53,7 @@ func TestEachPartyItsOwnPrincipal(t *testing.T) {
 func TestOnePrincipalForEveryParty(t *testing.T) {
 	t.Parallel()
 	set, at := base(t, "ask-and-log")
-	a, err := setup.Found(encode(t, set), at)
+	a, err := foundClear(t, encode(t, set), at)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -98,7 +99,16 @@ func TestAPrincipalGrantsOnlyItsRoles(t *testing.T) {
 			if !ok {
 				t.Fatalf("no vector %s", name)
 			}
-			if c := foundCode(t, v.set(), v.FoundedAt); c != want {
+			in := v.inputs()
+			_, err := setup.Found(in.Set, in.Openings, v.FoundedAt)
+			c := founded
+			var se *setup.Error
+			if errors.As(err, &se) {
+				c = se.Code
+			} else if err != nil {
+				t.Fatal(err)
+			}
+			if c != want {
 				t.Fatalf("got %q, want %q", c, want)
 			}
 			if string(want) != v.Expect.Code {

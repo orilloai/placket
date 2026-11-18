@@ -5,7 +5,8 @@
 # make ci and checks what it prints.
 #
 # Usage: sh scripts/demo.sh [DIR]. Everything goes in DIR, a new directory by default: the keys,
-# the terms and the founding set, the journal, the three state directories and the window's log.
+# the terms, the openings and the founding set, the acceptances, the journal, the three state
+# directories and the window's log.
 # PLACKET names a built binary to use instead of building one.
 set -eu
 
@@ -51,7 +52,7 @@ run() {
 # socket NAME: the flags of a socket command run by NAME.
 socket() { echo "--key $out/$1.key --socket $sock --accord $accord"; }
 
-step "1. keys, declarations, bindings, the founding set"
+step "1. keys, declarations and their seals, bindings, the founding set"
 for k in mediator operator principal proposer applier decider; do
 	"$p" key new --out "$k.key" >"$k.ref"
 done
@@ -73,8 +74,12 @@ cat >decider.terms <<T
 T
 # One principal stands behind all three parties, and may grant each of their roles.
 echo "{\"roles\":[\"proposer\",\"applier\",\"decider\"],\"principals\":[{\"principal\":\"$(ref principal)\",\"roles\":[\"proposer\",\"applier\",\"decider\"]}]}" >policy.json
+# Each party seals its declaration: the set holds the seal, and the opening goes to whoever runs the
+# window, here the operator, and to no other party.
+mkdir -p openings
 for a in proposer applier decider; do
 	"$p" declare --key "$a.key" --terms "$a.terms" >"$a.declaration"
+	"$p" seal --key "$a.key" --declaration "$a.declaration" --out openings >"$a.seal" 2>/dev/null
 	"$p" bind --key principal.key --actor "$(ref "$a")" --role "$a" --mediator "$(ref mediator)" --until 2099-01-01T00:00:00Z \
 		--policy policy.json >"$a.binding"
 done
@@ -83,15 +88,15 @@ echo "{\"actor\":\"$(ref mediator)\",\"operator\":\"$(ref operator)\",\"runs\":\
 "$p" card --default >card.json 2>card.out
 cat card.out
 "$p" founding --policy policy.json --mediator mediator.json --card card.json \
-	--declaration proposer.declaration --declaration applier.declaration --declaration decider.declaration \
+	--seal proposer.seal --seal applier.seal --seal decider.seal \
 	--binding proposer.binding --binding applier.binding --binding decider.binding >founding.json 2>founding.out
 cat founding.out
 accord=$(awk '$1 == "accord" { print $2 }' founding.out)
 
-step "2. the window"
+step "2. the window, and each party's consent to its view"
 start_window() {
 	rm -f window.ready
-	"$p" window --key mediator.key --founding founding.json --socket "$sock" --journal journal 2>>window.log &
+	"$p" window --key mediator.key --founding founding.json --openings openings --socket "$sock" --journal journal 2>>window.log &
 	window_pid=$!
 	n=0
 	until grep -q '^operator ' window.log 2>/dev/null && [ "$(grep -c '^operator ' window.log)" -ge "$1" ]; do
@@ -102,6 +107,18 @@ start_window() {
 }
 start_window 1
 sed 's/^/window: /' window.log
+# The Accord is proposed: each party is shown its own view, and accepts it; the last founds it.
+for a in proposer applier decider; do
+	run "$a" view $(socket "$a")
+	run "$a" accept $(socket "$a")
+done
+n=0
+until grep -q "^accord $accord founded" window.log; do
+	n=$((n + 1))
+	[ "$n" -lt 100 ] || { echo "the Accord was not founded"; cat window.log; exit 1; }
+	pause
+done
+echo "window: accord $accord founded"
 
 # ask KIND TEXT TOPIC: the proposer gives a proposal and waits in the background; prints nothing.
 ask() {
@@ -180,8 +197,11 @@ for a in proposer applier decider; do
 	done
 done
 
-step "10. verify, reconcile and the log; then one byte of a receipt changed"
+step "10. verify, with the sealed terms and then every opening, reconcile and the log; then one byte of a receipt changed"
 run verifier verify --accord "$accord" --receipts journal --founding founding.json
+run operator verify --accord "$accord" --receipts journal --founding founding.json \
+	--open "openings/$(sed 's/^ed25519://' proposer.ref).opening.json" --open "openings/$(sed 's/^ed25519://' applier.ref).opening.json" \
+	--open "openings/$(sed 's/^ed25519://' decider.ref).opening.json"
 card=$(awk '$1 == "card" { print $2 }' founding.out)
 run verifier reconcile --mediator "$(ref mediator)" --accord "$accord" --card "$card" --receipts journal \
 	--kept "proposer.key.state/${accord#sha256:}" --kept "applier.key.state/${accord#sha256:}" --kept "decider.key.state/${accord#sha256:}"

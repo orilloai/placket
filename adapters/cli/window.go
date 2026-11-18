@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/orilloai/placket/adapters/journal"
@@ -22,15 +23,24 @@ func init() {
 	commands["window"] = windowCommand
 }
 
-// windowCommand is `window --key F --founding S [--socket P] [--journal DIR]`: it runs the mediator
-// of the Accord S founds, behind its door on the socket, with its journal in DIR, until it is
-// interrupted. With no --socket it listens on the Accord's default socket, and with no --journal it
-// writes to the Accord's default journal (local.DefaultSocketWith, local.DefaultJournalWith); with
-// neither an absolute XDG_STATE_HOME nor an absolute HOME there is none, and no --journal is tool
-// error usage. It prints the Accord id, the card hash and the operator, then one line per event:
-// ids, words and codes, never a body, a salt, a seed, a key or a question's part. A founding set
-// whose card names another module than this build's is tool error founding kernel, after a line
-// that names both (docs/adr/0012-the-kernel-hash.md).
+// windowCommand is `window --key F --founding S --openings O [--acceptances A] [--socket P]
+// [--journal DIR]`: it runs the mediator of the Accord S founds, behind its door on the socket,
+// with its journal in DIR, until it is interrupted. O is the directory of every member's opening,
+// each <hex of its actor reference>.opening.json; one missing is error founding opening-missing.
+// The acceptances are the file --acceptances names or, without it, the acceptances.json beside S,
+// which the window writes once every member has accepted (readAcceptances). On an empty journal
+// with neither the Accord starts proposed (setup-contract-15): the window serves each member its
+// own view and takes its acceptance, refuses every other call with door not-founded, and once every
+// member has accepted writes acceptances.json beside S, prints `accord <id> founded` and serves as
+// founded. With either it is founded at once, on an empty journal as on a founded one, so
+// collecting the members' consent again means moving that file away. With no --socket it listens on
+// the Accord's default socket, and with no --journal it writes to the Accord's default journal
+// (local.DefaultSocketWith, local.DefaultJournalWith); with neither an absolute XDG_STATE_HOME nor
+// an absolute HOME there is none, and no --journal is tool error usage. It prints the Accord id,
+// the card hash and the operator, then one line per event: ids, words and codes, never a body, a
+// salt, a seed, a key or a question's part. A founding set whose card names another module than
+// this build's is tool error founding kernel, after a line that names both
+// (docs/adr/0012-the-kernel-hash.md).
 //
 // On a closed journal it prints `accord <id> closed <close id>` and serves the closed Accord. A
 // journal whose close was cut short is tool error journal, receipts.jsonl, close, after a line that
@@ -48,9 +58,10 @@ func windowCommand(r *run, args []string) int {
 	fs := flags("window")
 	keyPath, founding := fs.String("key", "", "the mediator's key file"), fs.String("founding", "", "the founding set")
 	socket, dir := fs.String("socket", "", "socket"), fs.String("journal", "", "journal directory")
+	openingsDir, accPath := fs.String("openings", "", "the directory of every member's opening"), fs.String("acceptances", "", "acceptances.json")
 	var judges many
 	fs.Var(&judges, "judge", "a judge's config, once per judge the card lists")
-	if !r.parse(fs, args, "key", "founding") {
+	if !r.parse(fs, args, "key", "founding", "openings") {
 		return r.tool(codeUsage)
 	}
 	loaded, code := r.judgeConfigs(judges)
@@ -97,6 +108,15 @@ func windowCommand(r *run, args []string) int {
 			}
 		}
 	}
+	openings, err := readOpenings(*openingsDir, sealedActors(set))
+	if err != nil {
+		return r.tool(codeFile, "opening")
+	}
+	beside := filepath.Join(filepath.Dir(*founding), FileAcceptances)
+	acceptances, code := r.readAcceptances(*accPath, beside)
+	if code != 0 {
+		return code
+	}
 	operator := memberString(set, "mediator", "operator")
 	// The key is read once, here, and held only by the judges' adapters (docs/adr/0023-judges.md).
 	key := ""
@@ -104,8 +124,9 @@ func windowCommand(r *run, args []string) int {
 		key = r.env.Getenv(jev.KeyEnv)
 	}
 	err = local.Run(r.env.Context, local.Window{
-		Key: k, Founding: set, Socket: *socket, Journal: *dir, Disk: r.env.Disk,
-		Now: r.env.Now, Stderr: r.stderr, Ready: r.env.Ready,
+		Key: k, Founding: set, Openings: openings, Acceptances: acceptances, Socket: *socket, Journal: *dir, Disk: r.env.Disk,
+		Accepted: func(b []byte) error { return writeAcceptances(beside, b) },
+		Now:      r.env.Now, Stderr: r.stderr, Ready: r.env.Ready,
 		Event:    func(e local.Event) { r.event(e, operator) },
 		Judges:   loaded,
 		NewJudge: func(c judge.Config) judge.Judge { return jev.New(c, key, nil) },
@@ -141,8 +162,9 @@ func (r *run) windowError(err error) int {
 	return r.failed(err)
 }
 
-// closeCommand is `window close --key F --founding S --journal DIR --accord ID [--socket P]`
-// (close-1, close-3): it closes the Accord of a stopped window's journal. It rebuilds the mediator as
+// closeCommand is `window close --key F --founding S --journal DIR --accord ID [--acceptances A]
+// [--openings O] [--socket P]` (close-1, close-3), the acceptances as window takes them on a founded
+// journal; a close decides nothing, so it needs no opening: it closes the Accord of a stopped window's journal. It rebuilds the mediator as
 // a restart does, closes each open question, a timeout at its deadline where that has passed and
 // closed otherwise, writes the close receipt last, and prints `close <id>` and one line per closing.
 // --accord must be the founding set's Accord id: the close cannot be undone. A running window holds
@@ -156,6 +178,7 @@ func closeCommand(r *run, args []string) int {
 	keyPath, founding := fs.String("key", "", "the mediator's key file"), fs.String("founding", "", "the founding set")
 	socket, dir := fs.String("socket", "", "socket"), fs.String("journal", "", "journal directory")
 	accord := fs.String("accord", "", "the Accord id, the founding set's")
+	openingsDir, accPath := fs.String("openings", "", "the directory of every member's opening"), fs.String("acceptances", "", "acceptances.json")
 	if !r.parse(fs, args, "key", "founding", "journal", "accord") || !accordID(*accord) {
 		return r.tool(codeUsage)
 	}
@@ -178,9 +201,19 @@ func closeCommand(r *run, args []string) int {
 			return r.tool(codeFound, detailKernel)
 		}
 	}
+	var openings map[string][]byte
+	if *openingsDir != "" {
+		if openings, err = readOpenings(*openingsDir, sealedActors(set)); err != nil {
+			return r.tool(codeFile, "opening")
+		}
+	}
+	acceptances, code := r.readAcceptances(*accPath, filepath.Join(filepath.Dir(*founding), FileAcceptances))
+	if code != 0 {
+		return code
+	}
 	operator := memberString(set, "mediator", "operator")
 	err = local.Run(r.env.Context, local.Window{
-		Key: k, Founding: set, Socket: *socket, Journal: *dir, Disk: r.env.Disk, Close: true,
+		Key: k, Founding: set, Openings: openings, Acceptances: acceptances, Socket: *socket, Journal: *dir, Disk: r.env.Disk, Close: true,
 		Now: r.env.Now, Stderr: r.stderr, Ready: r.env.Ready,
 		Event: func(e local.Event) { r.event(e, operator) },
 	})
@@ -214,10 +247,18 @@ func closeObject(e local.Event) map[string]any {
 // event prints one line per event of the window.
 func (r *run) event(e local.Event, operator string) {
 	switch e.Kind {
+	case local.EventFounded:
+		// The last member accepted its view: the founding line, as a start that founds prints it.
+		fmt.Fprintln(r.stderr, "accord "+e.Accord+" "+wordFounded)
+		r.put("started", wordFounded)
+		return
 	case local.EventStarted:
 		how := wordReloaded
-		if e.Founded {
+		switch {
+		case e.Founded:
 			how = wordFounded
+		case e.Proposed:
+			how = wordProposed
 		}
 		if e.Close != "" {
 			how = wordClosed
@@ -270,6 +311,10 @@ func (r *run) event(e local.Event, operator string) {
 		fmt.Fprintln(r.stderr, op+" "+LineError+" "+string(e.Error))
 	case e.Door != "":
 		fmt.Fprintln(r.stderr, op+" "+LineDoor+" "+string(e.Door))
+	case e.Founding != "":
+		fmt.Fprintln(r.stderr, op+" "+LineRejected+" "+memberFounding+" "+e.Founding)
+	case e.Op == local.OpAccept || e.Op == local.OpView:
+		fmt.Fprintln(r.stderr, op+" "+e.Caller)
 	case e.Fetched != "":
 		fmt.Fprintln(r.stderr, op+" "+wordFetched+" "+e.Fetched)
 	case len(e.Outcomes) == 0:
@@ -282,4 +327,42 @@ func (r *run) event(e local.Event, operator string) {
 		}
 		fmt.Fprintln(r.stderr, op+" "+w+" "+o.Reason+" "+o.ReceiptID)
 	}
+}
+
+// readAcceptances reads acceptances.json for a window (setup-contract-15): the file --acceptances
+// names, or, when it is not given, the one beside the founding set, when there is one; with neither
+// there are none, and on an empty journal the window starts the Accord proposed. A file that cannot
+// be read is tool error file acceptances.
+func (r *run) readAcceptances(flag, beside string) ([]byte, int) {
+	path := flag
+	if path == "" {
+		if _, err := os.Stat(beside); err != nil {
+			return nil, 0
+		}
+		path = beside
+	}
+	b, err := os.ReadFile(path)
+	if err != nil {
+		return nil, r.tool(codeFile, "acceptances")
+	}
+	return trimLF(b), 0
+}
+
+// writeAcceptances writes acceptances.json beside the founding set once every member has accepted
+// (setup-contract-15): through a file of its own in the directory, synced, then renamed over it,
+// mode 0644, since every party and verifier holds it.
+func writeAcceptances(path string, b []byte) error {
+	f, err := os.CreateTemp(filepath.Dir(path), "."+FileAcceptances+".*")
+	if err != nil {
+		return err
+	}
+	tmp := f.Name()
+	_, werr := f.Write(append(append([]byte(nil), b...), '\n'))
+	serr := f.Sync()
+	cerr := f.Close()
+	if werr != nil || serr != nil || cerr != nil || os.Chmod(tmp, 0o644) != nil || os.Rename(tmp, path) != nil {
+		_ = os.Remove(tmp)
+		return errors.Join(werr, serr, cerr, errors.New("acceptances"))
+	}
+	return nil
 }

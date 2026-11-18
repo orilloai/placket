@@ -2,14 +2,17 @@
 // founding's check table, and holds what the founded Accord says: its id and card hash, its members,
 // the roles their bindings give them, the principals that signed those bindings, and their terms.
 //
-// It implements setup-contract-1 to setup-contract-11: declarations and terms, a maybe term's judges
+// It implements setup-contract-1 to setup-contract-13 and setup-contract-16: declarations and terms, a maybe term's judges
 // among them (setup-contract-1), bindings and roles (setup-contract-2, setup-contract-3), the card
 // and its judges (setup-contract-4), the Accord id
 // (setup-contract-5), a principal per party and the roles the policy lets it grant
 // (setup-contract-2, setup-contract-3, setup-contract-9), membership (setup-contract-6), the mediator and its operator
 // (setup-contract-7), the refusal order (setup-contract-8), the shape of a set (setup-contract-9) and
-// the order of its lists (setup-contract-10), and the earlier Accord a policy supersedes
-// (setup-contract-11).
+// the order of its lists (setup-contract-10), the earlier Accord a policy supersedes
+// (setup-contract-11), the seal of each declaration and its opening (setup-contract-12,
+// setup-contract-13), and founding without the openings (setup-contract-16). It runs rows 1 to 17 of
+// founding's table; rows 18 to 21, which read the acceptances and the views, are core/founding's,
+// since a view is composition's (docs/adr/0025-sealed-terms.md).
 package setup
 
 import (
@@ -51,7 +54,32 @@ const (
 	BindingExpired     Code = "binding-expired"
 	DeclarationMissing Code = "declaration-missing"
 	RoleMissing        Code = "role-missing"
+	// OpeningMissing and SealMismatch are row 4a's: no opening is held for a seal entry, or the
+	// opening does not open it (setup-contract-13).
+	OpeningMissing Code = "opening-missing"
+	SealMismatch   Code = "seal-mismatch"
+	// The codes of rows 18 to 21, which core/founding returns: no acceptance from a member, one not
+	// signed by it, one that names another Accord, and one whose view is not the member's
+	// (setup-contract-15).
+	AcceptanceMissing   Code = "acceptance-missing"
+	AcceptanceSignature Code = "acceptance-signature"
+	AcceptanceAccord    Code = "acceptance-accord"
+	AcceptanceView      Code = "acceptance-view"
 )
+
+// SaltBytes is the length of a seal's salt (setup-contract-12).
+const SaltBytes = 32
+
+// Openings are the openings a founder holds, each an opening's bytes under its actor's reference
+// (setup-contract-13, setup-contract-16). With ByActor nil and Some false the founder holds none,
+// as any party or verifier does: rows 4a to 8 are not run and the terms are not checked. With
+// ByActor set and Some false the founder holds every member's, as the window's operator does: a
+// member with none is opening-missing. With Some set it holds some members' only, as a verifier of a
+// dispute does: a member with none is not opened.
+type Openings struct {
+	ByActor map[string][]byte
+	Some    bool
+}
 
 // CheckUnknown was row 8's code, when a term could name a check.
 //
@@ -61,6 +89,10 @@ const CheckUnknown Code = "check-unknown"
 
 // CodeAt is not a founding code: the founding time its caller gave does not keep the timestamp rule.
 const CodeAt Code = "at"
+
+// CodeViewer is not a founding code: a view was asked of an actor that is not a member, or of an
+// Accord whose seals were not all opened, so its view cannot be built (setup-contract-14).
+const CodeViewer Code = "viewer"
 
 // Error is a refused founding: the code of the first row that failed. It carries nothing of the set
 // (record 0005).
@@ -143,9 +175,12 @@ type Accord struct {
 	supersedes                   [2]string
 	judges                       []CardJudge
 	members                      []string
+	member                       map[string]bool
 	roles                        map[string][]string
 	principals                   map[string]string
 	terms                        map[string][]Term
+	// salts holds each opened member's opening salt; a member not opened has none.
+	salts map[string][]byte
 }
 
 // ID returns the Accord id: the typed hash of the set's canonical bytes (setup-contract-5).
@@ -245,13 +280,44 @@ func (a *Accord) Members() []string {
 	return append([]string(nil), a.members...)
 }
 
-// Member reports whether actor has a declaration in the set (setup-contract-6).
+// Member reports whether actor has a declaration in the set, by its seal (setup-contract-6).
 func (a *Accord) Member(actor string) bool {
 	if a == nil {
 		return false
 	}
-	_, ok := a.terms[actor]
+	return a.member[actor]
+}
+
+// Opened reports whether actor's seal was opened at founding, so its terms were read
+// (setup-contract-13, setup-contract-16).
+func (a *Accord) Opened(actor string) bool {
+	if a == nil {
+		return false
+	}
+	_, ok := a.salts[actor]
 	return ok
+}
+
+// TermsChecked reports whether every member's seal was opened at founding, so rows 4a to 8 ran for
+// every declaration (setup-contract-16).
+func (a *Accord) TermsChecked() bool {
+	if a == nil || len(a.members) == 0 {
+		return false
+	}
+	return len(a.salts) == len(a.members)
+}
+
+// Salt returns a copy of the salt of actor's opening, or nil when its seal was not opened
+// (setup-contract-12, setup-contract-14).
+func (a *Accord) Salt(actor string) []byte {
+	if a == nil {
+		return nil
+	}
+	s, ok := a.salts[actor]
+	if !ok {
+		return nil
+	}
+	return append([]byte(nil), s...)
 }
 
 // Roles returns the roles actor's binding gives it, in the binding's order (setup-contract-2).
@@ -271,7 +337,8 @@ func (a *Accord) Principal(actor string) string {
 	return a.principals[actor]
 }
 
-// Terms returns actor's terms, in its declaration's order (setup-contract-1).
+// Terms returns actor's terms, in its declaration's order, or nil when its seal was not opened
+// (setup-contract-1, setup-contract-16).
 func (a *Accord) Terms(actor string) []Term {
 	if a == nil {
 		return nil
@@ -298,16 +365,20 @@ type binding struct {
 	bytes                                     []byte
 }
 
-type declaration struct {
+// An entry is a seal entry of the set's declarations: its actor, as read, and its seal
+// (setup-contract-12).
+type entry struct {
 	actor any
-	o     shape.Object
-	bytes []byte
+	seal  string
 }
 
-// Found founds the set at the founding time at, or refuses it with the first failing row of
-// founding's check table (section 3, setup-contract-8). The set names its mediator; a mediator that
-// founds only its own sets checks the Accord's Mediator.
-func Found(set []byte, at string) (*Accord, error) {
+// Found runs rows 1 to 17 of founding's check table over the set at the founding time at, with the
+// openings given, and returns the Accord they found or the first failing row's code (section 3,
+// setup-contract-8). Rows 4a to 8 run for each member whose opening is given; with none, its terms are
+// not read (setup-contract-16). The id is the typed hash of the set. The set names its mediator; a
+// mediator that founds only its own sets checks the Accord's Mediator. Rows 18 to 21, the
+// acceptances, are core/founding's.
+func Found(set []byte, openings Openings, at string) (*Accord, error) {
 	if !shape.Timestamp(at) {
 		return nil, &Error{Code: CodeAt}
 	}
@@ -362,33 +433,49 @@ func Found(set []byte, at string) (*Accord, error) {
 		byActor[b.actor] = b
 	}
 
-	a := &Accord{mediator: mediator, operator: operator, supersedes: supersedes, judges: judges, roles: map[string][]string{}, principals: map[string]string{}, terms: map[string][]Term{}}
+	a := &Accord{mediator: mediator, operator: operator, supersedes: supersedes, judges: judges, member: map[string]bool{},
+		roles: map[string][]string{}, principals: map[string]string{}, terms: map[string][]Term{}, salts: map[string][]byte{}}
+	every := openings.ByActor != nil && !openings.Some
 	// Rows 4 to 15, each declaration's in actor-reference order.
 	for _, d := range decls {
 		actor, ok := d.actor.(string)
 		if _, isRef := signing.ParseReference(actor); !ok || !isRef {
 			return fail(ActorReference)
 		}
-		if !signing.Verify(d.bytes, signing.TypeDeclaration, actor) {
-			return fail(DeclarationSignature)
+		// Row 4a: the opening opens the seal (setup-contract-13). Rows 5 to 8 then read the opened
+		// declaration; a member whose opening the founder does not hold is not opened.
+		opening, held := openings.ByActor[actor]
+		if !held && every {
+			return fail(OpeningMissing)
 		}
-		ts, ok := terms(d.o["terms"])
-		if !ok {
-			return fail(TermInvalid)
-		}
-		for _, t := range ts {
-			if t.Stance == StanceMaybe && t.Resolve == nil {
-				return fail(MaybeWithoutResolve)
+		var ts []Term
+		var salt []byte
+		if held {
+			o, s, code := open(opening, actor, d.seal)
+			if code != "" {
+				return fail(code)
 			}
-		}
-		// Row 8: every judge a resolve names is a judge of the card (setup-contract-1).
-		for _, t := range ts {
-			if t.Resolve == nil {
-				continue
+			salt = s
+			if !signing.Verify(shape.Encode(o), signing.TypeDeclaration, actor) {
+				return fail(DeclarationSignature)
 			}
-			for _, j := range t.Resolve.Judges {
-				if !hasJudge(judges, j.Name) {
-					return fail(JudgeUnknown)
+			if ts, ok = terms(o["terms"]); !ok {
+				return fail(TermInvalid)
+			}
+			for _, t := range ts {
+				if t.Stance == StanceMaybe && t.Resolve == nil {
+					return fail(MaybeWithoutResolve)
+				}
+			}
+			// Row 8: every judge a resolve names is a judge of the card (setup-contract-1).
+			for _, t := range ts {
+				if t.Resolve == nil {
+					continue
+				}
+				for _, j := range t.Resolve.Judges {
+					if !hasJudge(judges, j.Name) {
+						return fail(JudgeUnknown)
+					}
 				}
 			}
 		}
@@ -418,7 +505,11 @@ func Found(set []byte, at string) (*Accord, error) {
 			return fail(BindingExpired)
 		}
 		a.members = append(a.members, actor)
-		a.terms[actor] = ts
+		a.member[actor] = true
+		if held {
+			a.terms[actor] = ts
+			a.salts[actor] = salt
+		}
 		a.roles[actor] = b.roles
 		a.principals[actor] = b.principal
 	}
@@ -447,6 +538,75 @@ func Found(set []byte, at string) (*Accord, error) {
 	cs := sha256.Sum256(cardBytes)
 	a.card = canonical.HashPrefix + hex.EncodeToString(cs[:])
 	return a, nil
+}
+
+// open is row 4a for one seal entry (setup-contract-13): the opening's bytes, accepted by the
+// canonical form, hold exactly declaration and salt, the salt 32 bytes in lowercase hex, and the
+// declaration an object of no member but actor, terms and sig, its actor a string; else
+// invalid-shape. Its actor is the entry's, and the salted digest of its canonical bytes under the salt
+// is the seal; else seal-mismatch. It returns the declaration and the salt.
+func open(opening []byte, actor, seal string) (shape.Object, []byte, Code) {
+	v, _, err := shape.Decode(opening)
+	o, ok := v.(shape.Object)
+	if err != nil || !ok || !shape.Only(o, "declaration", "salt") {
+		return nil, nil, InvalidShape
+	}
+	hexSalt, ok := o["salt"].(string)
+	if !ok || len(hexSalt) != 2*SaltBytes || !shape.LowerHex(hexSalt) {
+		return nil, nil, InvalidShape
+	}
+	salt, err := hex.DecodeString(hexSalt)
+	if err != nil {
+		return nil, nil, InvalidShape
+	}
+	d, ok := o["declaration"].(shape.Object)
+	if !ok || !shape.Only(d, "actor", "", "terms", "sig") {
+		return nil, nil, InvalidShape
+	}
+	da, ok := d["actor"].(string)
+	if !ok {
+		return nil, nil, InvalidShape
+	}
+	if da != actor || sealOf(shape.Encode(d), salt) != seal {
+		return nil, nil, SealMismatch
+	}
+	return d, salt, ""
+}
+
+// sealOf is the seal of a declaration's canonical bytes under salt: sha256: and the hex of the
+// SHA-256 of the salt and then the bytes, crossing-3's salted digest (setup-contract-12). It is ""
+// for bytes that are nil, which shape.Encode returns only for a value it cannot write.
+func sealOf(declaration, salt []byte) string {
+	if declaration == nil {
+		return ""
+	}
+	h := sha256.New()
+	h.Write(salt)
+	h.Write(declaration)
+	return canonical.HashPrefix + hex.EncodeToString(h.Sum(nil))
+}
+
+// Seal seals a signed declaration under a salt its actor minted (setup-contract-12): it returns the
+// canonical bytes of the seal entry, {"actor","seal"}, and of the opening, {"declaration","salt"}
+// (setup-contract-13). The declaration must be accepted by the canonical form and be an object whose
+// actor is a string; the salt must be SaltBytes long. It checks no signature and no term: founding
+// does. A refusal is a *Error of InvalidShape and carries nothing of the declaration.
+func Seal(declaration, salt []byte) (entry, opening []byte, err error) {
+	v, _, derr := shape.Decode(declaration)
+	d, ok := v.(shape.Object)
+	if derr != nil || !ok || len(salt) != SaltBytes {
+		return nil, nil, &Error{Code: InvalidShape}
+	}
+	actor, ok := d["actor"].(string)
+	if !ok {
+		return nil, nil, &Error{Code: InvalidShape}
+	}
+	e := shape.Encode(shape.Object{"actor": actor, "seal": sealOf(shape.Encode(d), salt)})
+	o := shape.Encode(shape.Object{"declaration": d, "salt": hex.EncodeToString(salt)})
+	if e == nil || o == nil {
+		return nil, nil, &Error{Code: InvalidShape}
+	}
+	return e, o, nil
 }
 
 // hasJudge reports whether the card's judges list one named name.
@@ -606,27 +766,31 @@ func version(v any) bool {
 	return !join
 }
 
-// declarations reads the declarations for shape only: a non-empty list of objects with no member but
-// actor, terms and sig, each actor present and a string, in strictly ascending actor-reference order
-// (setup-contract-9, setup-contract-10).
-func declarations(v any) ([]declaration, bool) {
+// declarations reads the declarations' seal entries: a non-empty list of objects of exactly actor, a
+// string, and seal, a typed hash, in strictly ascending actor-reference order (setup-contract-9,
+// setup-contract-10, setup-contract-12). Whether actor is a reference is row 4's.
+func declarations(v any) ([]entry, bool) {
 	l, ok := v.([]any)
 	if !ok || len(l) == 0 {
 		return nil, false
 	}
-	var out []declaration
+	var out []entry
 	prev := ""
 	for i, x := range l {
 		o, ok := x.(shape.Object)
-		if !ok || !shape.Only(o, "actor", "", "terms", "sig") {
+		if !ok || !shape.Only(o, "actor", "seal") {
 			return nil, false
 		}
 		actor, ok := o["actor"].(string)
 		if !ok || (i > 0 && !canonical.Less(prev, actor)) {
 			return nil, false
 		}
+		seal, ok := o["seal"].(string)
+		if !ok || !shape.Hash(seal) {
+			return nil, false
+		}
 		prev = actor
-		out = append(out, declaration{actor: o["actor"], o: o, bytes: shape.Encode(o)})
+		out = append(out, entry{actor: o["actor"], seal: seal})
 	}
 	return out, true
 }

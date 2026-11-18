@@ -115,7 +115,7 @@ func TestAWindowKilled(t *testing.T) {
 	var logs []*syncBuffer
 	startProc := func() *exec.Cmd {
 		b := &syncBuffer{}
-		c := exec.Command(bin, "window", "--key", a.key("mediator"), "--founding", filepath.Join(a.dir, "founding.json"), "--socket", a.socket(), "--journal", a.journal())
+		c := exec.Command(bin, "window", "--key", a.key("mediator"), "--founding", filepath.Join(a.dir, "founding.json"), "--openings", a.openings(), "--socket", a.socket(), "--journal", a.journal())
 		c.Stderr = b
 		if err := c.Start(); err != nil {
 			t.Fatal(err)

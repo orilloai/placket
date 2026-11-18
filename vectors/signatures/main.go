@@ -63,6 +63,12 @@ func answerCall(action string, signer kit.Key) kit.Obj {
 	return kit.AnswerCall(kit.HashOf(kit.AskAndLog().Build()), kit.HashOf("signatures: a question"), action, digest, true, signer)
 }
 
+// acceptance is a member's acceptance of its view of the ask-and-log Accord (setup-contract-15).
+func acceptance(from kit.Key) kit.Obj {
+	set := kit.AskAndLog().Build()
+	return kit.Acceptance(kit.HashOf(set), kit.View(kit.Open(set), kit.HashOf(set), from.Ref), from)
+}
+
 func sign(name, tests string, input kit.Obj, t string, signer kit.Key) kit.Vector {
 	return kit.Vector{Name: "signatures/" + name, Tests: tests, Operation: "sign", Members: kit.Obj{
 		"keys": kit.Obj{signer.Name: signer.Seed}, "input": input, "typeUri": t, "signer": signer.Name,
@@ -185,6 +191,16 @@ func main() {
 			answerCall("accepted", kit.Decider), kit.TypeEnvelope, kit.Decider.Ref, false),
 		verifyReceipt("receipt-answer-payload-type", "signing-4: a receipt under the answer type URI as its payload type is refused",
 			receipt(kit.TypeAnswer, nil), kit.Obj{"code": "payload-type", "index": 0}),
+		sign("acceptance-sign", "setup-contract-15, signing-4: a member's acceptance of its view, signed by the member under the acceptance type URI",
+			kit.Unsigned(acceptance(kit.Applier)), kit.TypeAcceptance, kit.Applier),
+		verify("acceptance-verifies", "setup-contract-15, signing-2: an acceptance verifies under the acceptance type URI by its from",
+			acceptance(kit.Applier), kit.TypeAcceptance, kit.Applier.Ref, true),
+		verify("acceptance-by-another-key", "setup-contract-15, signing-2: an acceptance fails under a key other than the one that signed it",
+			acceptance(kit.Applier), kit.TypeAcceptance, kit.Proposer.Ref, false),
+		verify("acceptance-under-the-declaration-uri", "signing-2, signing-4: an acceptance's signature fails under the declaration type URI",
+			acceptance(kit.Applier), kit.TypeDeclaration, kit.Applier.Ref, false),
+		verifyReceipt("receipt-acceptance-payload-type", "signing-4: a receipt under the acceptance type URI as its payload type is refused",
+			receipt(kit.TypeAcceptance, nil), kit.Obj{"code": "payload-type", "index": 0}),
 
 		verifyReceipt("receipt-verifies", "signing-4: a receipt's signature is a payload signature under application/vnd.in-toto+json",
 			receipt(kit.PayloadType, nil), kit.Obj{"verified": 1}),

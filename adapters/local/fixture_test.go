@@ -18,8 +18,10 @@ import (
 	"github.com/orilloai/placket/adapters/local"
 	"github.com/orilloai/placket/core/answer"
 	"github.com/orilloai/placket/core/canonical"
+	"github.com/orilloai/placket/core/founding"
 	"github.com/orilloai/placket/core/mediator"
 	"github.com/orilloai/placket/core/receipts"
+	"github.com/orilloai/placket/core/setup"
 	"github.com/orilloai/placket/core/signing"
 )
 
@@ -64,14 +66,94 @@ func maybe(with, kinds []string, to string) map[string]any {
 // askAndLog is the ask-and-log Accord of the worked example, with two more crossings: a note the
 // proposer gives the applier freely, and a draft it asks about under a rule whose role, auditor,
 // nobody holds. The mediator's key is named mediator; mediatorName names another for a second Accord.
-func askAndLog(t testing.TB, mediatorName string) []byte {
+func askAndLog(t testing.TB, mediatorName string) sealedSet {
 	t.Helper()
 	return askAndLogWith(t, mediatorName, []any{}, nil)
 }
 
+// A sealedSet is a founding set whose declarations are sealed, every member's opening, and every
+// member's acceptance of its view (setup-contract-12 to setup-contract-15).
+type sealedSet struct {
+	set         []byte
+	openings    map[string][]byte
+	acceptances []byte
+}
+
+// seal seals each declaration of the set clear under a salt drawn from its actor, and has each
+// member, a key of the fixture's names, accept its view.
+func seal(t testing.TB, clear []byte) sealedSet {
+	t.Helper()
+	var s map[string]json.RawMessage
+	if err := json.Unmarshal(clear, &s); err != nil {
+		t.Fatal(err)
+	}
+	var decls []json.RawMessage
+	if err := json.Unmarshal(s["declarations"], &decls); err != nil {
+		t.Fatal(err)
+	}
+	out := sealedSet{openings: map[string][]byte{}}
+	var entries []json.RawMessage
+	for _, d := range decls {
+		var a struct{ Actor string }
+		_ = json.Unmarshal(d, &a)
+		salt := sha256.Sum256([]byte("placket door tests: the seal's salt of " + a.Actor))
+		e, o, err := setup.Seal(d, salt[:])
+		if err != nil {
+			t.Fatal(err)
+		}
+		entries = append(entries, e)
+		out.openings[a.Actor] = o
+	}
+	s["declarations"], _ = json.Marshal(entries)
+	b, _ := json.Marshal(s)
+	var err error
+	if out.set, err = canonical.Form(b); err != nil {
+		t.Fatal(err)
+	}
+	out.acceptances = acceptancesOf(t, out.set, out.openings)
+	return out
+}
+
+// acceptancesOf is every member's acceptance of its view of the sealed set, acceptances.json's
+// bytes; each member is a key of the fixture's names.
+func acceptancesOf(t testing.TB, set []byte, openings map[string][]byte) []byte {
+	t.Helper()
+	a, err := setup.Found(set, setup.Openings{ByActor: openings}, "2026-11-12T09:00:00Z")
+	if err != nil {
+		t.Fatalf("the sealed set: %v", err)
+	}
+	keys := map[string]signing.Key{}
+	for _, n := range []string{"proposer", "applier", "decider", "mediator", "stranger"} {
+		keys[key(t, n).Reference()] = key(t, n)
+	}
+	var list [][]byte
+	for _, m := range a.Members() {
+		v, err := founding.View(a, m)
+		if err != nil {
+			t.Fatal(err)
+		}
+		acc, err := founding.Accept(a.ID(), v, keys[m])
+		if err != nil {
+			t.Fatal(err)
+		}
+		list = append(list, acc)
+	}
+	b, err := founding.Acceptances(list)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return b
+}
+
 // askAndLogWith is askAndLog with the card's judges given, and each party's terms that more names
 // added after its own.
-func askAndLogWith(t testing.TB, mediatorName string, judges []any, more map[string][]map[string]any) []byte {
+func askAndLogWith(t testing.TB, mediatorName string, judges []any, more map[string][]map[string]any) sealedSet {
+	t.Helper()
+	return seal(t, clearAskAndLog(t, mediatorName, judges, more))
+}
+
+// clearAskAndLog is askAndLogWith's set before its declarations are sealed.
+func clearAskAndLog(t testing.TB, mediatorName string, judges []any, more map[string][]map[string]any) []byte {
 	t.Helper()
 	med, op, pr := key(t, mediatorName), key(t, "operator"), key(t, "principal")
 	parties := []struct {
@@ -237,30 +319,32 @@ func (w *lockedWriter) Write(p []byte) (int, error) {
 
 // A world is one Accord's files, its clock and its salt and nonce sources.
 type world struct {
-	set     []byte
-	accord  string
-	socket  string
-	journal string
-	clock   *clock
-	salts   *counter
-	nonces  *counter
-	seqs    map[string]int64
+	set         []byte
+	openings    map[string][]byte
+	acceptances []byte
+	accord      string
+	socket      string
+	journal     string
+	clock       *clock
+	salts       *counter
+	nonces      *counter
+	seqs        map[string]int64
 	// disk is what the world's windows write their journal through; nil is the system's.
 	disk journal.Disk
 }
 
 func newWorld(t testing.TB) *world {
 	t.Helper()
-	set := askAndLog(t, "mediator")
-	id, _ := canonical.TypedHash(set)
+	s := askAndLog(t, "mediator")
+	id, _ := canonical.TypedHash(s.set)
 	d := shortDir(t)
-	return &world{set: set, accord: id, socket: filepath.Join(d, "s"), journal: filepath.Join(d, "j"),
+	return &world{set: s.set, openings: s.openings, acceptances: s.acceptances, accord: id, socket: filepath.Join(d, "s"), journal: filepath.Join(d, "j"),
 		clock: &clock{t: time.Date(2026, 11, 12, 9, 0, 0, 0, time.UTC)}, salts: &counter{name: "salts"},
 		nonces: &counter{name: "nonces"}, seqs: map[string]int64{}}
 }
 
 func (w *world) window(t testing.TB) local.Window {
-	return local.Window{Key: key(t, "mediator"), Founding: w.set, Socket: w.socket, Journal: w.journal,
+	return local.Window{Key: key(t, "mediator"), Founding: w.set, Openings: w.openings, Acceptances: w.acceptances, Socket: w.socket, Journal: w.journal,
 		Now: w.clock.Now, Rand: w.salts, Idle: 20 * time.Millisecond, Disk: w.disk}
 }
 
@@ -374,12 +458,17 @@ func snapshot(t testing.TB, dir string) map[string]string {
 
 func hashOf(msg []byte) string { h, _ := canonical.TypedHash(msg); return h }
 
+// use makes s the world's Accord: its set, openings and acceptances, and its id.
+func (w *world) use(s sealedSet) {
+	w.set, w.openings, w.acceptances, w.accord = s.set, s.openings, s.acceptances, hashOf(s.set)
+}
+
 type syncMutex = sync.Mutex
 
 // askAndLogOther is the ask-and-log Accord with another operator, so another Accord id, under the
 // same mediator.
 func askAndLogOther(t testing.TB) []byte {
 	t.Helper()
-	set := askAndLog(t, "mediator")
+	set := askAndLog(t, "mediator").set
 	return bytes.Replace(set, []byte(key(t, "operator").Reference()), []byte(key(t, "other operator").Reference()), 1)
 }

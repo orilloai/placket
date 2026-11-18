@@ -12,8 +12,8 @@ import (
 // accord founds a set of the founding vectors.
 func accord(t testing.TB, name string) *setup.Accord {
 	t.Helper()
-	set, foundedAt := ptesting.Founding(t, name)
-	a, err := setup.Found(set, foundedAt)
+	in, foundedAt := ptesting.Founding(t, name)
+	a, err := setup.Found(in.Set, in.Openings, foundedAt)
 	if err != nil {
 		t.Fatal(err)
 	}

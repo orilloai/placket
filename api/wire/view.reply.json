@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://placket.tech/api/0.1/wire/view.reply.json",
+  "title": "view: the reply",
+  "description": "The caller's view, or a refusal. The view is the protocol's view.json (setup-contract-14).",
+  "oneOf": [
+    {
+      "type": "object",
+      "required": [
+        "ok",
+        "view"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "ok": {
+          "const": true
+        },
+        "view": {
+          "description": "The caller's view: accord, viewer, salt, crossings and answers.",
+          "type": "object",
+          "required": [
+            "accord",
+            "viewer",
+            "salt",
+            "crossings",
+            "answers"
+          ]
+        }
+      }
+    },
+    {
+      "$ref": "https://placket.tech/api/0.1/wire/common.json#/$defs/refusal"
+    }
+  ]
+}

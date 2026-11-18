@@ -1,0 +1,28 @@
+{
+  "acceptanceSig": "d091662b176fbe3399958592da23acf2b14d99f0934935d355515b1d6712b02d3b3a349496d64e00f41eb0cea15c1a75f86e4f3798d531d53dbef2a4c777e50a",
+  "at": "2026-11-18T09:00:00Z",
+  "bytes": "{\"call\":{\"accord\":\"sha256:3c9c6a7edfb50caa43a01ccf3743590fb187588643bfef0f1eba17fc81e1f303\",\"args\":{\"acceptance\":{\"accord\":\"sha256:3c9c6a7edfb50caa43a01ccf3743590fb187588643bfef0f1eba17fc81e1f303\",\"from\":\"ed25519:cfa6e8e88109895dcf44b63602c6a2cd74229c54ff8eb9603486cb510db5f912\",\"sig\":\"d091662b176fbe3399958592da23acf2b14d99f0934935d355515b1d6712b02d3b3a349496d64e00f41eb0cea15c1a75f86e4f3798d531d53dbef2a4c777e50a\",\"view\":\"sha256:a15424c6911e1b07a92bba6f22e9e4a3db11636257cf635ea57bc2ceee164c5c\"}},\"at\":\"2026-11-18T09:00:00Z\",\"caller\":\"ed25519:cfa6e8e88109895dcf44b63602c6a2cd74229c54ff8eb9603486cb510db5f912\",\"nonce\":\"7c712e84d0ed829e15f6a38f5d6ad18e\",\"op\":\"accept\"},\"sig\":\"l3kZ7/Stb9uHVpYojVYOP6AseOQs/YKNoTwGlQrCnehynU92yd1rpbIw9b7KDLszbBdG7ppqnaC+U/32gd2NBA==\"}",
+  "call": {
+    "call": {
+      "accord": "sha256:3c9c6a7edfb50caa43a01ccf3743590fb187588643bfef0f1eba17fc81e1f303",
+      "args": {
+        "acceptance": {
+          "accord": "sha256:3c9c6a7edfb50caa43a01ccf3743590fb187588643bfef0f1eba17fc81e1f303",
+          "from": "ed25519:cfa6e8e88109895dcf44b63602c6a2cd74229c54ff8eb9603486cb510db5f912",
+          "sig": "d091662b176fbe3399958592da23acf2b14d99f0934935d355515b1d6712b02d3b3a349496d64e00f41eb0cea15c1a75f86e4f3798d531d53dbef2a4c777e50a",
+          "view": "sha256:a15424c6911e1b07a92bba6f22e9e4a3db11636257cf635ea57bc2ceee164c5c"
+        }
+      },
+      "at": "2026-11-18T09:00:00Z",
+      "caller": "ed25519:cfa6e8e88109895dcf44b63602c6a2cd74229c54ff8eb9603486cb510db5f912",
+      "nonce": "7c712e84d0ed829e15f6a38f5d6ad18e",
+      "op": "accept"
+    },
+    "sig": "l3kZ7/Stb9uHVpYojVYOP6AseOQs/YKNoTwGlQrCnehynU92yd1rpbIw9b7KDLszbBdG7ppqnaC+U/32gd2NBA=="
+  },
+  "key": "applier",
+  "nonce": "7c712e84d0ed829e15f6a38f5d6ad18e",
+  "op": "accept",
+  "seed": "cb873bd46dfc5887e77116d5bc30fab38884820abadfc73651d10881417ba24d",
+  "sig": "l3kZ7/Stb9uHVpYojVYOP6AseOQs/YKNoTwGlQrCnehynU92yd1rpbIw9b7KDLszbBdG7ppqnaC+U/32gd2NBA=="
+}

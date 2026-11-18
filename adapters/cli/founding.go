@@ -15,18 +15,19 @@ func init() {
 	commands["founding"] = foundingCommand
 }
 
-// foundingCommand is `founding --policy P --mediator M --card C --declaration D... --binding B...`:
-// it puts the parts in one founding set, the declarations and the bindings in actor-reference order
-// (setup-contract-10), founds it at the current second to check it, and prints the set on standard
+// foundingCommand is `founding --policy P --mediator M --card C --seal E... --binding B...`: it puts
+// the parts in one founding set, each --seal a seal entry as seal prints it, the declarations' seals
+// and the bindings in actor-reference order (setup-contract-10, setup-contract-12), founds it at the
+// current second as any party can, without the openings (setup-contract-16), to check it, and prints the set on standard
 // output and its Accord id and card hash on standard error, and after them a line that names the
 // card's module when it is not this build's (docs/adr/0012-the-kernel-hash.md).
 func foundingCommand(r *run, args []string) int {
 	fs := flags("founding")
 	policy, med, card := fs.String("policy", "", "policy"), fs.String("mediator", "", "mediator"), fs.String("card", "", "card")
 	var decls, binds many
-	fs.Var(&decls, "declaration", "a declaration")
+	fs.Var(&decls, "seal", "a declaration's seal entry")
 	fs.Var(&binds, "binding", "a binding")
-	if !r.parse(fs, args, "policy", "mediator", "card", "declaration", "binding") {
+	if !r.parse(fs, args, "policy", "mediator", "card", "seal", "binding") {
 		return r.tool(codeUsage)
 	}
 	// The files are read in a fixed order, so the first that cannot be read names its code.
@@ -49,7 +50,7 @@ func foundingCommand(r *run, args []string) int {
 		set[p.name] = list
 	}
 	b := canonicalJSON(set)
-	a, err := setup.Found(b, local.Stamp(r.env.Now()))
+	a, err := setup.Found(b, setup.Openings{}, local.Stamp(r.env.Now()))
 	if err != nil {
 		var se *setup.Error
 		if errors.As(err, &se) {

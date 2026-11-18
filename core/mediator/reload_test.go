@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/orilloai/placket/core/canonical"
+	"github.com/orilloai/placket/core/founding"
 	ptesting "github.com/orilloai/placket/core/internal/testing"
 	"github.com/orilloai/placket/core/mediator"
 	"github.com/orilloai/placket/core/receipts"
@@ -275,7 +276,9 @@ func TestReloadRefusesEachFault(t *testing.T) {
 	med := ptesting.Key(t, "mediator")
 	list, queued := b.m.Receipts(), queuedOf(b.m)
 	ask := statement(t, b.m, b.first)
-	other := buildSet(t, askAndLogRoles, askAndLogParties(60)...)
+	other := ptesting.SealedByAll(t, buildSet(t, askAndLogRoles, askAndLogParties(60)...), "2026-11-12T08:00:00Z")
+	cut := set
+	cut.Set = set.Set[1:]
 	another := "sha256:" + strings.Repeat("0", 64)
 	edited := append([][]byte(nil), list...)
 	edited[3] = append([]byte(nil), list[3]...)
@@ -297,7 +300,7 @@ func TestReloadRefusesEachFault(t *testing.T) {
 	otherMediator := ptesting.Key(t, "other-mediator")
 	cases := []struct {
 		name   string
-		set    []byte
+		set    *founding.Inputs
 		key    *signing.Key
 		list   [][]byte
 		open   []mediator.Open
@@ -310,8 +313,8 @@ func TestReloadRefusesEachFault(t *testing.T) {
 	}{
 		{name: "a bad reload time", at: "2026-11-12T11:00:00", code: mediator.CodeAt, index: -1},
 		{name: "another mediator's key", key: &otherMediator, other: mediator.ErrOtherMediator},
-		{name: "a set founding refuses", set: set[1:], other: &setup.Error{Code: setup.NotCanonical}},
-		{name: "another founding set", set: other, code: mediator.CodeJournal, index: 0},
+		{name: "a set founding refuses", set: &cut, other: &setup.Error{Code: setup.NotCanonical}},
+		{name: "another founding set", set: &other, code: mediator.CodeJournal, index: 0},
 		{name: "a receipt of another Accord", list: append(append([][]byte(nil), list...), built(t, list,
 			receipts.Subject{Name: "note", Digest: strings.Repeat("ab", 32)},
 			receipts.Predicate{Accord: another, Card: ask.Predicate.Card, Kind: receipts.KindCrossing, From: ask.Predicate.From,
@@ -353,7 +356,7 @@ func TestReloadRefusesEachFault(t *testing.T) {
 	for _, c := range cases {
 		s, k, l, o, q, at := set, med, list, b.open, queued, "2026-11-12T11:00:00Z"
 		if c.set != nil {
-			s = c.set
+			s = *c.set
 		}
 		if c.key != nil {
 			k = *c.key

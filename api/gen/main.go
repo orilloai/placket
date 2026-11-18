@@ -23,10 +23,10 @@ import (
 const base = "https://placket.tech/api/0.1/"
 
 // ops are the door's calls, in the order the reference gives them.
-var ops = []string{"give", "get", "questions", "resolve", "result"}
+var ops = []string{"give", "get", "questions", "resolve", "result", "view", "accept"}
 
 // tools are the request layer's schemas, in the order the reference gives them.
-var tools = []string{"give", "get", "questions", "resolve", "result", "cancel", "mediators"}
+var tools = []string{"give", "get", "questions", "resolve", "result", "cancel", "mediators", "view", "accept"}
 
 type schema = map[string]any
 
@@ -221,7 +221,7 @@ A call of ` + "`questions`" + `, ` + "`get`" + ` or ` + "`result`" + ` may carry
 		fmt.Fprintf(&b, "The reply, `%s`, one of:\n\n", strings.TrimPrefix(reply["$id"].(string), base))
 		alternatives(&b, reply)
 	}
-	b.WriteString("## The request layer\n\nEach tool of `placket mcp` takes its request, and `mediator`: the label of a mediator it serves, or the Accord id of one with none. `resolve` is the client's alone: `placket mcp` lists only its asker's slice, `cancel`.\n\n")
+	b.WriteString("## The request layer\n\nEach tool of `placket mcp` takes its request, and `mediator`: the label of a mediator it serves, or the Accord id of one with none. `resolve` is the client's alone: `placket mcp` lists only its asker's slice, `cancel`. `view` and `accept` are the client's alone too: `placket mcp` lists neither, since a member consents to an Accord itself.\n\n")
 	for _, t := range tools {
 		s := doc("request/" + t + ".json")
 		fmt.Fprintf(&b, "### %s\n\n%s\n\n", t, s["description"])

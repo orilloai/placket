@@ -46,9 +46,9 @@ func TestCard(t *testing.T) {
 	if got := string(composition.Card()); got != want {
 		t.Fatalf("card %s, want %s", got, want)
 	}
-	in, foundedAt := ptesting.Founding(t, "ask-and-log")
+	sealed, foundedAt := ptesting.Founding(t, "ask-and-log")
 	var set map[string]json.RawMessage
-	if err := json.Unmarshal(in, &set); err != nil {
+	if err := json.Unmarshal(ptesting.Clear(t, sealed), &set); err != nil {
 		t.Fatal(err)
 	}
 	set["card"] = composition.Card()
@@ -60,7 +60,7 @@ func TestCard(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	a, err := setup.Found(c, foundedAt)
+	a, err := ptesting.Open(t, c, foundedAt)
 	if err != nil {
 		t.Fatalf("found: %v", err)
 	}

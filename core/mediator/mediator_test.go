@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/orilloai/placket/core/canonical"
+	"github.com/orilloai/placket/core/founding"
 	ptesting "github.com/orilloai/placket/core/internal/testing"
 	"github.com/orilloai/placket/core/internal/testing/seeds"
 	"github.com/orilloai/placket/core/mediator"
@@ -18,7 +19,7 @@ import (
 )
 
 // askAndLog is the ask-and-log founding set of vectors/founding/.
-func askAndLog(t testing.TB) ([]byte, string) {
+func askAndLog(t testing.TB) (founding.Inputs, string) {
 	t.Helper()
 	return ptesting.Founding(t, "ask-and-log")
 }
@@ -265,7 +266,9 @@ func TestFoundOnlyItsOwnSets(t *testing.T) {
 	if _, err := mediator.Found(set, ptesting.Key(t, "other-mediator"), at); !errors.Is(err, mediator.ErrOtherMediator) {
 		t.Fatalf("got %v", err)
 	}
-	_, err := mediator.Found(set[1:], ptesting.Key(t, "mediator"), at)
+	cut := set
+	cut.Set = set.Set[1:]
+	_, err := mediator.Found(cut, ptesting.Key(t, "mediator"), at)
 	var se *setup.Error
 	if !errors.As(err, &se) || se.Code != setup.NotCanonical {
 		t.Fatalf("got %v", err)
@@ -368,15 +371,15 @@ func envelopeFor(t testing.TB, msg []byte, k signing.Key) []byte { return envelo
 
 // FuzzFound founds any set with the mediator's key. It never panics.
 func FuzzFound(f *testing.F) {
-	set, at := askAndLog(f)
-	f.Add(set, at)
+	in, at := askAndLog(f)
+	f.Add(in.Set, at)
 	f.Add([]byte(`{}`), at)
-	for _, in := range seeds.Inputs(f, "founding") {
-		f.Add(in, at)
+	for _, s := range seeds.Inputs(f, "founding") {
+		f.Add(s, at)
 	}
 	k := ptesting.Key(f, "mediator")
 	f.Fuzz(func(t *testing.T, set []byte, at string) {
-		m, err := mediator.Found(set, k, at)
+		m, err := mediator.Found(founding.Inputs{Set: set, Openings: in.Openings, Acceptances: in.Acceptances}, k, at)
 		if err == nil && (len(m.Receipts()) != 0 || len(m.Pending()) != 0 || m.Accord() == "") {
 			t.Fatal("a mediator founded with state")
 		}
@@ -394,4 +397,26 @@ func verifyAll(mediator string, list [][]byte) ([]receipts.Statement, error) {
 		out[i] = v.Statement()
 	}
 	return out, nil
+}
+
+// TestAMediatorDecidesOnlyOverOpenedTerms founds and reloads the Accord without its openings: a
+// mediator decides every crossing over the members' terms, so both are opening-missing, while a
+// close, which decides nothing, closes the record without them (setup-contract-13, close-1).
+func TestAMediatorDecidesOnlyOverOpenedTerms(t *testing.T) {
+	t.Parallel()
+	in, at := askAndLog(t)
+	sealedOnly := in
+	sealedOnly.Openings = setup.Openings{}
+	med := ptesting.Key(t, "mediator")
+	var se *setup.Error
+	if _, err := mediator.Found(sealedOnly, med, at); !errors.As(err, &se) || se.Code != setup.OpeningMissing {
+		t.Fatalf("founded without the openings: %v", err)
+	}
+	m := found(t)
+	if _, _, err := mediator.Reload(sealedOnly, m.Receipts(), nil, nil, at, med, "2026-11-13T09:00:00Z"); !errors.As(err, &se) || se.Code != setup.OpeningMissing {
+		t.Fatalf("reloaded without the openings: %v", err)
+	}
+	if _, _, _, err := mediator.Close(sealedOnly, m.Receipts(), nil, nil, at, med, "2026-11-13T09:00:00Z"); err != nil {
+		t.Fatalf("closed without the openings: %v", err)
+	}
 }

@@ -34,7 +34,7 @@ func encode(t testing.TB, v any) []byte {
 // foundCode founds set at the time at and returns the refusal's code, or founded.
 func foundCode(t testing.TB, set []byte, at string) setup.Code {
 	t.Helper()
-	a, err := setup.Found(set, at)
+	a, err := foundClear(t, set, at)
 	if err == nil {
 		if a == nil {
 			t.Fatal("no Accord and no error")
@@ -57,7 +57,7 @@ func base(t testing.TB, name string) (map[string]any, string) {
 	if !ok || v.Expect.Code != "" {
 		t.Fatalf("%s: no accepted vector", name)
 	}
-	raw := v.set()
+	raw := v.clear(t)
 	d := json.NewDecoder(bytes.NewReader(raw))
 	d.UseNumber()
 	var set map[string]any
@@ -300,7 +300,7 @@ func TestRolesAreTheBindings(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 			set, at := base(t, name)
-			a, err := setup.Found(encode(t, set), at)
+			a, err := foundClear(t, encode(t, set), at)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -326,7 +326,7 @@ func TestRolesAreTheBindings(t *testing.T) {
 	t.Run("two roles of one binding", func(t *testing.T) {
 		t.Parallel()
 		set, at := base(t, "one-binding-two-roles")
-		a, err := setup.Found(encode(t, set), at)
+		a, err := foundClear(t, encode(t, set), at)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -341,7 +341,7 @@ func TestRolesAreTheBindings(t *testing.T) {
 		if roles := set["policy"].(map[string]any)["roles"].([]any); len(roles) != 0 {
 			t.Fatalf("the policy names %d roles", len(roles))
 		}
-		a, err := setup.Found(encode(t, set), at)
+		a, err := foundClear(t, encode(t, set), at)
 		if err != nil {
 			t.Fatal(err)
 		}

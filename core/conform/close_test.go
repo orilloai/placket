@@ -4,6 +4,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/orilloai/placket/core/founding"
 	ptesting "github.com/orilloai/placket/core/internal/testing"
 	"github.com/orilloai/placket/core/mediator"
 	"github.com/orilloai/placket/core/receipts"
@@ -11,7 +12,7 @@ import (
 
 // closedJournal is a journal of the ask-and-log Accord with a proposal asked at 09:00 and closed by
 // a close at the time at, and its founding set and Accord id.
-func closedJournal(t *testing.T, at string) ([][]byte, []byte, string, mediator.Closed) {
+func closedJournal(t *testing.T, at string) ([][]byte, founding.Inputs, string, mediator.Closed) {
 	t.Helper()
 	set, foundedAt := ptesting.Founding(t, "ask-and-log")
 	key := ptesting.Key(t, "mediator")
@@ -43,9 +44,9 @@ func closedJournal(t *testing.T, at string) ([][]byte, []byte, string, mediator.
 // no decision, and the report names it. A close that is the first receipt founds the set at its at.
 func TestClosedClosingConforms(t *testing.T) {
 	t.Parallel()
-	kernel := func(set []byte) string { return kernelOf(set) }
+	kernel := func(in founding.Inputs) string { return kernelOf(in.Set) }
 	list, set, accord, closed := closedJournal(t, "2026-11-12T09:30:00Z")
-	r, err := Check(Evidence{Accord: accord, Founding: set, Receipts: list, Kernel: kernel(set)})
+	r, err := Check(Evidence{Accord: accord, Founding: set.Set, Openings: set.Openings, Acceptances: set.Acceptances, Receipts: list, Kernel: kernel(set)})
 	if err != nil {
 		t.Fatalf("a closed journal: %v", err)
 	}
@@ -86,7 +87,7 @@ func TestClosedClosingConforms(t *testing.T) {
 			t.Fatal(err)
 		}
 		l := append(s.list, r)
-		if _, err := Check(Evidence{Accord: accord, Founding: set, Receipts: l, Kernel: kernel(set)}); !isCode(err, CodeDecision, 1) {
+		if _, err := Check(Evidence{Accord: accord, Founding: set.Set, Openings: set.Openings, Acceptances: set.Acceptances, Receipts: l, Kernel: kernel(set)}); !isCode(err, CodeDecision, 1) {
 			t.Fatalf("%s: %v, want decision at index 1", name, err)
 		}
 	}
@@ -97,7 +98,7 @@ func TestClosedClosingConforms(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := Check(Evidence{Accord: accord, Founding: set, Receipts: [][]byte{cl}, Kernel: kernel(set)}); !isCode(err, CodeAccord, 0) {
+	if _, err := Check(Evidence{Accord: accord, Founding: set.Set, Openings: set.Openings, Acceptances: set.Acceptances, Receipts: [][]byte{cl}, Kernel: kernel(set)}); !isCode(err, CodeAccord, 0) {
 		t.Fatalf("a close of another Accord: %v, want accord at 0", err)
 	}
 	// The close of an Accord with no receipts: the set founds at the close's time.
@@ -105,7 +106,7 @@ func TestClosedClosingConforms(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if r, err := Check(Evidence{Accord: accord, Founding: set, Receipts: [][]byte{empty.Receipt}, Kernel: kernel(set)}); err != nil || r.Close != empty.ID || len(r.Decisions) != 0 {
+	if r, err := Check(Evidence{Accord: accord, Founding: set.Set, Openings: set.Openings, Acceptances: set.Acceptances, Receipts: [][]byte{empty.Receipt}, Kernel: kernel(set)}); err != nil || r.Close != empty.ID || len(r.Decisions) != 0 {
 		t.Fatalf("the close of an empty Accord: %+v, %v", r, err)
 	}
 }

@@ -22,7 +22,7 @@ import (
 
 // closeArgs is `window close` of the Accord's journal, without --socket, and extra flags.
 func (a *accord) closeArgs(extra ...string) []string {
-	return append([]string{"window", "close", "--key", a.key("mediator"), "--founding", filepath.Join(a.dir, "founding.json"),
+	return append([]string{"window", "close", "--key", a.key("mediator"), "--founding", filepath.Join(a.dir, "founding.json"), "--openings", a.openings(),
 		"--journal", a.journal(), "--accord", a.id}, extra...)
 }
 
@@ -103,8 +103,8 @@ func TestWindowCloseCommand(t *testing.T) {
 
 	off := a.id[:len(a.id)-1] + map[bool]string{true: "0", false: "1"}[a.id[len(a.id)-1] != '0']
 	for name, args := range map[string][]string{
-		"no --accord": {"window", "close", "--key", a.key("mediator"), "--founding", filepath.Join(a.dir, "founding.json"), "--journal", a.journal()},
-		"an id one hex digit off": {"window", "close", "--key", a.key("mediator"), "--founding", filepath.Join(a.dir, "founding.json"),
+		"no --accord": {"window", "close", "--key", a.key("mediator"), "--founding", filepath.Join(a.dir, "founding.json"), "--openings", a.openings(), "--journal", a.journal()},
+		"an id one hex digit off": {"window", "close", "--key", a.key("mediator"), "--founding", filepath.Join(a.dir, "founding.json"), "--openings", a.openings(),
 			"--journal", a.journal(), "--accord", off},
 		"an id that is no hash": a.closeArgs("--accord", "accord"),
 	} {
@@ -429,7 +429,7 @@ func successor(t *testing.T, a *accord, accord, close string) string {
 		if err := os.WriteFile(bp, []byte(bind), 0o600); err != nil {
 			t.Fatal(err)
 		}
-		args = append(args, "--declaration", filepath.Join(a.dir, p+".declaration"), "--binding", bp)
+		args = append(args, "--seal", filepath.Join(a.dir, p+".seal"), "--binding", bp)
 	}
 	set := filepath.Join(a.dir, "founding-"+name+".json")
 	if err := os.WriteFile(set, []byte(must(t, args...).stdout), 0o600); err != nil {
@@ -611,7 +611,7 @@ func TestTornCloseAtStart(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(a.journal(), journal.FileReceipts), cut, 0o600); err != nil {
 		t.Fatal(err)
 	}
-	r := run(t, env(), "window", "--key", a.key("mediator"), "--founding", filepath.Join(a.dir, "founding.json"),
+	r := run(t, env(), "window", "--key", a.key("mediator"), "--founding", filepath.Join(a.dir, "founding.json"), "--openings", a.openings(),
 		"--socket", a.socket(), "--journal", a.journal())
 	if r.code != cli.ExitTool || !slices.Equal(r.lines(), []string{cli.LineTornClose, "error journal receipts.jsonl close"}) {
 		t.Fatalf("a window on a torn close: %v", r)

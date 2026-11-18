@@ -175,7 +175,7 @@ func TestFoundingReproducesAVector(t *testing.T) {
 			_ = json.Unmarshal(parts[list], &l)
 			// The files are given in reverse: founding puts them in order.
 			for i := len(l) - 1; i >= 0; i-- {
-				args = append(args, "--"+strings.TrimSuffix(list, "s"), write(list+string(rune('a'+i)), l[i]))
+				args = append(args, "--"+map[string]string{"declarations": "seal", "bindings": "binding"}[list], write(list+string(rune('a'+i)), l[i]))
 			}
 		}
 		at, _ := time.Parse(time.RFC3339, v.FoundedAt)
@@ -215,7 +215,7 @@ func TestAWindowWhoseJournalFails(t *testing.T) {
 	e.Disk, e.Ready = failingDisk{}, ready
 	done := make(chan result, 1)
 	go func() {
-		done <- run(t, e, "window", "--key", a.key("mediator"), "--founding", filepath.Join(a.dir, "founding.json"), "--socket", a.socket(), "--journal", a.journal())
+		done <- run(t, e, "window", "--key", a.key("mediator"), "--founding", filepath.Join(a.dir, "founding.json"), "--openings", a.openings(), "--socket", a.socket(), "--journal", a.journal())
 	}()
 	<-ready
 	r := run(t, env(), a.as("proposer", "give", "--to", a.refs["applier"], "--kind", "proposal", "--text", "x")...)

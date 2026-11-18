@@ -29,6 +29,11 @@ const (
 	OpQuestions = "questions"
 	OpResolve   = "resolve"
 	OpResult    = "result"
+	// OpView and OpAccept are a member's own view of the Accord, and its signed acceptance of it, the
+	// two ops a proposed Accord serves (setup-contract-14, setup-contract-15,
+	// docs/adr/0025-sealed-terms.md).
+	OpView   = "view"
+	OpAccept = "accept"
 )
 
 // DoorCode is the code of a call the door refused. It is about the call, never the operation inside
@@ -56,6 +61,11 @@ const Internal DoorCode = "door-internal"
 // writes nothing. It is about the order of the caller's calls: a later give never reaches the core
 // before an earlier one (crossing-4, docs/adr/0023-judges.md).
 const JudgeBusy DoorCode = "judge-busy"
+
+// NotFounded is the door's code for a call of any op but view and accept to a proposed Accord, one
+// whose members have not all accepted their views: it is not founded, so nothing crosses yet
+// (setup-contract-15, docs/adr/0025-sealed-terms.md). It is checked after the nonce, as JudgeBusy is.
+const NotFounded DoorCode = "not-founded"
 
 // MaxReply is the most bytes of a reply, before its line feed, a client reads. It is enough for one
 // delivery, whose body came in a call under MaxCall, with its receipt and the answer call inside it
@@ -88,6 +98,8 @@ type Call struct {
 	Answer     string
 	HasAnswer  bool
 	Salt       []byte
+	// For accept: the member's signed acceptance, its canonical bytes as the call carried them.
+	Acceptance []byte
 	// Bytes is the call's canonical bytes, and Sig its sig member as received.
 	Bytes []byte
 	Sig   string
@@ -130,6 +142,10 @@ type resolveArgs struct {
 type resultArgs struct {
 	Question *string `json:"question"`
 	Wait     *int64  `json:"wait"`
+}
+
+type acceptArgs struct {
+	Acceptance json.RawMessage `json:"acceptance"`
 }
 
 type getArgs struct {
@@ -234,6 +250,19 @@ func ParseCall(line []byte) (Call, DoorCode) {
 		if c.Wait, ok = wait(a.Wait); !ok {
 			return Call{}, BadCall
 		}
+	case OpView:
+		var a struct{}
+		if !strict.Decode(m.Args, &a) {
+			return Call{}, BadCall
+		}
+	case OpAccept:
+		var a acceptArgs
+		if !strict.Decode(m.Args, &a) || len(a.Acceptance) == 0 || a.Acceptance[0] != '{' {
+			return Call{}, BadCall
+		}
+		if c.Acceptance, err = canonical.Form(a.Acceptance); err != nil {
+			return Call{}, BadCall
+		}
 	case OpQuestions:
 		var a questionsArgs
 		if !strict.Decode(m.Args, &a) {
@@ -309,6 +338,12 @@ func SignCall(key signing.Key, op, accord string, at time.Time, nonce []byte, ar
 // GiveArgs is the args of a give call: the message's and the envelope's exact bytes, in base64.
 func GiveArgs(message, envelope []byte) map[string]any {
 	return map[string]any{"message": base64.StdEncoding.EncodeToString(message), "envelope": base64.StdEncoding.EncodeToString(envelope)}
+}
+
+// AcceptArgs is the args of an accept call: the member's signed acceptance, as a JSON object, the
+// canonical bytes it was signed as (setup-contract-15).
+func AcceptArgs(acceptance []byte) map[string]any {
+	return map[string]any{"acceptance": json.RawMessage(acceptance)}
 }
 
 // ResolveArgs is the args of a resolve call: the answerer's signed answer call, and for an accept or

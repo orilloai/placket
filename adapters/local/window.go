@@ -26,6 +26,7 @@ import (
 	"github.com/orilloai/placket/adapters/judge/jev"
 	"github.com/orilloai/placket/core/canonical"
 	"github.com/orilloai/placket/core/composition"
+	"github.com/orilloai/placket/core/founding"
 	"github.com/orilloai/placket/core/mediator"
 	"github.com/orilloai/placket/core/receipts"
 	"github.com/orilloai/placket/core/setup"
@@ -34,9 +35,21 @@ import (
 
 // A Window is what Run needs to run the mediator of one Accord behind its door.
 type Window struct {
-	// Key is the mediator's key, and Founding the founding set's bytes.
+	// Key is the mediator's key, and Founding the sealed founding set's bytes.
 	Key      signing.Key
 	Founding []byte
+	// Openings holds every member's opening, under its actor's reference: the mediator decides
+	// crossings, so its operator holds every term (setup-contract-13, docs/adr/0025-sealed-terms.md).
+	// A close, which decides nothing, may hold none.
+	Openings map[string][]byte
+	// Acceptances is acceptances.json's bytes. With none, a window on an empty journal starts the
+	// Accord proposed: it serves only view and accept, and founds once every member has accepted. A
+	// founded journal needs them (setup-contract-15).
+	Acceptances []byte
+	// Accepted, when set, is handed acceptances.json's bytes once every member of a proposed Accord
+	// has accepted, before the founding is journaled; an error from it ends Run, with nothing
+	// journaled. The command line writes the file beside the founding set.
+	Accepted func(acceptances []byte) error
 	// Socket is the path the door listens on, and Journal the journal directory.
 	Socket, Journal string
 	// Close starts the window along mediator.Close, not Reload: it closes the journal's Accord,
@@ -91,8 +104,11 @@ const WaitSlack = 10 * time.Second
 
 // What an Event is.
 const (
-	// EventStarted: the Accord is founded or reloaded, and the door listens.
+	// EventStarted: the Accord is founded, reloaded or proposed, and the door listens.
 	EventStarted = "started"
+	// EventFounded: the last member of a proposed Accord accepted its view, and the window founded the
+	// Accord, wrote acceptances.json and journaled the founding (setup-contract-15).
+	EventFounded = "founded"
 	// EventReloaded: a reload closed the questions a stop left open.
 	EventReloaded = "reloaded"
 	// EventClosed: a close wrote its closings and the close receipt, in one journal write; Outcomes
@@ -113,9 +129,10 @@ const (
 // question's part or a judge's output.
 type Event struct {
 	Kind string
-	// For started: whether the Accord was founded now, and its id and card.
-	Founded      bool
-	Accord, Card string
+	// For started: whether the Accord was founded now, or is proposed, waiting for its members'
+	// acceptances; and, for started and founded, its id and card.
+	Founded, Proposed bool
+	Accord, Card      string
 	// For started on a closed Accord, and for closed: the close receipt's id, and its bytes in
 	// CloseReceipt.
 	Close        string
@@ -129,6 +146,8 @@ type Event struct {
 	Door      DoorCode
 	Rejection mediator.RejectionCode
 	Error     mediator.ErrorCode
+	// For an accept refused: the founding code of the row its acceptance fails.
+	Founding string
 	// For a get that handed out a delivery: the id of the receipt that queued it.
 	Fetched string
 	// For started, on a window that can take a give: one Reach per judge the card lists, in card
@@ -155,10 +174,16 @@ type Reach struct {
 
 // window is a running window's state, owned by its one goroutine (one-mediator-goroutine).
 type window struct {
-	cfg    Window
-	m      *mediator.Mediator
-	j      *journal.Journal
-	nonces map[string]time.Time
+	cfg Window
+	// m is the founded Accord's mediator, nil while the Accord is proposed. a is the Accord rows 1 to
+	// 17 found with every opening, which the views are built from, and id its id; accepted holds each
+	// member's acceptance taken while it is proposed.
+	m        *mediator.Mediator
+	a        *setup.Accord
+	id       string
+	accepted map[string][]byte
+	j        *journal.Journal
+	nonces   map[string]time.Time
 	// The judges by name, their reach, and the callers whose give is with a judge.
 	judges map[string]judge.Configured
 	reach  []Reach
@@ -220,7 +245,12 @@ type parked struct {
 // too long is CodeSocketPath before anything else is done; so is, when it listens, a path within 3
 // bytes of MaxSocketPath whose last element has fewer than 4 bytes (privateBound). Otherwise it opens the journal and takes
 // its lock; founds the Accord at the current second on an empty journal or reloads the journal's, journaling the closings of what a stop left open; removes a stale socket
-// file; and only then listens. Every call is handled by one goroutine, which owns the mediator. A
+// file; and only then listens. On an empty journal with no Acceptances it starts the Accord proposed
+// instead (setup-contract-15): it runs founding's rows 1 to 17 with every opening, emits
+// EventStarted with Proposed set, serves only view and accept, refuses every other call with
+// NotFounded, and founds once every member has accepted, at that time, handing acceptances.json to
+// Accepted before it journals the founding, then emits EventFounded. A founded journal with no
+// Acceptances is setup's *Error acceptance-missing. Every call is handled by one goroutine, which owns the mediator. A
 // journal write that fails ends Run with that error, and the call it was for gets no reply
 // (journal-synced); so does a failure of the mediator outside a call's refusal, when it ticks, reads
 // a question it just asked or closes one nobody can answer. An accept that fails for a reason that
@@ -286,9 +316,11 @@ func Run(ctx context.Context, cfg Window) error {
 		return err
 	}
 	defer l.Close()
-	started := Event{Kind: EventStarted, Founded: founded, Accord: w.m.Accord(), Card: w.m.Card(), Reach: w.reach}
-	if c, ok := w.m.Closed(); ok {
-		started.Close, started.CloseReceipt = c.ID, c.Receipt
+	started := Event{Kind: EventStarted, Founded: founded, Proposed: w.m == nil, Accord: w.id, Card: w.a.Card(), Reach: w.reach}
+	if w.m != nil {
+		if c, ok := w.m.Closed(); ok {
+			started.Close, started.CloseReceipt = c.ID, c.Receipt
+		}
 	}
 	cfg.Event(started)
 	if cfg.Ready != nil {
@@ -297,7 +329,37 @@ func Run(ctx context.Context, cfg Window) error {
 	return w.serve(ctx, l)
 }
 
-// start founds or reloads the mediator, and reports whether it founded.
+// openings are the window's openings as founding reads them: every member's, or, for a close given
+// none, none.
+func (w *window) openings() setup.Openings {
+	if w.cfg.Openings == nil {
+		return setup.Openings{}
+	}
+	return setup.Openings{ByActor: w.cfg.Openings}
+}
+
+// inputs are the founding inputs of the window's Accord, with the acceptances given.
+func (w *window) inputs(acceptances []byte) founding.Inputs {
+	return founding.Inputs{Set: w.cfg.Founding, Openings: w.openings(), Acceptances: acceptances}
+}
+
+// propose runs rows 1 to 17 over the set with the window's openings at the time at, so the window
+// can build each member's view, and checks that the set names this mediator (setup-contract-7,
+// setup-contract-14).
+func (w *window) propose(at string) error {
+	a, err := setup.Found(w.cfg.Founding, w.openings(), at)
+	if err != nil {
+		return err
+	}
+	if a.Mediator() != w.cfg.Key.Reference() {
+		return mediator.ErrOtherMediator
+	}
+	w.a, w.id = a, a.ID()
+	return nil
+}
+
+// start founds, proposes or reloads the Accord, and reports whether it founded. On an empty journal
+// with no acceptances the Accord is proposed: w.m stays nil until every member accepts its view.
 func (w *window) start() (bool, error) {
 	rec, err := w.j.Read()
 	if err != nil {
@@ -308,11 +370,18 @@ func (w *window) start() (bool, error) {
 		return false, &journal.Error{Code: journal.CodeJournal, Core: string(mediator.CodeUnfounded)}
 	}
 	if rec.Empty {
-		m, err := mediator.Found(w.cfg.Founding, w.cfg.Key, at)
-		if err != nil {
+		if err := w.propose(at); err != nil {
 			return false, err
 		}
-		if err := w.loadJudges(at); err != nil {
+		if err := w.loadJudges(); err != nil {
+			return false, err
+		}
+		if w.cfg.Acceptances == nil {
+			w.accepted = map[string][]byte{}
+			return false, nil
+		}
+		m, err := mediator.Found(w.inputs(w.cfg.Acceptances), w.cfg.Key, at)
+		if err != nil {
 			return false, err
 		}
 		if err := w.j.Found(m.Accord(), m.Card(), w.cfg.Key.Reference(), at); err != nil {
@@ -324,10 +393,17 @@ func (w *window) start() (bool, error) {
 	if id, err := canonical.TypedHash(w.cfg.Founding); err != nil || id != rec.Accord || rec.Mediator != w.cfg.Key.Reference() {
 		return false, &journal.Error{Code: journal.CodeJournal, File: journal.FileAccord, Line: 1, Core: "accord"}
 	}
+	// A founded journal is founded again with its acceptances, which it cannot do without.
+	if w.cfg.Acceptances == nil {
+		return false, &setup.Error{Code: setup.AcceptanceMissing}
+	}
+	if err := w.propose(rec.FoundedAt); err != nil {
+		return false, err
+	}
 	if w.cfg.Close {
 		return false, w.close(rec, at)
 	}
-	m, outs, err := mediator.Reload(w.cfg.Founding, rec.Receipts, rec.Open, rec.Queued, rec.FoundedAt, w.cfg.Key, at)
+	m, outs, err := mediator.Reload(w.inputs(w.cfg.Acceptances), rec.Receipts, rec.Open, rec.Queued, rec.FoundedAt, w.cfg.Key, at)
 	if err != nil {
 		return false, reloadError(err, rec)
 	}
@@ -338,7 +414,7 @@ func (w *window) start() (bool, error) {
 	w.m = m
 	// A closed Accord takes no give, so it needs no judge.
 	if _, closed := m.Closed(); !closed {
-		if err := w.loadJudges(rec.FoundedAt); err != nil {
+		if err := w.loadJudges(); err != nil {
 			return false, err
 		}
 	}
@@ -357,13 +433,10 @@ func (w *window) start() (bool, error) {
 // loadJudges compares the card's judges with the window's configs, before anything is written to
 // the journal (docs/adr/0023-judges.md): each judge the card lists needs exactly one config of its
 // name whose hash is the card's, at this adapter's version, and each config must be one the card
-// lists; otherwise CodeJudge. It makes each judge's adapter, and the reach the window prints. The
-// Accord is founded at foundedAt, as the mediator was.
-func (w *window) loadJudges(foundedAt string) error {
-	a, err := setup.Found(w.cfg.Founding, foundedAt)
-	if err != nil {
-		return err
-	}
+// lists; otherwise CodeJudge. It makes each judge's adapter, and the reach the window prints, from
+// the Accord propose found.
+func (w *window) loadJudges() error {
+	a := w.a
 	loaded := map[string]judge.Loaded{}
 	for _, l := range w.cfg.Judges {
 		if _, twice := loaded[l.Config.Name]; twice {
@@ -395,7 +468,7 @@ func (w *window) loadJudges(foundedAt string) error {
 // than MaxReply is CodeJournal, receipts.jsonl, CoreCloseSize, and nothing is written: every reply
 // that carries the close, and every line of the journal and of a state directory, holds it whole.
 func (w *window) close(rec *journal.Record, at string) error {
-	m, outs, closed, err := mediator.Close(w.cfg.Founding, rec.Receipts, rec.Open, rec.Queued, rec.FoundedAt, w.cfg.Key, at)
+	m, outs, closed, err := mediator.Close(w.inputs(w.cfg.Acceptances), rec.Receipts, rec.Open, rec.Queued, rec.FoundedAt, w.cfg.Key, at)
 	if err != nil {
 		var me *mediator.Error
 		if errors.As(err, &me) && me.Code == mediator.CodeClosed {
@@ -745,6 +818,9 @@ func (w *window) wake(now time.Time) {
 
 // prune drops the positions of asks no longer open, once they outnumber the open ones.
 func (w *window) prune() {
+	if w.m == nil {
+		return
+	}
 	open := w.m.Pending()
 	if len(w.askAt) <= 2*len(open)+16 {
 		return
@@ -821,6 +897,10 @@ func read(c net.Conn, reqs chan<- request, done <-chan struct{}, extend func(tim
 // tick passes the time to at and journals what it closed. The mediator failing to is a failure of
 // the core, which ends the window as a failed journal write does.
 func (w *window) tick(at, kind string) error {
+	// A proposed Accord has no question, so no deadline to reach.
+	if w.m == nil {
+		return nil
+	}
 	outs, err := w.m.Tick(at)
 	if err != nil {
 		return err
@@ -854,7 +934,7 @@ func (w *window) handle(r request) ([]byte, error) {
 	if !c.Verified() {
 		return refuse(BadSignature)
 	}
-	if c.Accord != w.m.Accord() {
+	if c.Accord != w.id {
 		return refuse(WrongAccord)
 	}
 	t, _ := time.Parse(time.RFC3339, c.At)
@@ -874,6 +954,10 @@ func (w *window) handle(r request) ([]byte, error) {
 	// order of their seq (crossing-4, docs/adr/0023-judges.md); its other calls go on.
 	if c.Op == OpGive && w.busy[c.Caller] {
 		return refuse(JudgeBusy)
+	}
+	// A proposed Accord serves only its members' views and acceptances (setup-contract-15).
+	if w.m == nil && c.Op != OpView && c.Op != OpAccept {
+		return refuse(NotFounded)
 	}
 
 	if err := w.tick(at, EventTick); err != nil {
@@ -911,6 +995,10 @@ func refused(err error, ev *Event) []byte {
 // result brings the reply.
 func (w *window) op(c Call, at string, ev *Event, reply chan []byte) ([]byte, error) {
 	switch c.Op {
+	case OpView:
+		return w.view(c, ev), nil
+	case OpAccept:
+		return w.accept(c, at, ev)
 	case OpGive:
 		return w.give(c, at, ev, reply)
 	case OpGet:
@@ -1338,4 +1426,83 @@ func (w *window) result(c Call, ev *Event) ([]byte, bool) {
 		reply.Release = wire(outs[1])
 	}
 	return encodeReply(reply), true
+}
+
+// view answers a view call with the caller's own view of the Accord, built from the openings
+// (setup-contract-14): only to a member, and only its own. A caller that is not a member is
+// not-a-member, as at every op.
+func (w *window) view(c Call, ev *Event) []byte {
+	if !w.a.Member(c.Caller) {
+		ev.Rejection = mediator.NotAMember
+		return refusal(byRejection, string(mediator.NotAMember))
+	}
+	v, err := founding.View(w.a, c.Caller)
+	if err != nil {
+		ev.Door = Internal
+		return refusal(byDoor, string(Internal))
+	}
+	return encodeReply(wireReply{View: v})
+}
+
+// accept takes a member's signed acceptance of its view (setup-contract-15). It is checked by rows 19
+// to 21 (founding.Accepted), and its from must be the caller, or it is refused with the founding code
+// of the row it fails, invalid-shape for another member's. On a proposed Accord the window keeps it;
+// once every member has accepted, it founds at the time at, the founding time of row 15, hands
+// acceptances.json to Accepted, journals the founding and emits EventFounded. A founding that fails
+// then, as when a binding has expired, is refused with its code, and the acceptances stay kept. On a
+// founded Accord an acceptance that checks changes nothing. The reply says whether the Accord is
+// founded.
+func (w *window) accept(c Call, at string, ev *Event) ([]byte, error) {
+	if !w.a.Member(c.Caller) {
+		ev.Rejection = mediator.NotAMember
+		return refusal(byRejection, string(mediator.NotAMember)), nil
+	}
+	refuse := func(err error) []byte {
+		code := string(setup.InvalidShape)
+		var se *setup.Error
+		if errors.As(err, &se) {
+			code = string(se.Code)
+		}
+		ev.Founding = code
+		return refusal(byFounding, code)
+	}
+	from, err := founding.Accepted(w.a, c.Acceptance)
+	if err == nil && from != c.Caller {
+		err = &setup.Error{Code: setup.InvalidShape}
+	}
+	if err != nil {
+		return refuse(err), nil
+	}
+	founded := true
+	if w.m != nil {
+		return encodeReply(wireReply{Founded: &founded}), nil
+	}
+	w.accepted[from] = c.Acceptance
+	if len(w.accepted) < len(w.a.Members()) {
+		founded = false
+		return encodeReply(wireReply{Founded: &founded}), nil
+	}
+	list := make([][]byte, 0, len(w.accepted))
+	for _, b := range w.accepted {
+		list = append(list, b)
+	}
+	acceptances, err := founding.Acceptances(list)
+	if err != nil {
+		return refuse(err), nil
+	}
+	m, err := mediator.Found(w.inputs(acceptances), w.cfg.Key, at)
+	if err != nil {
+		return refuse(err), nil
+	}
+	if w.cfg.Accepted != nil {
+		if err := w.cfg.Accepted(acceptances); err != nil {
+			return nil, err
+		}
+	}
+	if err := w.j.Found(m.Accord(), m.Card(), w.cfg.Key.Reference(), at); err != nil {
+		return nil, err
+	}
+	w.m, w.accepted = m, nil
+	w.cfg.Event(Event{Kind: EventFounded, Founded: true, Accord: m.Accord(), Card: m.Card(), Release: -1})
+	return encodeReply(wireReply{Founded: &founded}), nil
 }

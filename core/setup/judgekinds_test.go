@@ -4,6 +4,7 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/orilloai/placket/core/founding"
 	"github.com/orilloai/placket/core/setup"
 )
 
@@ -14,7 +15,7 @@ import (
 func TestJudgeKinds(t *testing.T) {
 	t.Parallel()
 	v := vectors(t)["judged"]
-	a, err := setup.Found(v.set(), v.FoundedAt)
+	a, err := founding.Found(v.inputs(), v.FoundedAt)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -39,7 +40,7 @@ func TestJudgeKinds(t *testing.T) {
 // are sorted and distinct (core-no-panic).
 func FuzzJudgeKinds(f *testing.F) {
 	v := vectors(f)["judged"]
-	a, err := setup.Found(v.set(), v.FoundedAt)
+	a, err := founding.Found(v.inputs(), v.FoundedAt)
 	if err != nil {
 		f.Fatal(err)
 	}

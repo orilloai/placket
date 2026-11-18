@@ -13,6 +13,7 @@ import (
 
 	"github.com/orilloai/placket/core/canonical"
 	"github.com/orilloai/placket/core/composition"
+	"github.com/orilloai/placket/core/founding"
 	ptesting "github.com/orilloai/placket/core/internal/testing"
 	"github.com/orilloai/placket/core/mediator"
 	"github.com/orilloai/placket/core/setup"
@@ -42,9 +43,10 @@ func maybeOn(dir, with, kind string, js []any) map[string]any {
 // judgedSet is the ask-and-log set with a card of the judges a, b and c, and the proposer's and the
 // applier's terms extended by those given, each declaration signed again. The bindings sign the
 // policy, not the card or the terms, so they stand.
-func judgedSet(t testing.TB, sender, receiver []map[string]any) []byte {
+func judgedSet(t testing.TB, sender, receiver []map[string]any) founding.Inputs {
 	t.Helper()
-	raw, _ := ptesting.Founding(t, "ask-and-log")
+	sealed, at := ptesting.Founding(t, "ask-and-log")
+	raw := ptesting.Clear(t, sealed)
 	d := json.NewDecoder(bytes.NewReader(raw))
 	d.UseNumber()
 	var set map[string]any
@@ -81,7 +83,7 @@ func judgedSet(t testing.TB, sender, receiver []map[string]any) []byte {
 		}
 		decl["sig"] = sig
 	}
-	return canonicalOf(t, set)
+	return ptesting.SealedByAll(t, canonicalOf(t, set), at)
 }
 
 func canonicalOf(t testing.TB, v any) []byte {
@@ -315,11 +317,16 @@ func scenarioOf(t testing.TB, name string) scenario {
 		t.Fatalf("no %s: %v", rel, err)
 	}
 	var v struct {
-		Founding  json.RawMessage   `json:"founding"`
-		FoundedAt string            `json:"foundedAt"`
-		Keys      map[string]string `json:"keys"`
-		Mediator  string            `json:"mediator"`
-		Steps     []struct {
+		Founding json.RawMessage `json:"founding"`
+		Openings []struct {
+			Actor   string          `json:"actor"`
+			Opening json.RawMessage `json:"opening"`
+		} `json:"openings"`
+		Acceptances json.RawMessage   `json:"acceptances"`
+		FoundedAt   string            `json:"foundedAt"`
+		Keys        map[string]string `json:"keys"`
+		Mediator    string            `json:"mediator"`
+		Steps       []struct {
 			As, At, Op  string
 			MessageHex  string `json:"messageHex"`
 			EnvelopeHex string `json:"envelopeHex"`
@@ -346,7 +353,11 @@ func scenarioOf(t testing.TB, name string) scenario {
 	if err != nil {
 		t.Fatal(err)
 	}
-	m, err := mediator.Found(set, keyOf(v.Mediator), v.FoundedAt)
+	in := founding.Inputs{Set: set, Openings: setup.Openings{ByActor: map[string][]byte{}}, Acceptances: v.Acceptances}
+	for _, o := range v.Openings {
+		in.Openings.ByActor[o.Actor] = o.Opening
+	}
+	m, err := mediator.Found(in, keyOf(v.Mediator), v.FoundedAt)
 	if err != nil {
 		t.Fatalf("%s: %v", rel, err)
 	}

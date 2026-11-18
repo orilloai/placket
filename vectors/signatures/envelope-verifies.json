@@ -3,9 +3,9 @@
     "valid": true
   },
   "input": {
-    "hash": "sha256:fe27ebb8342bb1fc763a29c6f340b588ea36cdea3ec7638aeea05125d83eaeab",
+    "hash": "sha256:fdf9ba14b519e36d12d20e845f86b2aee6e88e1a23316693e9bc86aabaa59db1",
     "seq": 1,
-    "sig": "804b88e0121c14628332060ab11a1593d7b0c2cdd427f1da88dd483bad814ca26f0f395e94de3bcdc862d824e96f66c886af9951cb6a5daff1751e52ec38b702"
+    "sig": "ff8f36dc53c97ced73d669ac1427ca378132be95de5d9e76eae4c3b5101f1af0a8e2dcb244579f63708a97b24437bfe88a69920b1f906ecee6b3e8109e740906"
   },
   "operation": "verify-signature",
   "reference": "ed25519:7cf35b36b9d57c62b9f3d5be2eb4d39147afa1b7625cd0032443523254df3bea",

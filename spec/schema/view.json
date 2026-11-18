@@ -1,0 +1,166 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://placket.tech/schema/0.1/view.json",
+  "title": "View",
+  "description": "What one member is shown of the merged Accord before it founds, and signs by its typed hash (setup-contract-14, setup-contract-15): the crossings its own terms select, each with its outcome, and the asked crossings between other members it answers. It is hashed, never signed by the mediator. The order of the rows, each row once, and that the same openings give the same bytes are rules of the text a schema cannot state.",
+  "type": "object",
+  "properties": {
+    "accord": {
+      "$ref": "hash.json"
+    },
+    "viewer": {
+      "$ref": "reference.json"
+    },
+    "salt": {
+      "description": "The viewer's own opening salt, so that the view's typed hash cannot be matched against views guessed from the founding set.",
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "crossings": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/crossing"
+      }
+    },
+    "answers": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/answer"
+      }
+    }
+  },
+  "required": [
+    "accord",
+    "viewer",
+    "salt",
+    "crossings",
+    "answers"
+  ],
+  "additionalProperties": false,
+  "$defs": {
+    "crossing": {
+      "description": "One crossing the viewer is a side of: the counterpart and its roles as its binding gives them, the direction from the viewer, the kind, and the outcome. An asked row has the agreed rule's to, its timeout and, when any, the judges both sides consented to; a row that crosses or is blocked has none of them, and a blocked row gives no reason.",
+      "type": "object",
+      "properties": {
+        "counterpart": {
+          "$ref": "reference.json"
+        },
+        "roles": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "term.json#/$defs/label"
+          }
+        },
+        "dir": {
+          "enum": [
+            "give",
+            "get"
+          ]
+        },
+        "kind": {
+          "$ref": "term.json#/$defs/kind"
+        },
+        "outcome": {
+          "enum": [
+            "crosses",
+            "asked",
+            "blocked"
+          ]
+        },
+        "to": {
+          "$ref": "term.json#/$defs/selectors"
+        },
+        "timeout": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "judges": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "$ref": "term.json#/$defs/label"
+              },
+              "use": {
+                "enum": [
+                  "decide",
+                  "advise"
+                ]
+              }
+            },
+            "required": [
+              "name",
+              "use"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": [
+        "counterpart",
+        "roles",
+        "dir",
+        "kind",
+        "outcome"
+      ],
+      "additionalProperties": false,
+      "if": {
+        "properties": {
+          "outcome": {
+            "const": "asked"
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "to",
+          "timeout"
+        ]
+      },
+      "else": {
+        "propertyNames": {
+          "enum": [
+            "counterpart",
+            "roles",
+            "dir",
+            "kind",
+            "outcome"
+          ]
+        }
+      }
+    },
+    "answer": {
+      "description": "One asked crossing between two other members whose agreed rule's to names a role of the viewer: the asker, the receiver, the kind and the timeout.",
+      "type": "object",
+      "properties": {
+        "asker": {
+          "$ref": "reference.json"
+        },
+        "receiver": {
+          "$ref": "reference.json"
+        },
+        "kind": {
+          "$ref": "term.json#/$defs/kind"
+        },
+        "timeout": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        }
+      },
+      "required": [
+        "asker",
+        "receiver",
+        "kind",
+        "timeout"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

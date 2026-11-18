@@ -1,4 +1,5 @@
 {
+  "acceptances": [],
   "final": {
     "delivered": {
       "proposer": [
@@ -113,103 +114,15 @@
     "declarations": [
       {
         "actor": "ed25519:810950cac0d0a30abe5ced6fdf42b93bb3da913b29d142a20ef043ca9691cd31",
-        "sig": "107c2c7a6069a2d7961e52017678264b75f27be4d70999454dfb07dfe08edd7502128e88fa9b2fbcd9f710a21633f37409027a23f38c80368e8a4e002abaf604",
-        "terms": [
-          {
-            "dir": "get",
-            "select": {
-              "kind": [
-                "proposal"
-              ]
-            },
-            "stance": "want",
-            "with": [
-              "role:proposer"
-            ]
-          },
-          {
-            "dir": "get",
-            "select": {
-              "kind": [
-                "changed-version"
-              ]
-            },
-            "stance": "want",
-            "with": [
-              "role:decider"
-            ]
-          }
-        ]
+        "seal": "sha256:6eb706bf895d94dbff8cc580ed6d8db1837aa5a0d80ab74db6f03ec59ebfb3fa"
       },
       {
         "actor": "ed25519:bd1f151e8df833afd6d6758375655dfdf2099acc4bc9100b0f292937773b3b0a",
-        "sig": "be022216bb5877aca8783f88bfc1e64df421eeb457b8b568a8062088bfe3c7ad8b7945a4384fe2093b3ccc6902a1552571235222431ed35d57fd253da3696b0f",
-        "terms": [
-          {
-            "dir": "give",
-            "resolve": {
-              "timeout": 3600,
-              "to": [
-                "role:decider"
-              ]
-            },
-            "select": {
-              "kind": [
-                "proposal"
-              ]
-            },
-            "stance": "maybe",
-            "with": [
-              "role:applier"
-            ]
-          },
-          {
-            "dir": "get",
-            "select": {
-              "kind": [
-                "answer",
-                "changed-version",
-                "comment"
-              ]
-            },
-            "stance": "want",
-            "with": [
-              "role:decider"
-            ]
-          }
-        ]
+        "seal": "sha256:725786d970d375330cc1464b54f17e514f1a928c7077efae88e540f1ca7503ee"
       },
       {
         "actor": "ed25519:f6d4d58bc4586df0ad896a617867d6e12e2ec318bf26edd23a1f18de99039f41",
-        "sig": "89f298d80115efed32aeac496428f4a5e619b358a0efb0d9f8509af65e34fa879ed79f32c8f19ea23ec30f6fa0c1373c3fd8ba8b191c5529d186b6d3b6704e07",
-        "terms": [
-          {
-            "dir": "give",
-            "select": {
-              "kind": [
-                "answer",
-                "changed-version",
-                "comment"
-              ]
-            },
-            "stance": "want",
-            "with": [
-              "role:proposer"
-            ]
-          },
-          {
-            "dir": "give",
-            "select": {
-              "kind": [
-                "changed-version"
-              ]
-            },
-            "stance": "want",
-            "with": [
-              "role:applier"
-            ]
-          }
-        ]
+        "seal": "sha256:0ce2106098605adabf377cb40e7d6f0fbfb2c1c2fec226e6a60996729754d70e"
       }
     ],
     "mediator": {
@@ -242,6 +155,7 @@
     "proposer": "134a4c64c17cd4c161c9f1df955464ed5543dfaa88726e6ca6ec07b86b1fb4b2"
   },
   "mediator": "mediator",
+  "openings": [],
   "operation": "scenario",
   "spec": "0.1",
   "steps": [
@@ -298,9 +212,9 @@
       "op": "get"
     },
     {
+      "answer": "accepted",
       "at": "2026-11-12T09:05:00Z",
       "callHex": "7b226163636f7264223a227368613235363a32363236323632363236323632363236323632363236323632363236323632363236323632363236323632363236323632363236323632363236323632363236222c22616374696f6e223a226163636570746564222c22646967657374223a2239653965396539653965396539653965396539653965396539653965396539653965396539653965396539653965396539653965396539653965396539653965222c2266726f6d223a22656432353531393a66366636663666366636663666366636663666366636663666366636663666366636663666366636663666366636663666366636663666366636663666366636222c227175657374696f6e223a227368613235363a62366236623662366236623662366236623662366236623662366236623662366236623662366236623662366236623662366236623662366236623662366236222c2272656c65617365223a747275652c22736967223a226162616261626162616261626162616261626162616261626162616261626162616261626162616261626162616261626162616261626162616261626162616261626162616261626162616261626162616261626162616261626162616261626162616261626162616261626162616261626162616261626162616261626162227d",
-      "answer": "accepted",
       "expect": {
         "reason": "ok",
         "receipt": {

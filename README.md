@@ -27,20 +27,26 @@ A receipt also does not show that the mediator is honest, or that its clock is t
 
 ## Run the demo
 
-`make demo` runs the worked example, `scripts/demo.sh`, with Go 1.27 on Linux or macOS: it builds the `placket` binary, makes the keys of a mediator, an operator, a principal and three parties (a proposer, an applier and a decider), signs their terms and bindings, founds the Accord, and starts a window. Then the proposer asks three proposals and waits on each; the decider accepts the first, changes the second with a comment, and declines the third with a comment, each from its own commands; the applier fetches what was released. The proposer leaves a fourth proposal open and is refused when it tries to answer it itself, and gives a part of a kind no term names, which is blocked. The window is killed and started again: the open proposal is closed as undeliverable, and the applier fetches the changed version it had not fetched yet. Last, a third party verifies the journal, reconciles each party's records with it, and exports the log, four rows; then changes one character of a receipt's signature, and verification fails. `sh scripts/demo.sh DIR` keeps everything it made in `DIR`.
+`make demo` runs the worked example, `scripts/demo.sh`, with Go 1.27 on Linux or macOS: it builds the `placket` binary, makes the keys of a mediator, an operator, a principal and three parties (a proposer, an applier and a decider), signs their terms and bindings, seals each party's terms, founds the Accord from the seals, and starts a window, to which each party consents by accepting its own view. Then the proposer asks three proposals and waits on each; the decider accepts the first, changes the second with a comment, and declines the third with a comment, each from its own commands; the applier fetches what was released. The proposer leaves a fourth proposal open and is refused when it tries to answer it itself, and gives a part of a kind no term names, which is blocked. The window is killed and started again: the open proposal is closed as undeliverable, and the applier fetches the changed version it had not fetched yet. Last, a third party verifies the journal with the terms sealed, the operator verifies it again with every opening, a third party reconciles each party's records with it and exports the log, four rows; then changes one character of a receipt's signature, and verification fails. `sh scripts/demo.sh DIR` keeps everything it made in `DIR`.
 
-The journal of one run is committed under `scripts/demo/`, with the founding set and the mediator's public reference, and no key. Anyone can verify it:
+The journal of one run is committed under `scripts/demo/`, with the founding set, its `acceptances.json`, the mediator's public reference and, for the demo only, every party's opening, and no key. Anyone can verify it:
 
 ```
 go build -o placket ./cmd/placket
 ./placket verify --accord "$(sed -n 's/^{"accord":"\(sha256:[0-9a-f]*\)".*/\1/p' scripts/demo/journal/accord)" --receipts scripts/demo/journal --founding scripts/demo/founding.json
 ```
 
-Given only the Accord's id and its founding set, it checks that every receipt is the mediator's and that every decision was one the Accord let its decider make, without running anything again: it prints `conforms: every decision is one this Accord let its decider make`, and the journal's `answers.jsonl` shows each answer witnessed by the key that signed it.
+Given only the Accord's id, its founding set and the acceptances beside it, it checks what every party signed: that every receipt is the mediator's and names this Accord, its card and its members, and that every member accepted its view. The terms behind each seal stay sealed, so it prints `valid: 13 receipts signed by mediator ...` and `terms: not checked: the declarations are sealed; with every member's opening, --open checks them`, and the journal's `answers.jsonl` shows each answer witnessed by the key that signed it. With every opening, as in a dispute, it checks each seal, each view and every decision:
+
+```
+./placket verify --accord "$(sed -n 's/^{"accord":"\(sha256:[0-9a-f]*\)".*/\1/p' scripts/demo/journal/accord)" --receipts scripts/demo/journal --founding scripts/demo/founding.json $(for o in scripts/demo/openings/*; do printf ' --open %s' "$o"; done)
+```
+
+It prints `terms: checked: every seal opens, and every view is the one its member accepted` and `conforms: every decision is one this Accord let its decider make`.
 
 ## Found an Accord
 
-An Accord is founded from five kinds of file: the policy, the mediator, the card, and each party's declaration and binding. These are the demo's founding steps, from `scripts/demo.sh`:
+An Accord is founded from five kinds of file: the policy, the mediator, the card, and each party's sealed declaration and binding. Each party seals its own declaration: the founding set holds the seal, and the opening, which holds the terms, goes to whoever runs the window and to no other party. Then each party is shown its own view of the Accord, what will cross for it, and signs it; the Accord is founded when every party has. These are the demo's founding steps, from `scripts/demo.sh`:
 
 ```
 # Keys: the mediator, its operator, the principal who binds the parties, and each party.
@@ -50,9 +56,12 @@ done
 # The policy: the roles that must be held, and each principal with the roles it may grant. Here one
 # principal stands behind all three parties.
 echo "{\"roles\":[\"proposer\",\"applier\",\"decider\"],\"principals\":[{\"principal\":\"$(cat principal.ref)\",\"roles\":[\"proposer\",\"applier\",\"decider\"]}]}" >policy.json
-# Each party signs its terms; its principal binds it to its role under this mediator and this policy.
+# Each party signs its terms and seals them; the opening goes to the window's operator alone. Its
+# principal binds it to its role under this mediator and this policy.
+mkdir -p openings
 for a in proposer applier decider; do
 	placket declare --key "$a.key" --terms "$a.terms" >"$a.declaration"
+	placket seal --key "$a.key" --declaration "$a.declaration" --out openings >"$a.seal"
 	placket bind --key principal.key --actor "$(cat "$a.ref")" --role "$a" --mediator "$(cat mediator.ref)" --until 2099-01-01T00:00:00Z \
 		--policy policy.json >"$a.binding"
 done
@@ -60,9 +69,15 @@ echo "{\"actor\":\"$(cat mediator.ref)\",\"operator\":\"$(cat operator.ref)\",\"
 # The card names the decision module this binary runs.
 placket card --default >card.json
 placket founding --policy policy.json --mediator mediator.json --card card.json \
-	--declaration proposer.declaration --declaration applier.declaration --declaration decider.declaration \
-	--binding proposer.binding --binding applier.binding --binding decider.binding >founding.json
-placket window --key mediator.key --founding founding.json --socket /tmp/plk.s --journal journal
+	--seal proposer.seal --seal applier.seal --seal decider.seal \
+	--binding proposer.binding --binding applier.binding --binding decider.binding >founding.json 2>founding.out
+placket window --key mediator.key --founding founding.json --openings openings --socket /tmp/plk.s --journal journal &
+# The Accord is proposed: each party views its own view and accepts it. The last acceptance founds
+# it, and the window writes acceptances.json beside founding.json.
+for a in proposer applier decider; do
+	placket view --key "$a.key" --socket /tmp/plk.s --accord "$(sed -n 's/^accord //p' founding.out)"
+	placket accept --key "$a.key" --socket /tmp/plk.s --accord "$(sed -n 's/^accord //p' founding.out)"
+done
 ```
 
 Each party's binding is signed by that party's own principal, under the policy it names by hash, and gives only roles the policy lets that principal grant. One principal may stand behind every party, as here, or each side may have its own, as in the guarded-export pattern (`patterns/guarded-export/`); `verify --founding` names each member's roles and principal.
@@ -76,7 +91,7 @@ Each party's binding is signed by that party's own principal, under the policy i
 Its first receipt, `seq` 1 of the proposer's chain to the applier, is the first proposal's ask:
 
 ```
-{"payload":"eyJfdHlwZSI6Imh0dHBzOi8vaW4tdG90by5pby9TdGF0ZW1lbnQvdjEiLCJwcmVkaWNhdGUiOnsiYWNjb3JkIjoic2hhMjU2OmJkNDIwNzM3Mjc4MTVjNzgxZDhlNGVkOWRhZDBmNDYyM2ZjYTMzNDUyZTgwYTY0NjE4NmQ1YjM0YmRhNmNhM2UiLCJhdCI6IjIwMjYtMTEtMTdUMjM6MTY6NDdaIiwiYnkiOiJ0ZXJtcyIsImNhcmQiOiJzaGEyNTY6ZTM2N2Q1ZTE4MjA5OGJiYjNhM2NlOTYwYjMyMjFhYTJhMWMwZDZlZDJmYzc5MGRmYTQ2MDRlNjA0MTkxZDZhNSIsImVudmVsb3BlIjp7Imhhc2giOiJzaGEyNTY6MGVlOGRmNzZjOWVlZTg0NTVkYTM3Zjk4NjZlNGVjNzY2MzA3Yzk0MjE0NDJjN2NmZDJmMzBiZGRhNzc2YmI3MSIsInNlbmRlciI6ImVkMjU1MTk6MDlhMmM0NzJlOWZhMjlhZTFhZTMwZTUwZTRhZDFkNTcxYjI5YjU2MGZhMmU0MjFhMzc1N2U1Nzc3YjVmMTg4MiIsInNlcSI6MX0sImZyb20iOiJlZDI1NTE5OjA5YTJjNDcyZTlmYTI5YWUxYWUzMGU1MGU0YWQxZDU3MWIyOWI1NjBmYTJlNDIxYTM3NTdlNTc3N2I1ZjE4ODIiLCJraW5kIjoiY3Jvc3NpbmciLCJtZWRpYXRvciI6ImVkMjU1MTk6NDVhYjYwMzU5ZjAyMTgxMDMzNWY2ZDM1NjQ0NGJkZThiNmRmYzQyZTFlZjgyMTBlNTI0ZjBiMTBkOWU1MTFkNyIsInJlYXNvbiI6Im1heWJlIiwic2VxIjoxLCJ0byI6ImVkMjU1MTk6OGU3ZjBlMGQ0YmEzNTI4OTIxODAyYTM2N2M3MDUyYWNhZWRjNmYzYTNkZmFiMzZmZDFkOGJiZWU0YTVhNTRjNCIsInZlcmRpY3QiOiJlc2NhbGF0ZSJ9LCJwcmVkaWNhdGVUeXBlIjoiaHR0cHM6Ly9wbGFja2V0LnRlY2gvcmVjZWlwdC8wLjEiLCJzdWJqZWN0IjpbeyJkaWdlc3QiOnsic2FsdGVkLXNoYTI1NiI6ImEwZTk0ZjAwNTEwOGFlYjRhNGE3MzgzMDg0NmYxMjE5YmViMDc5ZjA3ZjY5ODU1N2FhZWY4MjA0MDg3ZjNlNzgifSwibmFtZSI6InByb3Bvc2FsIn1dfQ==","payloadType":"application/vnd.in-toto+json","signatures":[{"keyid":"ed25519:45ab60359f021810335f6d356444bde8b6dfc42e1ef8210e524f0b10d9e511d7","sig":"p7YAHx97WudSM3NVYYIuDz3YLyBXg8F0Qe6eT0Oyy+FazsIIo6+pQBL5b0sTGw49CnXuypXV+oiu0l+JYfc0BQ=="}]}
+{"payload":"eyJfdHlwZSI6Imh0dHBzOi8vaW4tdG90by5pby9TdGF0ZW1lbnQvdjEiLCJwcmVkaWNhdGUiOnsiYWNjb3JkIjoic2hhMjU2OjA1YzlkMGU0M2NiODA3YTI3ODIwNTQyNWJmMjgzMTQ1ZTI4NDE5ZjM4MGM3ZmJhY2M5ZDc0ZjY3NGZjZDQzMTIiLCJhdCI6IjIwMjYtMTEtMThUMTc6Mjg6MDFaIiwiYnkiOiJ0ZXJtcyIsImNhcmQiOiJzaGEyNTY6ZTM2N2Q1ZTE4MjA5OGJiYjNhM2NlOTYwYjMyMjFhYTJhMWMwZDZlZDJmYzc5MGRmYTQ2MDRlNjA0MTkxZDZhNSIsImVudmVsb3BlIjp7Imhhc2giOiJzaGEyNTY6NmMxYmE4YTI1MWNhNGQ1YzMyOGUyY2Q2ODI2MjQ3OGE5YmViNzBhYzk0NDU0MGViYTAyN2M5M2FkYjg1NzMxYiIsInNlbmRlciI6ImVkMjU1MTk6NzBkZWU1OGZhMTlhMTc3OTVlOWU0ZjM5MjkwNmYwY2JhZTE5NDE0YzAxNTBkYjk3NGUyYjEwYTljMzFkMjA0ZCIsInNlcSI6MX0sImZyb20iOiJlZDI1NTE5OjcwZGVlNThmYTE5YTE3Nzk1ZTllNGYzOTI5MDZmMGNiYWUxOTQxNGMwMTUwZGI5NzRlMmIxMGE5YzMxZDIwNGQiLCJraW5kIjoiY3Jvc3NpbmciLCJtZWRpYXRvciI6ImVkMjU1MTk6Mzg3NmRkZGM1ZDUzZjcwZjE0YmUyYTk5NmRmZmJlMzU4NGQ3MmU4ZDJhMDExMTQ3NDgzMDg1N2E1NWNhMmQyMyIsInJlYXNvbiI6Im1heWJlIiwic2VxIjoxLCJ0byI6ImVkMjU1MTk6MGI1MzE2MWM3MWJlMTEyZTM4NjE3MDdmMzUwMWZhYTNhM2JjMDJkOTk3NWMxN2I3ZjA3MzQwOTc5Mjg1NDEzZiIsInZlcmRpY3QiOiJlc2NhbGF0ZSJ9LCJwcmVkaWNhdGVUeXBlIjoiaHR0cHM6Ly9wbGFja2V0LnRlY2gvcmVjZWlwdC8wLjEiLCJzdWJqZWN0IjpbeyJkaWdlc3QiOnsic2FsdGVkLXNoYTI1NiI6IjFhMGZiMTcwMTQxYzZmZTI0NzcwYTQ4Y2I0YjQ5MjMxMWNhNmM0Y2Y0MDBiODNiZTAyMmQ5NDk2YTIwYTE2ZDcifSwibmFtZSI6InByb3Bvc2FsIn1dfQ==","payloadType":"application/vnd.in-toto+json","signatures":[{"keyid":"ed25519:3876dddc5d53f70f14be2a996dffbe3584d72e8d2a0111474830857a55ca2d23","sig":"emfBC4s1Koswx9+uZiCEn3taVDvedYKdi3/R/Usau2y0T1Wva17bvtYvqNazNILcfxqp4miwQfT2Dd9XW7vdAw=="}]}
 ```
 
 and `placket show --receipt` prints, on standard error, then on standard output:

@@ -11,6 +11,7 @@ import (
 	"github.com/orilloai/placket/core/answer"
 	"github.com/orilloai/placket/core/canonical"
 	"github.com/orilloai/placket/core/composition"
+	"github.com/orilloai/placket/core/founding"
 	ptesting "github.com/orilloai/placket/core/internal/testing"
 	"github.com/orilloai/placket/core/mediator"
 	"github.com/orilloai/placket/core/receipts"
@@ -22,7 +23,8 @@ const body = "The planted body of the proposal."
 // A worked journal of the ask-and-log Accord: a note that passes, a proposal asked about, and the
 // decider's accept with release.
 type worked struct {
-	set, call  []byte
+	set        founding.Inputs
+	call       []byte
 	accord     string
 	list       [][]byte
 	deliveries [][]byte
@@ -95,7 +97,8 @@ func journal(t testing.TB) worked {
 }
 
 func (w worked) evidence() Evidence {
-	return Evidence{Accord: w.accord, Founding: w.set, Receipts: w.list, Answers: [][]byte{w.call}, Kernel: kernelOf(w.set)}
+	return Evidence{Accord: w.accord, Founding: w.set.Set, Openings: w.set.Openings, Acceptances: w.set.Acceptances,
+		Receipts: w.list, Answers: [][]byte{w.call}, Kernel: kernelOf(w.set.Set)}
 }
 
 func isCode(err error, code Code, index int) bool {

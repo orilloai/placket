@@ -10,6 +10,7 @@ import (
 	"github.com/orilloai/placket/core/answer"
 	"github.com/orilloai/placket/core/canonical"
 	"github.com/orilloai/placket/core/composition"
+	"github.com/orilloai/placket/core/founding"
 	"github.com/orilloai/placket/core/mediator"
 	vreceipts "github.com/orilloai/placket/core/receipts"
 	"github.com/orilloai/placket/core/signing"
@@ -35,7 +36,11 @@ func runScenario(v Vector) []Part {
 	if err != nil {
 		return bad("founding", "the founding set is not accepted by the canonical form")
 	}
-	med, err := mediator.Found(set, key, m.str("foundedAt"))
+	in, ok := inputsOf(m, set)
+	if !ok {
+		return bad("openings", "an opening or the acceptances do not decode")
+	}
+	med, err := mediator.Found(in, key, m.str("foundedAt"))
 	if err != nil {
 		return bad("founding", "the set does not found: "+err.Error())
 	}
@@ -103,7 +108,7 @@ func runScenario(v Vector) []Part {
 			}
 			parts = append(parts, compare(name, got, s["expect"]))
 		case "close":
-			closed, got := closeStep(med, set, key, m.str("foundedAt"), s.str("at"))
+			closed, got := closeStep(med, in, key, m.str("foundedAt"), s.str("at"))
 			if closed != nil {
 				med = closed
 			}
@@ -164,7 +169,7 @@ func runScenario(v Vector) []Part {
 // with its deadline and roles as the mediator's own reference reads them, and each delivery not yet
 // fetched, in the order of the receipts that queued it. It returns the closed mediator, or nil, and
 // the closings' outcomes and the close receipt as a vector states them, or the error.
-func closeStep(med *mediator.Mediator, set []byte, key signing.Key, foundedAt, at string) (*mediator.Mediator, []byte) {
+func closeStep(med *mediator.Mediator, in founding.Inputs, key signing.Key, foundedAt, at string) (*mediator.Mediator, []byte) {
 	list := med.Receipts()
 	var open []mediator.Open
 	for _, id := range med.Pending() {
@@ -180,7 +185,7 @@ func closeStep(med *mediator.Mediator, set []byte, key signing.Key, foundedAt, a
 			deliveries = append(deliveries, q)
 		}
 	}
-	closed, outs, c, err := mediator.Close(set, list, open, deliveries, foundedAt, key, at)
+	closed, outs, c, err := mediator.Close(in, list, open, deliveries, foundedAt, key, at)
 	if err != nil {
 		return nil, outcome(mediator.Outcome{}, err)
 	}

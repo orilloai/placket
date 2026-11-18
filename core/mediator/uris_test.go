@@ -19,6 +19,7 @@ func TestEveryURIUnderTheCardsSpec(t *testing.T) {
 		"binding":     signing.TypeBinding,
 		"envelope":    signing.TypeEnvelope,
 		"answer":      signing.TypeAnswer,
+		"acceptance":  signing.TypeAcceptance,
 		"receipt":     receipts.PredicateType,
 		"crossing":    mediator.Extension,
 	} {

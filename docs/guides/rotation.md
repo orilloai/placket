@@ -2,7 +2,7 @@
 
 A mediator's key signs every receipt of its Accord, so it cannot be swapped inside one Accord. To retire a key, close the Accord, and found a new one under a new key whose policy names the close it replaces. A verifier then checks the old journal against the close the new Accord pins (`spec/protocol.md`, section 13; `docs/adr/0022-the-close.md`).
 
-This guide uses the files of the worked example's founding steps (`README.md`, "Found an Accord"): the keys `mediator.key` and `principal.key`, the references `mediator.ref`, `operator.ref` and each party's, the parties' declarations, `policy.json`, `card.json`, `founding.json`, and the window's `journal`. It also needs `window.log`, the window's standard error from the start that founded the Accord, which README's last command leaves on the terminal: start that window with `2>window.log` to keep it, or, if the window already runs, write the `accord <id> founded` line it printed into `window.log` yourself. Every command but the last two runs as written; `tests/test_rotation.sh` runs them in `make ci`.
+This guide uses the files of the worked example's founding steps (`README.md`, "Found an Accord"): the keys `mediator.key` and `principal.key`, the references `mediator.ref`, `operator.ref` and each party's, the parties' seal entries, each `<party>.seal`, and the openings in `openings/`, `policy.json`, `card.json`, `founding.json` and the `acceptances.json` beside it, and the window's `journal`. It also needs `window.log`, the window's standard error from the start that founded the Accord, which README's window command leaves on the terminal: start that window with `2>window.log` to keep it, or, if the window already runs, write the `accord <id> founded` line it printed, once the last party accepted its view, into `window.log` yourself. Every command but the last two runs as written; `tests/test_rotation.sh` runs them in `make ci`.
 
 ## 1. Stop the window, and close its Accord
 
@@ -28,7 +28,7 @@ jq -c --arg accord "$accord" --arg close "$close" '. + {supersedes: {accord: $ac
 echo "{\"actor\":\"$(cat mediator2.ref)\",\"operator\":\"$(cat operator.ref)\",\"runs\":\"process\"}" >mediator2.json
 ```
 
-A binding names its mediator and its policy, so each party's principal binds it again; the declarations are the same:
+A binding names its mediator and its policy, so each party's principal binds it again; the declarations, and their seals, are the same:
 
 ```sh
 for a in proposer applier decider; do
@@ -36,7 +36,7 @@ for a in proposer applier decider; do
 		--policy policy2.json >"$a.binding2"
 done
 placket founding --policy policy2.json --mediator mediator2.json --card card.json \
-	--declaration proposer.declaration --declaration applier.declaration --declaration decider.declaration \
+	--seal proposer.seal --seal applier.seal --seal decider.seal \
 	--binding proposer.binding2 --binding applier.binding2 --binding decider.binding2 >founding2.json
 ```
 
@@ -52,10 +52,10 @@ It exits 0 and prints `complete: against close receipt <close>, which successor 
 
 ## 4. Run the successor, and retire the old key
 
-Start the new Accord's window with the new key and a new journal:
+Start the new Accord's window with the new key, the same openings and a new journal. It starts the new Accord proposed: each party views and accepts its view of it, as for the first, and the last acceptance founds it and writes `acceptances.json` beside `founding2.json`, so keep the two Accords' files in directories of their own.
 
 ```
-placket window --key mediator2.key --founding founding2.json --socket /tmp/plk.s --journal journal2
+placket window --key mediator2.key --founding founding2.json --openings openings --socket /tmp/plk.s --journal journal2
 ```
 
 Keep the old journal and its `founding.json`: they are the old Accord's record. Then destroy `mediator.key`:
