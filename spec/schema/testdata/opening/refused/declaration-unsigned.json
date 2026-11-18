@@ -1,0 +1,22 @@
+{
+  "declaration": {
+    "actor": "ed25519:375dea8c4519dbae84fc9eb513e97eb4b693968ef37d52ac10da7b79250c6a22",
+    "terms": [
+      {
+        "dir": "give",
+        "select": {
+          "kind": [
+            "answer",
+            "changed-version"
+          ]
+        },
+        "stance": "want",
+        "with": [
+          "role:proposer",
+          "role:applier"
+        ]
+      }
+    ]
+  },
+  "salt": "672f3e62cbb05c6f8c3c128689ae81ad1518b501784f3b681a8a326c93f0f420"
+}

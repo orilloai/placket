@@ -1,0 +1,40 @@
+{
+  "accord": "sha256:e3325882c13d09c65d75d2ef79149fcd3b4aa6e09e860de0d20ccdc45aa815b4",
+  "answers": [
+    {
+      "asker": "ed25519:375dea8c4519dbae84fc9eb513e97eb4b693968ef37d52ac10da7b79250c6a22",
+      "kind": "contract",
+      "receiver": "ed25519:7cf35b36b9d57c62b9f3d5be2eb4d39147afa1b7625cd0032443523254df3bea",
+      "timeout": 300
+    },
+    {
+      "asker": "ed25519:7cf35b36b9d57c62b9f3d5be2eb4d39147afa1b7625cd0032443523254df3bea",
+      "kind": "contract",
+      "receiver": "ed25519:375dea8c4519dbae84fc9eb513e97eb4b693968ef37d52ac10da7b79250c6a22",
+      "timeout": 300
+    }
+  ],
+  "crossings": [
+    {
+      "counterpart": "ed25519:375dea8c4519dbae84fc9eb513e97eb4b693968ef37d52ac10da7b79250c6a22",
+      "dir": "give",
+      "kind": "answer",
+      "outcome": "crosses",
+      "reason": "no-match",
+      "roles": [
+        "c"
+      ]
+    },
+    {
+      "counterpart": "ed25519:7cf35b36b9d57c62b9f3d5be2eb4d39147afa1b7625cd0032443523254df3bea",
+      "dir": "give",
+      "kind": "answer",
+      "outcome": "crosses",
+      "roles": [
+        "a"
+      ]
+    }
+  ],
+  "salt": "040194299d728f5f71cd1f2da28bebf101546b9feb6e392a0a46a92e0f456a98",
+  "viewer": "ed25519:4bfd7bd23d0e37b27b978d45dfa6cf4a9c514f07bb3648818b4ab7d4c2cf41a1"
+}
