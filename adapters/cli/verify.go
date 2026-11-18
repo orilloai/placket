@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/orilloai/placket/adapters/internal/strict"
@@ -16,6 +17,7 @@ import (
 	"github.com/orilloai/placket/core/canonical"
 	"github.com/orilloai/placket/core/composition"
 	"github.com/orilloai/placket/core/conform"
+	"github.com/orilloai/placket/core/founding"
 	"github.com/orilloai/placket/core/receipts"
 	"github.com/orilloai/placket/core/setup"
 )
@@ -129,12 +131,15 @@ func firstAt(list [][]byte) string {
 // --founding.
 func verifyCommand(r *run, args []string) int {
 	fs := flags("verify")
-	med, dir, founding := fs.String("mediator", "", "the mediator"), fs.String("receipts", "", "journal directory"), fs.String("founding", "", "the founding set")
+	med, dir, setPath := fs.String("mediator", "", "the mediator"), fs.String("receipts", "", "journal directory"), fs.String("founding", "", "the founding set")
 	accordFlag, answersFile := fs.String("accord", "", "the Accord id"), fs.String("answers", "", "a file of answer calls, one a line")
 	subset, deliveryFile := fs.Bool("subset", false, "the receipts are a subset"), fs.String("delivery", "", "a delivery, as get --json saved it")
 	successor := fs.String("superseded-by", "", "the founding set of the Accord that supersedes this one")
-	if !r.parse(fs, args, "receipts") || (*med == "") == (*accordFlag == "") || (*accordFlag != "" && *founding == "") ||
-		(*successor != "" && *accordFlag == "") {
+	accFile := fs.String("acceptances", "", "the founding set's acceptances, acceptances.json beside it when not given")
+	var opens many
+	fs.Var(&opens, "open", "a member's opening, once per opening, for a dispute")
+	if !r.parse(fs, args, "receipts") || (*med == "") == (*accordFlag == "") || (*accordFlag != "" && *setPath == "") ||
+		(*successor != "" && *accordFlag == "") || ((*accFile != "" || len(opens) > 0) && *setPath == "") {
 		return r.tool(codeUsage)
 	}
 	list, err := journal.ReadReceipts(*dir, r.stderr)
@@ -167,20 +172,44 @@ func verifyCommand(r *run, args []string) int {
 			deliveryBytes = d
 		}
 	}
-	var set []byte
+	var set, acceptances []byte
+	var openings setup.Openings
 	var a *setup.Accord
-	if *founding != "" {
-		if set, err = os.ReadFile(*founding); err != nil {
+	if *setPath != "" {
+		if set, err = os.ReadFile(*setPath); err != nil {
 			return r.tool(codeFile, "founding")
 		}
 		set = bytes.TrimSuffix(set, []byte{'\n'})
+		if *accFile == "" {
+			*accFile = filepath.Join(filepath.Dir(*setPath), FileAcceptances)
+		}
+		if acceptances, err = os.ReadFile(*accFile); err != nil {
+			return r.tool(codeFile, "acceptances")
+		}
+		acceptances = trimLF(acceptances)
+		// A verifier holds the openings it is given, each under the actor its declaration names: some
+		// members', as in a dispute, or every member's (setup-contract-16).
+		if len(opens) > 0 {
+			openings = setup.Openings{ByActor: map[string][]byte{}, Some: true}
+			for _, p := range opens {
+				b, err := os.ReadFile(p)
+				if err != nil || openingActor(b) == "" {
+					return r.tool(codeFile, "open")
+				}
+				openings.ByActor[openingActor(b)] = trimLF(b)
+			}
+		}
 		at := local.Stamp(r.env.Now())
 		if t := firstAt(list); t != "" {
 			at = t
 		}
 		id, herr := canonical.TypedHash(set)
-		if a, err = setup.Found(set, at); err != nil || herr != nil || (*accordFlag != "" && id != *accordFlag) ||
-			(*med != "" && a.Mediator() != *med) {
+		a, err = founding.Found(founding.Inputs{Set: set, Openings: openings, Acceptances: acceptances}, at)
+		var se *setup.Error
+		if errors.As(err, &se) {
+			return r.tool(codeFound, string(se.Code))
+		}
+		if err != nil || herr != nil || (*accordFlag != "" && id != *accordFlag) || (*med != "" && a.Mediator() != *med) {
 			return r.tool(codeFound)
 		}
 		if *med == "" {
@@ -220,7 +249,7 @@ func verifyCommand(r *run, args []string) int {
 			return r.tool(codeFile, "superseded-by")
 		}
 		b = bytes.TrimSuffix(b, []byte{'\n'})
-		next, err := setup.Found(b, local.Stamp(r.env.Now()))
+		next, err := setup.Found(b, setup.Openings{}, local.Stamp(r.env.Now()))
 		if err != nil {
 			return r.tool(codeFound)
 		}
@@ -232,8 +261,8 @@ func verifyCommand(r *run, args []string) int {
 	}
 
 	// Conformance (verify-2): rows 1 to 4, then the body, row 5.
-	e := conform.Evidence{Accord: accord, Mediator: *med, Founding: set, Receipts: list, Answers: answers, Subset: *subset,
-		Kernel: composition.KernelHash()}
+	e := conform.Evidence{Accord: accord, Mediator: *med, Founding: set, Acceptances: acceptances, Openings: openings,
+		Receipts: list, Answers: answers, Subset: *subset, Kernel: composition.KernelHash()}
 	report, cerr := conform.Check(e)
 	var conformErr *conform.Error
 	if cerr != nil && !errors.As(cerr, &conformErr) {
@@ -282,6 +311,7 @@ func verifyCommand(r *run, args []string) int {
 		}
 		r.putModule(set)
 		r.put("members", members)
+		module = append(module, r.termsLines(a)...)
 	}
 	predicates := []any{}
 	for _, rc := range list {
@@ -364,6 +394,8 @@ func verifyCommand(r *run, args []string) int {
 		conforms = LineConformNoFounding
 	case !report.Module:
 		conforms = LineConformOtherModule
+	case !report.Terms:
+		conforms = LineConformSealed
 	}
 	complete := LineNotComplete
 	switch {
@@ -487,5 +519,43 @@ func moduleLines(set []byte) []string {
 		_ = strict.Decode(b, &c)
 		out = append(out, "judge "+c.Name+" "+c.Version+" "+c.Hash)
 	}
+	return out
+}
+
+// FileAcceptances is the name of the acceptances' file, kept beside the founding set
+// (setup-contract-15).
+const FileAcceptances = "acceptances.json"
+
+// termsLines are verify's lines of what the terms behind the sealed set were checked against
+// (setup-contract-16): one per seal an opening given opens; with every member opened, one per member
+// whose view is the one it accepted, which founding has checked, and the line that the terms were
+// checked; otherwise one per opened member whose view could not be built, and the line that the
+// terms were not checked. It puts them under terms, seals and views.
+func (r *run) termsLines(a *setup.Accord) []string {
+	var out []string
+	seals, views := []string{}, []string{}
+	for _, m := range a.Members() {
+		if a.Opened(m) {
+			l := fmt.Sprintf(LineSealOpens, m)
+			seals = append(seals, l)
+			out = append(out, l)
+		}
+	}
+	terms := LineTermsNotChecked
+	for _, m := range a.Members() {
+		switch {
+		case a.TermsChecked():
+			views = append(views, fmt.Sprintf(LineViewMatches, m))
+		case a.Opened(m):
+			views = append(views, fmt.Sprintf(LineViewNotChecked, m))
+		}
+	}
+	if a.TermsChecked() {
+		terms = LineTermsChecked
+	}
+	out = append(append(out, views...), terms)
+	r.put("seals", seals)
+	r.put("views", views)
+	r.put("terms", terms)
 	return out
 }

@@ -109,6 +109,15 @@ type Reply struct {
 	// Queued is the reply to a get that waited: a delivery is queued for the caller, and an ordinary
 	// get takes it. A get that waits never takes one itself.
 	Queued bool
+	// View is the reply to a view call: the caller's own view of the Accord, its canonical bytes
+	// (setup-contract-14).
+	View []byte
+	// IsAccept is the reply to an accept the window took, and Founded whether the Accord is now
+	// founded, every member having accepted (setup-contract-15).
+	IsAccept, Founded bool
+	// Founding is the founding code an accept was refused with: the row of founding's table its
+	// acceptance fails (setup-contract-15).
+	Founding string
 }
 
 // Format prints the Reply as a fixed text, whatever the verb: it may hold a body or a salt
@@ -146,9 +155,12 @@ type wireReply struct {
 	More      *bool           `json:"more,omitempty"`
 	Cursor    *string         `json:"cursor,omitempty"`
 	Queued    *bool           `json:"queued,omitempty"`
+	View      json.RawMessage `json:"view,omitempty"`
+	Founded   *bool           `json:"founded,omitempty"`
 	Rejection *string         `json:"rejection,omitempty"`
 	Error     *string         `json:"error,omitempty"`
 	Door      *string         `json:"door,omitempty"`
+	Founding  *string         `json:"founding,omitempty"`
 }
 
 func wire(o mediator.Outcome) *wireOutcome {
@@ -180,6 +192,7 @@ const (
 	byRejection = iota
 	byError
 	byDoor
+	byFounding
 )
 
 func refusal(by int, code string) []byte {
@@ -190,6 +203,8 @@ func refusal(by int, code string) []byte {
 		w.Rejection = &code
 	case byError:
 		w.Error = &code
+	case byFounding:
+		w.Founding = &code
 	default:
 		w.Door = &code
 	}
@@ -325,8 +340,28 @@ func ParseReply(b []byte) (Reply, bool) {
 	if w.Door != nil {
 		r.Door, set = DoorCode(*w.Door), set+1
 	}
-	if *w.OK != (set == 0) || set > 1 || (set == 1 && !label(string(r.Rejection)+string(r.Error)+string(r.Door))) {
+	if w.Founding != nil {
+		r.Founding, set = *w.Founding, set+1
+	}
+	if *w.OK != (set == 0) || set > 1 || (set == 1 && !label(string(r.Rejection)+string(r.Error)+string(r.Door)+r.Founding)) {
 		return Reply{}, false
+	}
+	// A view and an accept's reply each stand alone in their reply (setup-contract-14,
+	// setup-contract-15).
+	others := w.Outcome != nil || w.Release != nil || len(w.Delivery) > 0 || len(w.Close) > 0 || w.Questions != nil ||
+		w.More != nil || w.Cursor != nil || w.Queued != nil
+	if len(w.View) > 0 {
+		v, err := canonical.Form(w.View)
+		if err != nil || w.View[0] != '{' || set != 0 || others || w.Founded != nil {
+			return Reply{}, false
+		}
+		r.View = v
+	}
+	if w.Founded != nil {
+		if set != 0 || others {
+			return Reply{}, false
+		}
+		r.IsAccept, r.Founded = true, *w.Founded
 	}
 	var ok bool
 	if r.Outcome, ok = outcome(w.Outcome); !ok {

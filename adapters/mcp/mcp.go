@@ -112,7 +112,9 @@ func (s *Server) serve() ([]*served, error) {
 		}
 		set = []byte(strings.TrimSuffix(string(set), "\n"))
 		id, err := canonical.TypedHash(set)
-		a, ferr := setup.Found(set, local.Stamp(now()))
+		// The set is sealed: without the openings, it founds as far as any party can found it
+		// (setup-contract-16), and its bindings give the key's roles.
+		a, ferr := setup.Found(set, setup.Openings{}, local.Stamp(now()))
 		if err != nil || ferr != nil || id != m.Accord {
 			v.from, v.code = errtext.FromMCP, string(CodeFounding)
 			continue
@@ -122,7 +124,19 @@ func (s *Server) serve() ([]*served, error) {
 			v.from, v.code = from(err)
 			continue
 		}
-		if answers(a, k.Reference()) && !s.AllowAnswering {
+		// What the key answers is read from the view it accepted, kept in its state directory: a
+		// label with none has not consented to the Accord (setup-contract-14, setup-contract-15).
+		view, ok, err := state.Accepted(m.State)
+		if err != nil || !ok {
+			v.from, v.code = errtext.FromMCP, string(CodeFounding)
+			continue
+		}
+		answering, ok := answers(view, id, k.Reference(), a.Roles(k.Reference()))
+		if !ok {
+			v.from, v.code = errtext.FromMCP, string(CodeFounding)
+			continue
+		}
+		if answering && !s.AllowAnswering {
 			v.from, v.code = errtext.FromMCP, string(CodeAnsweringKey)
 			continue
 		}
@@ -137,26 +151,40 @@ func (s *Server) serve() ([]*served, error) {
 	return list, nil
 }
 
-// answers reports whether the actor holds a role that some maybe term's resolve.to names: it answers
-// questions under the Accord.
-func answers(a *setup.Accord, actor string) bool {
-	roles := map[string]bool{}
-	for _, r := range a.Roles(actor) {
-		roles[r] = true
+// answers reports whether the actor's accepted view says it answers questions under the Accord
+// (setup-contract-14): the view has an answers row, or an asked crossing whose to names one of the
+// actor's roles. ok is false when the view is not the actor's own view of this Accord.
+func answers(view []byte, accord, actor string, roles []string) (answering, ok bool) {
+	var v struct {
+		Accord    string `json:"accord"`
+		Viewer    string `json:"viewer"`
+		Crossings []struct {
+			Outcome string   `json:"outcome"`
+			To      []string `json:"to"`
+		} `json:"crossings"`
+		Answers []json.RawMessage `json:"answers"`
 	}
-	for _, m := range a.Members() {
-		for _, t := range a.Terms(m) {
-			if t.Stance != setup.StanceMaybe || t.Resolve == nil {
-				continue
-			}
-			for _, r := range t.Resolve.To {
-				if roles[strings.TrimPrefix(r, "role:")] {
-					return true
-				}
+	if json.Unmarshal(view, &v) != nil || v.Accord != accord || v.Viewer != actor {
+		return false, false
+	}
+	if len(v.Answers) > 0 {
+		return true, true
+	}
+	held := map[string]bool{}
+	for _, r := range roles {
+		held[r] = true
+	}
+	for _, c := range v.Crossings {
+		if c.Outcome != "asked" {
+			continue
+		}
+		for _, r := range c.To {
+			if held[strings.TrimPrefix(r, "role:")] {
+				return true, true
 			}
 		}
 	}
-	return false
+	return false, true
 }
 
 // from is the row an error arrived under, and its code: a client's, the state directory's, the key
