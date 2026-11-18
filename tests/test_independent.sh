@@ -177,13 +177,16 @@ chained() {
 # signature receiptcheck has just re-computed, names as its one subject the Accord by the hex of its
 # own accord, and pins every chain of the chain file (close-2): one entry per pair the file holds and
 # no other, each naming that pair's last re-computed id and its count of receipts as its seq, since
-# every list these vectors close is whole; and each unfetched entry names a re-computed id of the
-# file.
+# every list these vectors close is whole; the pairs distinct and in actor-reference order, by from
+# and then by to, which for references of ASCII is jq's order of strings; and each unfetched entry
+# names a distinct re-computed id of the file.
 closecheck() {
 	_acc=$(jq -r .predicate.accord "$tmp/statement")
 	if [ "sha256:$(jq -r '.subject[0].digest.sha256' "$tmp/statement")" = "$_acc" ] && [ "$(jq -r '.subject[0].name' "$tmp/statement")" = accord ]; then counted "$2"; else bad "$1: the close's subject is not its Accord"; fi
 	_pairs=$(awk '$1 != "null" { print $1 " " $2 }' "$3" | sort -u | wc -l | tr -d ' ')
 	if [ "$(jq '.predicate.chains | length' "$tmp/statement")" -eq "$_pairs" ]; then counted "$2"; else bad "$1: the close lists $(jq '.predicate.chains | length' "$tmp/statement") chains for $_pairs pairs"; fi
+	if jq -e '[.predicate.chains[] | [.from, .to]] | . == unique' "$tmp/statement" >/dev/null; then counted "$2"; else bad "$1: the close's pairs repeat or are out of order"; fi
+	if jq -e '[.predicate.unfetched[].receipt] | length == (unique | length)' "$tmp/statement" >/dev/null; then counted "$2"; else bad "$1: the close names an unfetched receipt twice"; fi
 	jq -r '.predicate.chains[] | "\(.from) \(.to) \(.seq) \(.receipt)"' "$tmp/statement" >"$tmp/finals"
 	while read -r _f _t _s _r; do
 		_last=$(awk -v f="$_f" -v t="$_t" '$1 == f && $2 == t { id = $3; n++ } END { print id " " n }' "$3")
