@@ -237,6 +237,15 @@ scripts: build
 demo:
 	@sh scripts/demo.sh
 
+# judge-eval: the judge's basic eval, run by hand with the user's own key in PLACKET_JEV_KEY: every
+# case of CASES against the judge config JUDGE, one line per case and the counts (evals/judge/README.md,
+# docs/adr/0023-judges.md). Not a step of ci: each case is a request to the judge's host.
+CASES ?= evals/judge/cases.jsonl
+.PHONY: judge-eval
+judge-eval:
+	@[ -n "$(JUDGE)" ] || { echo "judge-eval: give JUDGE=<a judge's config>"; exit 2; }; \
+		go run ./cmd/judge-eval "$(JUDGE)" "$(CASES)"
+
 # red-green-tests: every test the change adds or changes fails without its code and passes with it,
 # and no test is removed or skipped unexplained (docs/rules/tests.md#red-green-tests). Not a step of ci: it
 # needs main and scratch worktrees. It judges the commits from the merge base of BASE and HEAD to
