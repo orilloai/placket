@@ -6,6 +6,28 @@ It sits at a handoff between parties that do not fully trust each other: agents,
 
 The first job is ask and log: one system proposes, another applies, and a named person is asked about every proposal. An accepted proposal is released to the applier exactly as it was sent; a changed one is released as the person's version and returned to the proposer; a declined one releases nothing. The deliverable is the signed log of what was asked, answered and released.
 
+## Install
+
+Placket is one binary, for Linux and macOS on amd64 and arm64.
+
+1. Download the release archive for your platform, `placket_<version>_<os>_<arch>.tar.gz`, from the release's page, with `checksums.txt` and its signature beside it.
+2. Check it, as [`docs/release.md`, "For users"](docs/release.md#for-users) says: the signature, the checksum and the provenance.
+3. Unpack it, and put `placket` on your `PATH`:
+
+   ```sh
+   tar -xzf placket_0.1.0_linux_amd64.tar.gz placket
+   mkdir -p ~/.local/bin && mv placket ~/.local/bin/
+   placket version
+   ```
+
+## Quickstart
+
+Each of placket's three uses starts with one `placket init`, which founds its example Accord for you alone and prints every command that comes next. Each guide takes it from there to a receipt you verify, with no judge's key.
+
+1. **Approve before apply**, the one to start with: an agent proposes the text of a file, you accept, change or decline it, and an applier writes only what you accepted. `placket init approve`, then [`docs/guides/approve.md`](docs/guides/approve.md).
+2. **An out-gate on a merge**: an agent proposes a merge on GitHub, you answer it, and an applier merges only what you accepted, at the head commit you accepted. `placket init merge`, then [`docs/guides/merge.md`](docs/guides/merge.md).
+3. **Handoffs between agents**: a planner hands a plan to a coder, and the coder its work to a reviewer, across two mediators, each handoff with a receipt. `placket init handoff`, then [`docs/guides/handoff.md`](docs/guides/handoff.md).
+
 ## What a receipt claims
 
 Each receipt states one decision about one part, under one Accord: the part's salted digest and kind, the two keys, the Accord, the card that names the decision module, and a time. Whoever holds the body and its salt can show that a part is the one judged. `placket show` prints, for each receipt, the line of what it claims, and `placket verify` prints the claim of a verified journal:
@@ -54,7 +76,7 @@ It prints one line per receipt of the party's own, such as `view of <key>: recei
 
 ## Found an Accord
 
-An Accord is founded from five kinds of file: the policy, the mediator, the card, and each party's sealed declaration and binding. Each party seals its own declaration: the founding set holds the seal, and the opening, which holds the terms, goes to whoever runs the window and to no other party. Then each party is shown its own view of the Accord, what will cross for it, and signs it; the Accord is founded when every party has. These are the demo's founding steps, from `scripts/demo.sh`:
+An Accord is founded from five kinds of file: the policy, the mediator, the card, and each party's sealed declaration and binding. Each party seals its own declaration: the founding set holds the seal, and the opening, which holds the terms, goes to whoever runs the window and to no other party. Then each party is shown its own view of the Accord, what will cross for it, and signs it; the Accord is founded when every party has. For one person who holds every key, `placket init` does all of this in one command (Quickstart). Between parties who each hold their own, these are the steps, the demo's, from `scripts/demo.sh`:
 
 ```
 # Keys: the mediator, its operator, the principal who binds the parties, and each party.
