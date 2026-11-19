@@ -212,14 +212,16 @@ LEADER='setpgrp(0, 0) or die "setpgrp: $!\n"; exec @ARGV or die "exec $ARGV[0]: 
 files=$(awk '/^[a-z]/ { in_archives = ($0 == "archives:") } in_archives && $1 == "-" && $2 == "src:" { print $3 }' "$root/.goreleaser.yaml")
 [ -n "$files" ] || { echo "FAIL .goreleaser.yaml's archive names no files"; exit 1; }
 mkdir "$tmp/archive"
-(cd "$root" && CGO_ENABLED=0 go build -trimpath -ldflags "-s -w" -o "$tmp/archive/placket" ./cmd/placket) ||
+# The builds run at the lowest priority: make ci runs the shell tests side by side, and the
+# patterns' runs, each within its own time limit, must not wait on a compile.
+(cd "$root" && CGO_ENABLED=0 nice -n 19 go build -trimpath -ldflags "-s -w" -o "$tmp/archive/placket" ./cmd/placket) ||
 	{ echo "FAIL this tree does not build"; exit 1; }
 for f in $files; do
 	cp "$root/$f" "$tmp/archive/" || { echo "FAIL $f, which the archive holds, is missing"; exit 1; }
 done
 # shellcheck disable=SC2086 # the archive's files, split on purpose
 (cd "$tmp/archive" && tar -czf "$tmp/archive.tar.gz" placket $files) || { echo "FAIL the archive"; exit 1; }
-(cd "$root" && go build -o "$tmp/firsthour" ./tests/firsthour) || { echo "FAIL tests/firsthour does not build"; exit 1; }
+(cd "$root" && nice -n 19 go build -o "$tmp/firsthour" ./tests/firsthour) || { echo "FAIL tests/firsthour does not build"; exit 1; }
 GOCACHE=$(go env GOCACHE) GOMODCACHE=$(go env GOMODCACHE)
 export GOCACHE GOMODCACHE
 
