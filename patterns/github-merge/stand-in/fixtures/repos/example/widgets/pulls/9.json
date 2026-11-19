@@ -2,6 +2,7 @@
   "number": 9,
   "state": "open",
   "merged": false,
+  "merged_at": null,
   "merge_commit_sha": "7f2b4d6a9c1e3f5b8d0a2c4e6f9b1d3a5c7e8f0b",
   "base": {"ref": "main", "repo": {"full_name": "example/widgets"}},
   "head": {"ref": "count-once", "sha": "4d9f2b6a8c0e3d5f7b1a2c4e6f8a0b3d5c7e9f1b"}

@@ -94,19 +94,33 @@ gh: GET repos/example/widgets/pulls/8
 gh: POST repos/example/widgets/issues/8/comments
 gh: POST repos/example/widgets/statuses/<commit>
 
-== 9. the base changed between the read and the merge
+== 9. a pull request merged, or closed, before the applier's merge call
+agent: proposes pull request 7, merged already: ask
+agent: proposes pull request 12, closed: ask
+decider: accepts 2, each released to the applier
+applier: refused pr 7 merged
+applier: refused pr 12 closed
+gh: GET repos/example/widgets/pulls/7
+gh: GET repos/example/widgets/pulls/12
+
+== 10. the base changed between the read and the merge
 agent: proposes pull request 10 into main: ask
-decider: accepts 1, each released to the applier
-applier: apply: pr 10 merged into release, not into the base released: a person must handle it; no comment or status was posted
+agent: proposes pull request 11 into main: ask
+decider: accepts 2, each released to the applier
+applier: refused pr 10 merge
+applier: apply: pr 11 merged into next, not into the base released: a person must handle it; no comment or status was posted
 gh: GET repos/example/widgets/pulls/10
 gh: PUT repos/example/widgets/pulls/10/merge
-gh: GET repos/example/widgets/pulls/10
-gh: statuses on its merge commit: 0
+gh: GET repos/example/widgets/pulls/11
+gh: PUT repos/example/widgets/pulls/11/merge
+gh: GET repos/example/widgets/pulls/11
+gh: pull request 10 merged: no, statuses on its merge commit: 0
+gh: pull request 11 merged: yes, statuses on its merge commit: 0
 
-== 10. the auditor, from the merge commit back to its receipt
+== 11. the auditor, from the merge commit back to its receipt
 auditor: the status names the receipt of the comment's delivery: yes
 auditor: verify exits 0
-verify: valid: 42 receipts signed
+verify: valid: 51 receipts signed
 verify: terms: not checked: the declarations are sealed; with every member's opening, --open checks them
 verify: <the receipt> witnessed: signed by the decider's key, bound to role decider
 verify: body: the part of <the receipt> is the one it names

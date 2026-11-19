@@ -1,0 +1,9 @@
+{
+  "number": 11,
+  "state": "open",
+  "merged": false,
+  "merged_at": null,
+  "merge_commit_sha": "9b4d6f8a1c3e5b7d0f2a4c6e8b1d3f5a7c9e0b2d",
+  "base": {"ref": "main", "repo": {"full_name": "example/widgets"}},
+  "head": {"ref": "split-sum", "sha": "6f1b4d8a0c2e5f7b9d3a4c6e8b0d2f5a7c9e1b3d"}
+}

@@ -2,6 +2,7 @@
   "number": 7,
   "state": "open",
   "merged": false,
+  "merged_at": null,
   "merge_commit_sha": "5d0f2b8a6c4e1f3a9b7d5c2e8f0a4b6c1d3e5f7a",
   "base": {"ref": "main", "repo": {"full_name": "example/widgets"}},
   "head": {"ref": "rename-total", "sha": "1e4c9a7b3d5f2e8c6a0b4d9f1c3e5a7b2d4f6c8e"}

@@ -2,6 +2,7 @@
   "number": 8,
   "state": "open",
   "merged": false,
+  "merged_at": null,
   "merge_commit_sha": "6e1a3c5f8b0d2e4a7c9f1b3d5e7a9c2f4b6d8e0a",
   "base": {"ref": "main", "repo": {"full_name": "example/widgets"}},
   "head": {"ref": "tidy-names", "sha": "3c8e1a5f7b9d2c4e6a8f0b1d3e5c7a9f2b4d6e8a"}

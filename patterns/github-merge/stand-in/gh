@@ -6,6 +6,10 @@
 # input, as one line of state/calls.jsonl. A call it does not know is HTTP 404, printed as gh prints
 # one.
 #
+# The fixture repos/<owner>/<name>/bases lists, one to a line, the branches whose ruleset the
+# applier bypasses; a merge into any other base is refused, HTTP 405, as a ruleset whose bypass list
+# leaves out the applier refuses it. Without that file, every base takes a merge.
+#
 # It plays what others, or GitHub itself, may do between two calls, each once, when a file of
 # state/ names pull request <n>:
 #   push-<n>      holds a commit: the next read returns the pull request as it was and then moves its
@@ -94,11 +98,15 @@ case "$method $*" in
 "PUT pulls "*" merge")
 	[ $# -eq 3 ] || fail 404 "Not Found"
 	pull "$2"
-	[ "$(jq -r .merged "$f")" = false ] || fail 405 "Pull Request is not mergeable"
+	[ "$(jq -r .merged "$f")" = false ] && [ "$(jq -r .state "$f")" = open ] ||
+		fail 405 "Pull Request is not mergeable"
+	bases=$here/fixtures/repos/$repo/bases
+	[ ! -f "$bases" ] || grep -Fqx "$(jq -r .base.ref "$f")" "$bases" ||
+		fail 405 "Repository rule violations found"
 	sha=$(echo "$body" | jq -r '.sha // empty')
 	[ -z "$sha" ] || [ "$sha" = "$(jq -r .head.sha "$f")" ] ||
 		fail 409 "Head branch was modified. Review and try the merge again."
-	jq '.merged = true | .state = "closed"' "$f" >"$f.new"
+	jq '.merged = true | .merged_at = "2026-01-01T00:00:00Z" | .state = "closed"' "$f" >"$f.new"
 	mv "$f.new" "$f"
 	if [ -f "$state/lost-$2" ]; then
 		rm "$state/lost-$2"
@@ -126,11 +134,12 @@ case "$method $*" in
 	echo "$body" | jq -c '{state, context, description, target_url}'
 	;;
 "GET commits "*" pulls")
-	# The merged pull requests whose merge commit is this one.
+	# The merged pull requests whose merge commit is this one, in GitHub's short form of a pull
+	# request, which has merged_at and no merged.
 	[ $# -eq 3 ] || fail 404 "Not Found"
 	mkdir -p "$state/pulls/$repo"
 	find "$state/pulls/$repo" -name '*.json' -exec cat {} + |
-		jq -sc --arg sha "$2" '[.[] | select(.merged and .merge_commit_sha == $sha)]'
+		jq -sc --arg sha "$2" '[.[] | select(.merged and .merge_commit_sha == $sha) | del(.merged)]'
 	;;
 "GET commits "*" statuses")
 	[ $# -eq 3 ] || fail 404 "Not Found"

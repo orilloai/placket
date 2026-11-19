@@ -286,17 +286,37 @@ from=$(calls)
 jq -c 'select(.kind == "merge" and (.data | type == "object" and .pr == 8)) | {delivery: .}' "$state/kept.jsonl" | applier merge "$repo" -
 show_calls "$from"
 
-step "9. the base changed between the read and the merge"
-body "$repo" 10 main "$(jq -r '.head.sha' "$here/stand-in/fixtures/repos/$repo/pulls/10.json")" >retarget.json
-propose "pull request 10 into main" retarget.json
+step "9. a pull request merged, or closed, before the applier's merge call"
+# Pull request 7 merged in step 4, and pull request 12 was closed unmerged: neither is the applier's
+# to merge or to record.
+body "$repo" 7 main "$second" >again.json
+propose "pull request 7, merged already" again.json
+body "$repo" 12 main "$(jq -r '.head.sha' "$here/stand-in/fixtures/repos/$repo/pulls/12.json")" >closed.json
+propose "pull request 12, closed" closed.json
 decide
-echo release >"$here/stand-in/state/retarget-10"
 from=$(calls)
 applier merge "$repo"
 show_calls "$from"
-say gh "statuses on its merge commit: $(gh api "repos/$repo/commits/$(jq -r '.merge_commit_sha' "$here/stand-in/state/pulls/$repo/10.json")/statuses" | jq length)"
 
-step "10. the auditor, from the merge commit back to its receipt"
+step "10. the base changed between the read and the merge"
+# The stand-in's fixture lists main and next as the bases the applier's ruleset lets it merge into.
+# Pull request 10 is retargeted to release, whose ruleset leaves the applier out, and pull request 11
+# to next, another base the applier serves.
+body "$repo" 10 main "$(jq -r '.head.sha' "$here/stand-in/fixtures/repos/$repo/pulls/10.json")" >retarget.json
+propose "pull request 10 into main" retarget.json
+body "$repo" 11 main "$(jq -r '.head.sha' "$here/stand-in/fixtures/repos/$repo/pulls/11.json")" >served.json
+propose "pull request 11 into main" served.json
+decide
+echo release >"$here/stand-in/state/retarget-10"
+echo next >"$here/stand-in/state/retarget-11"
+from=$(calls)
+applier merge "$repo"
+show_calls "$from"
+for n in 10 11; do
+	say gh "pull request $n merged: $(yes_no jq -e '.merged' "$here/stand-in/state/pulls/$repo/$n.json"), statuses on its merge commit: $(gh api "repos/$repo/commits/$(jq -r '.merge_commit_sha' "$here/stand-in/state/pulls/$repo/$n.json")/statuses" | jq length)"
+done
+
+step "11. the auditor, from the merge commit back to its receipt"
 # CHANGE: the merge commit you audit, and the Accord, founding set, acceptances and journal its
 # operator handed you.
 commit=$(gh api "repos/$repo/pulls/7" | jq -r '.merge_commit_sha')
@@ -317,6 +337,6 @@ grep -q "^$receipt witnessed: signed by key $(ref decider), which principal $(re
 	echo "verify: <the receipt> witnessed: signed by the decider's key, bound to role decider"
 grep -q "^body: the part of receipt $receipt is the one it names$" verify.out &&
 	echo "verify: body: the part of <the receipt> is the one it names"
-gh api "repos/$repo/commits/$commit/pulls" | jq -c --arg c "$commit" '[.[] | select(.merged and .merge_commit_sha == $c)] | first' >pull.json
+gh api "repos/$repo/commits/$commit/pulls" | jq -c --arg c "$commit" '[.[] | select(.merged_at != null and .merge_commit_sha == $c)] | first' >pull.json
 say auditor "the body names the pull request merged as this commit, its repo, number, base and head: $(yes_no jq -e --slurpfile p pull.json '
 	.data as $b | $p[0] | .base.repo.full_name == $b.repo and .number == $b.pr and .base.ref == $b.base and .head.sha == $b.head' comment.json)"

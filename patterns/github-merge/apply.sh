@@ -24,10 +24,12 @@
 #   repo        the body's repo is OWNER/NAME, and GitHub's pull request is in it;
 #   pr          GitHub has the pull request the body names;
 #   read        GitHub did not answer the read of the pull request, for a reason other than that;
+#   merged      the pull request is not merged already, by anyone, before the applier's merge call;
+#   closed      it is open;
 #   base, head  its base branch and head commit are the body's;
 #   head-moved  GitHub merges it with sha set to the body's head, which it refuses if the head moved;
-#   merge       GitHub refuses the merge for any other reason, such as the repository's ruleset, and
-#               the pull request read again is not merged.
+#   merge       GitHub refuses the merge for any other reason, such as a ruleset, or it gives no
+#               answer and the pull request read again is not merged.
 # Its receipt id goes into applied.jsonl, synced, before the merge call. Once merged, the applier
 # reads the pull request again, and stops, for a person, unless it merged at the body's head into
 # the body's base. Then the delivery is posted as one comment on the pull request, as a code block so
@@ -121,9 +123,13 @@ apply() {
 		if grep -q '(HTTP 404)' "$tmp/pull.err"; then refuse "$pr" pr; else refuse "$pr" read; fi
 		return
 	fi
+	# Only a merge this release makes gets a record: a pull request merged, or closed, before the
+	# merge call is refused, whoever merged it.
 	for check in \
 		"pr|.number == (\$b.pr)" \
 		"repo|(.base.repo.full_name | ascii_downcase) == (\$b.repo | ascii_downcase)" \
+		"merged|.merged == false and .merged_at == null" \
+		"closed|.state == \"open\"" \
 		"base|.base.ref == \$b.base" \
 		"head|.head.sha == \$b.head"; do
 		if ! jq -e --argjson b "$body" "${check#*|}" "$tmp/pull.json" >/dev/null 2>&1; then
@@ -139,12 +145,17 @@ apply() {
 	if jq -nc --arg method "$method" --arg sha "$head" '{merge_method: $method, sha: $sha}' |
 		gh api -X PUT "repos/$repo/pulls/$pr/merge" --input - >"$tmp/merge.json" 2>"$tmp/merge.err"; then
 		merged=$(jq -r '.sha // empty' "$tmp/merge.json" 2>/dev/null) || merged=
-	elif grep -q '(HTTP 409)' "$tmp/merge.err"; then
-		refuse "$pr" head-moved
-		return
+	else
+		# GitHub's own refusal, HTTP 4xx, merged nothing: whatever the pull request is now, this
+		# release did not merge it.
+		code=$(grep -o '(HTTP [0-9][0-9]*)' "$tmp/merge.err" | tail -n 1 | tr -dc 0-9) || code=
+		case $code in
+		409) refuse "$pr" head-moved; return ;;
+		4??) refuse "$pr" merge; return ;;
+		esac
 	fi
-	# Read again: a merge call that failed may still have merged, and the merge must be the one
-	# released, at its head into its base.
+	# Read again: a merge call with no answer, or a server's error, may still have merged, and the
+	# merge must be the one released, at its head into its base.
 	gh api "repos/$repo/pulls/$pr" >"$tmp/after.json" 2>/dev/null ||
 		stop "pr $pr: the merge call ended and the pull request could not be read again: check by hand whether it merged, and into which base"
 	if ! jq -e '.merged == true' "$tmp/after.json" >/dev/null 2>&1; then
