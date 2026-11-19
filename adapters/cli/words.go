@@ -78,6 +78,20 @@ const (
 	LineAdvised = "advise %s %s %s"
 )
 
+// The lines init prints (docs/adr/0027-placket-init.md): what it founded, then each command for the
+// person to run, the command itself on the line after, indented by two spaces.
+const (
+	LineInitAccord     = "accord %s %s"
+	LineInitParty      = "party %s %s %s"
+	LineInitWindow     = "start the window of %s, and keep it running:"
+	LineInitMCP        = "add placket mcp to Claude Code, serving the agents' labels:"
+	LineInitWatch      = "watch for questions, each printed with the lines that answer it:"
+	LineInitFetch      = "fetch the applier, at %s:"
+	LineInitFetchMain  = "fetch the applier, from main, since this build has no version tag:"
+	LineInitApplyFile  = "run the applier, FILE being the file it writes:"
+	LineInitApplyMerge = "run the applier, OWNER/NAME being the repository it merges in:"
+)
+
 // LineMisstated is what watch says of a question the window showed that is not the part its ask's
 // receipt names: the label and the question's id; it prints nothing else of it.
 const LineMisstated = "misstated %s %s: not the part its ask's receipt names, left out"

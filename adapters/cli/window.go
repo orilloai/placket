@@ -86,7 +86,17 @@ func windowCommand(r *run, args []string) int {
 		}
 	}
 	// With no --socket or --journal the window takes the Accord's defaults: its socket under the
-	// user's runtime directory, made mode 0700, and its journal under the user's state directory.
+	// user's runtime directory, made mode 0700, and its journal under the user's state directory. A
+	// --socket that is the default socket has its directory made too, as the labels config names
+	// it and the runtime directory may be gone since (docs/adr/0027-placket-init.md).
+	if id, err := canonical.TypedHash(set); err == nil && *socket != "" && *socket == local.DefaultSocketWith(r.getenv, id) {
+		if err := local.CheckSocket(*socket); err != nil {
+			return r.failed(err)
+		}
+		if err := local.MakeSocketDir(*socket); err != nil {
+			return r.failed(err)
+		}
+	}
 	if *socket == "" || *dir == "" {
 		id, err := canonical.TypedHash(set)
 		if err != nil {
