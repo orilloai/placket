@@ -281,17 +281,19 @@ applier unasked "$repo"
 say gh "calls: $(($(calls) - from))"
 
 step "8. GitHub fails partway, and the applier stops for a person"
-# The read of pull request 8 fails once, and the merge of pull request 9 merges and answers an error.
-# Pull request 13 meets one failure after another, each of which stops the applier, and each time a
-# person does what README.md, "When it stops partway", says: the applier's credential refused at the
-# read, as an App's token is once its hour is up, and then at the merge call; a merge call answered
-# as made while nothing merged; and the pull request, once merged, not read again. Pull request 14's
-# comment GitHub does not take, after its merge.
-for n in 8 9 13 14; do
+# The read of pull request 8 fails once, which stops the applier rather than refusing each release
+# queued after it. The merge of pull request 9 merges and answers an error, and that of pull request
+# 15 answers an error and merges nothing. Pull request 13 meets one failure after another, each of
+# which stops the applier, and each time a person does what README.md, "When it stops partway", says:
+# the applier's credential refused at the read, as an App's token is once its hour is up, and then at
+# the merge call; a merge call answered as made while nothing merged; and the pull request, once
+# merged, not read again. Pull request 14's comment GitHub does not take, after its merge.
+for n in 8 9 15 13 14; do
 	body "$repo" "$n" main "$(jq -r '.head.sha' "$here/stand-in/fixtures/repos/$repo/pulls/$n.json")" >"fails-$n.json"
 done
 propose "pull request 8, while GitHub cannot be read" fails-8.json
 propose "pull request 9, whose merge's answer is lost" fails-9.json
+propose "pull request 15, whose merge call fails and merges nothing" fails-15.json
 propose "pull request 13, while the applier's credential has lapsed" fails-13.json
 propose "pull request 14, whose comment GitHub does not take" fails-14.json
 decide
@@ -299,10 +301,11 @@ faults() { cat >>"$here/stand-in/state/faults"; }
 faults <<F
 GET repos/$repo/pulls/8 503
 PUT repos/$repo/pulls/9/merge 502+
+PUT repos/$repo/pulls/15/merge 502
 GET repos/$repo/pulls/13 401
 POST repos/$repo/issues/14/comments 500
 F
-for run in 1 2; do
+for run in 1 2 3; do
 	from=$(calls)
 	applier merge "$repo"
 	show_calls "$from"
@@ -316,11 +319,12 @@ again() {
 say pattern "pull request 8, piped again once GitHub answers"
 again 8
 say pattern "pull request 14's comment and status, posted by hand from the kept delivery"
-receipt=$(kept_pr 14 | jq -r '.delivery.receiptId')
+receipt14=$(kept_pr 14 | jq -r '.delivery.receiptId')
 from=$(calls)
-jq -c --arg id "$receipt" 'select(.receiptId == $id) | {body: ("    " + tojson)}' "$state/kept.jsonl" |
+jq -c --arg id "$receipt14" 'select(.receiptId == $id) | {body: ("    " + tojson)}' "$state/kept.jsonl" |
 	gh api -X POST "repos/$repo/issues/14/comments" --input - >hand.json
-jq -nc --arg id "$receipt" --arg url "$(jq -r '.html_url' hand.json)" '{state: "success", context: "placket", description: $id, target_url: $url}' |
+url14=$(jq -r '.html_url' hand.json)
+jq -nc --arg id "$receipt14" --arg url "$url14" '{state: "success", context: "placket", description: $id, target_url: $url}' |
 	gh api -X POST "repos/$repo/statuses/$(merge_of 14)" --input - >/dev/null
 show_calls "$from"
 say gh "statuses on pull request 14's merge commit: $(gh api "repos/$repo/commits/$(merge_of 14)/statuses" | jq length)"
@@ -369,31 +373,50 @@ for n in 10 11; do
 done
 
 step "10. the auditor, from the merge commit back to its receipt"
+# Anyone who may write statuses can set one named placket, and its link: here a newer one on pull
+# request 7's merge commit names pull request 14's receipt and links its record.
+say pattern "a newer status named placket on pull request 7's merge commit, linking pull request 14's record"
+jq -nc --arg id "$receipt14" --arg url "$url14" '{state: "success", context: "placket", description: $id, target_url: $url}' |
+	gh api -X POST "repos/$repo/statuses/$(merge_of 7)" --input - >/dev/null
 # CHANGE: the merge commit you audit, and the Accord, founding set, acceptances and journal its
 # operator handed you.
 commit=$(gh api "repos/$repo/pulls/7" | jq -r '.merge_commit_sha')
 accord=$(cat asked/accord)
-gh api "repos/$repo/commits/$commit/statuses" | jq -c '[.[] | select(.context == "placket")] | first' >status.json
-receipt=$(jq -r '.description' status.json)
-# Anyone who may write statuses can set one named placket, and its link: take only a comment's
-# number, from a link to a pull request of this repository.
-id=$(jq -r --arg p "https://github.com/$repo/pull/" '.target_url | strings
-	| select(ascii_downcase | startswith($p | ascii_downcase))
-	| capture("^https://github\\.com/[^/]+/[^/]+/pull/[0-9]+#issuecomment-(?<id>[0-9]+)$").id' status.json)
-[ -n "$id" ] || { say auditor "the status links no comment on a pull request of $repo"; exit 1; }
-gh api "repos/$repo/issues/comments/$id" | jq -r '.body' >comment.json
-jq -c '.answer' comment.json >answer.json
-say auditor "the status names the receipt of the comment's delivery: $(yes_no jq -e --arg r "$receipt" '.receiptId == $r' comment.json)"
-rc=0
-placket verify --accord "$accord" --founding asked/founding.json --acceptances asked/acceptances.json \
-	--receipts asked/journal --delivery comment.json --answers answer.json >verify.out 2>&1 || rc=$?
-say auditor "verify exits $rc"
+gh api "repos/$repo/commits/$commit/statuses" | jq -c '[.[] | select(.context == "placket")]' >statuses.json
+gh api "repos/$repo/commits/$commit/pulls" | jq -c --arg c "$commit" '[.[] | select(.merged_at != null and .merge_commit_sha == $c)] | first' >pull.json
+say auditor "statuses named placket on the commit, newest first: $(jq length statuses.json)"
+# audit I: follows the auditor's path from the commit's I-th status named placket, newest first, and
+# says why that status is not this merge's record, if it is not.
+audit() {
+	jq -c --argjson i "$1" '.[$i]' statuses.json >status.json
+	receipt=$(jq -r '.description' status.json)
+	# Take only a comment's number, from a link to a pull request of this repository.
+	id=$(jq -r --arg p "https://github.com/$repo/pull/" '.target_url | strings
+		| select(ascii_downcase | startswith($p | ascii_downcase))
+		| capture("^https://github\\.com/[^/]+/[^/]+/pull/[0-9]+#issuecomment-(?<id>[0-9]+)$").id' status.json)
+	[ -n "$id" ] || { say auditor "status $(($1 + 1)): it links no comment on a pull request of $repo"; return 1; }
+	gh api "repos/$repo/issues/comments/$id" 2>/dev/null | jq -r '.body' >comment.json || { say auditor "status $(($1 + 1)): its comment cannot be read"; return 1; }
+	jq -e --arg r "$receipt" '.receiptId == $r' comment.json >/dev/null 2>&1 ||
+		{ say auditor "status $(($1 + 1)): it names another receipt than its comment's delivery"; return 1; }
+	jq -c '.answer' comment.json >answer.json
+	rc=0
+	placket verify --accord "$accord" --founding asked/founding.json --acceptances asked/acceptances.json \
+		--receipts asked/journal --delivery comment.json --answers answer.json >verify.out 2>&1 || rc=$?
+	[ "$rc" -eq 0 ] || { say auditor "status $(($1 + 1)): verify exits $rc"; return 1; }
+	jq -e --slurpfile p pull.json '.data as $b | $p[0] | .base.repo.full_name == $b.repo and .number == $b.pr
+		and .base.ref == $b.base and .head.sha == $b.head' comment.json >/dev/null 2>&1 ||
+		{ say auditor "status $(($1 + 1)): its receipt verifies, and its body names another pull request, base or head"; return 1; }
+}
+i=0
+until audit "$i"; do
+	i=$((i + 1))
+	[ "$i" -lt "$(jq length statuses.json)" ] || { say auditor "no status named placket is this merge's record"; exit 1; }
+done
+say auditor "status $((i + 1)): the status names the receipt of the comment's delivery, and verify exits 0"
 grep '^valid: ' verify.out | sed 's/ by mediator .*//; s/^/verify: /'
 grep '^terms: ' verify.out | sed 's/^/verify: /'
 grep -q "^$receipt witnessed: signed by key $(ref decider), which principal $(ref principal) bound to role decider$" verify.out &&
 	echo "verify: <the receipt> witnessed: signed by the decider's key, bound to role decider"
 grep -q "^body: the part of receipt $receipt is the one it names$" verify.out &&
 	echo "verify: body: the part of <the receipt> is the one it names"
-gh api "repos/$repo/commits/$commit/pulls" | jq -c --arg c "$commit" '[.[] | select(.merged_at != null and .merge_commit_sha == $c)] | first' >pull.json
-say auditor "the body names the pull request merged as this commit, its repo, number, base and head: $(yes_no jq -e --slurpfile p pull.json '
-	.data as $b | $p[0] | .base.repo.full_name == $b.repo and .number == $b.pr and .base.ref == $b.base and .head.sha == $b.head' comment.json)"
+say auditor "the body names the pull request merged as this commit, its repo, number, base and head: yes"

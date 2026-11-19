@@ -80,18 +80,23 @@ gh: calls: 0
 == 8. GitHub fails partway, and the applier stops for a person
 agent: proposes pull request 8, while GitHub cannot be read: ask
 agent: proposes pull request 9, whose merge's answer is lost: ask
+agent: proposes pull request 15, whose merge call fails and merges nothing: ask
 agent: proposes pull request 13, while the applier's credential has lapsed: ask
 agent: proposes pull request 14, whose comment GitHub does not take: ask
-decider: accepts 4, each released to the applier
-applier: refused pr 8 read
-applier: applied pr 9
-applier: apply: pr 13: GitHub refused the applier's credential, HTTP 401, at the read: renew it, then pipe this release again (README.md, "When it stops partway")
+decider: accepts 5, each released to the applier
+applier: apply: pr 8: GitHub did not answer the read of the pull request: once it does, pipe this release again (README.md, "When it stops partway")
 gh: GET repos/example/widgets/pulls/8
+applier: applied pr 9
+applier: refused pr 15 merge
+applier: apply: pr 13: GitHub refused the applier's credential, HTTP 401, at the read: renew it, then pipe this release again (README.md, "When it stops partway")
 gh: GET repos/example/widgets/pulls/9
 gh: PUT repos/example/widgets/pulls/9/merge
 gh: GET repos/example/widgets/pulls/9
 gh: POST repos/example/widgets/issues/9/comments
 gh: POST repos/example/widgets/statuses/<commit>
+gh: GET repos/example/widgets/pulls/15
+gh: PUT repos/example/widgets/pulls/15/merge
+gh: GET repos/example/widgets/pulls/15
 gh: GET repos/example/widgets/pulls/13
 applier: apply: merged pr 14, but its comment or status was not posted: post them by hand (README.md)
 gh: GET repos/example/widgets/pulls/14
@@ -147,9 +152,11 @@ gh: pull request 10 merged: no, statuses on its merge commit: 0
 gh: pull request 11 merged: yes, statuses on its merge commit: 0
 
 == 10. the auditor, from the merge commit back to its receipt
-auditor: the status names the receipt of the comment's delivery: yes
-auditor: verify exits 0
-verify: valid: 57 receipts signed
+pattern: a newer status named placket on pull request 7's merge commit, linking pull request 14's record
+auditor: statuses named placket on the commit, newest first: 2
+auditor: status 1: its receipt verifies, and its body names another pull request, base or head
+auditor: status 2: the status names the receipt of the comment's delivery, and verify exits 0
+verify: valid: 60 receipts signed
 verify: terms: not checked: the declarations are sealed; with every member's opening, --open checks them
 verify: <the receipt> witnessed: signed by the decider's key, bound to role decider
 verify: body: the part of <the receipt> is the one it names

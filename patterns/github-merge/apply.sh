@@ -9,7 +9,9 @@
 # LABEL is the applier's mediator in the labels config; OWNER/NAME is the one repository it serves.
 # It reads the caller's environment and sets nothing up: placket finds the labels config where the
 # caller's XDG_CONFIG_HOME, or its default, says. It fetches each delivery with
-# `placket get --label LABEL --keep --wait 5 --json` and handles it. With `-`, it handles the one
+# `placket get --label LABEL --keep --json` and handles it, and stops at the first fetch that finds
+# the queue empty; with forever set to yes, each fetch waits up to 5 seconds for a release, with
+# `--wait 5`, and an empty one starts the next. With `-`, it handles the one
 # delivery on standard input, as `placket get --json` printed it, and fetches nothing; placket checks
 # none of that input, so feed it only a line of the applier's own kept.jsonl (README.md, "When it
 # stops partway"). For each delivery it prints one line, `applied pr <n>` or `refused pr <n> <reason>`,
@@ -23,15 +25,15 @@
 #   applied     its receipt id is not in applied.jsonl, beside this file;
 #   repo        the body's repo is OWNER/NAME, and GitHub's pull request is in it;
 #   pr          GitHub has the pull request the body names;
-#   read        GitHub did not answer the read of the pull request, for a reason other than that,
-#               or than a refusal of the applier's credential, HTTP 401, which stops the applier
-#               instead, so that a lapsed credential does not refuse every release after it;
 #   merged      the pull request is not merged already, by anyone, before the applier's merge call;
 #   closed      it is open;
 #   base, head  its base branch and head commit are the body's;
 #   head-moved  GitHub merges it with sha set to the body's head, which it refuses if the head moved;
 #   merge       GitHub refuses the merge for any other reason but HTTP 401, such as a ruleset, or it
 #               gives no answer and the pull request read again is not merged.
+# Any other failure to read the pull request, such as a refused credential, HTTP 401, GitHub
+# unavailable, or no answer at all, stops the applier, for a person, so that an outage or a lapsed
+# credential does not refuse every release queued after it.
 # Its receipt id goes into applied.jsonl, synced, before the merge call. Once merged, the applier
 # reads the pull request again, and stops, for a person, unless it merged at the body's head into
 # the body's base. Then the delivery is posted as one comment on the pull request, as a code block so
@@ -42,6 +44,9 @@ set -eu
 role=decider # CHANGE: the role whose accept releases a merge, as your Accord's terms name it
 method=merge # CHANGE: merge, squash or rebase, as the repository allows
 forever=no   # CHANGE: yes, to wait for releases until interrupted; no stops once the queue is empty
+# As it ships, the applier takes only the releases already queued, and waits for none.
+patience=0
+[ "$forever" != yes ] || patience=5
 
 usage() {
 	echo "usage: sh apply.sh LABEL OWNER/NAME [-]" >&2
@@ -138,7 +143,7 @@ apply() {
 		case $(code "$tmp/pull.err") in
 		404) refuse "$pr" pr ;;
 		401) lapsed "$pr" "the read" "pipe this release again" ;;
-		*) refuse "$pr" read ;;
+		*) stop "pr $pr: GitHub did not answer the read of the pull request: once it does, pipe this release again (README.md, \"When it stops partway\")" ;;
 		esac
 		return
 	fi
@@ -208,7 +213,7 @@ if [ "$one" = - ]; then
 fi
 while :; do
 	rc=0
-	placket get --label "$label" --keep --wait 5 --json >"$tmp/get.json" 2>/dev/null || rc=$?
+	placket get --label "$label" --keep --wait "$patience" --json >"$tmp/get.json" 2>/dev/null || rc=$?
 	if [ "$rc" -ne 0 ]; then
 		echo "apply: placket get exited $rc: $(jq -r '.error // empty' "$tmp/get.json" 2>/dev/null)" >&2
 		exit 1
