@@ -1,0 +1,118 @@
+#!/bin/sh
+# A stand-in for gh, GitHub's command line, for this pattern's own run. pattern.sh puts this
+# directory first on PATH, so the applier's `gh api` calls reach it and never GitHub. It answers the
+# calls the applier and the auditor make, from the fixtures beside it, as GitHub answers them; it
+# keeps what they change in state/, beside it, and records each call, its method, its path and its
+# input, as one line of state/calls.jsonl. A call it does not know is HTTP 404, printed as gh prints
+# one.
+#
+# It plays one thing GitHub does on its own: when state/push-<n> holds a commit, the next read of
+# pull request <n> returns it as it was and then moves its head to that commit, as a push landing
+# between the applier's read and its merge would.
+set -euf
+
+here=$(cd "$(dirname "$0")" && pwd)
+state=$here/state
+mkdir -p "$state/comments"
+
+# fail CODE MESSAGE: GitHub's error, its body on standard output and gh's line on standard error, and
+# gh's exit status.
+fail() {
+	jq -nc --arg m "$2" '{message: $m}'
+	echo "gh: $2 (HTTP $1)" >&2
+	exit 1
+}
+
+[ "${1:-}" = api ] || { echo "the stand-in gh knows only gh api" >&2; exit 2; }
+shift
+method=GET path= input=
+while [ $# -gt 0 ]; do
+	case $1 in
+	-X | --method) method=$2; shift 2 ;;
+	--input) input=$2; shift 2 ;;
+	-*) echo "the stand-in gh does not know $1" >&2; exit 2 ;;
+	*) path=$1; shift ;;
+	esac
+done
+body=null
+if [ -n "$input" ]; then
+	if [ "$input" = - ]; then body=$(jq -c .); else body=$(jq -c . "$input"); fi
+fi
+jq -nc --arg method "$method" --arg path "$path" --argjson input "$body" '{$method, $path, $input}' >>"$state/calls.jsonl"
+
+# The path's parts, each of a name's form: letters, digits, '.', '_' and '-', never '.' or '..' alone.
+IFS=/
+# shellcheck disable=SC2086 # split on purpose; globbing is off (set -f)
+set -- $path
+unset IFS
+for part; do
+	case $part in
+	'' | . | .. | *[!A-Za-z0-9._-]*) fail 404 "Not Found" ;;
+	esac
+done
+[ "${1:-}" = repos ] && [ $# -ge 5 ] || fail 404 "Not Found"
+repo=$2/$3
+shift 3
+
+# pull N: sets f to the state file of pull request N, made from its fixture the first time; it fails
+# when the fixtures hold no such pull request.
+pull() {
+	case $1 in *[!0-9]*) fail 404 "Not Found" ;; esac
+	f=$state/pulls/$repo/$1.json
+	if [ ! -f "$f" ]; then
+		[ -f "$here/fixtures/repos/$repo/pulls/$1.json" ] || fail 404 "Not Found"
+		mkdir -p "$state/pulls/$repo"
+		cp "$here/fixtures/repos/$repo/pulls/$1.json" "$f"
+	fi
+}
+
+case "$method $*" in
+"GET pulls "*)
+	[ $# -eq 2 ] || fail 404 "Not Found"
+	pull "$2"
+	cat "$f"
+	if [ -f "$state/push-$2" ]; then
+		jq --arg sha "$(cat "$state/push-$2")" '.head.sha = $sha' "$f" >"$f.new"
+		mv "$f.new" "$f"
+		rm "$state/push-$2"
+	fi
+	;;
+"PUT pulls "*" merge")
+	[ $# -eq 3 ] || fail 404 "Not Found"
+	pull "$2"
+	[ "$(jq -r .merged "$f")" = false ] || fail 405 "Pull Request is not mergeable"
+	sha=$(echo "$body" | jq -r '.sha // empty')
+	[ -z "$sha" ] || [ "$sha" = "$(jq -r .head.sha "$f")" ] ||
+		fail 409 "Head branch was modified. Review and try the merge again."
+	jq '.merged = true | .state = "closed"' "$f" >"$f.new"
+	mv "$f.new" "$f"
+	jq -c '{sha: .merge_commit_sha, merged: true, message: "Pull Request successfully merged"}' "$f"
+	;;
+"POST issues "*" comments")
+	[ $# -eq 3 ] || fail 404 "Not Found"
+	pull "$2"
+	n=$(($(ls "$state/comments" | wc -l) + 1001))
+	echo "$body" | jq -c --arg repo "$repo" --arg pr "$2" --argjson id "$n" '{
+		id: $id, body: .body,
+		url: "https://api.github.com/repos/\($repo)/issues/comments/\($id)",
+		html_url: "https://github.com/\($repo)/pull/\($pr)#issuecomment-\($id)"}' >"$state/comments/$n.json"
+	cat "$state/comments/$n.json"
+	;;
+"GET issues comments "*)
+	[ $# -eq 3 ] && [ -f "$state/comments/$3.json" ] || fail 404 "Not Found"
+	cat "$state/comments/$3.json"
+	;;
+"POST statuses "*)
+	[ $# -eq 2 ] || fail 404 "Not Found"
+	echo "$body" | jq -c --arg sha "$2" '{sha: $sha, state, context, description, target_url}' >>"$state/statuses.jsonl"
+	echo "$body" | jq -c '{state, context, description, target_url}'
+	;;
+"GET commits "*" statuses")
+	[ $# -eq 3 ] || fail 404 "Not Found"
+	touch "$state/statuses.jsonl"
+	jq -sc --arg sha "$2" '[.[] | select(.sha == $sha) | del(.sha)] | reverse' "$state/statuses.jsonl"
+	;;
+*)
+	fail 404 "Not Found"
+	;;
+esac
