@@ -47,7 +47,7 @@ A pattern is a runnable template for one caller's job, under `patterns/<job>/`; 
 
 - A pull request that changes a command a pattern uses keeps that pattern green in the same pull request: its `pattern.sh` and `expected.txt` change with the command.
 - A pattern never scripts around a gap in placket. When a job needs something placket does not do, that gap is an issue to file, not a workaround in a pattern.
-- A pattern depends only on the `placket` binary and `jq` on `PATH`, never on another file of this repository, so `patterns/` can move to a repository of its own as it is.
+- A pattern depends only on the `placket` binary and `jq` on `PATH`, never on another file of this repository, so `patterns/` can move to a repository of its own as it is. The one exception is `gh api`, for `github-merge` alone. Beside its `pattern.sh`, a pattern may hold `apply.sh`, the applier alone, which its `pattern.sh` calls, and a stand-in for a tool outside placket with its fixtures (`patterns/README.md`).
 
 ## Commits
 

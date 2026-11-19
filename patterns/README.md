@@ -21,12 +21,16 @@ Each pattern is a directory `patterns/<job>/`, named for the caller's job in low
   - `## When to use it`: when this pattern fits, and when another one or none does.
   - `## What it relies on`: the sections of `spec/protocol.md` it relies on, by number and title.
   - `## What it claims`: the claim lines and the scope line it leans on, quoted as Placket prints them, so that nobody reads more into the pattern than Placket claims.
-- `pattern.sh`, the template. It is a POSIX `sh` script that uses Placket's command line and `jq`, beside the shell's own utilities, and nothing else. Every line a caller changes for their own use carries the comment `# CHANGE`, with what to put there. As it is, it runs from start to end on invented data: it makes its own keys, terms and founding set in the directory it runs in, starts its own window on a socket under `$TMPDIR`, does its job, and stops its window before it exits, on failure too.
+- `pattern.sh`, the template. It is a POSIX `sh` script that uses Placket's command line and `jq`, beside the shell's own utilities, and nothing else but the one exception below. Every line a caller changes for their own use carries the comment `# CHANGE`, with what to put there. As it is, it runs from start to end on invented data: it makes its own keys, terms and founding set in the directory it runs in, starts its own window on a socket under `$TMPDIR`, does its job, and stops its window before it exits, on failure too.
 - `expected.txt`, exactly what a run of `pattern.sh` prints, standard output and standard error together. A run prints the same each time, so a pattern prints no key, hash, salt or time: it picks what it shows with `jq`.
 
-A pattern may also hold data files of its own, such as `shadow-judge/judge.json`, which its `pattern.sh` reads from its own directory.
+A pattern may also hold:
 
-A pattern depends on nothing else: only the `placket` binary and `jq` on `PATH`, and its own files, never a file elsewhere in this repository. So `patterns/` can move to a repository of its own as it is.
+- data files of its own, such as `shadow-judge/judge.json`, which its `pattern.sh` reads from its own directory;
+- `apply.sh`, the applier alone, for a pattern whose job is to act on what Placket released. It takes what it serves as arguments, sets nothing up, reads the caller's environment, and marks the lines a caller changes `# CHANGE`, as `pattern.sh` does. `pattern.sh` sets up the invented data and calls it, so a person's own copy needs only `apply.sh`;
+- a stand-in for a tool outside Placket that the pattern calls, with the fixtures it answers from. `pattern.sh` puts the stand-in first on `PATH` on a line marked `# CHANGE`, so `make ci` runs the pattern against the stand-in and a copy used for real calls the real tool.
+
+A pattern depends on nothing else: only the `placket` binary and `jq` on `PATH`, and its own files, never a file elsewhere in this repository. So `patterns/` can move to a repository of its own as it is. There is one exception: `github-merge` also calls `gh api`, GitHub's command line, since merging on GitHub is its job.
 
 ## How make ci runs them
 
