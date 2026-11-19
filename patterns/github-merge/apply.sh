@@ -23,13 +23,15 @@
 #   applied     its receipt id is not in applied.jsonl, beside this file;
 #   repo        the body's repo is OWNER/NAME, and GitHub's pull request is in it;
 #   pr          GitHub has the pull request the body names;
-#   read        GitHub did not answer the read of the pull request, for a reason other than that;
+#   read        GitHub did not answer the read of the pull request, for a reason other than that,
+#               or than a refusal of the applier's credential, HTTP 401, which stops the applier
+#               instead, so that a lapsed credential does not refuse every release after it;
 #   merged      the pull request is not merged already, by anyone, before the applier's merge call;
 #   closed      it is open;
 #   base, head  its base branch and head commit are the body's;
 #   head-moved  GitHub merges it with sha set to the body's head, which it refuses if the head moved;
-#   merge       GitHub refuses the merge for any other reason, such as a ruleset, or it gives no
-#               answer and the pull request read again is not merged.
+#   merge       GitHub refuses the merge for any other reason but HTTP 401, such as a ruleset, or it
+#               gives no answer and the pull request read again is not merged.
 # Its receipt id goes into applied.jsonl, synced, before the merge call. Once merged, the applier
 # reads the pull request again, and stops, for a person, unless it merged at the body's head into
 # the body's base. Then the delivery is posted as one comment on the pull request, as a code block so
@@ -80,6 +82,19 @@ stop() {
 	exit 1
 }
 
+# code FILE: the HTTP status of the error gh printed into FILE, or nothing.
+code() { grep -o '(HTTP [0-9][0-9]*)' "$1" | tail -n 1 | tr -dc 0-9 || :; }
+
+# lapsed N WHAT THEN: GitHub refused the applier's credential at WHAT, for pull request N; the
+# applier stops, for a person to renew it (custody.md, step 4) and then do THEN.
+lapsed() { stop "pr $1: GitHub refused the applier's credential, HTTP 401, at $2: renew it, then $3 (README.md, \"When it stops partway\")"; }
+
+# A branch's name as git takes one (git check-ref-format): no space, control character, '~', '^',
+# ':', '?', '*', '[' or '\'; no '..', '//' or '@{'; no part that starts with '.' or ends with '.lock';
+# and neither '/' nor '.' at its end, nor '/' at its start, nor '@' alone.
+ref='^[^\x00-\x20\x7f~^:?*\[\\]+$'
+bad='\.\.|//|@\{|(^|/)\.|\.lock(/|$)|[/.]$|^/|^@$'
+
 # The longest comment GitHub takes, less the code block's indent.
 most=65532
 
@@ -89,7 +104,7 @@ apply() {
 	n=$(jq -r '.delivery.data | if type == "object" then .pr else null end
 		| if type == "number" and . >= 1 and . == floor and . < 1e9 then floor | tostring else "-" end' "$d" 2>/dev/null) || n=-
 	[ -n "$n" ] || n=-
-	if ! jq -e --argjson most "$most" '.delivery | .kind == "merge" and .text == null and .raw == null
+	if ! jq -e --argjson most "$most" --arg ref "$ref" --arg bad "$bad" '.delivery | .kind == "merge" and .text == null and .raw == null
 		and (.receiptId | type == "string" and test("^sha256:[0-9a-f]{64}$"))
 		and (.messageId | type == "string" and test("^[A-Za-z0-9._:-]{1,128}$"))
 		and (.re == null or (.re | type == "string" and test("^sha256:[0-9a-f]{64}$")))
@@ -97,7 +112,7 @@ apply() {
 		and (.data | type == "object" and keys == ["base", "head", "pr", "repo"])
 		and (.data.repo | type == "string" and test("^[A-Za-z0-9._-]+/[A-Za-z0-9._-]+$"))
 		and (.data.pr | type == "number" and . >= 1 and . == floor and . < 1e9)
-		and (.data.base | type == "string" and test("^[A-Za-z0-9._/-]+$"))
+		and (.data.base | type == "string" and length <= 255 and test($ref) and (test($bad) | not))
 		and (.data.head | type == "string" and test("^([0-9a-f]{40}|[0-9a-f]{64})$"))' "$d" >/dev/null 2>&1; then
 		refuse "$n" body
 		return
@@ -120,7 +135,11 @@ apply() {
 	head=$(jq -r '.delivery.data.head' "$d")
 
 	if ! gh api "repos/$repo/pulls/$pr" >"$tmp/pull.json" 2>"$tmp/pull.err"; then
-		if grep -q '(HTTP 404)' "$tmp/pull.err"; then refuse "$pr" pr; else refuse "$pr" read; fi
+		case $(code "$tmp/pull.err") in
+		404) refuse "$pr" pr ;;
+		401) lapsed "$pr" "the read" "pipe this release again" ;;
+		*) refuse "$pr" read ;;
+		esac
 		return
 	fi
 	# Only a merge this release makes gets a record: a pull request merged, or closed, before the
@@ -148,8 +167,8 @@ apply() {
 	else
 		# GitHub's own refusal, HTTP 4xx, merged nothing: whatever the pull request is now, this
 		# release did not merge it.
-		code=$(grep -o '(HTTP [0-9][0-9]*)' "$tmp/merge.err" | tail -n 1 | tr -dc 0-9) || code=
-		case $code in
+		case $(code "$tmp/merge.err") in
+		401) lapsed "$pr" "the merge call, which merged nothing" "remove its receipt id's line from applied.jsonl and pipe it again" ;;
 		409) refuse "$pr" head-moved; return ;;
 		4??) refuse "$pr" merge; return ;;
 		esac

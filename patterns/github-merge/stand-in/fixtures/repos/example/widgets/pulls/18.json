@@ -1,0 +1,9 @@
+{
+  "number": 18,
+  "state": "open",
+  "merged": false,
+  "merged_at": null,
+  "merge_commit_sha": "a724a52c575901fe39e11f9ed09b2421ccbaf2ab",
+  "base": {"ref": "main", "repo": {"full_name": "example/widgets"}},
+  "head": {"ref": "change-18", "sha": "9cc0c1ce41e6046a59104f86bb9d1009342284af"}
+}
