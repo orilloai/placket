@@ -1,0 +1,117 @@
+{
+  "accord": "sha256:7479b3bc0dc9ba1bc128c604691a11f252a32ad7bd746600ecd10aeabaa186e4",
+  "answers": [],
+  "expect": {
+    "conforms": true,
+    "module": true,
+    "terms": "not-checked",
+    "unmatched": 0,
+    "unwitnessed": 0,
+    "viewed": 1,
+    "witnessed": 0
+  },
+  "kernel": "sha256:a8755bef6ff188c2dc6b74377a73c6a49d612fc44915675db9d2795bb5b99475",
+  "operation": "conform",
+  "receipts": [
+    {
+      "receipt": {
+        "payload": "eyJfdHlwZSI6Imh0dHBzOi8vaW4tdG90by5pby9TdGF0ZW1lbnQvdjEiLCJwcmVkaWNhdGUiOnsiYWNjb3JkIjoic2hhMjU2Ojc0NzliM2JjMGRjOWJhMWJjMTI4YzYwNDY5MWExMWYyNTJhMzJhZDdiZDc0NjYwMGVjZDEwYWVhYmFhMTg2ZTQiLCJhdCI6IjIwMjYtMTEtMTJUMDk6MDA6MDBaIiwiYnkiOiJ0ZXJtcyIsImNhcmQiOiJzaGEyNTY6NDdlOGFmNmU0NmE2MzY1NzExNmM1NTI2MzhmOTE1NWZjOWJmMmQzYTU4ODU0MGZhMWYxOTU1OGVhNjQ2ZmRiNiIsImVudmVsb3BlIjp7Imhhc2giOiJzaGEyNTY6MDhjMWM1ZjcyNjVlODAzYjM3ZjBiNzk1NzIyZGM4MmJlM2M5ZmNkN2VmYzliYTJkMWNmYTgxMjJjNTlhNTEyYyIsInNlbmRlciI6ImVkMjU1MTk6YTgwNTg2Mjc5YmExN2M1MzYwYjAyOTAxOGJmMDI1YmUwMTY5ZmRiMDIwODdlNzczMDE3NzRjOTllZWQ5MjExNyIsInNlcSI6MX0sImZyb20iOiJlZDI1NTE5OmE4MDU4NjI3OWJhMTdjNTM2MGIwMjkwMThiZjAyNWJlMDE2OWZkYjAyMDg3ZTc3MzAxNzc0Yzk5ZWVkOTIxMTciLCJraW5kIjoiY3Jvc3NpbmciLCJtZWRpYXRvciI6ImVkMjU1MTk6ODQyNTRmOWQ1OTNiMGY3ODExYjE4YzAwYjY1NmE3MGZlMWE5NTk1ZWQzNTNjNzMyODZlYTgzZDMwMDIyNmVkMyIsInJlYXNvbiI6Im5vLW1hdGNoIiwic2VxIjoxLCJ0byI6ImVkMjU1MTk6N2NmMzViMzZiOWQ1N2M2MmI5ZjNkNWJlMmViNGQzOTE0N2FmYTFiNzYyNWNkMDAzMjQ0MzUyMzI1NGRmM2JlYSIsInZlcmRpY3QiOiJibG9jayJ9LCJwcmVkaWNhdGVUeXBlIjoiaHR0cHM6Ly9wbGFja2V0LnRlY2gvcmVjZWlwdC8wLjEiLCJzdWJqZWN0IjpbeyJkaWdlc3QiOnsic2FsdGVkLXNoYTI1NiI6IjNjOTYwM2QwZjBmYjkzMmQwNDZhNjMxNTY4MDI0NGJiOWI4ZmNmOWYzNDFkN2FjZTI3Y2NlMjNlNjdhYWJmMDIifSwibmFtZSI6InNrZXRjaCJ9XX0=",
+        "payloadType": "application/vnd.in-toto+json",
+        "signatures": [
+          {
+            "keyid": "ed25519:84254f9d593b0f7811b18c00b656a70fe1a9595ed353c73286ea83d300226ed3",
+            "sig": "pIfhtviqut/a22hiCPuAFkscij4C2ki1so2F0TV1jRvlapWRvpZEsYYXXbJd+f/NjwhI2JIxZM9G0ZX60eaPCw=="
+          }
+        ]
+      }
+    }
+  ],
+  "spec": "0.1",
+  "tests": "verify-2, composition-2: B's sketch to A, which no term of B's selects, blocked no-match, conforms",
+  "vector": "conform-view/a-give-with-no-row-blocked-no-match",
+  "view": {
+    "accord": "sha256:7479b3bc0dc9ba1bc128c604691a11f252a32ad7bd746600ecd10aeabaa186e4",
+    "answers": [],
+    "crossings": [
+      {
+        "counterpart": "ed25519:375dea8c4519dbae84fc9eb513e97eb4b693968ef37d52ac10da7b79250c6a22",
+        "dir": "get",
+        "kind": "changed-version",
+        "outcome": "crosses",
+        "roles": [
+          "decider"
+        ]
+      },
+      {
+        "counterpart": "ed25519:7cf35b36b9d57c62b9f3d5be2eb4d39147afa1b7625cd0032443523254df3bea",
+        "dir": "get",
+        "kind": "memo",
+        "outcome": "blocked",
+        "roles": [
+          "proposer"
+        ]
+      },
+      {
+        "counterpart": "ed25519:7cf35b36b9d57c62b9f3d5be2eb4d39147afa1b7625cd0032443523254df3bea",
+        "dir": "get",
+        "kind": "note",
+        "outcome": "crosses",
+        "roles": [
+          "proposer"
+        ]
+      },
+      {
+        "counterpart": "ed25519:7cf35b36b9d57c62b9f3d5be2eb4d39147afa1b7625cd0032443523254df3bea",
+        "dir": "get",
+        "kind": "plan",
+        "outcome": "blocked",
+        "roles": [
+          "proposer"
+        ]
+      },
+      {
+        "counterpart": "ed25519:7cf35b36b9d57c62b9f3d5be2eb4d39147afa1b7625cd0032443523254df3bea",
+        "dir": "get",
+        "kind": "proposal",
+        "outcome": "asked",
+        "roles": [
+          "proposer"
+        ],
+        "timeout": 3600,
+        "to": [
+          "role:decider"
+        ]
+      },
+      {
+        "counterpart": "ed25519:7cf35b36b9d57c62b9f3d5be2eb4d39147afa1b7625cd0032443523254df3bea",
+        "dir": "get",
+        "judges": [
+          {
+            "name": "jev",
+            "use": "decide"
+          }
+        ],
+        "kind": "report",
+        "outcome": "asked",
+        "roles": [
+          "proposer"
+        ],
+        "timeout": 3600,
+        "to": [
+          "role:decider"
+        ]
+      },
+      {
+        "counterpart": "ed25519:7cf35b36b9d57c62b9f3d5be2eb4d39147afa1b7625cd0032443523254df3bea",
+        "dir": "give",
+        "kind": "note",
+        "outcome": "crosses",
+        "roles": [
+          "proposer"
+        ]
+      }
+    ],
+    "salt": "18afd8cee3d8005b581183f51269a6bc65814b88474c7861d0dc3a697c9d0445",
+    "viewer": "ed25519:a80586279ba17c5360b029018bf025be0169fdb02087e77301774c99eed92117"
+  }
+}
