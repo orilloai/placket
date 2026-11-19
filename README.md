@@ -52,6 +52,14 @@ placket verify --accord "$accord" --receipts journal --founding founding.json --
 
 It prints one line per receipt of the party's own, such as `view of <key>: receipts.jsonl line 1 receipt <id> matches give proposal to <key>: ask`, and then `view of <key>: every receipt of its own, 13, matches the view it accepted`. A receipt that does not match exits 1 and names its line; a view that is not the one the party accepted is `error founding acceptance-view`. It does not read the closings a party signs as an answerer on questions it neither asked nor received, nor crossings between two other parties.
 
+A receiver that holds only a delivery, as `placket get --json` saved it, and the founding set checks that delivery without the journal:
+
+```
+placket verify --accord "$accord" --founding founding.json --delivery delivery.json
+```
+
+For a release, it prints `<id> signed, its question not checked: key <key>, which principal <key> bound to role decider, signed the call`, and the body line. The receipt is the mediator's, the body is the part it names, and the deciding key signed the call that the receipt names. Which question that call answered, and for an accept which text it signed, rest on the mediator.
+
 ## Found an Accord
 
 An Accord is founded from five kinds of file: the policy, the mediator, the card, and each party's sealed declaration and binding. Each party seals its own declaration: the founding set holds the seal, and the opening, which holds the terms, goes to whoever runs the window and to no other party. Then each party is shown its own view of the Accord, what will cross for it, and signs it; the Accord is founded when every party has. These are the demo's founding steps, from `scripts/demo.sh`:

@@ -111,6 +111,7 @@ const (
 	LineSupersedes        = "supersedes accord %s close %s"
 	LineChainStart        = "chain %s to %s not checked before seq %d"
 	LineWitnessed         = "%s witnessed: signed by key %s, which principal %s bound to role %s"
+	LineSigned            = "%s signed, its question not checked: key %s, which principal %s bound to role %s, signed the call"
 	LineUnwitnessed       = "%s unwitnessed: only the mediator says a key holding role %s answered"
 	LineUnwitnessedCancel = "%s unwitnessed: only the mediator says the asker cancelled"
 	LineByJudge           = "%s judge: the mediator says judge %s of the card decided"

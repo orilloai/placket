@@ -136,6 +136,11 @@ func firstAt(list [][]byte) string {
 // its viewer accepted is tool error founding acceptance-view; a receipt that does not match exits 1
 // with every line; and --view beside the viewer's own --open is a usage error, since the opening
 // checks the viewer's terms themselves.
+//
+// With --delivery and a founding set and no --receipts, it checks the delivery alone (verify-5,
+// docs/adr/0027-verify-a-delivery-alone.md): the receipts are the delivery's receipt, as a subset,
+// and the one call given is the delivery's answer, each in canonical form as conform.Body reads them.
+// --subset, --answers, --view and --superseded-by are then usage errors.
 func verifyCommand(r *run, args []string) int {
 	fs := flags("verify")
 	med, dir, setPath := fs.String("mediator", "", "the mediator"), fs.String("receipts", "", "journal directory"), fs.String("founding", "", "the founding set")
@@ -146,8 +151,13 @@ func verifyCommand(r *run, args []string) int {
 	var opens many
 	fs.Var(&opens, flagOpen, "a member's opening, once per opening, for a dispute")
 	viewFile := fs.String(flagView, "", "a member's own view, as it kept it, to check its receipts against")
-	if !r.parse(fs, args, "receipts") || (*med == "") == (*accordFlag == "") || (*accordFlag != "" && *setPath == "") ||
-		(*successor != "" && *accordFlag == "") || ((*accFile != "" || len(opens) > 0 || *viewFile != "") && *setPath == "") {
+	if !r.parse(fs, args) {
+		return r.tool(codeUsage)
+	}
+	alone := *dir == "" && *deliveryFile != ""
+	if (!alone && !r.required(fs, "receipts")) || (*med == "") == (*accordFlag == "") || (*accordFlag != "" && *setPath == "") ||
+		(*successor != "" && *accordFlag == "") || ((*accFile != "" || len(opens) > 0 || *viewFile != "") && *setPath == "") ||
+		(alone && (*setPath == "" || *subset || *answersFile != "" || *viewFile != "" || *successor != "")) {
 		return r.tool(codeUsage)
 	}
 	var viewBytes []byte
@@ -158,12 +168,32 @@ func verifyCommand(r *run, args []string) int {
 		}
 		viewBytes = trimLF(b)
 	}
-	list, err := journal.ReadReceipts(*dir, r.stderr)
-	if err != nil {
-		return r.failed(err)
+	var deliveryBytes []byte
+	if *deliveryFile != "" {
+		b, err := os.ReadFile(*deliveryFile)
+		if err != nil {
+			return r.tool(codeFile, "delivery")
+		}
+		deliveryBytes = bytes.TrimSuffix(b, []byte{'\n'})
+		if d, ok := member(deliveryBytes, "delivery"); ok {
+			deliveryBytes = d
+		}
 	}
-	answers, err := journal.ReadAnswers(*dir, r.stderr)
-	if err != nil {
+	var list, answers [][]byte
+	var err error
+	if alone {
+		// The delivery alone (verify-5): its receipt is the list, a subset, and its answer the one call.
+		receipt, ok := member(deliveryBytes, "receipt")
+		if !ok || canonicalJSON(receipt) == nil {
+			return r.tool(codeDelivery)
+		}
+		list, *subset = [][]byte{canonicalJSON(receipt)}, true
+		if call, ok := member(deliveryBytes, "answer"); ok && canonicalJSON(call) != nil {
+			answers = [][]byte{canonicalJSON(call)}
+		}
+	} else if list, err = journal.ReadReceipts(*dir, r.stderr); err != nil {
+		return r.failed(err)
+	} else if answers, err = journal.ReadAnswers(*dir, r.stderr); err != nil {
 		return r.failed(err)
 	}
 	if *answersFile != "" {
@@ -175,17 +205,6 @@ func verifyCommand(r *run, args []string) int {
 			if len(l) > 0 {
 				answers = append(answers, l)
 			}
-		}
-	}
-	var deliveryBytes []byte
-	if *deliveryFile != "" {
-		b, err := os.ReadFile(*deliveryFile)
-		if err != nil {
-			return r.tool(codeFile, "delivery")
-		}
-		deliveryBytes = bytes.TrimSuffix(b, []byte{'\n'})
-		if d, ok := member(deliveryBytes, "delivery"); ok {
-			deliveryBytes = d
 		}
 	}
 	var set, acceptances []byte
@@ -402,6 +421,11 @@ func verifyCommand(r *run, args []string) int {
 		switch {
 		case d.By.Decider == receipts.ByTerms:
 			terms++
+		case d.Signed && a != nil:
+			outside++
+			l := signedLine(a, st[d.Index], d, answers)
+			fmt.Fprintln(r.stderr, l)
+			decisions = append(decisions, map[string]any{memberReceiptID: st[d.Index].ID, "line": l})
 		case !d.Checked && *subset:
 			outside++
 		case a != nil:
@@ -517,6 +541,22 @@ func decisionLine(a *setup.Accord, s receipts.Statement, d conform.Decision, ans
 		return fmt.Sprintf(LineUnwitnessedCancel, s.ID)
 	}
 	return fmt.Sprintf(LineUnwitnessed, s.ID, strings.Join(a.Roles(answerer), ","))
+}
+
+// signedLine is the line verify prints for a receipt outside the subset's questions whose call fits
+// it as far as the receipt shows (verify-3, commands-8): the key that signed the call, and who bound
+// it to which roles, with its question not checked. conform has matched the call in its canonical
+// bytes.
+func signedLine(a *setup.Accord, s receipts.Statement, d conform.Decision, answers [][]byte) string {
+	for _, b := range answers {
+		if c, err := canonical.Form(b); err != nil || !bytes.Equal(c, b) || answer.ID(b) != d.By.Answer {
+			continue
+		}
+		if c, err := answer.Read(b); err == nil {
+			return fmt.Sprintf(LineSigned, s.ID, c.From, a.Principal(c.From), strings.Join(a.Roles(c.From), ","))
+		}
+	}
+	return ""
 }
 
 // putModule puts the operator and the decision module of a founded set: operator, runs, module and

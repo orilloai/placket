@@ -66,6 +66,7 @@ verify-1
 verify-2
 verify-3
 verify-4
+verify-5
 receipt-7
 conformance-vectors-1
 conformance-vectors-2

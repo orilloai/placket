@@ -149,6 +149,30 @@ func main() {
 		changed["text"] = "The proposal proposal-1!"
 		e.delivery = changed
 		add(e.vector("a-body-changed", "verify-2 row 5: the released proposal's delivery with its text changed is body, at its receipt's index", fails("body", 3)))
+		delivered := s.Delivered(kit.Applier)[1]
+		e.delivery = without(delivered, "answer")
+		add(e.vector("a-body-without-its-call", "verify-2 row 5: the released proposal's delivery without the call its receipt names is body, at its receipt's index", fails("body", 3)))
+		e = of(askAndLog, s, call)
+		e.receipts = e.receipts[3:]
+		e.subset = true
+		add(e.vector("a-release-alone-signed", "verify-3: the accept's release receipt alone, as a subset, with the decider's call, conforms; the call is signed, an accept asking for release under this Accord from a member, and the release is unwitnessed, its question not in the list", conforms(0, 1, 0, true)))
+		e = alone(askAndLog, delivered)
+		add(e.vector("a-delivery-checked-alone", "verify-5, verify-3: the applier's delivery of the released proposal, checked alone, its receipt as a subset and its answer as the call, conforms with its body the part and its answer signed and unwitnessed", kit.Obj{
+			"conforms": true, "witnessed": 0, "unwitnessed": 1, "unmatched": 0, "module": true, "body": true}))
+		e = alone(askAndLog, without(delivered, "answer"))
+		add(e.vector("a-delivery-alone-without-its-call", "verify-5: the same delivery checked alone without its answer is body at index 0", fails("body", 0)))
+	}
+	{
+		// A change released to the applier: its release receipt alone is a change from the receipt's
+		// from, naming its digest and asking for release (verify-3).
+		s := scene(askAndLog)
+		q := s.Give(at(0), kit.Proposer, 1, message(askAndLog, "proposal-1", "proposal", kit.Applier), kit.Applier, "escalate", "maybe")
+		call := s.Resolve(kit.Answer{At: at(1), Question: q, Action: "changed", Text: "Rename total to amount_due.", Salt: salt("changed"),
+			By: decider, Verdict: passOK, Release: true, Released: &passOK})
+		e := of(askAndLog, s, call)
+		e.receipts = e.receipts[2:]
+		e.subset = true
+		add(e.vector("a-change-release-alone-signed", "verify-3: a change's release receipt alone, as a subset, with the decider's call, conforms; the call is a change from the receipt's from naming its digest and asking for release, and the release is unwitnessed", conforms(0, 1, 0, true)))
 	}
 	{
 		// Row 1 before row 2: a receipt of another Accord from a stranger.
@@ -210,7 +234,7 @@ func main() {
 	}
 	{
 		// The witness row (row 4), each on an accept with release of the worked question.
-		witness := func(name, tests string, call kit.Obj, release bool, released *kit.Verdict, expect kit.Obj) {
+		witness := func(name, tests string, call kit.Obj, release bool, released *kit.Verdict, expect kit.Obj, release0 ...bool) {
 			s := scene(askAndLog)
 			q := s.Give(at(0), kit.Proposer, 1, message(askAndLog, "proposal-1", "proposal", kit.Applier), kit.Applier, "escalate", "maybe")
 			c := call
@@ -222,7 +246,13 @@ func main() {
 			}
 			s.Resolve(kit.Answer{At: at(1), Question: q, Action: "accepted", Text: "accepted", Salt: salt("witness"),
 				By: decider, Verdict: passOK, Release: release, Released: released, Call: c})
-			add(of(askAndLog, s, c).vector(name, tests, expect))
+			e := of(askAndLog, s, c)
+			if len(release0) > 0 {
+				// The release receipt alone, as a subset: its question is outside it (verify-3).
+				e.receipts = e.receipts[2:]
+				e.subset = true
+			}
+			add(e.vector(name, tests, expect))
 		}
 		digest := kit.Sum(kit.FromHex(salt("witness")), []byte("accepted"))
 		forged := kit.Obj{"accord": kit.HashOf(askAndLog), "action": "accepted", "digest": digest, "from": decider.Ref, "release": true, "sig": "proposer"}
@@ -230,6 +260,9 @@ func main() {
 		other := kit.Obj{"accord": kit.HashOf(compose), "action": "accepted", "digest": digest, "from": decider.Ref, "release": true, "sig": "decider"}
 		witness("a-call-of-another-accord", "verify-2 row 4: the matched call names another Accord's id: witness", other, true, &passOK, fails("witness", 1))
 		witness("a-release-the-call-did-not-ask-for", "verify-2 row 4: a release receipt whose matched call has release false: witness, at the release", nil, false, &passOK, fails("witness", 2))
+		witness("a-release-alone-call-signed-by-another-key", "verify-3: the release receipt alone, as a subset, whose matched call names the decider but the proposer's key signed: witness, at index 0", kit.Copy(forged).(kit.Obj), true, &passOK, fails("witness", 0), true)
+		witness("a-release-alone-call-of-another-accord", "verify-3: the release receipt alone, as a subset, whose matched call names another Accord's id: witness, at index 0", kit.Copy(other).(kit.Obj), true, &passOK, fails("witness", 0), true)
+		witness("a-release-alone-the-call-did-not-ask-for", "verify-3: the release receipt alone, as a subset, whose matched call has release false: witness, at index 0", nil, false, &passOK, fails("witness", 0), true)
 		witness("a-release-missing", "verify-2 row 4: a passing accept whose matched call has release true and no release receipt after it: witness, at the accept", nil, true, nil, fails("witness", 1))
 	}
 	for _, receiver := range []kit.Key{kit.Decider, kit.Proposer} {
@@ -264,6 +297,23 @@ func main() {
 		add(e.vector("close-a-close-of-another-accord", "verify-2 rows 0 and 1, close-4: a close that names another Accord, the only receipt of the list, founds the set at its at and is accord at its index", fails("accord", 0)))
 	}
 	kit.Main("conform", vs)
+}
+
+// without is a copy of a delivery without one member.
+func without(d kit.Obj, name string) kit.Obj {
+	c := kit.Copy(d).(kit.Obj)
+	delete(c, name)
+	return c
+}
+
+// alone is a delivery checked alone (verify-5): its receipt the list, as a subset, and its answer, when
+// it has one, the one call given.
+func alone(set kit.Obj, d kit.Obj) evidence {
+	e := evidence{set: set, accord: kit.HashOf(set), receipts: []kit.Obj{d["receipt"].(kit.Obj)}, kernel: kit.KernelHash, subset: true, delivery: d}
+	if c, ok := d["answer"].(kit.Obj); ok {
+		e.calls = []kit.Obj{c}
+	}
+	return e
 }
 
 // keyOf is the key a witness vector's call is signed by, named in its sig until it is signed.

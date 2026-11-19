@@ -58,12 +58,15 @@ const (
 
 // A Decision is one receipt's decider, by its index in the list (receipt-11, verify-2): its by, the
 // witness of an answer's receipt, and whether its rows were checked, false for a receipt outside the
-// subset's questions.
+// subset's questions. Signed is true for such a receipt, an answer's, when a call given fits it as
+// far as the receipt shows (verify-3, docs/adr/0027-verify-a-delivery-alone.md); its witness is still
+// unwitnessed, since its question is not checked.
 type Decision struct {
 	Index   int
 	By      receipts.By
 	Witness Witness
 	Checked bool
+	Signed  bool
 }
 
 // A Report is what Check found (verify-2): the mediator the receipts were verified under, the
@@ -335,6 +338,10 @@ func (c *checker) receipt(i int) Code {
 		d.Witness = Unwitnessed
 		if _, has := c.calls[p.By.Answer]; has {
 			c.used[p.By.Answer] = true
+			d.Signed = c.signed(s)
+			if !d.Signed && failed == "" {
+				failed = CodeWitness
+			}
 		}
 	}
 	// Row 4a: a receipt of the viewer's against its view. It is read even after a failed row, so
@@ -482,6 +489,43 @@ func (c *checker) witness(i int, s receipts.Statement, place receipts.Place, q *
 	return Witnessed, true
 }
 
+// signed is row 4 for a receipt outside the subset's questions, as far as the receipt shows
+// (verify-3): the call given whose typed hash is its by reads, names this Accord, is from a member,
+// and takes the action the receipt records. A crossing receipt an answer decided is an accept's
+// release, so its call is an accept that asks for release. A resolution of kind answer or
+// changed-version is an accept or a change from the receipt's from, naming its digest, and a change
+// addressed to anyone but the asker, the sender of the envelope it echoes, is its release. A decline
+// or a cancel is read by its reason, a cancel from the asker. The question, and an accept's digest on
+// its release, are what the receipt does not show.
+func (c *checker) signed(s receipts.Statement) bool {
+	p := s.Predicate
+	call, err := answer.Read(c.calls[p.By.Answer])
+	if err != nil || call.Accord != c.e.Accord || !c.a.Member(call.From) {
+		return false
+	}
+	asker := p.Envelope.Sender
+	switch {
+	case p.Kind == receipts.KindCrossing:
+		return call.Action == answer.Accepted && call.Release
+	case p.Reason == receipts.ReasonDeclined:
+		return call.Action == answer.Declined
+	case p.Reason == receipts.ReasonCancelled:
+		return call.Action == answer.Cancelled && call.From == asker
+	}
+	want := answer.Accepted
+	switch s.Subject.Name {
+	case receipts.NameAnswer:
+	case receipts.NameChanged:
+		want = answer.Changed
+	default:
+		return false
+	}
+	if call.Action != want || call.Digest != s.Subject.Digest || call.From != p.From {
+		return false
+	}
+	return want == answer.Accepted || p.To == asker || call.Release
+}
+
 // answerers are the members whose bindings give them a role of roles, in actor-reference order
 // (section 6).
 func (c *checker) answerers(roles []string) []string {
@@ -507,10 +551,12 @@ func contains(l []string, s string) bool {
 }
 
 // Body is row 5 of verify-2, and the only place it runs: the delivery's receipt is one of the
-// report's, by its id, and the salted digest of the delivery's body under its salt is that receipt's
-// subject digest, of its kind (crossing-3). It reads only the delivery and the receipt the report
-// verified. A delivery whose receipt is not in the report fails body at index -1, and one whose body
-// or salt does not make the digest at its receipt's index.
+// report's, by its id; the salted digest of the delivery's body under its salt is that receipt's
+// subject digest, of its kind (crossing-3); and the delivery's answer is there exactly when an answer
+// decided the receipt, and is then, in canonical form, the call its by names (maybe-12). It reads
+// only the delivery and the receipt the report verified. A delivery whose receipt is not in the
+// report fails body at index -1, and one whose body, salt or answer does not fit at its receipt's
+// index.
 func Body(r Report, delivery []byte) error {
 	v, _, err := shape.Decode(delivery)
 	o, ok := v.(shape.Object)
@@ -537,6 +583,11 @@ func Body(r Report, delivery []byte) error {
 	}
 	salt, ok := crossing.Salt(o["salt"])
 	if !ok || o["kind"] != any(st.Subject.Name) {
+		return fail
+	}
+	call, has := o["answer"]
+	byAnswer := st.Predicate.By.Decider == receipts.ByAnswer
+	if has != byAnswer || (has && answer.ID(shape.Encode(call)) != st.Predicate.By.Answer) {
 		return fail
 	}
 	form, bodies := "", 0
