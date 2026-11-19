@@ -1,0 +1,201 @@
+#!/bin/sh
+# A stand-in for GitHub's command line, `gh api`, for the pattern's run in make ci. It answers the
+# calls apply.sh and the auditor's path make from the pull requests and repositories in fixtures/,
+# keeps what the calls change in state/, beside it, and records each call, its method, its path and
+# its input, in state/calls.jsonl. It reaches no network and reads no credential.
+#
+#   gh api [-X METHOD] [--input FILE|-] [--paginate] PATH
+#
+# Like gh, it prints the answer's JSON on standard output and exits 0, or, for an HTTP error, prints
+# `gh: <message> (HTTP <code>)` on standard error and exits 1; with no answer at all it prints
+# `error connecting to api.github.com` and exits 1. As GitHub's API does, it reads an owner and a
+# name without regard to case, and lists a commit's statuses newest first, 30 to a page, every page
+# only with --paginate.
+#
+# A run arranges what GitHub does next in state/events, one line each, `METHOD PATH WHAT [ARG]`, the
+# first line that matches a call being used once and removed:
+#   fail CODE      the call is answered with HTTP CODE, or with no answer when CODE is none, and does
+#                  nothing;
+#   lose CODE      the call does what it does, and is then answered as fail CODE is;
+#   hollow         a merge call is answered as made, and merges nothing;
+#   push SHA       the call is answered, and the pull request's head then moves to SHA, as a push
+#                  landing after it would;
+#   retarget REF   the call is answered, and the pull request's base then becomes REF;
+#   pass           the call is answered as it would be.
+# fixtures/repos/OWNER/NAME/bases lists the bases the repository's ruleset lets the applier merge
+# into; a merge into any other is refused, HTTP 405, as a ruleset refuses it.
+set -eu
+
+here=${0%/*}
+fixtures=$here/fixtures
+state=$here/state
+[ -d "$state/statuses" ] || mkdir -p "$state/pulls" "$state/comments" "$state/statuses"
+
+[ "${1:-}" = api ] || { echo "gh: the stand-in answers only gh api" >&2; exit 1; }
+shift
+method=GET input= paginate=no path=
+while [ $# -gt 0 ]; do
+	case $1 in
+	-X) method=$2; shift 2 ;;
+	--input) input=$2; shift 2 ;;
+	--paginate) paginate=yes; shift ;;
+	-*) echo "gh: the stand-in takes no flag $1" >&2; exit 1 ;;
+	*) [ -z "$path" ] || { echo "gh: two paths" >&2; exit 1; }; path=$1; shift ;;
+	esac
+done
+[ -n "$path" ] || { echo "gh: no path" >&2; exit 1; }
+body=null
+if [ -n "$input" ]; then
+	if [ "$input" = - ]; then body=$(cat); else body=$(cat "$input"); fi
+fi
+# The input is one line of JSON, as jq -c writes it.
+printf '{"method":"%s","path":"%s","input":%s}\n' "$method" "$path" "$body" >>"$state/calls.jsonl"
+# With GH_STAND_IN_SAY set, it also says each call on file descriptor 3, as the pattern's run shows
+# them, a commit's hash shown as <commit>.
+if [ -n "${GH_STAND_IN_SAY:-}" ]; then
+	case $path in
+	*/statuses/*) echo "gh: $method ${path%/*}/<commit>" >&3 ;;
+	*) echo "gh: $method $path" >&3 ;;
+	esac
+fi
+
+# Every part of the path is a plain name, so no call reaches outside fixtures/ or state/.
+case $path in
+*[!A-Za-z0-9._/-]* | */../* | ../* | */.. | /*) echo "gh: Not Found (HTTP 404)" >&2; exit 1 ;;
+esac
+
+# The event this call meets, if any: the first line of state/events for its method and path.
+what= arg=
+if [ -s "$state/events" ]; then
+	line=$(grep -n -m 1 -F -e "$method $path " "$state/events" || :)
+	if [ -n "$line" ]; then
+		sed -i.bak "${line%%:*}d" "$state/events" && rm -f "$state/events.bak"
+		set -- ${line#*:}
+		what=$3 arg=${4:-}
+	fi
+fi
+
+# error CODE: the answer is HTTP CODE, or none.
+error() {
+	case $1 in
+	none) echo "error connecting to api.github.com" >&2 ;;
+	401) echo "gh: Bad credentials (HTTP 401)" >&2 ;;
+	403) echo "gh: Resource not accessible by integration (HTTP 403)" >&2 ;;
+	404) echo "gh: Not Found (HTTP 404)" >&2 ;;
+	405) echo "gh: Pull Request is not mergeable (HTTP 405)" >&2 ;;
+	409) echo "gh: Head branch was modified. Review and try the merge again. (HTTP 409)" >&2 ;;
+	429) echo "gh: API rate limit exceeded (HTTP 429)" >&2 ;;
+	*) echo "gh: Server Error (HTTP $1)" >&2 ;;
+	esac
+	exit 1
+}
+[ "$what" != fail ] || error "$arg"
+
+# The repository, its owner and name in lower case, as GitHub finds it, and the rest of the path.
+rest=${path#repos/}
+owner=${rest%%/*}
+rest=${rest#*/}
+name=${rest%%/*}
+rest=${rest#"$name"}
+rest=${rest#/}
+repo=$owner/$name
+case $repo in *[A-Z]*) repo=$(printf '%s' "$repo" | tr 'A-Z' 'a-z') ;; esac
+[ -f "$fixtures/repos/$repo.json" ] || error 404
+
+# pull N: the file of pull request N, copied from its fixture on first use.
+pull() {
+	f=$state/pulls/$repo/$1.json
+	if [ ! -f "$f" ]; then
+		[ -f "$fixtures/repos/$repo/pulls/$1.json" ] || error 404
+		mkdir -p "$state/pulls/$repo"
+		cp "$fixtures/repos/$repo/pulls/$1.json" "$f"
+	fi
+	echo "$f"
+}
+# change FILE FILTER: FILE is changed by the jq FILTER, with $arg set.
+change() { jq --arg arg "$arg" "$2" "$1" >"$1.new" && mv "$1.new" "$1"; }
+# after FILE: what a push or a retarget does once the call is answered.
+after() {
+	case $what in
+	push) change "$1" '.head.sha = $arg' ;;
+	retarget) change "$1" '.base.ref = $arg' ;;
+	esac
+}
+# answer: the call's answer has been printed; a lost answer is an error all the same.
+answer() { [ "$what" != lose ] || error "$arg"; }
+
+case $method/$rest in
+GET/)
+	cat "$fixtures/repos/$repo.json"
+	;;
+GET/pulls/*)
+	f=$(pull "${rest#pulls/}")
+	cat "$f"
+	after "$f"
+	;;
+PUT/pulls/*/merge)
+	n=${rest#pulls/}
+	n=${n%/merge}
+	f=$(pull "$n")
+	# GitHub refuses a pull request no longer open, then a head that is not the sha given, then a
+	# base whose ruleset leaves the applier out.
+	base=$(jq -r --argjson b "$body" 'if .state != "open" or .merged then "-" elif .head.sha != $b.sha then "-moved" else .base.ref end' "$f")
+	case $base in
+	-) error 405 ;;
+	-moved) error 409 ;;
+	esac
+	grep -Fqx -e "$base" "$fixtures/repos/$repo/bases" || error 405
+	if [ "$what" != hollow ]; then
+		change "$f" '.state = "closed" | .merged = true | .merged_at = "2026-01-01T00:00:00Z"'
+	fi
+	echo "{\"sha\":\"$(jq -r '.merge_commit_sha' "$f")\",\"merged\":true,\"message\":\"Pull Request successfully merged\"}"
+	answer
+	;;
+POST/issues/*/comments)
+	n=${rest#issues/}
+	n=${n%/comments}
+	pull "$n" >/dev/null
+	id=1000
+	[ ! -f "$state/comments/last" ] || read -r id <"$state/comments/last"
+	id=$((id + 1))
+	echo "$id" >"$state/comments/last"
+	jq -nc --argjson id "$id" --argjson b "$body" --arg url "https://github.com/$repo/pull/$n" \
+		'{id: $id, html_url: "\($url)#issuecomment-\($id)", body: $b.body, user: {login: "applier[bot]"}}' >"$state/comments/$id.json"
+	cat "$state/comments/$id.json"
+	answer
+	;;
+GET/issues/comments/*)
+	f=$state/comments/${rest#issues/comments/}.json
+	[ -f "$f" ] || error 404
+	cat "$f"
+	;;
+POST/statuses/*)
+	sha=${rest#statuses/}
+	f=$state/statuses/$sha.jsonl
+	jq -c --argjson b "$body" -n '$b | {state, context, description, target_url}' >>"$f"
+	tail -n 1 "$f"
+	answer
+	;;
+GET/commits/*/statuses)
+	sha=${rest#commits/}
+	sha=${sha%/statuses}
+	f=$state/statuses/$sha.jsonl
+	[ -f "$f" ] || : >"$f"
+	# Newest first, 30 to a page; with --paginate every page, one JSON array after another, as gh
+	# prints them.
+	jq -c -s --arg all "$paginate" 'reverse | [range(0; if length == 0 then 1 else length end; 30) as $i | .[$i:$i + 30]]
+		| if $all == "yes" then .[] else .[0] end' "$f"
+	;;
+GET/commits/*/pulls)
+	sha=${rest#commits/}
+	sha=${sha%/pulls}
+	# The short form GitHub lists a commit's pull requests in: no merged member, merged_at instead.
+	for f in "$fixtures/repos/$repo/pulls"/*.json; do
+		f=$(pull "$(basename "$f" .json)")
+		jq -c --arg sha "$sha" 'select(.merge_commit_sha == $sha and .merged_at != null) | del(.merged)' "$f"
+	done | jq -c -s .
+	;;
+*)
+	error 404
+	;;
+esac
