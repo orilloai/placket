@@ -8,7 +8,30 @@ The first job is ask and log: one system proposes, another applies, and a named 
 
 ## Install
 
-Placket is one binary, for Linux and macOS on amd64 and arm64.
+Placket is one binary, for Linux and macOS on amd64 and arm64. Any one of these lines installs it:
+
+- **The install script**, which checks what it downloads, as [`docs/release.md`, "Install in one line"](docs/release.md#install-in-one-line) says, and puts `placket` in `~/.local/bin`:
+
+  ```sh
+  curl -fsSL https://github.com/orilloai/placket/releases/latest/download/install.sh | sh
+  ```
+
+  `curl | sh` runs the script before anything checks it. To check the script itself first, against the release's signed `checksums.txt`:
+
+  ```sh
+  base=https://github.com/orilloai/placket/releases/latest/download
+  curl -fsSLO "$base/install.sh" -O "$base/checksums.txt" -O "$base/checksums.txt.sigstore.json"
+  cosign verify-blob --bundle checksums.txt.sigstore.json \
+    --certificate-identity https://github.com/orilloai/placket/.github/workflows/release.yml@refs/heads/main \
+    --certificate-oidc-issuer https://token.actions.githubusercontent.com checksums.txt
+  grep ' install.sh$' checksums.txt | shasum -a 256 -c
+  sh install.sh
+  ```
+
+- **Homebrew**, on macOS or Linux: `brew install --cask orilloai/tap/placket`.
+- **Claude Code**, through placket's plugin, whose skills install placket with your yes, set it up with you, and suggest where it could gate what your agents do: `/plugin marketplace add orilloai/placket`, then `/plugin install placket@placket`, then ask for `placket-setup`. Any other agent that reads `SKILL.md` files takes the same skills, as [`skills/README.md`](skills/README.md) says.
+
+Or by hand:
 
 1. Download the release archive for your platform, `placket_<version>_<os>_<arch>.tar.gz`, from the release's page, with `checksums.txt` and its signature beside it.
 2. Check it, as [`docs/release.md`, "For users"](docs/release.md#for-users) says: the signature, the checksum and the provenance.

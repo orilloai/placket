@@ -1,0 +1,11 @@
+{
+  "name": "placket",
+  "description": "Skills that install placket and set it up with you, and find where it could gate what your agents do.",
+  "author": {
+    "name": "Orillo Labs"
+  },
+  "homepage": "https://github.com/orilloai/placket",
+  "repository": "https://github.com/orilloai/placket",
+  "license": "Apache-2.0",
+  "keywords": ["placket", "receipts", "approval", "agents"]
+}

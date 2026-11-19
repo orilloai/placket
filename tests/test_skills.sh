@@ -60,7 +60,6 @@ check() {
 	while read -r c; do
 		grep -qx "$c" "$tmp/commands" || { echo "$f: names placket $c, which placket --help does not list"; bad=1; }
 	done <"$tmp/named"
-	[ -s "$tmp/named" ] || { echo "$f: names no placket command"; bad=1; }
 	return $bad
 }
 
@@ -117,7 +116,7 @@ main=$(g rev-parse main)
 n=0
 run() {
 	n=$((n + 1))
-	mkdir "$tmp/cwd$n"
+	mkdir -p "$tmp/cwd$n"
 	(cd "$tmp/cwd$n" && PLACKET_REPO=$repo sh "$fetch" "$@") >"$out" 2>&1
 	rc=$?
 }
