@@ -8,7 +8,7 @@ This guide starts with `placket` on your `PATH`. The [install section of the REA
 
 - An **Accord** is the agreement between the parties of one mediator. Here there are two: `handoff-plan`, between the planner and the coder, and `handoff-review`, between the coder and the reviewer. Each has its own window, journal and keys, and the coder holds one key in each.
 - Each party's **terms** say what may cross to or from it. The planner's terms let it give a `plan` to the coder, and the coder's let it get one; in the other Accord, the coder gives its `work` to the reviewer. A part of a kind no term names is blocked. Each party's terms are sealed from the others; each consents to its own view of what will cross.
-- An **ask** holds a part until a role the terms name answers it, with accept, change or decline. These terms ask nobody, so every handoff passes or is blocked at once; the `approve` guide shows an ask.
+- An **ask** holds a part until a role the terms name answers it, with accept, change or decline. These terms ask nobody, so every handoff passes or is blocked at once; [the `approve` guide](approve.md) shows an ask.
 - A **receipt** is the mediator's signed statement of one decision about one part. Each window keeps its own in its journal, and each delivery a party fetches carries its receipt.
 - To **verify** is to check the receipts: that the mediator signed every one, and, with every party's terms, that every decision is one the Accord let its decider make.
 
@@ -58,9 +58,9 @@ Each prints `valid: <n> receipts signed by mediator <key>` and `conforms: every 
 
 ## Next
 
-- `approve` (`docs/guides/approve.md`) asks a person before an agent's proposal is applied, and `merge` (`docs/guides/merge.md`) gates a merge on GitHub the same way.
-- To retire a key, close each Accord and found its successor: `docs/guides/rotation.md`.
+- [`approve`](approve.md) asks a person before an agent's proposal is applied, and [`merge`](merge.md) gates a merge on GitHub the same way.
+- To retire a key, close each Accord and found its successor: [the rotation guide](rotation.md).
 
 ## Last, and optional: a judge that advises
 
-A judge acts only where the terms would ask, so in these Accords, which ask nobody, it has nothing to read. To have Jev, called with your own key from `PLACKET_JEV_KEY`, advise on a handoff, the handoff is asked first: both sides' terms for its kind become a `maybe` asked of a role a person holds, listing `"judges":[{"name":"<name>","use":"advise"}]`, the card is `placket card --default --judge judge.json`, the Accord is founded again, and its window runs with `--judge judge.json`. `patterns/shadow-judge/` does each step, and runs as it is with no key.
+A judge acts only where the terms would ask, so in these Accords, which ask nobody, it has nothing to read. To have Jev, called with your own key from `PLACKET_JEV_KEY`, advise on a handoff, the handoff is asked first: both sides' terms for its kind become a `maybe` asked of a role a person holds, listing `"judges":[{"name":"<name>","use":"advise"}]`, the card is `placket card --default --judge judge.json`, the Accord is founded again, and its window runs with `--judge judge.json`. [`patterns/shadow-judge/`](../../patterns/shadow-judge/) does each step, and runs as it is with no key.

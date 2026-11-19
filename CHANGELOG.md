@@ -12,8 +12,9 @@ The first release. Placket mediates the parts that cross between parties under t
 
 ### Try it in one command
 
-- `placket init approve`, `merge` or `handoff` founds an example Accord for one person in one command: every key, mode 0600, in a directory of mode 0700; each party's sealed terms, binding and acceptance of its own view; the founding set; and one labels config entry per party, `<label>-<party>`. It prints each Accord's id and parties, the window's command line, the `claude mcp add` line of the agents, the `placket watch` line of the person, and the lines that fetch the example's applier at the binary's version tag and run it. It never writes into a directory that holds anything (`dir-not-empty`) or over a label the config holds (`label-taken`).
+- `placket init approve`, `merge` or `handoff` founds an example Accord for one person in one command: every key, mode 0600, in a directory of mode 0700; each party's sealed terms, binding and acceptance of its own view; the founding set; and one labels config entry per party, `<label>-<party>`. It prints each Accord's id and parties, the window's command line, the `claude mcp add` line of the agents, the `placket watch` line of the person, and the lines that fetch the example's applier, pinned to the commit of the binary's version tag, and run it. It never writes into a directory that holds anything (`dir-not-empty`) or over a label the config holds (`label-taken`).
 - Three guides, `docs/guides/approve.md`, `merge.md` and `handoff.md`, take each example from `placket init` to a verified receipt, with no judge's key; the README gains an install section and a quickstart that leads with approve before apply.
+- `placket version` prints which build the binary is: its version, its commit and the commit's time when the build carries them, the Go release it was built with, and the decision module's version and hash.
 - `patterns/local-apply/`: an applier writes a file only with the text the deciding role accepted, or the version it changed it to, and nothing for a decline.
 
 ### Found an Accord

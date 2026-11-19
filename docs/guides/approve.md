@@ -1,6 +1,12 @@
 # Approve before apply
 
-An agent proposes the text of a file. You accept it, change it or decline it. Only what you accepted, or your changed version, is written to the file, and every step has a receipt you can verify. This is placket's first example, and the one to try first.
+An agent proposes the text of a file. You accept it, change it or decline it. The applier writes only what you accepted, or your changed version, to the file, and every step has a receipt you can verify. This is placket's first example, and the one to try first.
+
+## What this setup does not stop
+
+`placket init approve` puts every key in one directory of your own account: your deciding key, `approve-person.key`, beside the agent's, the applier's and the mediator's. Any process that runs as you can read them all (threat model, L5). So, as set up here, the gate records and checks each decision, but it does not hold against an agent that runs commands in your account, as a Claude Code agent with a shell does: such an agent can read your key, answer its own proposal with `placket answer --label approve-person`, and run the applier. Use this setup to see the flow and to gate an agent that cannot run commands as you.
+
+For a gate that holds against the agent, run the agent in an operating system account of its own, and keep the window, your key and the applier in another account that the agent's cannot read, as step 3 of the [custody checklist](../../patterns/github-merge/custody.md) describes for a merge. The agent then reaches the window only through `placket mcp`.
 
 This guide starts with `placket` on your `PATH`. The [install section of the README](../../README.md#install) says how to get it there. Nothing here needs a judge's key.
 
@@ -54,7 +60,7 @@ Then run one of the lines `watch` printed: `placket answer` accepts, `placket ch
 
 ## 5. Apply
 
-Fetch the applier with the line `init` printed. It takes `patterns/local-apply/apply.sh` from the repository at your build's version tag, or from `main` for a build with none. Read it before you run it: it is short. Then run it with the file to write in place of `FILE`:
+Fetch the applier with the line `init` printed. It takes [`patterns/local-apply/apply.sh`](../../patterns/local-apply/apply.sh) from the repository at the commit of your build's version tag, or from `main` for a build with no version tag, which can change at any time. Nothing checks the file it fetches, so read it before you run it: it is short. Then run it with the file to write in place of `FILE`:
 
 ```sh
 sh ~/.config/placket/approve/applier/apply.sh approve-applier notes.txt
@@ -76,10 +82,10 @@ It prints, among its lines, `valid: <n> receipts signed by mediator <key>` and `
 
 ## Next
 
-- `merge` (`docs/guides/merge.md`) gates an agent's merge on GitHub the same way, and `handoff` (`docs/guides/handoff.md`) hands work between agents across two mediators.
-- To retire a key, close the Accord and found its successor: `docs/guides/rotation.md`.
-- To found an Accord between parties who do not share a machine, each sealing its own terms and accepting its own view, see the README's "Found an Accord".
+- [`merge`](merge.md) gates an agent's merge on GitHub the same way, and [`handoff`](handoff.md) hands work between agents across two mediators.
+- To retire a key, close the Accord and found its successor: [the rotation guide](rotation.md).
+- To found an Accord between parties who do not share a machine, each sealing its own terms and accepting its own view, see [the README's "Found an Accord"](../../README.md#found-an-accord).
 
 ## Last, and optional: a judge that advises
 
-A judge can read each proposal beside you and decide nothing. Jev, called with your own key from `PLACKET_JEV_KEY`, is v0.1.0's judge. The card lists the judge, and both sides' terms list it to `advise` on the asked kind, so the Accord is founded again: the agent's and the applier's terms for `proposal` each become a `maybe` asked of `role:decider` with `"judges":[{"name":"<name>","use":"advise"}]`, the card is `placket card --default --judge judge.json`, and the window runs with `--judge judge.json`. `patterns/shadow-judge/` does each step, and runs as it is with no key.
+A judge can read each proposal beside you and decide nothing. Jev, called with your own key from `PLACKET_JEV_KEY`, is v0.1.0's judge. The card lists the judge, and both sides' terms list it to `advise` on the asked kind, so the Accord is founded again: the agent's and the applier's terms for `proposal` each become a `maybe` asked of `role:decider` with `"judges":[{"name":"<name>","use":"advise"}]`, the card is `placket card --default --judge judge.json`, and the window runs with `--judge judge.json`. [`patterns/shadow-judge/`](../../patterns/shadow-judge/) does each step, and runs as it is with no key.

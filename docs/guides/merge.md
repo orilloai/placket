@@ -1,6 +1,6 @@
 # An out-gate on a merge
 
-An agent proposes to merge a pull request on GitHub. You accept it, or decline it. The merge happens only through an applier, after placket released it with your accept, and exactly at the head commit you accepted; a receipt records each step, and anyone can follow the merge commit back to it and verify it. This guide sets up `placket init merge` and its applier, `patterns/github-merge/`.
+An agent proposes to merge a pull request on GitHub. You accept it, or decline it. The merge happens only through an applier, after placket released it with your accept, and exactly at the head commit you accepted; a receipt records each step, and anyone can follow the merge commit back to it and verify it. This guide sets up `placket init merge` and its applier, [`patterns/github-merge/`](../../patterns/github-merge/).
 
 This guide starts with `placket` on your `PATH`. The [install section of the README](../../README.md#install) says how to get it there. Nothing here needs a judge's key. The applier also needs GitHub's command line, `gh`, and `jq`.
 
@@ -14,7 +14,7 @@ This guide starts with `placket` on your `PATH`. The [install section of the REA
 
 ## 1. Set up the repository first
 
-The receipt says what the mediator released. That nothing merged any other way rests on the repository's settings: a ruleset that lets only the applier merge, the accounts the agent and the window run in, and the applier's credential. These are setup steps on your repository, which placket neither makes nor checks. Follow every step of the custody checklist, `patterns/github-merge/custody.md`, before the agent merges anything. Until then, the steps below show the flow and protect nothing.
+The receipt says what the mediator released. That nothing merged any other way rests on the repository's settings: a ruleset that lets only the applier merge, the accounts the agent and the window run in, and the applier's credential. These are setup steps on your repository, which placket neither makes nor checks. Follow every step of the [custody checklist](../../patterns/github-merge/custody.md) before the agent merges anything. Until then, the steps below show the flow and protect nothing.
 
 ## 2. Found the Accord
 
@@ -50,7 +50,7 @@ Run the `placket watch` line `init` printed, `placket watch --label merge-person
 
 ## 6. Apply
 
-Fetch the applier with the line `init` printed. It takes `patterns/github-merge/apply.sh` from the repository at your build's version tag, or from `main` for a build with none. Read it, and its `README.md`, before you run it. Then run it, as custody step 4 says, with the repository in place of `OWNER/NAME`:
+Fetch the applier with the line `init` printed. It takes [`patterns/github-merge/apply.sh`](../../patterns/github-merge/apply.sh) from the repository at the commit of your build's version tag, or from `main` for a build with no version tag, which can change at any time. It holds your merge credential and is what lets only accepted merges through, and nothing checks the file it fetches, so read it, and its [`README.md`](../../patterns/github-merge/README.md), before you run it. Then run it, as custody step 4 says, with the repository in place of `OWNER/NAME`:
 
 ```sh
 sh ~/.config/placket/merge/applier/apply.sh merge-applier OWNER/NAME
@@ -68,13 +68,13 @@ placket verify --accord ID --founding "$d/merge/founding.json" --acceptances "$d
 	--receipts "$d/merge/journal" $(for o in "$d"/*.opening.json; do printf ' --open %s' "$o"; done)
 ```
 
-It prints `valid: <n> receipts signed by mediator <key>`, `conforms: every decision is one this Accord let its decider make`, and that your accept was witnessed by your key. An auditor who holds no opening follows a merge commit back to its receipt, as the pattern's README, "The auditor's path", says.
+It prints `valid: <n> receipts signed by mediator <key>`, `conforms: every decision is one this Accord let its decider make`, and that your accept was witnessed by your key. An auditor who holds no opening follows a merge commit back to its receipt, as [the pattern's README](../../patterns/github-merge/README.md), "The auditor's path", says.
 
 ## Next
 
-- `approve` (`docs/guides/approve.md`) is the same flow for a file on your own machine, and `handoff` (`docs/guides/handoff.md`) hands work between agents across two mediators.
-- To retire a key, close the Accord and found its successor: `docs/guides/rotation.md`.
+- [`approve`](approve.md) is the same flow for a file on your own machine, and [`handoff`](handoff.md) hands work between agents across two mediators.
+- To retire a key, close the Accord and found its successor: [the rotation guide](rotation.md).
 
 ## Last, and optional: a judge that advises
 
-A judge can read each merge beside you and decide nothing. Jev, called with your own key from `PLACKET_JEV_KEY`, is v0.1.0's judge. Never list it to `decide` on a merge: a merge cannot be undone, so a person answers every one. To have it `advise`, the card lists the judge and both sides' terms for `merge` list it, so the Accord is founded again: the agent's and the applier's terms for `merge` each become a `maybe` asked of `role:decider` with `"judges":[{"name":"<name>","use":"advise"}]`, the card is `placket card --default --judge judge.json`, and the window runs with `--judge judge.json`. `patterns/shadow-judge/` does each step, and runs as it is with no key.
+A judge can read each merge beside you and decide nothing. Jev, called with your own key from `PLACKET_JEV_KEY`, is v0.1.0's judge. Never list it to `decide` on a merge: a merge cannot be undone, so a person answers every one. To have it `advise`, the card lists the judge and both sides' terms for `merge` list it, so the Accord is founded again: the agent's and the applier's terms for `merge` each become a `maybe` asked of `role:decider` with `"judges":[{"name":"<name>","use":"advise"}]`, the card is `placket card --default --judge judge.json`, and the window runs with `--judge judge.json`. [`patterns/shadow-judge/`](../../patterns/shadow-judge/) does each step, and runs as it is with no key.

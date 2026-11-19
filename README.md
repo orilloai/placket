@@ -24,7 +24,7 @@ Placket is one binary, for Linux and macOS on amd64 and arm64.
 
 Each of placket's three uses starts with one `placket init`, which founds its example Accord for you alone and prints every command that comes next. Each guide takes it from there to a receipt you verify, with no judge's key.
 
-1. **Approve before apply**, the one to start with: an agent proposes the text of a file, you accept, change or decline it, and an applier writes only what you accepted. `placket init approve`, then [`docs/guides/approve.md`](docs/guides/approve.md).
+1. **Approve before apply**, the one to start with: an agent proposes the text of a file, you accept, change or decline it, and an applier writes only what you accepted. `placket init approve`, then [`docs/guides/approve.md`](docs/guides/approve.md). As `init` sets it up, every key is in your own account, so the gate records and checks each decision but does not hold against an agent that can run commands as you; for that, the agent runs in an account of its own, as [the guide says](docs/guides/approve.md#what-this-setup-does-not-stop).
 2. **An out-gate on a merge**: an agent proposes a merge on GitHub, you answer it, and an applier merges only what you accepted, at the head commit you accepted. `placket init merge`, then [`docs/guides/merge.md`](docs/guides/merge.md).
 3. **Handoffs between agents**: a planner hands a plan to a coder, and the coder its work to a reviewer, across two mediators, each handoff with a receipt. `placket init handoff`, then [`docs/guides/handoff.md`](docs/guides/handoff.md).
 
