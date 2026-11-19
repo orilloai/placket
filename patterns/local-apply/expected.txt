@@ -1,0 +1,27 @@
+
+== 1. placket init founds the Accord, and its window starts
+init: approve-agent holds role agent
+init: approve-person holds role decider
+init: approve-applier holds role applier
+window: founded
+
+== 2. the person accepts a proposal, and the applier writes it
+agent: proposes "Hello, world."
+person: accepts
+applied accepted accepted.txt
+accepted.txt: Hello, world.
+
+== 3. the person changes a proposal, and the applier writes the changed text
+agent: proposes "Goodbye, world."
+person: changes it to "Goodbye for now, world."
+applied changed changed.txt
+changed.txt: Goodbye for now, world.
+
+== 4. the person declines a proposal, and nothing is released to the applier
+agent: proposes "Delete everything."
+person: declines
+declined.txt: no file
+
+== 5. the journal verifies, with every opening
+verify: valid: 9 receipts signed by mediator M
+verify: conforms: every decision is one this Accord let its decider make

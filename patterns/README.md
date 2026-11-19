@@ -10,6 +10,7 @@ One line per pattern: its directory, the job it does, and the Placket version it
 
 - `github-merge`: an applier merges a pull request only when placket released a merge of it that the deciding role accepted, at the head commit released, and records the delivery for an auditor. Checked against placket main@a3a1b1a.
 - `guarded-export`: a receiver's guard exports a value only when exactly that value was released to it. Checked against placket main@6620793.
+- `local-apply`: an applier writes a file only with the text the deciding role accepted, or the version it changed it to, and nothing for a decline. Checked against placket 952cc15.
 - `notifier`: each new question an approver may answer runs one command, with its label and id, as it opens. Checked against placket 75a6493.
 - `shadow-judge`: a judge reads each part the terms ask a person about and decides nothing, beside the person's answer. Checked against placket e3972d6.
 

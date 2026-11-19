@@ -86,7 +86,18 @@ func windowCommand(r *run, args []string) int {
 		}
 	}
 	// With no --socket or --journal the window takes the Accord's defaults: its socket under the
-	// user's runtime directory, made mode 0700, and its journal under the user's state directory.
+	// user's runtime directory, made mode 0700, and its journal under the user's state directory. A
+	// --socket that is the default socket has its directory made too, as the labels config names
+	// it and the runtime directory may be gone since (docs/adr/0027-placket-init.md). The environment
+	// is read for it only when the socket's directory is missing.
+	if _, err := os.Stat(filepath.Dir(*socket)); *socket != "" && errors.Is(err, os.ErrNotExist) && isDefaultSocket(r, set, *socket) {
+		if err := local.CheckSocket(*socket); err != nil {
+			return r.failed(err)
+		}
+		if err := local.MakeSocketDir(*socket); err != nil {
+			return r.failed(err)
+		}
+	}
 	if *socket == "" || *dir == "" {
 		id, err := canonical.TypedHash(set)
 		if err != nil {
@@ -133,6 +144,12 @@ func windowCommand(r *run, args []string) int {
 		Keyed:    key != "",
 	})
 	return r.windowError(err)
+}
+
+// isDefaultSocket reports whether socket is the default socket of the Accord the set founds.
+func isDefaultSocket(r *run, set []byte, socket string) bool {
+	id, err := canonical.TypedHash(set)
+	return err == nil && socket == local.DefaultSocketWith(r.getenv, id)
 }
 
 // windowError is the exit of a window that stopped: 0 when it stopped as asked, and otherwise the
