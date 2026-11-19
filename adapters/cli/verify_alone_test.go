@@ -44,8 +44,8 @@ func rewrite(t *testing.T, saved string, set map[string]json.RawMessage) string 
 // line of the release, the body line and the subset's complete line, and with --json the object
 // holds the signed line under decisions. The delivery with its answer left out, or swapped for
 // another call, exits 1 with body; with its receipt's signature changed it is error verify
-// signature; and with no founding set, with --subset, or with neither --receipts nor --delivery, it
-// is a usage error.
+// signature; and with no founding set, with --subset, --answers, --view or --superseded-by, or with
+// neither --receipts nor --delivery, it is a usage error.
 func TestVerifyADeliveryAlone(t *testing.T) {
 	t.Parallel()
 	a, _ := accepted(t)
@@ -131,6 +131,8 @@ func TestVerifyADeliveryAlone(t *testing.T) {
 		"with no founding set": {"verify", "--mediator", a.refs["mediator"], "--delivery", saved},
 		"with --subset":        {"verify", "--accord", a.id, "--founding", founding, "--delivery", saved, "--subset"},
 		"with --answers":       {"verify", "--accord", a.id, "--founding", founding, "--delivery", saved, "--answers", saved},
+		"with --view":          {"verify", "--accord", a.id, "--founding", founding, "--delivery", saved, "--view", saved},
+		"with --superseded-by": {"verify", "--accord", a.id, "--founding", founding, "--delivery", saved, "--superseded-by", founding},
 	} {
 		if r := run(t, env(), args...); r.code != cli.ExitTool || r.stderr != "error usage\n" {
 			t.Fatalf("the delivery alone %s: %v", name, r)

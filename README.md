@@ -58,7 +58,7 @@ A receiver that holds only a delivery, as `placket get --json` saved it, and the
 placket verify --accord "$accord" --founding founding.json --delivery delivery.json
 ```
 
-For a release, it prints `<id> signed, its question not checked: key <key>, which principal <key> bound to role decider, signed the call`, and the body line. The receipt is the mediator's, the body is the part it names, and the deciding key signed the call that the receipt names. Which question that call answered, and for an accept which text it signed, rest on the mediator.
+For a release, it prints `<id> signed, its question not checked: key <key>, which principal <key> bound to role decider, signed the call`, and the body line. The receipt is the mediator's, the body is the part it names, and the deciding key signed the call that the receipt names. Which question that call answered, and for an accept which text it signed, rest on the mediator. So a mediator could attach an earlier accept by the deciding key to a release of another part, and the delivery would still check. An applier keeps the call id of each release it acts on, the receipt's `by.answer`, and refuses a delivery whose call id it already kept; a call it never saw can still be spent once (decision record 0027).
 
 ## Found an Accord
 

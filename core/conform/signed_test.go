@@ -79,6 +79,9 @@ func TestAnOutsideCallThatDoesNotFit(t *testing.T) {
 	changed.Subject = receipts.Subject{Name: receipts.NameChanged, Digest: call.Digest}
 	changeRelease := changed
 	changeRelease.Predicate.To = ptesting.Key(t, "applier").Reference()
+	// A resolution pass ok of the asked part's kind, which no answer decides, with an accept of its digest.
+	ofTheAskedKind := stAccept
+	ofTheAskedKind.Subject = stAsk.Subject
 	accept := func(accord string, release bool) answer.Call {
 		return answer.Call{Accord: accord, Question: call.Question, Action: answer.Accepted, Digest: call.Digest, Release: release}
 	}
@@ -104,6 +107,7 @@ func TestAnOutsideCallThatDoesNotFit(t *testing.T) {
 		"a change to the receiver":             {changeRelease, change(call.Digest, true), "decider", true},
 		"a change to the receiver, no release": {changeRelease, change(call.Digest, false), "decider", false},
 		"a change, of another digest":          {changed, change(strings.Repeat("0", 64), true), "decider", false},
+		"a resolution of the asked kind":       {ofTheAskedKind, answer.Call{Accord: w.accord, Question: call.Question, Action: answer.Accepted, Digest: stAsk.Subject.Digest}, "decider", false},
 		"a decline, by a member":               {declined, answer.Call{Accord: w.accord, Question: call.Question, Action: answer.Declined}, "applier", true},
 		"a decline, by a stranger":             {declined, answer.Call{Accord: w.accord, Question: call.Question, Action: answer.Declined}, "stranger", false},
 		"a decline, an accept's call":          {declined, accept(w.accord, true), "decider", false},
