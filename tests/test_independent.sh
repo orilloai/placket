@@ -8,8 +8,10 @@
 # - Seals (setup-contract-12): every opening an accepted found vector or a view vector gives, its
 #   salt and then its declaration's canonical bytes, against its actor's seal entry.
 # - View hashes (setup-contract-14): every view a view vector expects, against its expected typed
-#   hash, its Accord and its viewer's opening salt; and every acceptance of a found vector whose
-#   member has a view vector of the same Accord, against that view's hash.
+#   hash, its Accord and its viewer's opening salt; every acceptance of a found vector whose
+#   member has a view vector of the same Accord, against that view's hash; and every view a conform
+#   vector gives, against its viewer's acceptance, which must name it unless the vector expects
+#   acceptance-view.
 # - Salted digests (crossing-3): every accepted give's part and every delivery, against its receipt;
 #   and every accepted or changed answer of a resolve step, its salt and its text, against its
 #   resolution receipt and, for a change, its release.
@@ -379,6 +381,18 @@ for f in "$V"/*/*.json; do
 			receiptcheck "$n: receipt $i" "$g" "$tmp/r" "$med"
 			i=$((i + 1))
 		done
+		# A view given (verify-1 row 0a): its typed hash is the view its viewer's acceptance names,
+		# and its Accord is the vector's, but where the vector expects acceptance-view.
+		if jq -e 'has("view")' "$f" >/dev/null; then
+			rebuilt "$n: the view" '.view' "$f" "$tmp/view" || continue
+			h=sha256:$(sha "$tmp/view")
+			signed=$(jq -r '.view.viewer as $v | [.acceptances[] | select(.from == $v) | .view][0] // ""' "$f")
+			same=no
+			if [ "$h" = "$signed" ] && [ "$(jq -r .view.accord "$f")" = "$(jq -r .accord "$f")" ]; then same=yes; fi
+			if [ "$(jq -r '.expect.code // ""' "$f")" = acceptance-view ]; then
+				if [ "$same" = no ]; then counted "$g"; else bad "$n: the view is the one its viewer accepted"; fi
+			elif [ "$same" = yes ]; then counted "$g"; else bad "$n: the view is not the one its viewer accepted"; fi
+		fi
 		if [ "$(jq -r '.expect.conforms // false' "$f")" = true ]; then
 			na=$(jq '.answers | length' "$f")
 			i=0

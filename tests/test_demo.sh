@@ -1,6 +1,7 @@
 #!/bin/sh
 # The worked example's test: it runs scripts/demo.sh, the script behind make demo, in a new
-# directory, and checks that each of its ten steps printed what the step says, in order. Then it
+# directory, and checks that each of its ten steps printed what the step says, in order, each
+# party's check of its own receipts against its view included. Then it
 # verifies the demo journal committed under scripts/demo/, the one the README shows a receipt of, as
 # any party can with its terms sealed and then with every opening,
 # with the binary the run built, and checks that its card names that binary's module.
@@ -101,6 +102,14 @@ want='^== 1\.
 ^operator: terms: checked: every seal opens, and every view is the one its member accepted$
 ^operator: valid: 13 receipts signed by mediator ed25519:[0-9a-f]{64}$
 ^operator: conforms: every decision is one this Accord let its decider make$
+^proposer: view of ed25519:[0-9a-f]{64}: receipts\.jsonl line 1 receipt sha256:[0-9a-f]{64} matches give proposal to ed25519:[0-9a-f]{64}: ask$
+^proposer: view of ed25519:[0-9a-f]{64}: every receipt of its own, 13, matches the view it accepted$
+^proposer: exit 0$
+^applier: view of ed25519:[0-9a-f]{64}: every receipt of its own, 11, matches the view it accepted$
+^applier: exit 0$
+^decider: view of ed25519:[0-9a-f]{64}: receipts\.jsonl line 7 receipt sha256:[0-9a-f]{64} matches give comment to ed25519:[0-9a-f]{64}: pass$
+^decider: view of ed25519:[0-9a-f]{64}: every receipt of its own, 2, matches the view it accepted$
+^decider: exit 0$
 ^verifier: nothing to reconcile$
 ^verifier: proposal,topic,kind,asked_at,answered_at,answer,released_at,comment,answer_signed,answerer,receipts$
 ^verifier: sha256:[0-9a-f]{64},billing,proposal,[^,]*,[^,]*,accepted,[0-9TZ:-]+,,yes,

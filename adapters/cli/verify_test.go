@@ -496,3 +496,93 @@ func TestVerifyRefusesAnOpeningOfNoSeal(t *testing.T) {
 		t.Fatalf("an opening of no member: %v", r)
 	}
 }
+
+// TestVerifyAgainstAView is U1 and U5 at the command line (verify-1 rows 0a and 4a, verify-2,
+// commands-8): with the applier's view as it kept it, and no opening, verify prints after the
+// conforms line one line per receipt of the applier's, each matching its row of proposals from the
+// proposer, and the view line, and exits 0; --json holds the same lines. A view with one byte
+// changed is error founding acceptance-view and prints nothing else. A pass of a kind the applier's
+// view has no row for exits 1, its line and the view line naming it. --view beside the applier's own
+// --open, and --view with no founding set, are usage errors, and a view file not there is error file
+// view.
+func TestVerifyAgainstAView(t *testing.T) {
+	t.Parallel()
+	a, _ := accepted(t)
+	view := filepath.Join(a.state("applier"), "view.json")
+	base := []string{"verify", "--receipts", a.journal(), "--accord", a.id, "--founding", a.founding(), "--view", view}
+	ids := journalIDs(t, a, a.journal())
+	ap, row := a.refs["applier"], fmt.Sprintf(cli.LineViewRowGet, "proposal", a.refs["proposer"], cli.WordAsk)
+	r := run(t, env(), base...)
+	l := r.lines()
+	i := slices.Index(l, cli.LineConformSealed)
+	want := []string{cli.LineConformSealed}
+	for n, id := range ids {
+		want = append(want, fmt.Sprintf(cli.LineViewOfMatches, ap, n+1, id, row))
+	}
+	want = append(want, fmt.Sprintf(cli.LineViewAll, ap, 3), cli.LineNotComplete)
+	if r.code != 0 || i < 0 || len(l) < i+len(want) || !slices.Equal(l[i:i+len(want)], want) {
+		t.Fatalf("verify --view: %v", r)
+	}
+	o := object(t, run(t, env(), append(base, "--json")...))
+	var lines []struct{ ReceiptID, Line string }
+	if err := json.Unmarshal(o["viewReceipts"], &lines); err != nil || len(lines) != 3 || lines[2].ReceiptID != ids[2] || lines[2].Line != want[3] {
+		t.Fatalf("viewReceipts %s", o["viewReceipts"])
+	}
+	is(t, o, "viewCheck", `"`+fmt.Sprintf(cli.LineViewAll, ap, 3)+`"`)
+	is(t, o, "viewer", `"`+ap+`"`)
+
+	// One byte of the view changed: it is not the view the applier accepted.
+	b, err := os.ReadFile(view)
+	if err != nil {
+		t.Fatal(err)
+	}
+	changed := filepath.Join(t.TempDir(), "view.json")
+	if err := os.WriteFile(changed, bytes.Replace(b, []byte(`"timeout":3600`), []byte(`"timeout":3601`), 1), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if r := run(t, env(), "verify", "--receipts", a.journal(), "--accord", a.id, "--founding", a.founding(), "--view", changed); r.code != cli.ExitTool ||
+		r.stderr != "error founding acceptance-view\n" || r.stdout != "" {
+		t.Fatalf("a changed view: %v", r)
+	}
+
+	// A pass of a kind the applier's terms do not select toward the proposer.
+	dir := copyDir(t, a.journal())
+	jb, _ := os.ReadFile(filepath.Join(dir, "receipts.jsonl"))
+	release, err := receipts.Decode(bytes.Split(jb, []byte("\n"))[2])
+	if err != nil {
+		t.Fatal(err)
+	}
+	mk, err := keyfile.Read(a.key("mediator"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	p := release.Predicate
+	p.Seq, p.Prev, p.By = p.Seq+1, release.ID, receipts.By{Decider: receipts.ByTerms}
+	p.Envelope = receipts.Envelope{Sender: p.From, Seq: p.Envelope.Seq + 1, Hash: "sha256:" + strings.Repeat("ef", 32)}
+	bad, v, err := receipts.Build(receipts.Subject{Name: "secret", Digest: strings.Repeat("ab", 32)}, p, mk)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "receipts.jsonl"), append(append(jb, bad...), '\n'), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	r = run(t, env(), "verify", "--receipts", dir, "--accord", a.id, "--founding", a.founding(), "--view", view)
+	l = r.lines()
+	noRow := fmt.Sprintf(cli.LineViewRowGet, "secret", a.refs["proposer"], cli.LineViewNoRow)
+	if r.code != 1 || !slices.Contains(l, fmt.Sprintf(cli.LineNotConform, "view-conformance", 4)) ||
+		!slices.Contains(l, fmt.Sprintf(cli.LineViewOfNotMatch, ap, 4, v.Statement().ID, noRow)) ||
+		!slices.Contains(l, fmt.Sprintf(cli.LineViewNotAll, ap, 4)) || l[len(l)-1] != cli.Scope {
+		t.Fatalf("a pass the view does not allow: %v", r)
+	}
+
+	own := filepath.Join(a.openings(), cli.OpeningName(ap))
+	if r := run(t, env(), append(base, "--open", own)...); r.code != cli.ExitTool || r.stderr != cli.LineViewOwnOpening+"\nerror usage\n" {
+		t.Fatalf("--view with the viewer's own opening: %v", r)
+	}
+	if r := run(t, env(), "verify", "--receipts", a.journal(), "--mediator", a.refs["mediator"], "--view", view); r.code != cli.ExitTool || r.stderr != "error usage\n" {
+		t.Fatalf("--view with no founding set: %v", r)
+	}
+	if r := run(t, env(), "verify", "--receipts", a.journal(), "--accord", a.id, "--founding", a.founding(), "--view", filepath.Join(t.TempDir(), "none.json")); r.code != cli.ExitTool || r.stderr != "error file view\n" {
+		t.Fatalf("--view of no file: %v", r)
+	}
+}
