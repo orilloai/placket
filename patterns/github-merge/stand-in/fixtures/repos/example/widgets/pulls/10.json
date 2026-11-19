@@ -1,0 +1,17 @@
+{
+  "number": 10,
+  "state": "closed",
+  "merged": true,
+  "merged_at": "2025-12-01T00:00:00Z",
+  "merge_commit_sha": "3f94bc0781113114f38c8e4e52c25a04087a1520",
+  "html_url": "https://github.com/example/widgets/pull/10",
+  "base": {
+    "ref": "main",
+    "repo": {
+      "full_name": "example/widgets"
+    }
+  },
+  "head": {
+    "sha": "67f92bbbcdbc87b2ce2085783b59438339ea7c55"
+  }
+}

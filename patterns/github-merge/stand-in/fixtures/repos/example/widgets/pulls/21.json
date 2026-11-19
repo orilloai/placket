@@ -1,0 +1,17 @@
+{
+  "number": 21,
+  "state": "open",
+  "merged": false,
+  "merged_at": null,
+  "merge_commit_sha": "a0476d8fabd20b2f5777a1c34c291c488c5e9398",
+  "html_url": "https://github.com/example/widgets/pull/21",
+  "base": {
+    "ref": "main",
+    "repo": {
+      "full_name": "example/widgets"
+    }
+  },
+  "head": {
+    "sha": "9ed0fed2b2296b0cebb4b3ca9a512f0a8c08a800"
+  }
+}
