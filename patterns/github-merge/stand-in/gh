@@ -26,10 +26,10 @@
 # into; a merge into any other is refused, HTTP 405, as a ruleset refuses it.
 set -eu
 
-here=$(cd "$(dirname "$0")" && pwd)
+here=${0%/*}
 fixtures=$here/fixtures
 state=$here/state
-mkdir -p "$state/pulls" "$state/comments" "$state/statuses"
+[ -d "$state/statuses" ] || mkdir -p "$state/pulls" "$state/comments" "$state/statuses"
 
 [ "${1:-}" = api ] || { echo "gh: the stand-in answers only gh api" >&2; exit 1; }
 shift
@@ -48,11 +48,15 @@ body=null
 if [ -n "$input" ]; then
 	if [ "$input" = - ]; then body=$(cat); else body=$(cat "$input"); fi
 fi
-jq -nc --arg m "$method" --arg p "$path" --argjson i "$body" '{method: $m, path: $p, input: $i}' >>"$state/calls.jsonl"
+# The input is one line of JSON, as jq -c writes it.
+printf '{"method":"%s","path":"%s","input":%s}\n' "$method" "$path" "$body" >>"$state/calls.jsonl"
 # With GH_STAND_IN_SAY set, it also says each call on file descriptor 3, as the pattern's run shows
 # them, a commit's hash shown as <commit>.
 if [ -n "${GH_STAND_IN_SAY:-}" ]; then
-	echo "gh: $method $path" | sed 's#/[0-9a-f]\{40\}\(/\|$\)#/<commit>\1#' >&3
+	case $path in
+	*/statuses/*) echo "gh: $method ${path%/*}/<commit>" >&3 ;;
+	*) echo "gh: $method $path" >&3 ;;
+	esac
 fi
 
 # Every part of the path is a plain name, so no call reaches outside fixtures/ or state/.
@@ -62,7 +66,7 @@ esac
 
 # The event this call meets, if any: the first line of state/events for its method and path.
 what= arg=
-if [ -f "$state/events" ]; then
+if [ -s "$state/events" ]; then
 	line=$(grep -n -m 1 -F -e "$method $path " "$state/events" || :)
 	if [ -n "$line" ]; then
 		sed -i.bak "${line%%:*}d" "$state/events" && rm -f "$state/events.bak"
@@ -94,7 +98,8 @@ rest=${rest#*/}
 name=${rest%%/*}
 rest=${rest#"$name"}
 rest=${rest#/}
-repo=$(printf '%s/%s' "$owner" "$name" | tr 'A-Z' 'a-z')
+repo=$owner/$name
+case $repo in *[A-Z]*) repo=$(printf '%s' "$repo" | tr 'A-Z' 'a-z') ;; esac
 [ -f "$fixtures/repos/$repo.json" ] || error 404
 
 # pull N: the file of pull request N, copied from its fixture on first use.
@@ -132,22 +137,30 @@ PUT/pulls/*/merge)
 	n=${rest#pulls/}
 	n=${n%/merge}
 	f=$(pull "$n")
-	jq -e '.state == "open" and .merged == false' "$f" >/dev/null || error 405
-	jq -e --argjson b "$body" '.head.sha == $b.sha' "$f" >/dev/null || error 409
-	grep -Fqx "$(jq -r '.base.ref' "$f")" "$fixtures/repos/$repo/bases" || error 405
+	# GitHub refuses a pull request no longer open, then a head that is not the sha given, then a
+	# base whose ruleset leaves the applier out.
+	base=$(jq -r --argjson b "$body" 'if .state != "open" or .merged then "-" elif .head.sha != $b.sha then "-moved" else .base.ref end' "$f")
+	case $base in
+	-) error 405 ;;
+	-moved) error 409 ;;
+	esac
+	grep -Fqx -e "$base" "$fixtures/repos/$repo/bases" || error 405
 	if [ "$what" != hollow ]; then
 		change "$f" '.state = "closed" | .merged = true | .merged_at = "2026-01-01T00:00:00Z"'
 	fi
-	jq -c '{sha: .merge_commit_sha, merged: true, message: "Pull Request successfully merged"}' "$f"
+	echo "{\"sha\":\"$(jq -r '.merge_commit_sha' "$f")\",\"merged\":true,\"message\":\"Pull Request successfully merged\"}"
 	answer
 	;;
 POST/issues/*/comments)
 	n=${rest#issues/}
 	n=${n%/comments}
-	f=$(pull "$n")
-	id=$((1000 + $(find "$state/comments" -name '*.json' | wc -l) + 1))
-	jq -c --argjson id "$id" --argjson b "$body" --arg url "$(jq -r '.html_url' "$f")" \
-		'{id: $id, html_url: "\($url)#issuecomment-\($id)", body: $b.body, user: {login: "applier[bot]"}}' -n >"$state/comments/$id.json"
+	pull "$n" >/dev/null
+	id=1000
+	[ ! -f "$state/comments/last" ] || read -r id <"$state/comments/last"
+	id=$((id + 1))
+	echo "$id" >"$state/comments/last"
+	jq -nc --argjson id "$id" --argjson b "$body" --arg url "https://github.com/$repo/pull/$n" \
+		'{id: $id, html_url: "\($url)#issuecomment-\($id)", body: $b.body, user: {login: "applier[bot]"}}' >"$state/comments/$id.json"
 	cat "$state/comments/$id.json"
 	answer
 	;;

@@ -147,16 +147,23 @@ apply() {
 	# its base.
 	read_pull "$tmp/after.json" ||
 		stop "pr $pr: the merge call ended and the pull request could not be read again: see by hand whether it merged, and into which base"
-	if ! jq -e '.merged == true' "$tmp/after.json" >/dev/null; then
+	# What the read shows: unmerged, merged as released at its merge commit, or merged otherwise.
+	after=$(jq -r --slurpfile d "$tmp/d.json" '$d[0].delivery.data as $b | def holds(f): (try f catch false) == true;
+		if holds(.merged == true) | not then "unmerged"
+		elif holds(.base.ref == $b.base and .head.sha == $b.head) | not then "otherwise"
+		elif holds(.merge_commit_sha | test("^([0-9a-f]{40}|[0-9a-f]{64})$")) then .merge_commit_sha
+		else "-" end' "$tmp/after.json" 2>/dev/null) || after=-
+	unrecorded="pr $pr merged, and its record was not posted: post its comment and status by hand from the kept delivery"
+	case $after in
+	unmerged)
 		[ "$answered" = no ] || stop "pr $pr: GitHub answered the merge call, and the pull request read again is not merged: see to it by hand"
 		refuse "$pr" merge
 		return
-	fi
-	jq -e --slurpfile d "$tmp/d.json" '$d[0].delivery.data as $b | .base.ref == $b.base and .head.sha == $b.head' "$tmp/after.json" >/dev/null ||
-		stop "pr $pr merged into $(jq -r '.base.ref' "$tmp/after.json"), not the base released: no comment or status was posted; see to it by hand"
-	commit=$(jq -r '.merge_commit_sha' "$tmp/after.json")
-	unrecorded="pr $pr merged, and its record was not posted: post its comment and status by hand from the kept delivery"
-	echo "$commit" | grep -Eqx '[0-9a-f]{40}|[0-9a-f]{64}' || stop "$unrecorded"
+		;;
+	otherwise) stop "pr $pr merged, not into the base and at the head released: no comment or status was posted; see to it by hand" ;;
+	-) stop "$unrecorded" ;;
+	esac
+	commit=$after
 
 	# The record: the delivery, one line of JSON, as a code block so that nothing in it renders or
 	# notifies anyone, then the status on the merge commit, which names the receipt and links it.
@@ -178,12 +185,9 @@ while :; do
 	rc=0
 	placket get --label "$label" --keep --wait "$wait" --json >"$tmp/d.json" 2>"$tmp/get.err" || rc=$?
 	[ "$rc" -eq 0 ] || stop "placket get exited $rc: $(tail -n 1 "$tmp/get.err")"
-	if jq -e 'has("delivery")' "$tmp/d.json" >/dev/null; then
-		apply
-	elif jq -e 'has("close")' "$tmp/d.json" >/dev/null; then
-		echo "apply: the Accord is closed" >&2
-		exit 0
-	elif [ "$forever" != yes ]; then
-		exit 0
-	fi
+	case $(jq -r 'if has("delivery") then "delivery" elif has("close") then "close" else "none" end' "$tmp/d.json") in
+	delivery) apply ;;
+	close) echo "apply: the Accord is closed" >&2; exit 0 ;;
+	*) [ "$forever" = yes ] || exit 0 ;;
+	esac
 done

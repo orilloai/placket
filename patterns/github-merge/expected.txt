@@ -117,7 +117,7 @@ applier: apply: pr 17 merged, and its record was not posted: post its comment an
 gh: GET repos/example/widgets/pulls/18
 gh: PUT repos/example/widgets/pulls/18/merge
 gh: GET repos/example/widgets/pulls/18
-applier: apply: pr 18 merged into next, not the base released: no comment or status was posted; see to it by hand
+applier: apply: pr 18 merged, not into the base and at the head released: no comment or status was posted; see to it by hand
 gh: GET repos/example/widgets/pulls/19
 gh: PUT repos/example/widgets/pulls/19/merge
 gh: GET repos/example/widgets/pulls/19

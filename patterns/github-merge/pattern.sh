@@ -127,14 +127,15 @@ C
 placket mediators --json | jq -r '.mediators[] | "mediators: \(.label)"'
 state=$(placket mediators --json | jq -r '.mediators[] | select(.label == "merge") | .state')
 
-as() { echo "--key $1.key --socket $sock_dir/asked --accord $(cat asked/accord)"; }
+asked=$(cat asked/accord)
+as() { echo "--key $1.key --socket $sock_dir/asked --accord $asked"; }
 # body FILE PR [BASE [HEAD [REPO]]]: writes the body of a merge of pull request PR into FILE, by
 # default into the base and at the head GitHub's fixture gives it.
 body() {
 	f=$here/stand-in/fixtures/repos/$repo/pulls/$2.json
-	b=${3:-$(jq -r '.base.ref' "$f" 2>/dev/null || echo main)}
-	h=${4:-$(jq -r '.head.sha' "$f" 2>/dev/null || echo 0000000000000000000000000000000000000000)}
-	jq -nc --arg repo "${5:-$repo}" --argjson pr "$2" --arg base "$b" --arg head "$h" '{$repo, $pr, $base, $head}' >"$1"
+	[ -f "$f" ] || f=/dev/null
+	jq -nc --arg repo "${5:-$repo}" --argjson pr "$2" --arg base "${3:-}" --arg head "${4:-}" '(input? // {}) as $p
+		| {$repo, $pr, base: (if $base == "" then $p.base.ref else $base end), head: (if $head == "" then $p.head.sha else $head end)}' "$f" >"$1"
 }
 # propose WHAT FILE [GIVE FLAGS]: the agent gives FILE to the applier, data of kind merge unless the
 # flags say otherwise, and the terms ask it of the decider; the question joins asked.list.
@@ -323,12 +324,9 @@ step "9. the auditor, from a merge commit back to its receipt"
 # request 7's merge commit: thirty that link nothing; one that links a comment of pull request 14's
 # delivery; and one that names the receipt of the agent's proposal of pull request 7, the ask, and
 # links a comment of that part, with its salt, under that receipt's id.
-i=0
-while [ "$i" -lt 30 ]; do
-	echo '{"state":"success","context":"placket","description":"merged","target_url":"https://example.com/"}' |
-		gh api -X POST "repos/$repo/statuses/$c7" --input - >/dev/null
-	i=$((i + 1))
-done
+# The thirty go straight into the stand-in's record of statuses, as thirty such calls would.
+jq -nc 'range(30) | {state: "success", context: "placket", description: "merged", target_url: "https://example.com/"}' \
+	>>"$here/stand-in/state/statuses/$c7.jsonl"
 kept pr14.json | jq -c '{body: ("    " + (.delivery | tojson))}' | gh api -X POST "repos/$repo/issues/7/comments" --input - >other.comment
 kept pr14.json | jq -c --slurpfile c other.comment '{state: "success", context: "placket", description: .delivery.receiptId, target_url: $c[0].html_url}' |
 	gh api -X POST "repos/$repo/statuses/$c7" --input - >/dev/null
