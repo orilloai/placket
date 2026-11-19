@@ -121,7 +121,18 @@ const (
 	LineTermsDecided      = "terms decided %d"
 	LineUnmatched         = "answer calls matching no receipt %d"
 	LineBody              = "body: the part of receipt %s is the one it names"
-	LineBodyNot           = "body: does not conform at receipts.jsonl line %d"
+	// The lines of a member's own view check (verify-2): each receipt of the viewer's against its row,
+	// the row in the product's words, and the line of the whole.
+	LineViewOfMatches  = "view of %s: receipts.jsonl line %d receipt %s matches %s"
+	LineViewOfNotMatch = "view of %s: receipts.jsonl line %d receipt %s does not match %s"
+	LineViewRowGive    = "give %s to %s: %s"
+	LineViewRowGet     = "get %s from %s: %s"
+	LineViewNoRow      = "no row"
+	LineViewAll        = "view of %s: every receipt of its own, %d, matches the view it accepted"
+	LineViewNotAll     = "view of %s: does not match the view it accepted at receipts.jsonl line %d"
+	// LineViewOwnOpening is the usage line of --view beside the viewer's own --open.
+	LineViewOwnOpening = "usage: placket verify: --view with the viewer's own --open: the opening checks its terms themselves"
+	LineBodyNot        = "body: does not conform at receipts.jsonl line %d"
 )
 
 // The labels of the lines version prints, each also its member under --json (docs/release.md).

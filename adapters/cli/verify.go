@@ -104,7 +104,7 @@ func firstAt(list [][]byte) string {
 }
 
 // verifyCommand is `verify --receipts DIR (--mediator M | --accord A --founding F) [--founding F]
-// [--answers FILE] [--subset] [--delivery FILE] [--superseded-by NEW] [--json]` (commands-4,
+// [--answers FILE] [--subset] [--delivery FILE] [--superseded-by NEW] [--view V] [--json]` (commands-4,
 // commands-8, verify-1 to verify-4, close-4): the journal's receipts checked for validity, under the mediator's reference alone, and,
 // with a founding set, for conformance to the Accord, without ever running a judge again. With
 // --accord the mediator's reference comes from the founding set whose typed hash is A, the one value
@@ -129,6 +129,13 @@ func firstAt(list [][]byte) string {
 // successor on the complete line; a list with no close, a successor that supersedes nothing, or one
 // that names another Accord or close, is tool error verify superseded. It needs --accord and
 // --founding.
+//
+// With --view, one member's own view as it kept it, which needs --founding, it also checks that
+// member's receipts against the view it signed (verify-1 rows 0a and 4a, verify-2): after the
+// conforms line, one line per receipt of the viewer's and the view line. A view that is not the one
+// its viewer accepted is tool error founding acceptance-view; a receipt that does not match exits 1
+// with every line; and --view beside the viewer's own --open is a usage error, since the opening
+// checks the viewer's terms themselves.
 func verifyCommand(r *run, args []string) int {
 	fs := flags("verify")
 	med, dir, setPath := fs.String("mediator", "", "the mediator"), fs.String("receipts", "", "journal directory"), fs.String("founding", "", "the founding set")
@@ -138,9 +145,18 @@ func verifyCommand(r *run, args []string) int {
 	accFile := fs.String("acceptances", "", "the founding set's acceptances, acceptances.json beside it when not given")
 	var opens many
 	fs.Var(&opens, flagOpen, "a member's opening, once per opening, for a dispute")
+	viewFile := fs.String(flagView, "", "a member's own view, as it kept it, to check its receipts against")
 	if !r.parse(fs, args, "receipts") || (*med == "") == (*accordFlag == "") || (*accordFlag != "" && *setPath == "") ||
-		(*successor != "" && *accordFlag == "") || ((*accFile != "" || len(opens) > 0) && *setPath == "") {
+		(*successor != "" && *accordFlag == "") || ((*accFile != "" || len(opens) > 0 || *viewFile != "") && *setPath == "") {
 		return r.tool(codeUsage)
+	}
+	var viewBytes []byte
+	if *viewFile != "" {
+		b, err := os.ReadFile(*viewFile)
+		if err != nil {
+			return r.tool(codeFile, flagView)
+		}
+		viewBytes = trimLF(b)
 	}
 	list, err := journal.ReadReceipts(*dir, r.stderr)
 	if err != nil {
@@ -201,6 +217,11 @@ func verifyCommand(r *run, args []string) int {
 					return r.tool(codeUsage)
 				}
 				openings.ByActor[openingActor(b)] = trimLF(b)
+			}
+			// The viewer's own opening checks its terms themselves: a view beside it checks less.
+			if _, own := openings.ByActor[memberString(viewBytes, "viewer")]; viewBytes != nil && own {
+				fmt.Fprintln(r.stderr, LineViewOwnOpening)
+				return r.tool(codeUsage)
 			}
 		}
 		at := local.Stamp(r.env.Now())
@@ -273,11 +294,15 @@ func verifyCommand(r *run, args []string) int {
 
 	// Conformance (verify-2): rows 1 to 4, then the body, row 5.
 	e := conform.Evidence{Accord: accord, Mediator: *med, Founding: set, Acceptances: acceptances, Openings: openings,
-		Receipts: list, Answers: answers, Subset: *subset, Kernel: composition.KernelHash()}
+		Receipts: list, Answers: answers, Subset: *subset, Kernel: composition.KernelHash(), View: viewBytes}
 	report, cerr := conform.Check(e)
 	var conformErr *conform.Error
 	if cerr != nil && !errors.As(cerr, &conformErr) {
 		return r.notVerified(cerr)
+	}
+	if conformErr != nil && conformErr.Code == conform.CodeAcceptanceView {
+		// Row 0a: the view is not the one its viewer accepted, a founding fact (verify-1).
+		return r.tool(codeFound, string(conformErr.Code))
 	}
 	bodyLine := ""
 	failed := conformErr != nil
@@ -419,6 +444,9 @@ func verifyCommand(r *run, args []string) int {
 	}
 	fmt.Fprintln(r.stderr, valid)
 	fmt.Fprintln(r.stderr, conforms)
+	if viewBytes != nil {
+		r.viewLines(report, st)
+	}
 	fmt.Fprintln(r.stderr, complete)
 	if bodyLine != "" {
 		fmt.Fprintln(r.stderr, bodyLine)
@@ -574,3 +602,57 @@ func (r *run) termsLines(a *setup.Accord) []string {
 // flagOpen is verify's flag that gives a member's opening, for a dispute (setup-contract-16). It is
 // spelled as the product word for a question still open, which it shares and is defined once as.
 const flagOpen = WordOpen
+
+// flagView is verify's flag that gives one member's own view, as it kept it (verify-1 rows 0a and
+// 4a).
+const flagView = "view"
+
+// viewLines prints verify's view lines (commands-8, verify-2): one per receipt of the viewer's read
+// against its view, in list order, with its line of receipts.jsonl, its id and its row in the
+// product's words, or that the view has no row for it, and whether it matches; then the view line,
+// that every one matches the view the viewer accepted, or the line of the first that does not. It
+// puts them under viewer, viewReceipts and viewCheck.
+func (r *run) viewLines(report conform.Report, st []receipts.Statement) {
+	viewer := field(report.Viewer)
+	lines := []any{}
+	first := -1
+	for _, v := range report.Viewed {
+		what := LineViewNoRow
+		if v.Outcome != "" {
+			what = viewWord(v.Outcome)
+		}
+		row := fmt.Sprintf(LineViewRowGive, field(v.Kind), field(v.Counterpart), what)
+		if v.Dir == "get" {
+			row = fmt.Sprintf(LineViewRowGet, field(v.Kind), field(v.Counterpart), what)
+		}
+		f := LineViewOfMatches
+		if !v.Matches {
+			f = LineViewOfNotMatch
+			if first < 0 {
+				first = v.Index
+			}
+		}
+		l := fmt.Sprintf(f, viewer, v.Index+1, st[v.Index].ID, row)
+		fmt.Fprintln(r.stderr, l)
+		lines = append(lines, map[string]any{memberReceiptID: st[v.Index].ID, "line": l})
+	}
+	check := fmt.Sprintf(LineViewAll, viewer, len(report.Viewed))
+	if first >= 0 {
+		check = fmt.Sprintf(LineViewNotAll, viewer, first+1)
+	}
+	fmt.Fprintln(r.stderr, check)
+	r.put("viewer", report.Viewer)
+	r.put("viewReceipts", lines)
+	r.put("viewCheck", check)
+}
+
+// viewWord is the product word of a view row's outcome, as view prints it: pass, block or ask.
+func viewWord(outcome string) string {
+	switch outcome {
+	case founding.Crosses:
+		return WordPass
+	case founding.Asked:
+		return WordAsk
+	}
+	return WordBlock
+}

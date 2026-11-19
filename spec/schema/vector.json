@@ -116,6 +116,10 @@
     "delivery": {
       "$ref": "delivery.json"
     },
+    "view": {
+      "description": "One member's view, as that member kept it, a conform vector's verifier checks the member's receipts against (verify-1 rows 0a and 4a, verify-2).",
+      "$ref": "view.json"
+    },
     "accord": {
       "type": "string"
     },
@@ -558,6 +562,7 @@
             "subset",
             "kernel",
             "delivery",
+            "view",
             "expect"
           ]
         },
@@ -604,6 +609,18 @@
             "if": {
               "required": [
                 "acceptances"
+              ]
+            },
+            "then": {
+              "required": [
+                "founding"
+              ]
+            }
+          },
+          {
+            "if": {
+              "required": [
+                "view"
               ]
             },
             "then": {
@@ -1710,7 +1727,7 @@
       ]
     },
     "conformExpect": {
-      "description": "A conform vector's result (verify-2): the first failure, its code, a validity code of section 8 or a conformance code, and its index; or the whole list conforms, with the number of answers witnessed and unwitnessed, the calls that match no receipt, whether the card's module is the trusted one, and, with a delivery, that its body is the part of its receipt.",
+      "description": "A conform vector's result (verify-2): the first failure, its code, a validity code of section 8 or a conformance code, and its index; or the whole list conforms, with the number of answers witnessed and unwitnessed, the calls that match no receipt, whether the card's module is the trusted one, with a delivery, that its body is the part of its receipt, and with a view, the number of receipts read against it.",
       "oneOf": [
         {
           "type": "object",
@@ -1732,7 +1749,9 @@
                 "party",
                 "decision",
                 "witness",
-                "body"
+                "body",
+                "acceptance-view",
+                "view-conformance"
               ]
             },
             "index": {
@@ -1773,6 +1792,11 @@
             "terms": {
               "description": "Present when a founding set was given and a seal was not opened, so the decision row read only the opened terms (setup-contract-16, verify-1).",
               "const": "not-checked"
+            },
+            "viewed": {
+              "description": "Present when a view was given: the number of receipts of its viewer's read against it (verify-2).",
+              "type": "integer",
+              "minimum": 0
             }
           },
           "required": [

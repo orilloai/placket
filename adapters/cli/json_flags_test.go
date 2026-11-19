@@ -187,7 +187,8 @@ var commandFlags = []commandRow{
 		"delivery":      {input, "the one delivery whose body is checked", nil},
 		"superseded-by": {input, "the one successor whose pin of the close is checked", nil},
 		"acceptances":   {input, "the acceptances the one verification founds with", nil},
-		"open":          {input, "each opening the one verification checks besides", nil}}},
+		"open":          {input, "each opening the one verification checks besides", nil},
+		"view":          {input, "the one member's view the one verification checks its receipts against", nil}}},
 	{words: []string{"log"}, flags: map[string]flagUse{
 		"json": jsonFlag, "mediator": {input, "the one mediator whose journal it reads", nil},
 		"receipts": {input, "the one journal the log is of", nil},

@@ -27,7 +27,8 @@ bad() { say "FAIL: $*"; failed=1; }
 # tabs. Each is a change of logic that compiles and that some vector of every group testing the
 # package notices. A package may have more than one; the mediator has one in Give and one in Resolve,
 # and composition one in its decision and one in the view's rows.
-# The answer call's reader and the conformance check have one each.
+# The answer call's reader has one, and the conformance check two: one in its Accord row, and one in
+# the list lookup its decision row and its view rows share, which every group testing it notices.
 faults='canonical	core/canonical/canonical.go	return a[i] < b[i]	return a[i] > b[i]
 signing	core/signing/signing.go	b.WriteString("DSSEv1 ")	b.WriteString("DSSEv2 ")
 setup	core/setup/setup.go	return until <= at	return until < at
@@ -38,7 +39,8 @@ receipts	core/receipts/receipts.go	"application/vnd.in-toto+json"	"application/v
 mediator	core/mediator/mediator.go	next := link{seq: last.seq + 1}	next := link{seq: last.seq + 2}
 mediator	core/mediator/questions.go	receipts.Digest(r.Salt, []byte(r.Text)) != c.Digest	receipts.Digest([]byte(r.Text), r.Salt) != c.Digest
 answer	core/answer/answer.go	if !shape.Hash(call.Accord) || !shape.Hash(call.Question) {	if !shape.Hash(call.Accord) || shape.Hash(call.Question) {
-conform	core/conform/conform.go	if p.Accord != c.e.Accord || p.Card != c.a.Card() {	if p.Accord == c.e.Accord && p.Card != c.a.Card() {'
+conform	core/conform/conform.go	if p.Accord != c.e.Accord || p.Card != c.a.Card() {	if p.Accord == c.e.Accord && p.Card != c.a.Card() {
+conform	core/conform/conform.go	if x == s {	if x != s {'
 
 # faultsOf <package>: the package's lines of the list.
 faultsOf() { printf '%s\n' "$faults" | awk -F'\t' -v p="$1" '$1 == p'; }

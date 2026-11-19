@@ -1,0 +1,243 @@
+{
+  "acceptances": [
+    {
+      "accord": "sha256:86d866d77166cc50952ceb0dfebc866ea5ebcde7cd9a8573c3a5c7fbe2f3859b",
+      "from": "ed25519:375dea8c4519dbae84fc9eb513e97eb4b693968ef37d52ac10da7b79250c6a22",
+      "sig": "ed50793e7e61943854247d840bcefd9232e56e8f19f814c8c0da7f48edac01d8454d19ebcbc57ab1d8c2ca6c734bd9d44ffe359a9c36ee315342a7f04f8fed0c",
+      "view": "sha256:7bf6ac609cf3579c4435b1a1aded1985c0f007802e59af4b74646e657a25a47a"
+    },
+    {
+      "accord": "sha256:86d866d77166cc50952ceb0dfebc866ea5ebcde7cd9a8573c3a5c7fbe2f3859b",
+      "from": "ed25519:7cf35b36b9d57c62b9f3d5be2eb4d39147afa1b7625cd0032443523254df3bea",
+      "sig": "0b96ed190f0da3f15f32821ba1f6480d298632db900d64ea6e5d019b88e0973c07ec81d94e743ea970865085b55c92e3593ffb42504157954ce333d00c1c3b08",
+      "view": "sha256:ecc6de89d3facf745df4d7627ccbe9bfb855d2a6f088b30975eb03c2fe700a5b"
+    },
+    {
+      "accord": "sha256:86d866d77166cc50952ceb0dfebc866ea5ebcde7cd9a8573c3a5c7fbe2f3859b",
+      "from": "ed25519:a80586279ba17c5360b029018bf025be0169fdb02087e77301774c99eed92117",
+      "sig": "7da272ad56ca9f2a9ae923ecea1c147dcda6cbd3013a7755b1fc1a07b533772cd71f250456483f21cdff4ecbee286e8a8e67e87f3db684bf8310299943176f0a",
+      "view": "sha256:0ab156f84d01cc6313238e0d728d7536721169ad56b06515d285bef942ab9953"
+    }
+  ],
+  "accord": "sha256:86d866d77166cc50952ceb0dfebc866ea5ebcde7cd9a8573c3a5c7fbe2f3859b",
+  "answers": [],
+  "expect": {
+    "code": "view-conformance",
+    "index": 1
+  },
+  "founding": {
+    "bindings": [
+      {
+        "actor": "ed25519:375dea8c4519dbae84fc9eb513e97eb4b693968ef37d52ac10da7b79250c6a22",
+        "mediator": "ed25519:84254f9d593b0f7811b18c00b656a70fe1a9595ed353c73286ea83d300226ed3",
+        "policy": "sha256:9be7866811163fb218273cc74fffb0b0ec6d5fa57ed79dd2bd2b599e9da56550",
+        "principal": "ed25519:7953e3ee4311c21f4990662dbe506689868533db6fb93a77351351e8d6119574",
+        "roles": [
+          "decider"
+        ],
+        "sig": "88bd79d04722ef3e1db729e5a23580769c3ca83485ebeb8eb62e785c92445a45661d0aa0cf28525f3ad6d4b54da4ba02ab6204c377d23282c13bd67207e4790b",
+        "until": "2027-11-12T00:00:00Z"
+      },
+      {
+        "actor": "ed25519:7cf35b36b9d57c62b9f3d5be2eb4d39147afa1b7625cd0032443523254df3bea",
+        "mediator": "ed25519:84254f9d593b0f7811b18c00b656a70fe1a9595ed353c73286ea83d300226ed3",
+        "policy": "sha256:9be7866811163fb218273cc74fffb0b0ec6d5fa57ed79dd2bd2b599e9da56550",
+        "principal": "ed25519:7953e3ee4311c21f4990662dbe506689868533db6fb93a77351351e8d6119574",
+        "roles": [
+          "proposer"
+        ],
+        "sig": "0dcb40da9be0ad7dea514b37a1606b26ed83eee35f65e3e15fffecb36a78359509d2b51184f0cb19da12a1699eb244bc66f916d95919b270bb96f2256cbaac04",
+        "until": "2027-11-12T00:00:00Z"
+      },
+      {
+        "actor": "ed25519:a80586279ba17c5360b029018bf025be0169fdb02087e77301774c99eed92117",
+        "mediator": "ed25519:84254f9d593b0f7811b18c00b656a70fe1a9595ed353c73286ea83d300226ed3",
+        "policy": "sha256:9be7866811163fb218273cc74fffb0b0ec6d5fa57ed79dd2bd2b599e9da56550",
+        "principal": "ed25519:7953e3ee4311c21f4990662dbe506689868533db6fb93a77351351e8d6119574",
+        "roles": [
+          "applier"
+        ],
+        "sig": "8e1ddf94618df7d7460d2a20d3a03f594de9c03b25f2dc8efc88c2a3571934b953559d412ca585708b6d4ee9c760c55bc51c5b368923b3e775b152b7a0c52a04",
+        "until": "2027-11-12T00:00:00Z"
+      }
+    ],
+    "card": {
+      "judges": [
+        {
+          "hash": "sha256:b655859c26e175a51ad3a59e552d1de40e10f1202fa2bba2c172a91d44e2ae63",
+          "name": "jev",
+          "version": "1.0.0"
+        }
+      ],
+      "kernel": {
+        "hash": "sha256:a8755bef6ff188c2dc6b74377a73c6a49d612fc44915675db9d2795bb5b99475",
+        "version": "0.1.0"
+      },
+      "spec": "0.1"
+    },
+    "declarations": [
+      {
+        "actor": "ed25519:375dea8c4519dbae84fc9eb513e97eb4b693968ef37d52ac10da7b79250c6a22",
+        "seal": "sha256:6b3a3176cd22b483d94e020a3e3014a776649a3b7e4ab612cc56bea99354ac40"
+      },
+      {
+        "actor": "ed25519:7cf35b36b9d57c62b9f3d5be2eb4d39147afa1b7625cd0032443523254df3bea",
+        "seal": "sha256:3b830fe03f340a700db93f43bd389652e8f3a623719b1c2d4b371fd42da23925"
+      },
+      {
+        "actor": "ed25519:a80586279ba17c5360b029018bf025be0169fdb02087e77301774c99eed92117",
+        "seal": "sha256:a3f2919a73c85a861208a7f2f1cc8673967a015810ef4bbbf3bc20411f3d762b"
+      }
+    ],
+    "mediator": {
+      "actor": "ed25519:84254f9d593b0f7811b18c00b656a70fe1a9595ed353c73286ea83d300226ed3",
+      "operator": "ed25519:30f97501d13dd5589fc04e36ba98ccca1e44f52c1b3f578f1aca3c57c2181fbc",
+      "runs": "process"
+    },
+    "policy": {
+      "principals": [
+        {
+          "principal": "ed25519:7953e3ee4311c21f4990662dbe506689868533db6fb93a77351351e8d6119574",
+          "roles": [
+            "proposer",
+            "applier",
+            "decider"
+          ]
+        }
+      ],
+      "roles": [
+        "proposer",
+        "applier",
+        "decider"
+      ]
+    }
+  },
+  "kernel": "sha256:a8755bef6ff188c2dc6b74377a73c6a49d612fc44915675db9d2795bb5b99475",
+  "operation": "conform",
+  "receipts": [
+    {
+      "receipt": {
+        "payload": "eyJfdHlwZSI6Imh0dHBzOi8vaW4tdG90by5pby9TdGF0ZW1lbnQvdjEiLCJwcmVkaWNhdGUiOnsiYWNjb3JkIjoic2hhMjU2Ojg2ZDg2NmQ3NzE2NmNjNTA5NTJjZWIwZGZlYmM4NjZlYTVlYmNkZTdjZDlhODU3M2MzYTVjN2ZiZTJmMzg1OWIiLCJhdCI6IjIwMjYtMTEtMTJUMDk6MDA6MDBaIiwiYnkiOiJ0ZXJtcyIsImNhcmQiOiJzaGEyNTY6NDdlOGFmNmU0NmE2MzY1NzExNmM1NTI2MzhmOTE1NWZjOWJmMmQzYTU4ODU0MGZhMWYxOTU1OGVhNjQ2ZmRiNiIsImVudmVsb3BlIjp7Imhhc2giOiJzaGEyNTY6YzRhNDQxOWQ1M2E5OTE1NzI2YjllMWVhYjNkNzE3Yjg4OWUxYzc5Njc1OGRhYmJmZTI5ZWIyNDRhNjljMzljZSIsInNlbmRlciI6ImVkMjU1MTk6N2NmMzViMzZiOWQ1N2M2MmI5ZjNkNWJlMmViNGQzOTE0N2FmYTFiNzYyNWNkMDAzMjQ0MzUyMzI1NGRmM2JlYSIsInNlcSI6MX0sImZyb20iOiJlZDI1NTE5OjdjZjM1YjM2YjlkNTdjNjJiOWYzZDViZTJlYjRkMzkxNDdhZmExYjc2MjVjZDAwMzI0NDM1MjMyNTRkZjNiZWEiLCJraW5kIjoiY3Jvc3NpbmciLCJtZWRpYXRvciI6ImVkMjU1MTk6ODQyNTRmOWQ1OTNiMGY3ODExYjE4YzAwYjY1NmE3MGZlMWE5NTk1ZWQzNTNjNzMyODZlYTgzZDMwMDIyNmVkMyIsInJlYXNvbiI6Im1heWJlIiwic2VxIjoxLCJ0byI6ImVkMjU1MTk6YTgwNTg2Mjc5YmExN2M1MzYwYjAyOTAxOGJmMDI1YmUwMTY5ZmRiMDIwODdlNzczMDE3NzRjOTllZWQ5MjExNyIsInZlcmRpY3QiOiJlc2NhbGF0ZSJ9LCJwcmVkaWNhdGVUeXBlIjoiaHR0cHM6Ly9wbGFja2V0LnRlY2gvcmVjZWlwdC8wLjEiLCJzdWJqZWN0IjpbeyJkaWdlc3QiOnsic2FsdGVkLXNoYTI1NiI6IjUwMDhiYTNjNzk4MzA1YzM2M2QyNDczNTdjYzg3NDgzMTNhMjg0MzRkN2MwNGExYmU0ZDhmOTg0ZGYxMjMzZGQifSwibmFtZSI6InByb3Bvc2FsIn1dfQ==",
+        "payloadType": "application/vnd.in-toto+json",
+        "signatures": [
+          {
+            "keyid": "ed25519:84254f9d593b0f7811b18c00b656a70fe1a9595ed353c73286ea83d300226ed3",
+            "sig": "H+LSG7NhYpOOqP/sFh/88FZQcLW+xyseTXKFhPT38e+SfPjd2/E4SoGpFBhsE3MWsrENArOi/Uv6JcX8C6yRBA=="
+          }
+        ]
+      }
+    },
+    {
+      "receipt": {
+        "payload": "eyJfdHlwZSI6Imh0dHBzOi8vaW4tdG90by5pby9TdGF0ZW1lbnQvdjEiLCJwcmVkaWNhdGUiOnsiYWNjb3JkIjoic2hhMjU2Ojg2ZDg2NmQ3NzE2NmNjNTA5NTJjZWIwZGZlYmM4NjZlYTVlYmNkZTdjZDlhODU3M2MzYTVjN2ZiZTJmMzg1OWIiLCJhdCI6IjIwMjYtMTEtMTJUMDk6MDE6MDBaIiwiYnkiOnsiYW5zd2VyIjoic2hhMjU2OjdmNzIzYWExMTg5NjJkZTc4NzBlYzUyMmVkY2ZmMjg1NDQ2NTQxYWRlNjE5ZTM5MzAxYTk0MWYwZmZhOTFlN2UifSwiY2FyZCI6InNoYTI1Njo0N2U4YWY2ZTQ2YTYzNjU3MTE2YzU1MjYzOGY5MTU1ZmM5YmYyZDNhNTg4NTQwZmExZjE5NTU4ZWE2NDZmZGI2IiwiZW52ZWxvcGUiOnsiaGFzaCI6InNoYTI1NjpjNGE0NDE5ZDUzYTk5MTU3MjZiOWUxZWFiM2Q3MTdiODg5ZTFjNzk2NzU4ZGFiYmZlMjllYjI0NGE2OWMzOWNlIiwic2VuZGVyIjoiZWQyNTUxOTo3Y2YzNWIzNmI5ZDU3YzYyYjlmM2Q1YmUyZWI0ZDM5MTQ3YWZhMWI3NjI1Y2QwMDMyNDQzNTIzMjU0ZGYzYmVhIiwic2VxIjoxfSwiZnJvbSI6ImVkMjU1MTk6Mzc1ZGVhOGM0NTE5ZGJhZTg0ZmM5ZWI1MTNlOTdlYjRiNjkzOTY4ZWYzN2Q1MmFjMTBkYTdiNzkyNTBjNmEyMiIsImtpbmQiOiJyZXNvbHV0aW9uIiwibWVkaWF0b3IiOiJlZDI1NTE5Ojg0MjU0ZjlkNTkzYjBmNzgxMWIxOGMwMGI2NTZhNzBmZTFhOTU5NWVkMzUzYzczMjg2ZWE4M2QzMDAyMjZlZDMiLCJyZWFzb24iOiJvayIsInNlcSI6MSwidG8iOiJlZDI1NTE5OjdjZjM1YjM2YjlkNTdjNjJiOWYzZDViZTJlYjRkMzkxNDdhZmExYjc2MjVjZDAwMzI0NDM1MjMyNTRkZjNiZWEiLCJ2ZXJkaWN0IjoicGFzcyJ9LCJwcmVkaWNhdGVUeXBlIjoiaHR0cHM6Ly9wbGFja2V0LnRlY2gvcmVjZWlwdC8wLjEiLCJzdWJqZWN0IjpbeyJkaWdlc3QiOnsic2FsdGVkLXNoYTI1NiI6ImVmMmM3ODIyNTBhNWE0NWNkYTFjMzk0Y2I0MmIyMmFjZjY1MjRjNmFmNDBjNjU2N2FiYTQwMTY1MzcxZjcwMGUifSwibmFtZSI6ImNoYW5nZWQtdmVyc2lvbiJ9XX0=",
+        "payloadType": "application/vnd.in-toto+json",
+        "signatures": [
+          {
+            "keyid": "ed25519:84254f9d593b0f7811b18c00b656a70fe1a9595ed353c73286ea83d300226ed3",
+            "sig": "VyZT7SR2dOjJ47JiDqqATn2bqmsrtf8IStBcldPHXMscJU3b6W3i6e7Yty3MIs9nZRTdt74IqqwJE1sJzoheAw=="
+          }
+        ]
+      }
+    }
+  ],
+  "spec": "0.1",
+  "tests": "verify-2, composition-5: D's change, whose version to A meets A's asked row, passed, is view-conformance at the closing",
+  "vector": "conform-view/a-formed-version-passed-under-an-asked-row",
+  "view": {
+    "accord": "sha256:86d866d77166cc50952ceb0dfebc866ea5ebcde7cd9a8573c3a5c7fbe2f3859b",
+    "answers": [],
+    "crossings": [
+      {
+        "counterpart": "ed25519:375dea8c4519dbae84fc9eb513e97eb4b693968ef37d52ac10da7b79250c6a22",
+        "dir": "get",
+        "kind": "answer",
+        "outcome": "asked",
+        "roles": [
+          "decider"
+        ],
+        "timeout": 60,
+        "to": [
+          "role:decider"
+        ]
+      },
+      {
+        "counterpart": "ed25519:375dea8c4519dbae84fc9eb513e97eb4b693968ef37d52ac10da7b79250c6a22",
+        "dir": "get",
+        "kind": "changed-version",
+        "outcome": "asked",
+        "roles": [
+          "decider"
+        ],
+        "timeout": 60,
+        "to": [
+          "role:decider"
+        ]
+      },
+      {
+        "counterpart": "ed25519:a80586279ba17c5360b029018bf025be0169fdb02087e77301774c99eed92117",
+        "dir": "get",
+        "kind": "note",
+        "outcome": "crosses",
+        "roles": [
+          "applier"
+        ]
+      },
+      {
+        "counterpart": "ed25519:a80586279ba17c5360b029018bf025be0169fdb02087e77301774c99eed92117",
+        "dir": "give",
+        "kind": "answer",
+        "outcome": "asked",
+        "roles": [
+          "applier"
+        ],
+        "timeout": 60,
+        "to": [
+          "role:decider"
+        ]
+      },
+      {
+        "counterpart": "ed25519:a80586279ba17c5360b029018bf025be0169fdb02087e77301774c99eed92117",
+        "dir": "give",
+        "kind": "plan",
+        "outcome": "blocked",
+        "roles": [
+          "applier"
+        ]
+      },
+      {
+        "counterpart": "ed25519:a80586279ba17c5360b029018bf025be0169fdb02087e77301774c99eed92117",
+        "dir": "give",
+        "kind": "proposal",
+        "outcome": "asked",
+        "roles": [
+          "applier"
+        ],
+        "timeout": 3600,
+        "to": [
+          "role:decider"
+        ]
+      },
+      {
+        "counterpart": "ed25519:a80586279ba17c5360b029018bf025be0169fdb02087e77301774c99eed92117",
+        "dir": "give",
+        "judges": [
+          {
+            "name": "jev",
+            "use": "decide"
+          }
+        ],
+        "kind": "report",
+        "outcome": "asked",
+        "roles": [
+          "applier"
+        ],
+        "timeout": 3600,
+        "to": [
+          "role:decider"
+        ]
+      }
+    ],
+    "salt": "53c4568964dc1383b0007a8913e14f23ff29fb13b82a5996afa38e2b39ae8e6a",
+    "viewer": "ed25519:7cf35b36b9d57c62b9f3d5be2eb4d39147afa1b7625cd0032443523254df3bea"
+  }
+}
