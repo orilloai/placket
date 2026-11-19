@@ -188,11 +188,11 @@ func main() {
 	var vs []kit.Vector
 	add := func(v kit.Vector) { vs = append(vs, v) }
 
-	// U1: every receipt of B's against its row. A note to B, B's note to A, A's memo to B blocked by
+	// Every receipt of B's against its row. A note to B, B's note to A, A's memo to B blocked by
 	// B's refusal, B's sketch to A, which no term of B's selects, A's proposal asked and D's accept
 	// with its release: 7 read. With A's give of tests to D, a crossing B is no side of, B reads the
 	// same 7.
-	u1 := func(tests bool) *kit.Scene {
+	journal := func(tests bool) *kit.Scene {
 		s := scene(pairSet)
 		s.Give(at(0), a, 1, message(pairSet, "note-1", "note", b), b, "pass", "ok")
 		s.Give(at(0), b, 1, message(pairSet, "note-2", "note", a), a, "pass", "ok")
@@ -204,21 +204,21 @@ func main() {
 			seq++
 		}
 		q := s.Give(at(2), a, seq, message(pairSet, "proposal-1", "proposal", b), b, "escalate", "maybe")
-		s.Resolve(kit.Answer{At: at(3), Question: q, Action: "accepted", Text: "accepted", Salt: salt("u1"), By: d, Verdict: passOK, Release: true, Released: &passOK})
+		s.Resolve(kit.Answer{At: at(3), Question: q, Action: "accepted", Text: "accepted", Salt: salt("own"), By: d, Verdict: passOK, Release: true, Released: &passOK})
 		return s
 	}
-	add(of(pairSet, u1(false), b).vector("a-members-receipts-match-its-view",
+	add(of(pairSet, journal(false), b).vector("a-members-receipts-match-its-view",
 		"verify-2: B's notes to and from A cross, A's memo is blocked, B's sketch with no row is block no-match, and A's proposal is asked, accepted and released, each as B's view says", conforms(2, 7)))
-	add(of(pairSet, u1(true), b).vector("a-crossing-of-two-others-is-not-read",
+	add(of(pairSet, journal(true), b).vector("a-crossing-of-two-others-is-not-read",
 		"verify-2: A's give of tests to D, which passed though no term names tests, is a crossing B is no side of, so B's view reads the other 7 receipts and they conform", conforms(2, 7)))
-	add(of(pairSet, u1(true), a).vector("an-askers-give-with-no-row",
+	add(of(pairSet, journal(true), a).vector("an-askers-give-with-no-row",
 		"verify-2: A's view reads its gives, those it receives and its question, and A's give of tests to D, which A's terms do not select, passed: view-conformance at its index", fails("view-conformance", 4)))
-	add(of(pairSet, u1(false), a).vector("an-askers-question-matches-its-view",
+	add(of(pairSet, journal(false), a).vector("an-askers-question-matches-its-view",
 		"verify-2: A's view reads its notes, memo and sketch, its question, the accept, whose answer from D crosses as A's row says, and the release: 7 read", conforms(2, 7)))
-	add(of(pairSet, u1(false), d).vector("an-answerers-own-closing-is-not-read",
+	add(of(pairSet, journal(false), d).vector("an-answerers-own-closing-is-not-read",
 		"verify-2: D's view reads no receipt of this journal: D gives and receives nothing, and its accept closes a question it neither asked nor received", conforms(2, 0)))
 
-	// U2: a crossing the view does not allow.
+	// A crossing the view does not allow.
 	{
 		s := scene(pairSet)
 		s.Give(at(0), a, 1, message(pairSet, "memo-1", "memo", b), b, "pass", "ok")
@@ -254,7 +254,7 @@ func main() {
 			"verify-2: A's note, which B's view shows crossing, blocked, is view-conformance", fails("view-conformance", 0)))
 	}
 
-	// U3: every legitimate close of an asked row conforms, read by B, the question's receiver. The ask
+	// Every legitimate close of an asked row conforms, read by B, the question's receiver. The ask
 	// is at 09:00 and B's row's timeout 3600, so the deadline is 10:00; D, the only member holding
 	// decider, is the first answerer.
 	closes := []struct {
@@ -341,7 +341,7 @@ func main() {
 			"verify-2, composition-7: jev's pass of A's proposal, which B's view shows asked with no judge, is view-conformance", fails("view-conformance", 0)))
 	}
 
-	// U4: a part the mediator formed from an answer, read by A, whose rows of answers and changed
+	// A part the mediator formed from an answer, read by A, whose rows of answers and changed
 	// versions from D are asked: only a block, maybe, conforms; and A's own give of an answer is a
 	// give.
 	for _, c := range []struct {
@@ -369,7 +369,7 @@ func main() {
 		add(of(formedSet, s, a).vector("a-members-own-answer-blocked", "verify-2: A's own give of kind answer to B, which A's view shows asked, blocked maybe as a formed part would be, is view-conformance", fails("view-conformance", 0)))
 	}
 
-	// U5: a view that is not the one accepted, before any receipt and before validity.
+	// A view that is not the one accepted, before any receipt and before validity.
 	{
 		s := scene(pairSet)
 		s.Give(at(0), a, 1, message(pairSet, "note-1", "note", b), b, "pass", "ok")

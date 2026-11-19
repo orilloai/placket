@@ -497,8 +497,8 @@ func TestVerifyRefusesAnOpeningOfNoSeal(t *testing.T) {
 	}
 }
 
-// TestVerifyAgainstAView is U1 and U5 at the command line (verify-1 rows 0a and 4a, verify-2,
-// commands-8): with the applier's view as it kept it, and no opening, verify prints after the
+// TestVerifyAgainstAView is a member's view check at the command line (verify-1 rows 0a and 4a,
+// verify-2, commands-8): with the applier's view as it kept it, and no opening, verify prints after the
 // conforms line one line per receipt of the applier's, each matching its row of proposals from the
 // proposer, and the view line, and exits 0; --json holds the same lines. A view with one byte
 // changed is error founding acceptance-view and prints nothing else. A pass of a kind the applier's
