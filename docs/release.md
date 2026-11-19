@@ -2,10 +2,12 @@
 
 A placket release is a GitHub release of the tag `vX.Y.Z`. It holds:
 
-- `placket` for Linux and macOS, on amd64 and arm64, one `.tar.gz` archive per platform, each holding the binary, `LICENSE` and `README.md`;
+- `placket` for Linux and macOS, on amd64 and arm64, one `.tar.gz` archive per platform, each holding the binary, `LICENSE`, `NOTICE` and `README.md`;
 - one SBOM per archive, in SPDX JSON, `<archive>.sbom.json`;
-- `checksums.txt`, the SHA-256 of every archive and SBOM;
+- `install.sh`, the one-line install (below);
+- `checksums.txt`, the SHA-256 of every archive and SBOM, and of `install.sh`;
 - `checksums.txt.sigstore.json`, the cosign bundle that signs `checksums.txt`;
+- `placket.rb`, the Homebrew cask. It is written after `checksums.txt` is signed, so it has no line there: what ties it to the signed release is that each of its SHA-256s is an archive's line in `checksums.txt`;
 - build provenance for every archive and for `checksums.txt`, kept by GitHub.
 
 Signing and provenance use the release workflow's own GitHub identity: there is no key. Anyone can check that an archive came from placket's release workflow on `main`, and rebuild the binary and its archive to the same bytes. The SBOMs carry their own creation time, so they are signed, through `checksums.txt`, but a rebuild does not reproduce them.
@@ -23,6 +25,44 @@ module 0.1.0 sha256:...
 The version is the one Go stamps from the git state of the build: the tag for a build at a tag, a pseudo-version for any other commit, and a version ending `+dirty` for a tree with changes not committed. A build with no git information, such as one from a source tarball, prints `(devel)`. `commit` and `commitTime` are printed only when the build carries them. `module` is the decision module, as `placket card --default` names it. With `--json`, it prints one object of the same members.
 
 ## For users
+
+### Install in one line
+
+```sh
+curl -fsSL https://github.com/orilloai/placket/releases/latest/download/install.sh | sh
+```
+
+`install.sh` is a POSIX shell script. It finds this machine's platform among the four the release builds, and refuses any other by name. It downloads `checksums.txt` and its bundle first, then the one archive whose line in `checksums.txt` ends `_<os>_<arch>.tar.gz`, and checks the archive's SHA-256 against that line. Two checks run only with a tool already installed, since the script installs neither:
+
+- with `cosign` on `PATH`, it verifies the bundle on `checksums.txt` before it reads a line of it, with the identity and issuer below;
+- with `gh` on `PATH` and signed in, as `gh auth status` says, it verifies the archive's provenance.
+
+It prints each check it ran, and each it skipped and why. A check that runs and fails, the checksum included, ends it with `install: refused: <file>: <reason>`, and it writes nothing. Then it installs `placket` in `$PLACKET_INSTALL_DIR`, else `~/.local/bin`, never with `sudo`, says so when that directory is not on `PATH`, and runs `placket version`.
+
+`curl | sh` runs the script before anything has checked it. To check it first, take it from the release with `checksums.txt` and its bundle, verify them, then run it:
+
+```sh
+base=https://github.com/orilloai/placket/releases/latest/download
+curl -fsSLO "$base/install.sh" -O "$base/checksums.txt" -O "$base/checksums.txt.sigstore.json"
+cosign verify-blob --bundle checksums.txt.sigstore.json \
+  --certificate-identity https://github.com/orilloai/placket/.github/workflows/release.yml@refs/heads/main \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+  checksums.txt
+grep ' install.sh$' checksums.txt | shasum -a 256 -c
+sh install.sh
+```
+
+`--version vX.Y.Z` installs that release in place of the latest: `sh install.sh --version v0.1.0`, or `| sh -s -- --version v0.1.0`. `PLACKET_RELEASE_BASE`, when set, is the URL of a directory holding a release's files, which replaces either; `tests/test_install.sh` points it at a `file://` directory.
+
+### Homebrew
+
+On macOS or Linux:
+
+```sh
+brew install --cask orilloai/tap/placket
+```
+
+The cask installs from the release's archives at their SHA-256s in `checksums.txt`. On macOS it clears the quarantine mark of the installed `placket`, so its first run asks nothing. The tap takes the cask from each published release once a day, so it may lag a release by up to a day.
 
 ### Download
 
@@ -64,6 +104,8 @@ It ends `release-check: ok`, or `release-check: refused: <file>: <reason>`. It c
    ```
 
 4. The version: unpack the archive for your platform and run `./placket version`. Its first line is `version v0.1.0`.
+
+`install.sh` is checked with the rest: `release-check.sh` checks its line in `checksums.txt`, as `shasum -a 256 -c checksums.txt` does.
 
 ### Rebuild
 
@@ -112,7 +154,59 @@ A `v*` tag pushed by hand starts nothing, and since no `v*` tag can be moved or 
 
 A release can be withdrawn from GitHub, but its signature in the public transparency log and its provenance records stay.
 
-On every pull request, the workflow also builds a snapshot twice without signing, checks that the two builds' archives are the same bytes, and runs `scripts/release-check.sh --snapshot` on it. It is not a required check.
+On every pull request, the workflow also builds a snapshot twice without signing, checks that the two builds' archives are the same bytes, and runs `scripts/release-check.sh --snapshot` on it, which also checks the checkout's `install.sh` against its line in `checksums.txt`, and the cask GoReleaser wrote, `dist/homebrew/Casks/placket.rb`: each URL names this release's archive for the platform of its block, each SHA-256 is that archive's line in `checksums.txt`, and its macOS step clears the quarantine mark of `placket`. It is not a required check.
+
+### The Homebrew tap
+
+The tap is the repository `orilloai/homebrew-tap`, which holds `Casks/placket.rb`. GoReleaser writes the cask and pushes it nowhere: the release only attaches it. Placket's own workflows hold no token for the tap. A workflow in the tap, on a schedule and by hand, takes the cask from placket's latest published release, so it only ever names published assets; checks the signature on that release's `checksums.txt` and that each of the cask's SHA-256s is an archive's line there; and commits it with the tap's own token. So the cask may lag a release by up to a day; running the workflow by hand after a release brings it at once.
+
+The tap's workflow, `.github/workflows/update.yml`:
+
+```yaml
+name: update
+on:
+  schedule:
+    - cron: "23 5 * * *"
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  update:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+        with:
+          cosign-release: v3.1.4
+      - name: Take the cask from placket's latest published release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -eu
+          tag=$(gh release view --repo orilloai/placket --json tagName --jq .tagName)
+          d=$RUNNER_TEMP/release
+          gh release download "$tag" --repo orilloai/placket --dir "$d" \
+            --pattern placket.rb --pattern checksums.txt --pattern checksums.txt.sigstore.json
+          cosign verify-blob --bundle "$d/checksums.txt.sigstore.json" \
+            --certificate-identity https://github.com/orilloai/placket/.github/workflows/release.yml@refs/heads/main \
+            --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+            "$d/checksums.txt"
+          # Each SHA-256 of the cask is an archive's line in checksums.txt, one for each of the four.
+          n=0
+          for s in $(sed -n 's/^ *sha256 "\([0-9a-f]\{64\}\)"$/\1/p' "$d/placket.rb"); do
+            grep -q "^$s  placket_.*\.tar\.gz\$" "$d/checksums.txt" || { echo "::error::sha256 $s is no archive's line in checksums.txt"; exit 1; }
+            n=$((n + 1))
+          done
+          [ "$n" -eq 4 ] || { echo "::error::the cask has $n SHA-256s, not 4"; exit 1; }
+          mkdir -p Casks
+          if cmp -s "$d/placket.rb" Casks/placket.rb; then echo "the cask is already $tag's"; exit 0; fi
+          cp "$d/placket.rb" Casks/placket.rb
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add Casks/placket.rb
+          git commit -m "placket $tag"
+          git push
+```
 
 ### Versions
 

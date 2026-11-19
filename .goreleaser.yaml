@@ -47,6 +47,12 @@ archives:
           mode: 0644
           owner: root
           group: root
+      - src: NOTICE
+        info:
+          mtime: "{{ .CommitDate }}"
+          mode: 0644
+          owner: root
+          group: root
       - src: README.md
         info:
           mtime: "{{ .CommitDate }}"
@@ -65,9 +71,13 @@ sboms:
       - "--output"
       - "spdx-json=$document"
 
+# install.sh, the one-line install (docs/release.md), is a release asset with its line in
+# checksums.txt, so the signature covers it.
 checksum:
   name_template: checksums.txt
   algorithm: sha256
+  extra_files:
+    - glob: install.sh
 
 # cosign signs checksums.txt keyless, with the release workflow's OIDC identity, into a bundle.
 signs:
@@ -84,6 +94,31 @@ signs:
       - "--yes"
     output: true
 
+# The Homebrew cask, for macOS and Linux, from the archives at their checksums. GoReleaser writes it
+# to dist/homebrew/Casks/placket.rb after checksums.txt is signed, and pushes it nowhere: the release
+# attaches it, and the tap's own workflow takes it from the published release (docs/release.md).
+homebrew_casks:
+  - name: placket
+    ids:
+      - placket
+    binaries:
+      - placket
+    homepage: https://github.com/orilloai/placket
+    description: Mediates content crossing between parties and signs a receipt for every decision
+    license: Apache-2.0
+    directory: Casks
+    repository:
+      owner: orilloai
+      name: homebrew-tap
+    skip_upload: true
+    # The binary is not notarized: without the quarantine mark, its first run on macOS asks nothing.
+    hooks:
+      post:
+        install_steps: |
+          on_macos do
+            run "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "{{ .StagedPath }}/placket"]
+          end
+
 # The notes are the version's CHANGELOG.md section, given with --release-notes.
 changelog:
   disable: true
@@ -96,3 +131,8 @@ release:
   # replaces the draft an earlier run left.
   draft: true
   replace_existing_draft: true
+  # install.sh, and the cask GoReleaser wrote. The cask is in no line of checksums.txt: its SHA-256s
+  # are the archives' lines there.
+  extra_files:
+    - glob: install.sh
+    - glob: dist/homebrew/Casks/placket.rb
