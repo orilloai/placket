@@ -12,7 +12,8 @@
 # stand-in/, which answers from its fixtures and records each call, in place of GitHub. It makes
 # everything else it needs in the current directory, keeps its labels config and its state beside
 # this file (XDG_CONFIG_HOME and XDG_STATE_HOME), starts its own windows on sockets under $TMPDIR,
-# and stops them before it exits. See README.md.
+# and stops them before it exits. Here every party runs as one user; custody.md says which accounts a
+# real run keeps apart. See README.md.
 set -eu
 
 here=$(cd "$(dirname "$0")" && pwd)
@@ -120,7 +121,7 @@ show_calls() {
 	tail -n "+$(($1 + 1))" "$here/stand-in/state/calls.jsonl" |
 		jq -r '"gh: \(.method) \(.path | sub("/[0-9a-f]{40}$"; "/<commit>"))"'
 }
-applier() { sh "$here/apply.sh" "$@" | sed 's/^/applier: /'; }
+applier() { sh "$here/apply.sh" "$@" 2>&1 | sed 's/^/applier: /'; }
 
 step "1. keys, terms and the founding sets"
 for k in mediator operator principal agent applier decider; do
@@ -186,9 +187,12 @@ body "$repo" 99 main "$second" >pr.json
 propose "a pull request GitHub does not have" pr.json
 body example/other 7 main "$second" >repo.json
 propose "pull request 7 of another repository" repo.json
-# Wrong bodies: a member too many, a text, raw bytes, and a note that reads like a merge.
+# Wrong bodies: a member too many, data that is no object, a text, raw bytes, and a note that reads
+# like a merge.
 body "$repo" 7 main "$second" | jq -c '.why = "tidy"' >shape.json
 propose "a body with a member too many" shape.json
+echo '"merge pull request 7"' >string.json
+propose "data that is a string" string.json
 echo "merge pull request 7" >text.txt
 propose "a text" text.txt --as text
 printf 'merge pull request 7' >raw.bin
@@ -228,6 +232,7 @@ say gh "the comment came before the status: $(yes_no jq -s -e '
 	| ([to_entries[] | select(.value.path | contains("/statuses/")) | .key] | first) as $s
 	| $c != null and $s != null and $c < $s' applied.calls)"
 say gh "the comment holds the delivery: $(yes_no jq -e --slurpfile k kept.json '(.input.body | fromjson) == $k[0]' comment.call)"
+say gh "as a code block, so nothing in it renders: $(yes_no jq -e '.input.body | startswith("    {")' comment.call)"
 say gh "the status is on the merge commit: $(yes_no jq -e --arg m "$merged" '.path | endswith("/statuses/" + $m)' status.call)"
 say gh "its context is $(jq -r '.input.context' status.call), its state $(jq -r '.input.state' status.call)"
 say gh "its description is the receipt id: $(yes_no jq -e --slurpfile k kept.json '.input.description == $k[0].receiptId' status.call)"
@@ -240,10 +245,13 @@ from=$(calls)
 jq -c '{delivery: .}' kept.json | applier merge "$repo" -
 say gh "calls: $(($(calls) - from))"
 
-step "6. the same release, its answer call not the decider's accept"
+step "6. the same release, altered"
 # placket get refuses a delivery whose answer call is not the one its receipt names, so only an
-# altered delivery reaches the applier this way; it checks the call all the same.
+# altered delivery reaches the applier this way; it checks the call all the same. The message id is
+# the giver's own, and the applier posts the delivery under its own name, so it takes only a plain id.
 from=$(calls)
+say pattern "the delivery, its message id a link and a mention"
+jq -c '{delivery: (.messageId = "[see](https://example.com/x) @someone")}' kept.json | applier merge "$repo" -
 say pattern "the delivery, its answer's action changed"
 jq -c '{delivery: (.answer.action = "changed")}' kept.json | applier merge "$repo" -
 say pattern "the delivery, its answer's from set to the agent's key"
@@ -261,7 +269,34 @@ from=$(calls)
 applier unasked "$repo"
 say gh "calls: $(($(calls) - from))"
 
-step "8. the auditor, from the merge commit back to its receipt"
+step "8. GitHub fails partway"
+body "$repo" 8 main "$(jq -r '.head.sha' "$here/stand-in/fixtures/repos/$repo/pulls/8.json")" >down.json
+propose "pull request 8, while GitHub cannot be read" down.json
+body "$repo" 9 main "$(jq -r '.head.sha' "$here/stand-in/fixtures/repos/$repo/pulls/9.json")" >lost.json
+propose "pull request 9, whose merge's answer is lost" lost.json
+decide
+# The read of pull request 8 fails once, and the merge of pull request 9 merges and answers an error.
+touch "$here/stand-in/state/down-8" "$here/stand-in/state/lost-9"
+from=$(calls)
+applier merge "$repo"
+show_calls "$from"
+# The read failed before its id was kept, so the applier's own kept delivery, piped to it again,
+# merges it (README.md, "When it stops partway").
+from=$(calls)
+jq -c 'select(.kind == "merge" and (.data | type == "object" and .pr == 8)) | {delivery: .}' "$state/kept.jsonl" | applier merge "$repo" -
+show_calls "$from"
+
+step "9. the base changed between the read and the merge"
+body "$repo" 10 main "$(jq -r '.head.sha' "$here/stand-in/fixtures/repos/$repo/pulls/10.json")" >retarget.json
+propose "pull request 10 into main" retarget.json
+decide
+echo release >"$here/stand-in/state/retarget-10"
+from=$(calls)
+applier merge "$repo"
+show_calls "$from"
+say gh "statuses on its merge commit: $(gh api "repos/$repo/commits/$(jq -r '.merge_commit_sha' "$here/stand-in/state/pulls/$repo/10.json")/statuses" | jq length)"
+
+step "10. the auditor, from the merge commit back to its receipt"
 # CHANGE: the merge commit you audit, and the Accord, founding set, acceptances and journal its
 # operator handed you.
 commit=$(gh api "repos/$repo/pulls/7" | jq -r '.merge_commit_sha')
@@ -282,5 +317,6 @@ grep -q "^$receipt witnessed: signed by key $(ref decider), which principal $(re
 	echo "verify: <the receipt> witnessed: signed by the decider's key, bound to role decider"
 grep -q "^body: the part of receipt $receipt is the one it names$" verify.out &&
 	echo "verify: body: the part of <the receipt> is the one it names"
-merged_head=$(gh api "repos/$repo/pulls/7" | jq -r 'select(.merged) | .head.sha')
-say auditor "the body's head is the head GitHub merged: $(yes_no jq -e --arg h "$merged_head" '.data.head == $h' comment.json)"
+gh api "repos/$repo/commits/$commit/pulls" | jq -c --arg c "$commit" '[.[] | select(.merged and .merge_commit_sha == $c)] | first' >pull.json
+say auditor "the body names the pull request merged as this commit, its repo, number, base and head: $(yes_no jq -e --slurpfile p pull.json '
+	.data as $b | $p[0] | .base.repo.full_name == $b.repo and .number == $b.pr and .base.ref == $b.base and .head.sha == $b.head' comment.json)"

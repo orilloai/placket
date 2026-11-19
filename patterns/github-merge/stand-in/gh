@@ -6,9 +6,14 @@
 # input, as one line of state/calls.jsonl. A call it does not know is HTTP 404, printed as gh prints
 # one.
 #
-# It plays one thing GitHub does on its own: when state/push-<n> holds a commit, the next read of
-# pull request <n> returns it as it was and then moves its head to that commit, as a push landing
-# between the applier's read and its merge would.
+# It plays what others, or GitHub itself, may do between two calls, each once, when a file of
+# state/ names pull request <n>:
+#   push-<n>      holds a commit: the next read returns the pull request as it was and then moves its
+#                 head to that commit, as a push landing between the applier's read and its merge would;
+#   retarget-<n>  holds a branch: the next read returns it as it was and then sets its base to that
+#                 branch, as its author editing it would;
+#   down-<n>      the next read is HTTP 503, as GitHub answers when it is unavailable;
+#   lost-<n>      the next merge merges, and its answer is HTTP 502, as a reply lost on the way would.
 set -euf
 
 here=$(cd "$(dirname "$0")" && pwd)
@@ -70,11 +75,20 @@ case "$method $*" in
 "GET pulls "*)
 	[ $# -eq 2 ] || fail 404 "Not Found"
 	pull "$2"
+	if [ -f "$state/down-$2" ]; then
+		rm "$state/down-$2"
+		fail 503 "Service Unavailable"
+	fi
 	cat "$f"
 	if [ -f "$state/push-$2" ]; then
 		jq --arg sha "$(cat "$state/push-$2")" '.head.sha = $sha' "$f" >"$f.new"
 		mv "$f.new" "$f"
 		rm "$state/push-$2"
+	fi
+	if [ -f "$state/retarget-$2" ]; then
+		jq --arg ref "$(cat "$state/retarget-$2")" '.base.ref = $ref' "$f" >"$f.new"
+		mv "$f.new" "$f"
+		rm "$state/retarget-$2"
 	fi
 	;;
 "PUT pulls "*" merge")
@@ -86,6 +100,10 @@ case "$method $*" in
 		fail 409 "Head branch was modified. Review and try the merge again."
 	jq '.merged = true | .state = "closed"' "$f" >"$f.new"
 	mv "$f.new" "$f"
+	if [ -f "$state/lost-$2" ]; then
+		rm "$state/lost-$2"
+		fail 502 "Bad Gateway"
+	fi
 	jq -c '{sha: .merge_commit_sha, merged: true, message: "Pull Request successfully merged"}' "$f"
 	;;
 "POST issues "*" comments")
@@ -106,6 +124,13 @@ case "$method $*" in
 	[ $# -eq 2 ] || fail 404 "Not Found"
 	echo "$body" | jq -c --arg sha "$2" '{sha: $sha, state, context, description, target_url}' >>"$state/statuses.jsonl"
 	echo "$body" | jq -c '{state, context, description, target_url}'
+	;;
+"GET commits "*" pulls")
+	# The merged pull requests whose merge commit is this one.
+	[ $# -eq 3 ] || fail 404 "Not Found"
+	mkdir -p "$state/pulls/$repo"
+	find "$state/pulls/$repo" -name '*.json' -exec cat {} + |
+		jq -sc --arg sha "$2" '[.[] | select(.merged and .merge_commit_sha == $sha)]'
 	;;
 "GET commits "*" statuses")
 	[ $# -eq 3 ] || fail 404 "Not Found"

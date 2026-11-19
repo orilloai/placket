@@ -1,0 +1,8 @@
+{
+  "number": 10,
+  "state": "open",
+  "merged": false,
+  "merge_commit_sha": "8a3c5e7b0d2f4a6c9e1b3d5f7a0c2e4b6d9f1a3c",
+  "base": {"ref": "main", "repo": {"full_name": "example/widgets"}},
+  "head": {"ref": "faster-sum", "sha": "5e0a3c7b9d1f4e6a8c2b3d5f7a9c1e4b6d8f0a2c"}
+}

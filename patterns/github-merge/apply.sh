@@ -9,24 +9,30 @@
 # LABEL is the applier's mediator in the labels config; OWNER/NAME is the one repository it serves.
 # It reads the caller's environment and sets nothing up: placket finds the labels config where the
 # caller's XDG_CONFIG_HOME, or its default, says. It fetches each delivery with
-# `placket get --label LABEL --keep --wait 5 --json` and handles it; with `-`, it handles the one
-# delivery on standard input, as `placket get --json` printed it, and fetches nothing. For each
-# delivery it prints one line, `applied pr <n>` or `refused pr <n> <reason>`, `-` standing for <n>
-# when the body names no number. A refused release is never tried again.
+# `placket get --label LABEL --keep --wait 5 --json` and handles it. With `-`, it handles the one
+# delivery on standard input, as `placket get --json` printed it, and fetches nothing; placket checks
+# none of that input, so feed it only a line of the applier's own kept.jsonl (README.md, "When it
+# stops partway"). For each delivery it prints one line, `applied pr <n>` or `refused pr <n> <reason>`,
+# `-` standing for <n> when the body names no number. A refused release is never tried again.
 #
 # A release is applied only when, in this order:
-#   body        the delivery's body is data of kind merge with exactly repo, pr, base and head;
+#   body        the delivery's body is data of kind merge with exactly repo, pr, base and head, its
+#               message id is a short plain id, and the whole delivery fits in one comment;
 #   unwitnessed it carries the answer call that released it, an accept by a key the founding set's
 #               bindings give the deciding role;
 #   applied     its receipt id is not in applied.jsonl, beside this file;
 #   repo        the body's repo is OWNER/NAME, and GitHub's pull request is in it;
 #   pr          GitHub has the pull request the body names;
+#   read        GitHub did not answer the read of the pull request, for a reason other than that;
 #   base, head  its base branch and head commit are the body's;
 #   head-moved  GitHub merges it with sha set to the body's head, which it refuses if the head moved;
-#   merge       GitHub refuses the merge for any other reason, such as the repository's ruleset.
-# Its receipt id goes into applied.jsonl, synced, before the merge call. Once merged, the delivery is
-# posted as one comment on the pull request, and a commit status on the merge commit, context
-# placket, names the receipt id and links that comment.
+#   merge       GitHub refuses the merge for any other reason, such as the repository's ruleset, and
+#               the pull request read again is not merged.
+# Its receipt id goes into applied.jsonl, synced, before the merge call. Once merged, the applier
+# reads the pull request again, and stops, for a person, unless it merged at the body's head into
+# the body's base. Then the delivery is posted as one comment on the pull request, as a code block so
+# that nothing in it renders, and a commit status on the merge commit, context placket, names the
+# receipt id and links that comment.
 set -eu
 
 role=decider # CHANGE: the role whose accept releases a merge, as your Accord's terms name it
@@ -65,12 +71,27 @@ touch "$applied"
 # refuse N REASON: the release of pull request N is not applied, for REASON.
 refuse() { echo "refused pr $1 $2"; }
 
+# stop LINE: the applier stops, for a person to look at what LINE says (README.md, "When it stops
+# partway").
+stop() {
+	echo "apply: $1" >&2
+	exit 1
+}
+
+# The longest comment GitHub takes, less the code block's indent.
+most=65532
+
 # apply FILE: handles the one delivery FILE holds, as placket get --json printed it.
 apply() {
 	d=$1
-	n=$(jq -r '.delivery.data.pr? | if type == "number" and . >= 1 and . == floor and . < 1e9 then tostring else "-" end' "$d" 2>/dev/null) || n=-
-	if ! jq -e '.delivery | .kind == "merge" and .text == null and .raw == null
+	n=$(jq -r '.delivery.data | if type == "object" then .pr else null end
+		| if type == "number" and . >= 1 and . == floor and . < 1e9 then floor | tostring else "-" end' "$d" 2>/dev/null) || n=-
+	[ -n "$n" ] || n=-
+	if ! jq -e --argjson most "$most" '.delivery | .kind == "merge" and .text == null and .raw == null
 		and (.receiptId | type == "string" and test("^sha256:[0-9a-f]{64}$"))
+		and (.messageId | type == "string" and test("^[A-Za-z0-9._:-]{1,128}$"))
+		and (.re == null or (.re | type == "string" and test("^sha256:[0-9a-f]{64}$")))
+		and (tojson | length <= $most)
 		and (.data | type == "object" and keys == ["base", "head", "pr", "repo"])
 		and (.data.repo | type == "string" and test("^[A-Za-z0-9._-]+/[A-Za-z0-9._-]+$"))
 		and (.data.pr | type == "number" and . >= 1 and . == floor and . < 1e9)
@@ -93,11 +114,11 @@ apply() {
 	fi
 	[ "$(jq -r '.delivery.data.repo' "$d")" = "$repo" ] || { refuse "$n" repo; return; }
 	pr=$n
-	base=$(jq -r '.delivery.data.base' "$d")
+	body=$(jq -c '.delivery.data' "$d")
 	head=$(jq -r '.delivery.data.head' "$d")
 
-	if ! gh api "repos/$repo/pulls/$pr" >"$tmp/pull.json" 2>/dev/null; then
-		refuse "$pr" pr
+	if ! gh api "repos/$repo/pulls/$pr" >"$tmp/pull.json" 2>"$tmp/pull.err"; then
+		if grep -q '(HTTP 404)' "$tmp/pull.err"; then refuse "$pr" pr; else refuse "$pr" read; fi
 		return
 	fi
 	for check in \
@@ -105,7 +126,7 @@ apply() {
 		"repo|(.base.repo.full_name | ascii_downcase) == (\$b.repo | ascii_downcase)" \
 		"base|.base.ref == \$b.base" \
 		"head|.head.sha == \$b.head"; do
-		if ! jq -e --argjson b "$(jq -c '.delivery.data' "$d")" "${check#*|}" "$tmp/pull.json" >/dev/null 2>&1; then
+		if ! jq -e --argjson b "$body" "${check#*|}" "$tmp/pull.json" >/dev/null 2>&1; then
 			refuse "$pr" "${check%%|*}"
 			return
 		fi
@@ -114,16 +135,31 @@ apply() {
 	# Kept before the merge call, so a crash after the merge never applies the release twice.
 	jq -nc --arg id "$id" '$id' >>"$applied"
 	sync "$applied" 2>/dev/null || sync
-	if ! jq -nc --arg method "$method" --arg sha "$head" '{merge_method: $method, sha: $sha}' |
+	merged=
+	if jq -nc --arg method "$method" --arg sha "$head" '{merge_method: $method, sha: $sha}' |
 		gh api -X PUT "repos/$repo/pulls/$pr/merge" --input - >"$tmp/merge.json" 2>"$tmp/merge.err"; then
-		if grep -q '(HTTP 409)' "$tmp/merge.err"; then refuse "$pr" head-moved; else refuse "$pr" merge; fi
+		merged=$(jq -r '.sha // empty' "$tmp/merge.json" 2>/dev/null) || merged=
+	elif grep -q '(HTTP 409)' "$tmp/merge.err"; then
+		refuse "$pr" head-moved
 		return
 	fi
-	merged=$(jq -r '.sha' "$tmp/merge.json")
+	# Read again: a merge call that failed may still have merged, and the merge must be the one
+	# released, at its head into its base.
+	gh api "repos/$repo/pulls/$pr" >"$tmp/after.json" 2>/dev/null ||
+		stop "pr $pr: the merge call ended and the pull request could not be read again: check by hand whether it merged, and into which base"
+	if ! jq -e '.merged == true' "$tmp/after.json" >/dev/null 2>&1; then
+		[ -z "$merged" ] || stop "pr $pr: GitHub answered the merge call, and the pull request read again is not merged: check it by hand"
+		refuse "$pr" merge
+		return
+	fi
+	into=$(jq -r '.base.ref' "$tmp/after.json")
+	jq -e --argjson b "$body" '.base.ref == $b.base and .head.sha == $b.head' "$tmp/after.json" >/dev/null 2>&1 ||
+		stop "pr $pr merged into $into, not into the base released: a person must handle it; no comment or status was posted"
+	[ -n "$merged" ] || merged=$(jq -r '.merge_commit_sha // empty' "$tmp/after.json")
 	case $merged in
 	*[!0-9a-f]* | '') unrecorded "$pr" ;;
 	esac
-	jq -c '{body: (.delivery | tojson)}' "$d" |
+	jq -c '{body: ("    " + (.delivery | tojson))}' "$d" |
 		gh api -X POST "repos/$repo/issues/$pr/comments" --input - >"$tmp/comment.json" 2>/dev/null || unrecorded "$pr"
 	url=$(jq -r '.html_url' "$tmp/comment.json")
 	jq -nc --arg id "$id" --arg url "$url" '{state: "success", context: "placket", description: $id, target_url: $url}' |
@@ -133,10 +169,7 @@ apply() {
 
 # unrecorded N: pull request N merged, and its comment or its status was not posted; the applier
 # stops, for a person to post them by hand from the kept delivery (README.md).
-unrecorded() {
-	echo "merged pr $1, but its comment or status was not posted: post them by hand (README.md)" >&2
-	exit 1
-}
+unrecorded() { stop "merged pr $1, but its comment or status was not posted: post them by hand (README.md)"; }
 
 if [ "$one" = - ]; then
 	cat >"$tmp/delivery.json"
