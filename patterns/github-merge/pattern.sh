@@ -42,7 +42,7 @@ say() {
 	shift
 	echo "$who: $*"
 }
-ref() { cat "$1.ref"; }
+ref() { read -r r <"$1.ref" && echo "$r"; }
 # yes_no CMD...: yes when CMD succeeds, else no; CMD prints nothing.
 yes_no() { if "$@" >/dev/null 2>&1; then echo yes; else echo no; fi; }
 
@@ -87,7 +87,7 @@ found() {
 		placket accept --key "$a.key" --socket "$sock_dir/$n.sock" --accord "$(cat "$n/accord")" >/dev/null 2>&1
 	done
 }
-as() { echo "--key $1.key --socket $sock_dir/asked.sock --accord $(cat asked/accord)"; }
+as() { read -r r <asked/accord && echo "--key $1.key --socket $sock_dir/asked.sock --accord $r"; }
 
 # propose WHAT FILE [GIVE FLAGS]: the agent proposes FILE, data of kind merge unless the flags say
 # otherwise, to the applier, and says WHAT it proposed; the question's id joins asked.list.
@@ -97,8 +97,9 @@ propose() {
 	rc=0
 	# shellcheck disable=SC2046 # as prints flags
 	placket give $(as agent) --json --to "$(ref applier)" --kind merge --as data --file "$f" "$@" >give.out 2>/dev/null || rc=$?
-	[ "$rc" -eq 4 ] && [ "$(jq -r '.outcome.word' give.out)" = ask ] || { echo "the give of $f was not asked: exit $rc"; exit 1; }
-	jq -r '.outcome.receiptId' give.out >>asked.list
+	[ "$rc" -eq 4 ] && jq -r 'select(.outcome.word == "ask") | .outcome.receiptId' give.out >give.id && [ -s give.id ] ||
+		{ echo "the give of $f was not asked: exit $rc"; exit 1; }
+	cat give.id >>asked.list
 	say agent "proposes $what: ask"
 }
 # decide: the decider accepts each question of asked.list, in order, which releases it to the
@@ -378,41 +379,42 @@ step "10. the auditor, from the merge commit back to its receipt"
 say pattern "a newer status named placket on pull request 7's merge commit, linking pull request 14's record"
 jq -nc --arg id "$receipt14" --arg url "$url14" '{state: "success", context: "placket", description: $id, target_url: $url}' |
 	gh api -X POST "repos/$repo/statuses/$(merge_of 7)" --input - >/dev/null
-# CHANGE: the merge commit you audit, and the Accord, founding set, acceptances and journal its
-# operator handed you.
-commit=$(gh api "repos/$repo/pulls/7" | jq -r '.merge_commit_sha')
+# CHANGE: the Accord, founding set, acceptances and journal the operator handed you, and the merge
+# commit you audit.
 accord=$(cat asked/accord)
+commit=$(gh api "repos/$repo/pulls/7" | jq -r '.merge_commit_sha')
 gh api "repos/$repo/commits/$commit/statuses" | jq -c '[.[] | select(.context == "placket")]' >statuses.json
 gh api "repos/$repo/commits/$commit/pulls" | jq -c --arg c "$commit" '[.[] | select(.merged_at != null and .merge_commit_sha == $c)] | first' >pull.json
 say auditor "statuses named placket on the commit, newest first: $(jq length statuses.json)"
-# audit I: follows the auditor's path from the commit's I-th status named placket, newest first, and
-# says why that status is not this merge's record, if it is not.
+# audit I: follows steps 3 to 5 of the auditor's path from the commit's I-th status named placket,
+# newest first, and says why that status is not this merge's record, if it is not.
 audit() {
+	at="status $(($1 + 1))"
 	jq -c --argjson i "$1" '.[$i]' statuses.json >status.json
 	receipt=$(jq -r '.description' status.json)
 	# Take only a comment's number, from a link to a pull request of this repository.
 	id=$(jq -r --arg p "https://github.com/$repo/pull/" '.target_url | strings
 		| select(ascii_downcase | startswith($p | ascii_downcase))
 		| capture("^https://github\\.com/[^/]+/[^/]+/pull/[0-9]+#issuecomment-(?<id>[0-9]+)$").id' status.json)
-	[ -n "$id" ] || { say auditor "status $(($1 + 1)): it links no comment on a pull request of $repo"; return 1; }
-	gh api "repos/$repo/issues/comments/$id" 2>/dev/null | jq -r '.body' >comment.json || { say auditor "status $(($1 + 1)): its comment cannot be read"; return 1; }
+	[ -n "$id" ] || { say auditor "$at: it links no comment on a pull request of $repo"; return 1; }
+	gh api "repos/$repo/issues/comments/$id" 2>/dev/null | jq -r '.body' >comment.json || { say auditor "$at: its comment cannot be read"; return 1; }
 	jq -e --arg r "$receipt" '.receiptId == $r' comment.json >/dev/null 2>&1 ||
-		{ say auditor "status $(($1 + 1)): it names another receipt than its comment's delivery"; return 1; }
+		{ say auditor "$at: it names another receipt than its comment's delivery"; return 1; }
+	jq -e --slurpfile p pull.json '.data as $b | $p[0] | .base.repo.full_name == $b.repo and .number == $b.pr
+		and .base.ref == $b.base and .head.sha == $b.head' comment.json >/dev/null 2>&1 ||
+		{ say auditor "$at: its comment's body names another pull request, base or head"; return 1; }
 	jq -c '.answer' comment.json >answer.json
 	rc=0
 	placket verify --accord "$accord" --founding asked/founding.json --acceptances asked/acceptances.json \
 		--receipts asked/journal --delivery comment.json --answers answer.json >verify.out 2>&1 || rc=$?
-	[ "$rc" -eq 0 ] || { say auditor "status $(($1 + 1)): verify exits $rc"; return 1; }
-	jq -e --slurpfile p pull.json '.data as $b | $p[0] | .base.repo.full_name == $b.repo and .number == $b.pr
-		and .base.ref == $b.base and .head.sha == $b.head' comment.json >/dev/null 2>&1 ||
-		{ say auditor "status $(($1 + 1)): its receipt verifies, and its body names another pull request, base or head"; return 1; }
+	[ "$rc" -eq 0 ] || { say auditor "$at: verify exits $rc"; return 1; }
 }
 i=0
 until audit "$i"; do
 	i=$((i + 1))
 	[ "$i" -lt "$(jq length statuses.json)" ] || { say auditor "no status named placket is this merge's record"; exit 1; }
 done
-say auditor "status $((i + 1)): the status names the receipt of the comment's delivery, and verify exits 0"
+say auditor "status $((i + 1)): its comment's delivery is of the receipt it names, and verify exits 0"
 grep '^valid: ' verify.out | sed 's/ by mediator .*//; s/^/verify: /'
 grep '^terms: ' verify.out | sed 's/^/verify: /'
 grep -q "^$receipt witnessed: signed by key $(ref decider), which principal $(ref principal) bound to role decider$" verify.out &&

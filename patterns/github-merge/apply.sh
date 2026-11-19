@@ -106,38 +106,40 @@ most=65532
 # apply FILE: handles the one delivery FILE holds, as placket get --json printed it.
 apply() {
 	d=$1
-	n=$(jq -r '.delivery.data | if type == "object" then .pr else null end
-		| if type == "number" and . >= 1 and . == floor and . < 1e9 then floor | tostring else "-" end' "$d" 2>/dev/null) || n=-
-	[ -n "$n" ] || n=-
-	if ! jq -e --argjson most "$most" --arg ref "$ref" --arg bad "$bad" '.delivery | .kind == "merge" and .text == null and .raw == null
-		and (.receiptId | type == "string" and test("^sha256:[0-9a-f]{64}$"))
-		and (.messageId | type == "string" and test("^[A-Za-z0-9._:-]{1,128}$"))
-		and (.re == null or (.re | type == "string" and test("^sha256:[0-9a-f]{64}$")))
-		and (tojson | length <= $most)
-		and (.data | type == "object" and keys == ["base", "head", "pr", "repo"])
-		and (.data.repo | type == "string" and test("^[A-Za-z0-9._-]+/[A-Za-z0-9._-]+$"))
-		and (.data.pr | type == "number" and . >= 1 and . == floor and . < 1e9)
-		and (.data.base | type == "string" and length <= 255 and test($ref) and (test($bad) | not))
-		and (.data.head | type == "string" and test("^([0-9a-f]{40}|[0-9a-f]{64})$"))' "$d" >/dev/null 2>&1; then
-		refuse "$n" body
-		return
-	fi
-	# placket get has refused a delivery whose answer call is not the one its receipt names; the
-	# call's signature is the mediator's to check (README.md, "What it claims").
-	if ! jq -e --slurpfile keys "$tmp/deciders.json" '.delivery.answer | type == "object"
-		and .action == "accepted" and (.from | type == "string") and (.from as $f | $keys[0] | any(. == $f))' "$d" >/dev/null; then
-		refuse "$n" unwitnessed
-		return
-	fi
-	id=$(jq -r '.delivery.receiptId' "$d")
-	if grep -Fqx "\"$id\"" "$applied"; then
-		refuse "$n" applied
-		return
-	fi
-	[ "$(jq -r '.delivery.data.repo' "$d")" = "$repo" ] || { refuse "$n" repo; return; }
+	# One read of the delivery, which FILE holds alone, gives the pull request's number, or -, the
+	# first of the checks body, unwitnessed, applied and repo that it fails, or ok, and its receipt id. placket get has refused a
+	# delivery whose answer call is not the one its receipt names; the call's signature is the
+	# mediator's to check (README.md, "What it claims").
+	jq -r --argjson most "$most" --arg ref "$ref" --arg bad "$bad" --arg repo "$repo" \
+		--slurpfile keys "$tmp/deciders.json" --rawfile done "$applied" -s 'if length != 1 then "- body -" else .[0].delivery
+		| (.data | if type == "object" then .pr else null end
+			| if type == "number" and . >= 1 and . == floor and . < 1e9 then floor | tostring else "-" end) as $n
+		| if (try (.kind == "merge" and .text == null and .raw == null
+			and (.receiptId | type == "string" and test("^sha256:[0-9a-f]{64}$"))
+			and (.messageId | type == "string" and test("^[A-Za-z0-9._:-]{1,128}$"))
+			and (.re == null or (.re | type == "string" and test("^sha256:[0-9a-f]{64}$")))
+			and (tojson | length <= $most)
+			and (.data | type == "object" and keys == ["base", "head", "pr", "repo"])
+			and (.data.repo | type == "string" and test("^[A-Za-z0-9._-]+/[A-Za-z0-9._-]+$"))
+			and (.data.pr | type == "number" and . >= 1 and . == floor and . < 1e9)
+			and (.data.base | type == "string" and length <= 255 and test($ref) and (test($bad) | not))
+			and (.data.head | type == "string" and test("^([0-9a-f]{40}|[0-9a-f]{64})$"))) catch false) != true
+		then "\($n) body -"
+		elif (try (.answer | type == "object" and .action == "accepted" and (.from | type == "string")
+			and (.from as $f | $keys[0] | any(. == $f))) catch false) != true
+		then "\($n) unwitnessed -"
+		elif ("\"" + .receiptId + "\"") as $line | $done | split("\n") | any(. == $line)
+		then "\($n) applied -"
+		elif .data.repo != $repo then "\($n) repo -"
+		else "\($n) ok \(.receiptId)" end end' "$d" >"$tmp/verdict" 2>/dev/null || echo "- body -" >"$tmp/verdict"
+	read -r n verdict id <"$tmp/verdict" || :
+	[ -n "${n:-}" ] || n=-
+	case ${verdict:-} in
+	ok) ;;
+	unwitnessed | applied | repo) refuse "$n" "$verdict"; return ;;
+	*) refuse "$n" body; return ;;
+	esac
 	pr=$n
-	body=$(jq -c '.delivery.data' "$d")
-	head=$(jq -r '.delivery.data.head' "$d")
 
 	if ! gh api "repos/$repo/pulls/$pr" >"$tmp/pull.json" 2>"$tmp/pull.err"; then
 		case $(code "$tmp/pull.err") in
@@ -148,25 +150,23 @@ apply() {
 		return
 	fi
 	# Only a merge this release makes gets a record: a pull request merged, or closed, before the
-	# merge call is refused, whoever merged it.
-	for check in \
-		"pr|.number == (\$b.pr)" \
-		"repo|(.base.repo.full_name | ascii_downcase) == (\$b.repo | ascii_downcase)" \
-		"merged|.merged == false and .merged_at == null" \
-		"closed|.state == \"open\"" \
-		"base|.base.ref == \$b.base" \
-		"head|.head.sha == \$b.head"; do
-		if ! jq -e --argjson b "$body" "${check#*|}" "$tmp/pull.json" >/dev/null 2>&1; then
-			refuse "$pr" "${check%%|*}"
-			return
-		fi
-	done
+	# merge call is refused, whoever merged it. The first check it fails, or ok.
+	failed=$(jq -r --slurpfile d "$d" '$d[0].delivery.data as $b
+		| def holds(f): (try f catch false) == true;
+		if holds(.number == $b.pr) | not then "pr"
+		elif holds((.base.repo.full_name | ascii_downcase) == ($b.repo | ascii_downcase)) | not then "repo"
+		elif holds(.merged == false and .merged_at == null) | not then "merged"
+		elif holds(.state == "open") | not then "closed"
+		elif holds(.base.ref == $b.base) | not then "base"
+		elif holds(.head.sha == $b.head) | not then "head"
+		else "ok" end' "$tmp/pull.json" 2>/dev/null) || failed=pr
+	[ "$failed" = ok ] || { refuse "$pr" "$failed"; return; }
 
 	# Kept before the merge call, so a crash after the merge never applies the release twice.
-	jq -nc --arg id "$id" '$id' >>"$applied"
+	printf '"%s"\n' "$id" >>"$applied"
 	sync "$applied" 2>/dev/null || sync
 	merged=
-	if jq -nc --arg method "$method" --arg sha "$head" '{merge_method: $method, sha: $sha}' |
+	if jq -c --arg method "$method" '{merge_method: $method, sha: .delivery.data.head}' "$d" |
 		gh api -X PUT "repos/$repo/pulls/$pr/merge" --input - >"$tmp/merge.json" 2>"$tmp/merge.err"; then
 		merged=$(jq -r '.sha // empty' "$tmp/merge.json" 2>/dev/null) || merged=
 	else
@@ -188,7 +188,7 @@ apply() {
 		return
 	fi
 	into=$(jq -r '.base.ref' "$tmp/after.json")
-	jq -e --argjson b "$body" '.base.ref == $b.base and .head.sha == $b.head' "$tmp/after.json" >/dev/null 2>&1 ||
+	jq -e --slurpfile d "$d" '$d[0].delivery.data as $b | .base.ref == $b.base and .head.sha == $b.head' "$tmp/after.json" >/dev/null 2>&1 ||
 		stop "pr $pr merged into $into, not into the base released: a person must handle it; no comment or status was posted"
 	[ -n "$merged" ] || merged=$(jq -r '.merge_commit_sha // empty' "$tmp/after.json")
 	case $merged in
@@ -218,11 +218,12 @@ while :; do
 		echo "apply: placket get exited $rc: $(jq -r '.error // empty' "$tmp/get.json" 2>/dev/null)" >&2
 		exit 1
 	fi
-	if jq -e 'has("delivery")' "$tmp/get.json" >/dev/null; then
+	got=$(jq -r 'if has("delivery") then "delivery" elif has("close") then "close" else "none" end' "$tmp/get.json")
+	if [ "$got" = delivery ]; then
 		apply "$tmp/get.json"
 		continue
 	fi
-	if jq -e 'has("close")' "$tmp/get.json" >/dev/null; then
+	if [ "$got" = close ]; then
 		echo "apply: the Accord is closed" >&2
 		break
 	fi

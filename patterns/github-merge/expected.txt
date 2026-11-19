@@ -154,8 +154,8 @@ gh: pull request 11 merged: yes, statuses on its merge commit: 0
 == 10. the auditor, from the merge commit back to its receipt
 pattern: a newer status named placket on pull request 7's merge commit, linking pull request 14's record
 auditor: statuses named placket on the commit, newest first: 2
-auditor: status 1: its receipt verifies, and its body names another pull request, base or head
-auditor: status 2: the status names the receipt of the comment's delivery, and verify exits 0
+auditor: status 1: its comment's body names another pull request, base or head
+auditor: status 2: its comment's delivery is of the receipt it names, and verify exits 0
 verify: valid: 60 receipts signed
 verify: terms: not checked: the declarations are sealed; with every member's opening, --open checks them
 verify: <the receipt> witnessed: signed by the decider's key, bound to role decider

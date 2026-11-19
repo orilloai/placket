@@ -26,9 +26,13 @@
 #   hollow  a merge call only: it merges nothing, and the answer says it merged.
 set -euf
 
-here=$(cd "$(dirname "$0")" && pwd)
+# pattern.sh puts this directory on PATH as an absolute path, so $0 names it.
+case $0 in
+/*) here=${0%/*} ;;
+*) here=$(cd "$(dirname "$0")" && pwd) ;;
+esac
 state=$here/state
-mkdir -p "$state/comments"
+[ -d "$state/comments" ] || mkdir -p "$state/comments"
 
 # fail CODE MESSAGE: GitHub's error, its body on standard output and gh's line on standard error, and
 # gh's exit status.
@@ -80,7 +84,7 @@ repo=$2/$3
 shift 3
 
 fault=
-if [ -f "$state/faults" ]; then
+if [ -s "$state/faults" ]; then
 	hit=$(awk -v m="$method" -v p="$path" '$1 == m && $2 == p { print NR, $3; exit }' "$state/faults")
 	if [ -n "$hit" ]; then
 		sed "${hit%% *}d" "$state/faults" >"$state/faults.new"
@@ -124,14 +128,13 @@ case "$method $*" in
 "PUT pulls "*" merge")
 	[ $# -eq 3 ] || fail 404 "Not Found"
 	pull "$2"
-	[ "$(jq -r .merged "$f")" = false ] && [ "$(jq -r .state "$f")" = open ] ||
-		fail 405 "Pull Request is not mergeable"
+	# The pull request's merged, state, base and head, and the call's sha, one to a line.
+	jq -r --argjson b "$body" '.merged, .state, .base.ref, .head.sha, ($b.sha // "") | tostring' "$f" >"$state/merge.read"
+	{ read -r merged; read -r open; read -r base; read -r head; read -r sha; } <"$state/merge.read"
+	[ "$merged" = false ] && [ "$open" = open ] || fail 405 "Pull Request is not mergeable"
 	bases=$here/fixtures/repos/$repo/bases
-	[ ! -f "$bases" ] || grep -Fqx "$(jq -r .base.ref "$f")" "$bases" ||
-		fail 405 "Repository rule violations found"
-	sha=$(echo "$body" | jq -r '.sha // empty')
-	[ -z "$sha" ] || [ "$sha" = "$(jq -r .head.sha "$f")" ] ||
-		fail 409 "Head branch was modified. Review and try the merge again."
+	[ ! -f "$bases" ] || grep -Fqx "$base" "$bases" || fail 405 "Repository rule violations found"
+	[ -z "$sha" ] || [ "$sha" = "$head" ] || fail 409 "Head branch was modified. Review and try the merge again."
 	if [ "$fault" != hollow ]; then
 		jq '.merged = true | .merged_at = "2026-01-01T00:00:00Z" | .state = "closed"' "$f" >"$f.new"
 		mv "$f.new" "$f"
