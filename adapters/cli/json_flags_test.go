@@ -168,6 +168,11 @@ var commandFlags = []commandRow{
 	{words: []string{"questions"}, flags: withSocket(map[string]flagUse{
 		"wait": {input, "how long the one questions call waits for a question to show", nil}})},
 	{words: []string{"mediators"}, flags: map[string]flagUse{"json": jsonFlag}},
+	// init's one result is the example it founds: its directory, its Accords and the lines it prints,
+	// all in the one object.
+	{words: []string{"init", "approve"}, flags: map[string]flagUse{"json": jsonFlag,
+		"dir":   {input, "the one directory the run writes the example in", nil},
+		"label": {input, "the one label the example is founded under", nil}}},
 	{words: []string{"watch"}, flags: map[string]flagUse{
 		"json":  {input, "prints each question it shows as one object on a line of its own; it makes nothing", nil},
 		"label": {input, "each mediator whose questions it shows; it fetches nothing and signs nothing", nil},
