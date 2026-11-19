@@ -197,11 +197,15 @@ for a in proposer applier decider; do
 	done
 done
 
-step "10. verify, with the sealed terms and then every opening, reconcile and the log; then one byte of a receipt changed"
+step "10. verify, with the sealed terms, then every opening, then each party against its own view; reconcile and the log; then one byte of a receipt changed"
 run verifier verify --accord "$accord" --receipts journal --founding founding.json
 run operator verify --accord "$accord" --receipts journal --founding founding.json \
 	--open "openings/$(sed 's/^ed25519://' proposer.ref).opening.json" --open "openings/$(sed 's/^ed25519://' applier.ref).opening.json" \
 	--open "openings/$(sed 's/^ed25519://' decider.ref).opening.json"
+# Each party checks its own receipts against the view it accepted, with no other party's terms.
+for a in proposer applier decider; do
+	run "$a" verify --accord "$accord" --receipts journal --founding founding.json --view "$a.key.state/${accord#sha256:}/view.json"
+done
 card=$(awk '$1 == "card" { print $2 }' founding.out)
 run verifier reconcile --mediator "$(ref mediator)" --accord "$accord" --card "$card" --receipts journal \
 	--kept "proposer.key.state/${accord#sha256:}" --kept "applier.key.state/${accord#sha256:}" --kept "decider.key.state/${accord#sha256:}"

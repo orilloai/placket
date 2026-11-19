@@ -27,7 +27,7 @@ A receipt also does not show that the mediator is honest, or that its clock is t
 
 ## Run the demo
 
-`make demo` runs the worked example, `scripts/demo.sh`, with Go 1.27 on Linux or macOS: it builds the `placket` binary, makes the keys of a mediator, an operator, a principal and three parties (a proposer, an applier and a decider), signs their terms and bindings, seals each party's terms, founds the Accord from the seals, and starts a window, to which each party consents by accepting its own view. Then the proposer asks three proposals and waits on each; the decider accepts the first, changes the second with a comment, and declines the third with a comment, each from its own commands; the applier fetches what was released. The proposer leaves a fourth proposal open and is refused when it tries to answer it itself, and gives a part of a kind no term names, which is blocked. The window is killed and started again: the open proposal is closed as undeliverable, and the applier fetches the changed version it had not fetched yet. Last, a third party verifies the journal with the terms sealed, the operator verifies it again with every opening, a third party reconciles each party's records with it and exports the log, four rows; then changes one character of a receipt's signature, and verification fails. `sh scripts/demo.sh DIR` keeps everything it made in `DIR`.
+`make demo` runs the worked example, `scripts/demo.sh`, with Go 1.27 on Linux or macOS: it builds the `placket` binary, makes the keys of a mediator, an operator, a principal and three parties (a proposer, an applier and a decider), signs their terms and bindings, seals each party's terms, founds the Accord from the seals, and starts a window, to which each party consents by accepting its own view. Then the proposer asks three proposals and waits on each; the decider accepts the first, changes the second with a comment, and declines the third with a comment, each from its own commands; the applier fetches what was released. The proposer leaves a fourth proposal open and is refused when it tries to answer it itself, and gives a part of a kind no term names, which is blocked. The window is killed and started again: the open proposal is closed as undeliverable, and the applier fetches the changed version it had not fetched yet. Last, a third party verifies the journal with the terms sealed, the operator verifies it again with every opening, each party checks its own receipts against the view it accepted, a third party reconciles each party's records with it and exports the log, four rows; then changes one character of a receipt's signature, and verification fails. `sh scripts/demo.sh DIR` keeps everything it made in `DIR`.
 
 The journal of one run is committed under `scripts/demo/`, with the founding set, its `acceptances.json`, the mediator's public reference and, for the demo only, every party's opening, and no key. Anyone can verify it:
 
@@ -43,6 +43,14 @@ Given only the Accord's id, its founding set and the acceptances beside it, it c
 ```
 
 It prints `terms: checked: every seal opens, and every view is the one its member accepted` and `conforms: every decision is one this Accord let its decider make`.
+
+A party also checks its own receipts against the view it accepted, with no other party's terms: every give it sends or receives, and the closing and release of every question it asked or received, against the row of its view that names it. In the demo each party runs, with the view `placket view` kept in its state directory:
+
+```
+placket verify --accord "$accord" --receipts journal --founding founding.json --view "proposer.key.state/${accord#sha256:}/view.json"
+```
+
+It prints one line per receipt of the party's own, such as `view of <key>: receipts.jsonl line 1 receipt <id> matches give proposal to <key>: ask`, and then `view of <key>: every receipt of its own, 13, matches the view it accepted`. A receipt that does not match exits 1 and names its line; a view that is not the one the party accepted is `error founding acceptance-view`. It does not read the closings a party signs as an answerer on questions it neither asked nor received, nor crossings between two other parties.
 
 ## Found an Accord
 
