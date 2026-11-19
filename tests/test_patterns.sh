@@ -3,8 +3,9 @@
 #
 # First the shape patterns/README.md states: the README is there; every directory under patterns/ is a
 # job, with its README.md, pattern.sh and expected.txt; the job's README has the four sections in
-# order; its pattern.sh marks the lines a caller changes; and the README's list names every job once,
-# with the Placket version it was last checked against, and no job that is not there.
+# order; its pattern.sh, and its apply.sh where it holds one, mark the lines a caller changes; and the
+# README's list names every job once, with the Placket version it was last checked against, and no
+# job that is not there.
 #
 # Then each pattern runs, one at a time, on the binary this tree builds and nothing else of the tree:
 # from a fresh copy of its own directory, with the binary's directory first on PATH and a fresh TMPDIR
@@ -69,9 +70,11 @@ for d in "$patterns"/*; do
 ## What it claims'
 		[ "$got" = "$want" ] || fail "patterns/$job/README.md: its first sections are not, in order: $(echo "$want" | sed 's/^## //' | paste -sd, - | sed 's/,/, /g')"
 	fi
-	if [ -f "$d/pattern.sh" ] && ! grep -q '# CHANGE' "$d/pattern.sh"; then
-		fail "patterns/$job/pattern.sh: no line is marked '# CHANGE' for a caller to change"
-	fi
+	for f in pattern.sh apply.sh; do
+		if [ -f "$d/$f" ] && ! grep -q '# CHANGE' "$d/$f"; then
+			fail "patterns/$job/$f: no line is marked '# CHANGE' for a caller to change"
+		fi
+	done
 done
 # The list: in the section "## The patterns", up to the next heading, one line per job,
 # "- `<job>`: <the job it does>. Checked against placket <version>."
