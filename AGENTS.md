@@ -20,7 +20,7 @@ This file is the entry point for anyone who builds or reviews placket, agents fi
 - `recipes/<name>/` (none yet): one job's templates, on the core's exported API only.
 - `spec/`: the protocol. `protocol.md` is the normative requirement text; `schema/` and `frozen-formats.md` are the frozen formats and their register.
 - `vectors/`: conformance vectors, generated independently of the code they test, and the coverage list.
-- `patterns/`: runnable templates for a caller's job, using the `placket` binary and `jq` only; `make ci` runs each.
+- `patterns/`: runnable templates for a caller's job, using the `placket` binary and `jq` only, and `gh api` for `github-merge` alone; a pattern may hold an `apply.sh` its `pattern.sh` calls, and a stand-in for an outside tool with its fixtures. `make ci` runs each.
 - `docs/adr/`: decision records, `NNNN-<slug>.md`, written before the change that relies on them.
 - `docs/rules/`: every rule, once, under its public name. `docs/style/`, `docs/security/`, `docs/review.md`: style, security, review.
 - `tests/`: the shell tests `make ci` runs, `tests/test_*.sh`, with fixtures under `tests/testdata/`.
