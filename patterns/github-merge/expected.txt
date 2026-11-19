@@ -1,0 +1,79 @@
+
+== 1. keys, terms and the founding sets
+asked: founded, its merges asked of role decider
+unasked: founded, its merges passed by the terms
+
+== 2. the labels config
+mediators: merge
+mediators: unasked
+
+== 3. one refused for each check, the first because the head moved
+agent: proposes pull request 7 at its head: ask
+agent: proposes pull request 7 at its old head: ask
+agent: proposes pull request 7 into another base: ask
+agent: proposes a pull request GitHub does not have: ask
+agent: proposes pull request 7 of another repository: ask
+agent: proposes a body with a member too many: ask
+agent: proposes a text: ask
+agent: proposes raw bytes: ask
+agent: proposes a note that reads like a merge: ask
+decider: accepts 9, each released to the applier
+applier: refused pr 7 head-moved
+applier: refused pr 7 head
+applier: refused pr 7 base
+applier: refused pr 99 pr
+applier: refused pr 7 repo
+applier: refused pr 7 body
+applier: refused pr - body
+applier: refused pr - body
+applier: refused pr 7 body
+gh: GET repos/example/widgets/pulls/7
+gh: PUT repos/example/widgets/pulls/7/merge
+gh: GET repos/example/widgets/pulls/7
+gh: GET repos/example/widgets/pulls/7
+gh: GET repos/example/widgets/pulls/99
+gh: pull request 7 merged: no
+
+== 4. a release of the new head, applied
+agent: proposes pull request 7 at its new head: ask
+decider: accepts 1, each released to the applier
+applier: applied pr 7
+gh: GET repos/example/widgets/pulls/7
+gh: PUT repos/example/widgets/pulls/7/merge
+gh: POST repos/example/widgets/issues/7/comments
+gh: POST repos/example/widgets/statuses/<commit>
+gh: the merge's sha is the body's head: yes
+gh: the comment came before the status: yes
+gh: the comment holds the delivery: yes
+gh: the status is on the merge commit: yes
+gh: its context is placket, its state success
+gh: its description is the receipt id: yes
+gh: its target is the comment: yes
+gh: it holds neither the body nor the salt: yes
+
+== 5. the same release again
+applier: refused pr 7 applied
+gh: calls: 0
+
+== 6. the same release, its answer call not the decider's accept
+pattern: the delivery, its answer's action changed
+applier: refused pr 7 unwitnessed
+pattern: the delivery, its answer's from set to the agent's key
+applier: refused pr 7 unwitnessed
+pattern: the delivery, without its answer
+applier: refused pr 7 unwitnessed
+gh: calls: 0
+
+== 7. a release the terms passed, with no one asked
+agent: gives a merge: pass, exit 0
+applier: refused pr 7 unwitnessed
+gh: calls: 0
+
+== 8. the auditor, from the merge commit back to its receipt
+auditor: the status names the receipt of the comment's delivery: yes
+auditor: verify exits 0
+verify: valid: 30 receipts signed
+verify: terms: not checked: the declarations are sealed; with every member's opening, --open checks them
+verify: <the receipt> witnessed: signed by the decider's key, bound to role decider
+verify: body: the part of <the receipt> is the one it names
+auditor: the body's head is the head GitHub merged: yes
