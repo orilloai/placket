@@ -31,6 +31,7 @@ A group's vectors test the core packages in its row. Its generator must not impo
 | `receipts` | 7, 8, 9 | `receipts`, `mediator` |
 | `questions` | 6 | `mediator`, `receipts`, `answer` |
 | `conform` | 8 | `conform` |
+| `conform-view` | 8 | `conform` |
 | `close` | 8, 13 | `mediator`, `receipts` |
 
 The `signatures` group holds, beside `sign` and `verify-signature` vectors, `verify` vectors of a receipt's payload signature, so a fault in `receipts` shows there too.
@@ -50,7 +51,7 @@ A vector's expected result never comes from the code it tests (`vectors-independ
 
 The independent check needs these tools: `openssl` (OpenSSL 3.0 or later; LibreSSL is refused), `jq`, `basenc` and `base64` (GNU coreutils), `od`, `sed`, `grep`, `awk`, `tr` and `wc`.
 
-To write the vectors again after changing a generator: `cd vectors && for g in canonical signatures founding view crossing receipts questions conform close; do go run ./$g; done`. The planted-fault test fails when the committed vectors are not what the generators write.
+To write the vectors again after changing a generator: `cd vectors && for g in canonical signatures founding view crossing receipts questions conform conform-view close; do go run ./$g; done`. The planted-fault test fails when the committed vectors are not what the generators write.
 
 ## How the runner judges a vector
 
@@ -112,6 +113,8 @@ A change to a frozen format, the vector format included, carries a note here and
 - 0.1, before release: the close (`spec/frozen-formats.md`, decision record 0022). A new group, `close`, tests a close in `mediator` and `receipts`: scenario vectors with a `close` step, which expects the closings it writes and the close receipt, and `verify` vectors that expect `after-close`, `close` or `verified`. A scenario's `get` step expects `close` once a closed Accord's queue is empty, and a `give` or `resolve` step the rejection `closed`. `conform/close-*.json` add the close's closings to the `conform` group. No landed vector changes.
 
 - 0.1, before release: sealed terms (`spec/frozen-formats.md`, decision record 0025). Every founding set holds its declarations as seal entries, so every Accord id changed, and with it every scenario vector's receipts, ids and hashes; every group but `canonical` was written again. Every vector that founds gives its openings and its acceptances, and the kit gains the seal, the opening, an independent view builder and the acceptance. `found` vectors may expect `terms` `not-checked`, and `conform` vectors' `conforms` may too. A new group, `view`, holds `view` vectors, filed under section 3. Added: the seal, opening and acceptance vectors of `founding` (row 4a and rows 18 to 21, and founding without the openings), the acceptance vectors of `signatures`, and the `conform` vectors of a verifier with no opening or some. No code, verdict, reason or step of an existing vector changed.
+
+- 0.1, before release: a member's view check (`spec/frozen-formats.md`, decision record 0026). A `conform` vector may give `view`, one member's view as a JSON value, with its founding set; it then expects `viewed`, the number of receipts read against the view, when the receipts conform, and may expect the codes `acceptance-view`, at index -1, and `view-conformance`. A new group, `conform-view`, holds those vectors and tests `core/conform`, filed under section 8; each gives the sealed set with no opening, and its generator states by hand every row of a view its vectors read. No landed vector changes.
 
 The vector format is at version 0.1 as written. The coverage list is this directory's own record, not a frozen format; its `tests` and `rest` members were added with the first vectors.
 

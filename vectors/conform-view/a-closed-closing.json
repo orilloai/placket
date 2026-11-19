@@ -1,0 +1,248 @@
+{
+  "acceptances": [
+    {
+      "accord": "sha256:7479b3bc0dc9ba1bc128c604691a11f252a32ad7bd746600ecd10aeabaa186e4",
+      "from": "ed25519:375dea8c4519dbae84fc9eb513e97eb4b693968ef37d52ac10da7b79250c6a22",
+      "sig": "1a3c4c93a91c65747058f604f247d5c9ad2b2f3ae8fdb7b87aa670864dd8cf21921b1e1b91a16358955bbcff8284a8e272651727b35e3e5812fd1c16c8cb690e",
+      "view": "sha256:ccbd259a9e17ba65ddc8ee44a46022e5e041ecb68812a1ad6250bed8b44159e4"
+    },
+    {
+      "accord": "sha256:7479b3bc0dc9ba1bc128c604691a11f252a32ad7bd746600ecd10aeabaa186e4",
+      "from": "ed25519:7cf35b36b9d57c62b9f3d5be2eb4d39147afa1b7625cd0032443523254df3bea",
+      "sig": "0bb620cbe39c00c20c63fc9e3db8612944b581e26b69eedce6aa4bbecd5271195c162b4895a18446986d4739bb5aa0503744ae3312338aa824a13ccaf7146a0d",
+      "view": "sha256:95a822531d467d3fad48aa568790875c7de784558264a05f45f0a281a1508b3f"
+    },
+    {
+      "accord": "sha256:7479b3bc0dc9ba1bc128c604691a11f252a32ad7bd746600ecd10aeabaa186e4",
+      "from": "ed25519:a80586279ba17c5360b029018bf025be0169fdb02087e77301774c99eed92117",
+      "sig": "760169a65b557f65a861d0ee182145eb5532814380c5da382f9c294bd5cc63df8b4eb6024ae6ba74a60ae7cb5501ed77528943414d9643ab77bfc5c38bf55800",
+      "view": "sha256:ead8042ed18be8aacbb093435297ff5a3907ca6d74e78d863a7740f2453c18a8"
+    }
+  ],
+  "accord": "sha256:7479b3bc0dc9ba1bc128c604691a11f252a32ad7bd746600ecd10aeabaa186e4",
+  "answers": [],
+  "expect": {
+    "conforms": true,
+    "module": true,
+    "terms": "not-checked",
+    "unmatched": 0,
+    "unwitnessed": 0,
+    "viewed": 2,
+    "witnessed": 0
+  },
+  "founding": {
+    "bindings": [
+      {
+        "actor": "ed25519:375dea8c4519dbae84fc9eb513e97eb4b693968ef37d52ac10da7b79250c6a22",
+        "mediator": "ed25519:84254f9d593b0f7811b18c00b656a70fe1a9595ed353c73286ea83d300226ed3",
+        "policy": "sha256:9be7866811163fb218273cc74fffb0b0ec6d5fa57ed79dd2bd2b599e9da56550",
+        "principal": "ed25519:7953e3ee4311c21f4990662dbe506689868533db6fb93a77351351e8d6119574",
+        "roles": [
+          "decider"
+        ],
+        "sig": "88bd79d04722ef3e1db729e5a23580769c3ca83485ebeb8eb62e785c92445a45661d0aa0cf28525f3ad6d4b54da4ba02ab6204c377d23282c13bd67207e4790b",
+        "until": "2027-11-12T00:00:00Z"
+      },
+      {
+        "actor": "ed25519:7cf35b36b9d57c62b9f3d5be2eb4d39147afa1b7625cd0032443523254df3bea",
+        "mediator": "ed25519:84254f9d593b0f7811b18c00b656a70fe1a9595ed353c73286ea83d300226ed3",
+        "policy": "sha256:9be7866811163fb218273cc74fffb0b0ec6d5fa57ed79dd2bd2b599e9da56550",
+        "principal": "ed25519:7953e3ee4311c21f4990662dbe506689868533db6fb93a77351351e8d6119574",
+        "roles": [
+          "proposer"
+        ],
+        "sig": "0dcb40da9be0ad7dea514b37a1606b26ed83eee35f65e3e15fffecb36a78359509d2b51184f0cb19da12a1699eb244bc66f916d95919b270bb96f2256cbaac04",
+        "until": "2027-11-12T00:00:00Z"
+      },
+      {
+        "actor": "ed25519:a80586279ba17c5360b029018bf025be0169fdb02087e77301774c99eed92117",
+        "mediator": "ed25519:84254f9d593b0f7811b18c00b656a70fe1a9595ed353c73286ea83d300226ed3",
+        "policy": "sha256:9be7866811163fb218273cc74fffb0b0ec6d5fa57ed79dd2bd2b599e9da56550",
+        "principal": "ed25519:7953e3ee4311c21f4990662dbe506689868533db6fb93a77351351e8d6119574",
+        "roles": [
+          "applier"
+        ],
+        "sig": "8e1ddf94618df7d7460d2a20d3a03f594de9c03b25f2dc8efc88c2a3571934b953559d412ca585708b6d4ee9c760c55bc51c5b368923b3e775b152b7a0c52a04",
+        "until": "2027-11-12T00:00:00Z"
+      }
+    ],
+    "card": {
+      "judges": [
+        {
+          "hash": "sha256:b655859c26e175a51ad3a59e552d1de40e10f1202fa2bba2c172a91d44e2ae63",
+          "name": "jev",
+          "version": "1.0.0"
+        }
+      ],
+      "kernel": {
+        "hash": "sha256:a8755bef6ff188c2dc6b74377a73c6a49d612fc44915675db9d2795bb5b99475",
+        "version": "0.1.0"
+      },
+      "spec": "0.1"
+    },
+    "declarations": [
+      {
+        "actor": "ed25519:375dea8c4519dbae84fc9eb513e97eb4b693968ef37d52ac10da7b79250c6a22",
+        "seal": "sha256:6b3a3176cd22b483d94e020a3e3014a776649a3b7e4ab612cc56bea99354ac40"
+      },
+      {
+        "actor": "ed25519:7cf35b36b9d57c62b9f3d5be2eb4d39147afa1b7625cd0032443523254df3bea",
+        "seal": "sha256:6dad5a4ff242948d6bb21007653776cff7f8717535725b2b22530887a78430b3"
+      },
+      {
+        "actor": "ed25519:a80586279ba17c5360b029018bf025be0169fdb02087e77301774c99eed92117",
+        "seal": "sha256:511633015cc0857882495586f3df04110770df7c4d13754f636701113f5ccd53"
+      }
+    ],
+    "mediator": {
+      "actor": "ed25519:84254f9d593b0f7811b18c00b656a70fe1a9595ed353c73286ea83d300226ed3",
+      "operator": "ed25519:30f97501d13dd5589fc04e36ba98ccca1e44f52c1b3f578f1aca3c57c2181fbc",
+      "runs": "process"
+    },
+    "policy": {
+      "principals": [
+        {
+          "principal": "ed25519:7953e3ee4311c21f4990662dbe506689868533db6fb93a77351351e8d6119574",
+          "roles": [
+            "proposer",
+            "applier",
+            "decider"
+          ]
+        }
+      ],
+      "roles": [
+        "proposer",
+        "applier",
+        "decider"
+      ]
+    }
+  },
+  "kernel": "sha256:a8755bef6ff188c2dc6b74377a73c6a49d612fc44915675db9d2795bb5b99475",
+  "operation": "conform",
+  "receipts": [
+    {
+      "receipt": {
+        "payload": "eyJfdHlwZSI6Imh0dHBzOi8vaW4tdG90by5pby9TdGF0ZW1lbnQvdjEiLCJwcmVkaWNhdGUiOnsiYWNjb3JkIjoic2hhMjU2Ojc0NzliM2JjMGRjOWJhMWJjMTI4YzYwNDY5MWExMWYyNTJhMzJhZDdiZDc0NjYwMGVjZDEwYWVhYmFhMTg2ZTQiLCJhdCI6IjIwMjYtMTEtMTJUMDk6MDA6MDBaIiwiYnkiOiJ0ZXJtcyIsImNhcmQiOiJzaGEyNTY6NDdlOGFmNmU0NmE2MzY1NzExNmM1NTI2MzhmOTE1NWZjOWJmMmQzYTU4ODU0MGZhMWYxOTU1OGVhNjQ2ZmRiNiIsImVudmVsb3BlIjp7Imhhc2giOiJzaGEyNTY6MzY2Y2I0NzhkMmUwOWI5MTIxMWE1MTc2NGUxZTMyMzAyY2I4YTlmYzYxNGNlYTdjZDliMmFhM2U1MWNhMTY1ZCIsInNlbmRlciI6ImVkMjU1MTk6N2NmMzViMzZiOWQ1N2M2MmI5ZjNkNWJlMmViNGQzOTE0N2FmYTFiNzYyNWNkMDAzMjQ0MzUyMzI1NGRmM2JlYSIsInNlcSI6MX0sImZyb20iOiJlZDI1NTE5OjdjZjM1YjM2YjlkNTdjNjJiOWYzZDViZTJlYjRkMzkxNDdhZmExYjc2MjVjZDAwMzI0NDM1MjMyNTRkZjNiZWEiLCJraW5kIjoiY3Jvc3NpbmciLCJtZWRpYXRvciI6ImVkMjU1MTk6ODQyNTRmOWQ1OTNiMGY3ODExYjE4YzAwYjY1NmE3MGZlMWE5NTk1ZWQzNTNjNzMyODZlYTgzZDMwMDIyNmVkMyIsInJlYXNvbiI6Im1heWJlIiwic2VxIjoxLCJ0byI6ImVkMjU1MTk6YTgwNTg2Mjc5YmExN2M1MzYwYjAyOTAxOGJmMDI1YmUwMTY5ZmRiMDIwODdlNzczMDE3NzRjOTllZWQ5MjExNyIsInZlcmRpY3QiOiJlc2NhbGF0ZSJ9LCJwcmVkaWNhdGVUeXBlIjoiaHR0cHM6Ly9wbGFja2V0LnRlY2gvcmVjZWlwdC8wLjEiLCJzdWJqZWN0IjpbeyJkaWdlc3QiOnsic2FsdGVkLXNoYTI1NiI6IjUwMDhiYTNjNzk4MzA1YzM2M2QyNDczNTdjYzg3NDgzMTNhMjg0MzRkN2MwNGExYmU0ZDhmOTg0ZGYxMjMzZGQifSwibmFtZSI6InByb3Bvc2FsIn1dfQ==",
+        "payloadType": "application/vnd.in-toto+json",
+        "signatures": [
+          {
+            "keyid": "ed25519:84254f9d593b0f7811b18c00b656a70fe1a9595ed353c73286ea83d300226ed3",
+            "sig": "YuBb8Go73MSYgxlFtIdT3vUtJX2BPyRSE8+a0jWJgcQGTDCE3/66GBjFV4E729EQBoe13TwxoBDSjdY45N5YBw=="
+          }
+        ]
+      }
+    },
+    {
+      "receipt": {
+        "payload": "eyJfdHlwZSI6Imh0dHBzOi8vaW4tdG90by5pby9TdGF0ZW1lbnQvdjEiLCJwcmVkaWNhdGUiOnsiYWNjb3JkIjoic2hhMjU2Ojc0NzliM2JjMGRjOWJhMWJjMTI4YzYwNDY5MWExMWYyNTJhMzJhZDdiZDc0NjYwMGVjZDEwYWVhYmFhMTg2ZTQiLCJhdCI6IjIwMjYtMTEtMTJUMDk6MzA6MDBaIiwiYnkiOnsibWVkaWF0b3IiOiJjbG9zZSJ9LCJjYXJkIjoic2hhMjU2OjQ3ZThhZjZlNDZhNjM2NTcxMTZjNTUyNjM4ZjkxNTVmYzliZjJkM2E1ODg1NDBmYTFmMTk1NThlYTY0NmZkYjYiLCJlbnZlbG9wZSI6eyJoYXNoIjoic2hhMjU2OjM2NmNiNDc4ZDJlMDliOTEyMTFhNTE3NjRlMWUzMjMwMmNiOGE5ZmM2MTRjZWE3Y2Q5YjJhYTNlNTFjYTE2NWQiLCJzZW5kZXIiOiJlZDI1NTE5OjdjZjM1YjM2YjlkNTdjNjJiOWYzZDViZTJlYjRkMzkxNDdhZmExYjc2MjVjZDAwMzI0NDM1MjMyNTRkZjNiZWEiLCJzZXEiOjF9LCJmcm9tIjoiZWQyNTUxOTozNzVkZWE4YzQ1MTlkYmFlODRmYzllYjUxM2U5N2ViNGI2OTM5NjhlZjM3ZDUyYWMxMGRhN2I3OTI1MGM2YTIyIiwia2luZCI6InJlc29sdXRpb24iLCJtZWRpYXRvciI6ImVkMjU1MTk6ODQyNTRmOWQ1OTNiMGY3ODExYjE4YzAwYjY1NmE3MGZlMWE5NTk1ZWQzNTNjNzMyODZlYTgzZDMwMDIyNmVkMyIsInJlYXNvbiI6ImNsb3NlZCIsInNlcSI6MSwidG8iOiJlZDI1NTE5OjdjZjM1YjM2YjlkNTdjNjJiOWYzZDViZTJlYjRkMzkxNDdhZmExYjc2MjVjZDAwMzI0NDM1MjMyNTRkZjNiZWEiLCJ2ZXJkaWN0IjoiYmxvY2sifSwicHJlZGljYXRlVHlwZSI6Imh0dHBzOi8vcGxhY2tldC50ZWNoL3JlY2VpcHQvMC4xIiwic3ViamVjdCI6W3siZGlnZXN0Ijp7InNhbHRlZC1zaGEyNTYiOiI1MDA4YmEzYzc5ODMwNWMzNjNkMjQ3MzU3Y2M4NzQ4MzEzYTI4NDM0ZDdjMDRhMWJlNGQ4Zjk4NGRmMTIzM2RkIn0sIm5hbWUiOiJwcm9wb3NhbCJ9XX0=",
+        "payloadType": "application/vnd.in-toto+json",
+        "signatures": [
+          {
+            "keyid": "ed25519:84254f9d593b0f7811b18c00b656a70fe1a9595ed353c73286ea83d300226ed3",
+            "sig": "EN1B6Td4Py8wdHMK9alumgYZCWXIsR6K/cUmt/vXcE2XdxBD2ePD4kBGu43WuLM4KnEBkT8hEPy9GkGgwiEiDw=="
+          }
+        ]
+      }
+    },
+    {
+      "receipt": {
+        "payload": "eyJfdHlwZSI6Imh0dHBzOi8vaW4tdG90by5pby9TdGF0ZW1lbnQvdjEiLCJwcmVkaWNhdGUiOnsiYWNjb3JkIjoic2hhMjU2Ojc0NzliM2JjMGRjOWJhMWJjMTI4YzYwNDY5MWExMWYyNTJhMzJhZDdiZDc0NjYwMGVjZDEwYWVhYmFhMTg2ZTQiLCJhdCI6IjIwMjYtMTEtMTJUMDk6MzA6MDBaIiwiY2FyZCI6InNoYTI1Njo0N2U4YWY2ZTQ2YTYzNjU3MTE2YzU1MjYzOGY5MTU1ZmM5YmYyZDNhNTg4NTQwZmExZjE5NTU4ZWE2NDZmZGI2IiwiY2hhaW5zIjpbeyJmcm9tIjoiZWQyNTUxOTozNzVkZWE4YzQ1MTlkYmFlODRmYzllYjUxM2U5N2ViNGI2OTM5NjhlZjM3ZDUyYWMxMGRhN2I3OTI1MGM2YTIyIiwicmVjZWlwdCI6InNoYTI1Njo3ZTcwNzdlZjFkYmQzYjNkOTM5YTJhYTNiN2YyYThlYTA1YzA5NGVmZDBiMTI5YThhZDFhZDNlNmU3ZWNjOWI2Iiwic2VxIjoxLCJ0byI6ImVkMjU1MTk6N2NmMzViMzZiOWQ1N2M2MmI5ZjNkNWJlMmViNGQzOTE0N2FmYTFiNzYyNWNkMDAzMjQ0MzUyMzI1NGRmM2JlYSJ9LHsiZnJvbSI6ImVkMjU1MTk6N2NmMzViMzZiOWQ1N2M2MmI5ZjNkNWJlMmViNGQzOTE0N2FmYTFiNzYyNWNkMDAzMjQ0MzUyMzI1NGRmM2JlYSIsInJlY2VpcHQiOiJzaGEyNTY6YjYwYWQyNTU0MWY4OGIxOTA4NzVmMmE2OTlmNzQ3ZDdiOWI1ODllNjQ0ZmJmYTgwNmFjZjcwMzA3ZDA0NDQwMiIsInNlcSI6MSwidG8iOiJlZDI1NTE5OmE4MDU4NjI3OWJhMTdjNTM2MGIwMjkwMThiZjAyNWJlMDE2OWZkYjAyMDg3ZTc3MzAxNzc0Yzk5ZWVkOTIxMTcifV0sIm1lZGlhdG9yIjoiZWQyNTUxOTo4NDI1NGY5ZDU5M2IwZjc4MTFiMThjMDBiNjU2YTcwZmUxYTk1OTVlZDM1M2M3MzI4NmVhODNkMzAwMjI2ZWQzIiwidW5mZXRjaGVkIjpbXX0sInByZWRpY2F0ZVR5cGUiOiJodHRwczovL3BsYWNrZXQudGVjaC9jbG9zZS8wLjEiLCJzdWJqZWN0IjpbeyJkaWdlc3QiOnsic2hhMjU2IjoiNzQ3OWIzYmMwZGM5YmExYmMxMjhjNjA0NjkxYTExZjI1MmEzMmFkN2JkNzQ2NjAwZWNkMTBhZWFiYWExODZlNCJ9LCJuYW1lIjoiYWNjb3JkIn1dfQ==",
+        "payloadType": "application/vnd.in-toto+json",
+        "signatures": [
+          {
+            "keyid": "ed25519:84254f9d593b0f7811b18c00b656a70fe1a9595ed353c73286ea83d300226ed3",
+            "sig": "tDGytHiHi3Xbtul62TIQmNNROx4iAg3jv97BMfYpgCnaOMdE/u74GJ8K8f0MZp3PMIeKV+CW7OK1++mYih1qDw=="
+          }
+        ]
+      }
+    }
+  ],
+  "spec": "0.1",
+  "tests": "verify-2, close-1: a closing with reason closed from D at 09:30, before the deadline, conforms; the close is not read",
+  "vector": "conform-view/a-closed-closing",
+  "view": {
+    "accord": "sha256:7479b3bc0dc9ba1bc128c604691a11f252a32ad7bd746600ecd10aeabaa186e4",
+    "answers": [],
+    "crossings": [
+      {
+        "counterpart": "ed25519:375dea8c4519dbae84fc9eb513e97eb4b693968ef37d52ac10da7b79250c6a22",
+        "dir": "get",
+        "kind": "changed-version",
+        "outcome": "crosses",
+        "roles": [
+          "decider"
+        ]
+      },
+      {
+        "counterpart": "ed25519:7cf35b36b9d57c62b9f3d5be2eb4d39147afa1b7625cd0032443523254df3bea",
+        "dir": "get",
+        "kind": "memo",
+        "outcome": "blocked",
+        "roles": [
+          "proposer"
+        ]
+      },
+      {
+        "counterpart": "ed25519:7cf35b36b9d57c62b9f3d5be2eb4d39147afa1b7625cd0032443523254df3bea",
+        "dir": "get",
+        "kind": "note",
+        "outcome": "crosses",
+        "roles": [
+          "proposer"
+        ]
+      },
+      {
+        "counterpart": "ed25519:7cf35b36b9d57c62b9f3d5be2eb4d39147afa1b7625cd0032443523254df3bea",
+        "dir": "get",
+        "kind": "plan",
+        "outcome": "blocked",
+        "roles": [
+          "proposer"
+        ]
+      },
+      {
+        "counterpart": "ed25519:7cf35b36b9d57c62b9f3d5be2eb4d39147afa1b7625cd0032443523254df3bea",
+        "dir": "get",
+        "kind": "proposal",
+        "outcome": "asked",
+        "roles": [
+          "proposer"
+        ],
+        "timeout": 3600,
+        "to": [
+          "role:decider"
+        ]
+      },
+      {
+        "counterpart": "ed25519:7cf35b36b9d57c62b9f3d5be2eb4d39147afa1b7625cd0032443523254df3bea",
+        "dir": "get",
+        "judges": [
+          {
+            "name": "jev",
+            "use": "decide"
+          }
+        ],
+        "kind": "report",
+        "outcome": "asked",
+        "roles": [
+          "proposer"
+        ],
+        "timeout": 3600,
+        "to": [
+          "role:decider"
+        ]
+      },
+      {
+        "counterpart": "ed25519:7cf35b36b9d57c62b9f3d5be2eb4d39147afa1b7625cd0032443523254df3bea",
+        "dir": "give",
+        "kind": "note",
+        "outcome": "crosses",
+        "roles": [
+          "proposer"
+        ]
+      }
+    ],
+    "salt": "18afd8cee3d8005b581183f51269a6bc65814b88474c7861d0dc3a697c9d0445",
+    "viewer": "ed25519:a80586279ba17c5360b029018bf025be0169fdb02087e77301774c99eed92117"
+  }
+}

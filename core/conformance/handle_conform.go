@@ -14,8 +14,8 @@ func init() { registered["conform"] = runConform }
 // runConform checks the receipts for conformance to the Accord (verify-1, verify-2, verify-3) with the
 // founding set, the answer calls, the subset and the kernel hash the vector trusts, then the body of
 // its delivery when it gives one, and compares the first failure's code and index, or the counts of
-// the answers witnessed and unwitnessed, the calls matching no receipt and whether the module was
-// trusted.
+// the answers witnessed and unwitnessed, the calls matching no receipt, whether the module was
+// trusted and, with a view, the number of receipts read against it (verify-2).
 func runConform(v Vector) []Part {
 	m, _ := membersOf(v.Bytes)
 	list, ok := receiptList(m["receipts"])
@@ -54,6 +54,14 @@ func runConform(v Vector) []Part {
 	if m.has("subset") {
 		_ = json.Unmarshal(m["subset"], &e.Subset)
 	}
+	if m.has("view") {
+		// A member's view, its bytes its canonical form (verify-1 row 0a).
+		v, err := canonical.Form(m["view"])
+		if err != nil {
+			return bad("view", "the view is not accepted by the canonical form")
+		}
+		e.View = v
+	}
 	r, err := conform.Check(e)
 	if err == nil && m.has("delivery") {
 		d, ferr := canonical.Form(m["delivery"])
@@ -84,6 +92,9 @@ func runConform(v Vector) []Part {
 		o["witnessed"], o["unwitnessed"] = counts[conform.Witnessed], counts[conform.Unwitnessed]
 		if m.has("delivery") {
 			o["body"] = true
+		}
+		if m.has("view") {
+			o["viewed"] = len(r.Viewed)
 		}
 		got = jsonOf(o)
 	}
