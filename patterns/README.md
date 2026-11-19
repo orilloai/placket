@@ -8,7 +8,6 @@ A pattern is a runnable template for one caller's job: a proposer, an approver, 
 
 One line per pattern: its directory, the job it does, and the Placket version it was last checked against.
 
-- `github-merge`: an applier merges a pull request only when placket released a merge of it, accepted by the deciding role, at the head commit released, and records the delivery for an auditor. Checked against placket main@f7c99ee.
 - `guarded-export`: a receiver's guard exports a value only when exactly that value was released to it. Checked against placket main@6620793.
 - `notifier`: each new question an approver may answer runs one command, with its label and id, as it opens. Checked against placket 75a6493.
 - `shadow-judge`: a judge reads each part the terms ask a person about and decides nothing, beside the person's answer. Checked against placket e3972d6.
@@ -37,7 +36,7 @@ A pattern depends on nothing else: only the `placket` binary and `jq` on `PATH`,
 
 `tests/test_patterns.sh` finds every `patterns/*/pattern.sh`. A new pattern needs no change to `make ci`. For each one it:
 
-- checks the shape above: the three files, the four sections, at least one `# CHANGE` line in `pattern.sh`, and in `apply.sh` where there is one, and one line in the list above for each pattern and none for a pattern that is not here;
+- checks the shape above: the three files, the four sections, at least one `# CHANGE` line, and one line in the list above for each pattern and none for a pattern that is not here;
 - copies the pattern's directory to a fresh directory and runs `sh pattern.sh` there, with the `placket` it built from the tree first on `PATH`, a fresh `TMPDIR` of the pattern's own, and no `PLACKET_JEV_KEY`, so no pattern reaches a judge's host;
 - passes the pattern when it exits 0 within 60 seconds, prints exactly its `expected.txt`, and leaves no process running.
 

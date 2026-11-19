@@ -1,9 +1,0 @@
-{
-  "number": 12,
-  "state": "closed",
-  "merged": false,
-  "merged_at": null,
-  "merge_commit_sha": "0c5e7a9b2d4f6c8e1a3b5d7f9c0e2a4b6d8f1c3e",
-  "base": {"ref": "main", "repo": {"full_name": "example/widgets"}},
-  "head": {"ref": "abandoned", "sha": "7a2c5e9b1d3f6a8c0e4b5d7f9a1c3e6b8d0f2a4c"}
-}
