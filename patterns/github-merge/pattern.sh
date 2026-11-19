@@ -43,7 +43,7 @@ say() {
 	shift
 	echo "$who: $*"
 }
-ref() { read -r r <"$here/$1.ref" && echo "$r"; }
+ref() { read -r r <"$1.ref" && echo "$r"; }
 yes_no() { if "$@" >/dev/null 2>&1; then echo yes; else echo no; fi; }
 
 # found NAME ROLE...: founds the Accord NAME, one party for each ROLE with the terms NAME/ROLE.terms,
@@ -261,6 +261,8 @@ say pattern "the delivery, its base a branch's name with an accent and a plus"
 jq -c '.delivery.data.base = "feature/café+1"' pr7.kept | applier merge "$repo" -
 say pattern "the delivery, its base a name no branch can have"
 jq -c '.delivery.data.base = "main..next"' pr7.kept | applier merge "$repo" -
+say pattern "two deliveries on one input"
+cat pr7.kept pr7.kept | applier merge "$repo" -
 
 step "6. a release the terms passed, with no one asked"
 rc=0

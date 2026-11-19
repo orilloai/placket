@@ -88,6 +88,8 @@ pattern: the delivery, its base a branch's name with an accent and a plus
 applier: refused pr 7 applied
 pattern: the delivery, its base a name no branch can have
 applier: refused pr 7 body
+pattern: two deliveries on one input
+applier: refused pr - body
 
 == 6. a release the terms passed, with no one asked
 agent: gives a merge of pull request 7: pass, exit 0

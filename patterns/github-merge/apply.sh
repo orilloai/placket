@@ -73,16 +73,17 @@ answer() { if [ "$(status "$1")" = none ]; then echo "no answer"; else echo "HTT
 # read_pull FILE: GitHub's pull request, into FILE, its error into FILE.err.
 read_pull() { gh api "repos/$repo/pulls/$pr" >"$1" 2>"$1.err"; }
 
-# check: the first check of the delivery in $tmp/d.json it fails, of those placket's own record
-# answers, then the pull request's number, or -, then its receipt id. placket get has refused a
-# delivery whose answer call is not the one its receipt names; the call's signature rests on the
-# mediator (README.md, "What it claims").
+# check: for the one delivery in $tmp/d.json, the first of the checks that need nothing of GitHub,
+# body to repo, that it fails, or ok; then the pull request's number, or -; then its receipt id.
+# placket get has refused a delivery whose answer call is not the one its receipt names; the call's
+# signature rests on the mediator (README.md, "What it claims").
 check() {
-	jq -r --arg repo "$repo" --slurpfile keys "$tmp/deciders.json" --rawfile done "$applied" '
+	jq -r -s --arg repo "$repo" --slurpfile keys "$tmp/deciders.json" --rawfile done "$applied" '
 		def holds(f): (try f catch false) == true;
 		def git_branch: type == "string" and length <= 255 and test("^[^\\x00-\\x20\\x7f~^:?*\\[\\\\]+$")
 			and (test("\\.\\.|//|@\\{|(^|/)\\.|\\.lock(/|$)|[/.]$|^/|^@$") | not);
-		.delivery as $d
+		if length != 1 then "body - -" else
+		.[0].delivery as $d
 		| ($d.data | if holds(type == "object" and (.pr | type == "number" and . >= 1 and . == floor and . < 1e9))
 			then .pr | floor | tostring else "-" end) as $n
 		| (if holds($d.kind == "merge" and ($d | has("text") or has("raw") | not) and ($d | tojson | length) <= 65000
@@ -96,7 +97,7 @@ check() {
 			elif ("\"" + $d.receiptId + "\"") as $id | $done | split("\n") | any(.[]; . == $id) then "applied"
 			elif $d.data.repo != $repo then "repo"
 			else "ok" end) as $verdict
-		| "\($verdict) \($n) \(if $verdict == "ok" then $d.receiptId else "-" end)"' "$tmp/d.json" 2>/dev/null ||
+		| "\($verdict) \($n) \(if $verdict == "ok" then $d.receiptId else "-" end)" end' "$tmp/d.json" 2>/dev/null ||
 		echo "body - -"
 }
 
