@@ -9,7 +9,10 @@
 // Accord, parties, decision, witness and body) and verify-3 (an answer is witnessed by a call that
 // checks, and is otherwise unwitnessed, never a failure). Its decision row re-runs composition.Decide,
 // the one decision module, only when the card's kernel hash is the one its caller trusts
-// (one-decision-module, docs/adr/0021-who-decided-and-the-answer-call.md).
+// (one-decision-module, docs/adr/0021-who-decided-and-the-answer-call.md). With one member's view,
+// rows 0a and 4a check that the view is the one the member accepted and that each receipt of the
+// member's matches the view's rows, reading the view and never the terms (view.go,
+// docs/adr/0026-verify-against-a-view.md).
 package conform
 
 import (
@@ -29,8 +32,9 @@ import (
 // only when no founding set is given, and otherwise empty or the set's; the founding set, its
 // acceptances and the openings the verifier holds, none, some or every member's (setup-contract-16);
 // the receipts in the order the mediator wrote them; answer calls, each a call's bytes; whether the
-// receipts are a subset; and Kernel, the kernel hash whose module this verifier trusts to decide
-// again.
+// receipts are a subset; Kernel, the kernel hash whose module this verifier trusts to decide
+// again; and View, one member's view as that member kept it, read only with a founding set
+// (verify-1 rows 0a and 4a).
 type Evidence struct {
 	Accord, Mediator  string
 	Founding          []byte
@@ -39,6 +43,7 @@ type Evidence struct {
 	Receipts, Answers [][]byte
 	Subset            bool
 	Kernel            string
+	View              []byte
 }
 
 // Witness is what a receipt an answer decided says of its answer (verify-3): witnessed by a call
@@ -78,6 +83,10 @@ type Report struct {
 	// Terms is whether every member's seal was opened, so the decision row could read every
 	// crossing's terms (setup-contract-16, verify-1).
 	Terms bool
+	// Viewer is the viewer of the view given, and Viewed each receipt of the viewer's read against
+	// it, in list order (verify-1 row 4a, verify-2); both are empty without a view.
+	Viewer string
+	Viewed []Viewed
 }
 
 // Code is a conformance code of section 8's second table (verify-2).
@@ -126,10 +135,11 @@ type question struct {
 // under the mediator's reference it is given: receipts.Verify, or receipts.VerifySubset for a subset,
 // whose *receipts.Error it returns. With one, row 0 comes first: the set founds at the first
 // receipt's time, its typed hash is the Accord id, and the mediator, when given, is its
-// mediator.actor; a failure is founding. Then validity under the set's mediator, and then rows 1 to
-// 4, per receipt in list order, every row of one receipt before the next; the first failure is a
-// *Error with its code and the receipt's index. Row 3 runs only when the card's kernel hash is
-// Kernel; rows 1, 2 and 4 run whatever the module. Row 5 is Body's.
+// mediator.actor; a failure is founding. With a view, row 0a next: the view is the one its viewer
+// accepted, or it is acceptance-view. Then validity under the set's mediator, and then rows 1 to 4,
+// and with a view row 4a, per receipt in list order, every row of one receipt before the next; the
+// first failure is a *Error with its code and the receipt's index. Row 3 runs only when the card's
+// kernel hash is Kernel; rows 1, 2, 4 and 4a run whatever the module. Row 5 is Body's.
 //
 // A validity or founding failure returns an empty Report. A conformance failure returns the Report
 // of the whole list with it: every receipt's decision, each witness the calls show, and the count of
@@ -167,6 +177,14 @@ func Check(e Evidence) (Report, error) {
 		(e.Mediator != "" && e.Mediator != a.Mediator()) {
 		return Report{}, &Error{Code: CodeFounding, Index: -1}
 	}
+	// Row 0a: the view given is the one its viewer accepted, before validity.
+	var v view
+	if e.View != nil {
+		var ok bool
+		if v, ok = readView(e.View, a, e.Accord, e.Acceptances); !ok {
+			return Report{}, &Error{Code: CodeAcceptanceView, Index: -1}
+		}
+	}
 	sub, err := verify(a.Mediator(), e.Receipts, e.Subset)
 	if err != nil {
 		return Report{}, err
@@ -178,7 +196,11 @@ func Check(e Evidence) (Report, error) {
 			r.OperatorPrincipalOf++
 		}
 	}
-	c := checker{e: e, a: a, r: &r, questions: map[int]*question{}, calls: map[string][]byte{}, used: map[string]bool{}}
+	c := checker{e: e, a: a, r: &r, questions: map[int]*question{}, calls: map[string][]byte{}, used: map[string]bool{},
+		view: v, viewQuestions: map[int]*viewQuestion{}}
+	if e.View != nil {
+		r.Viewer, r.Viewed = v.viewer, []Viewed{}
+	}
 	for _, b := range e.Answers {
 		if id := callID(b); id != "" {
 			if _, seen := c.calls[id]; !seen {
@@ -247,6 +269,10 @@ type checker struct {
 	questions map[int]*question
 	calls     map[string][]byte
 	used      map[string]bool
+	// view is the view row 0a read, with no viewer when none was given, and viewQuestions the
+	// questions of the viewer's, by the index of the ask.
+	view          view
+	viewQuestions map[int]*viewQuestion
 }
 
 func (c *checker) statement(i int) receipts.Statement { return c.r.Subset.Verified[i].Statement() }
@@ -309,6 +335,13 @@ func (c *checker) receipt(i int) Code {
 		d.Witness = Unwitnessed
 		if _, has := c.calls[p.By.Answer]; has {
 			c.used[p.By.Answer] = true
+		}
+	}
+	// Row 4a: a receipt of the viewer's against its view. It is read even after a failed row, so
+	// that every one is shown.
+	if c.view.viewer != "" && d.Checked {
+		if read, matches := c.viewed(i, s, place); read && !matches && failed == "" {
+			failed = CodeViewConformance
 		}
 	}
 	c.r.Decisions = append(c.r.Decisions, d)
