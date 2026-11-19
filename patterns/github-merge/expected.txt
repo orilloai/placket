@@ -7,49 +7,42 @@ unasked: founded, its merges passed by the terms
 mediators: merge
 mediators: unasked
 
-== 3. one refused for each check, the first because the head moved
+== 3. one refused for each check, the first because the head moved, then the new head applied
 agent: proposes pull request 7 at its head: ask
 agent: proposes pull request 7 at its old head: ask
 agent: proposes pull request 7 into another base: ask
-agent: proposes pull request 7 into a base with an accent and a plus: ask
 agent: proposes a pull request GitHub does not have: ask
 agent: proposes pull request 7 of another repository: ask
 agent: proposes a body with a member too many: ask
-agent: proposes a base no branch can have: ask
 agent: proposes data that is a string: ask
 agent: proposes a text: ask
 agent: proposes raw bytes: ask
 agent: proposes a note that reads like a merge: ask
-decider: accepts 12, each released to the applier
+agent: proposes pull request 7 at its new head: ask
+decider: accepts 11, each released to the applier
 applier: refused pr 7 head-moved
 applier: refused pr 7 head
-applier: refused pr 7 base
 applier: refused pr 7 base
 applier: refused pr 99 pr
 applier: refused pr 7 repo
 applier: refused pr 7 body
-applier: refused pr 7 body
 applier: refused pr - body
 applier: refused pr - body
 applier: refused pr - body
 applier: refused pr 7 body
+applier: applied pr 7
 gh: GET repos/example/widgets/pulls/7
 gh: PUT repos/example/widgets/pulls/7/merge
 gh: GET repos/example/widgets/pulls/7
 gh: GET repos/example/widgets/pulls/7
-gh: GET repos/example/widgets/pulls/7
 gh: GET repos/example/widgets/pulls/99
-gh: pull request 7 merged: no
-
-== 4. a release of the new head, applied
-agent: proposes pull request 7 at its new head: ask
-decider: accepts 1, each released to the applier
-applier: applied pr 7
 gh: GET repos/example/widgets/pulls/7
 gh: PUT repos/example/widgets/pulls/7/merge
 gh: GET repos/example/widgets/pulls/7
 gh: POST repos/example/widgets/issues/7/comments
 gh: POST repos/example/widgets/statuses/<commit>
+
+== 4. what the applied release left on GitHub
 gh: the merge's sha is the body's head: yes
 gh: the comment came before the status: yes
 gh: the comment holds the delivery: yes
@@ -73,6 +66,10 @@ pattern: the delivery, its answer's from set to the agent's key
 applier: refused pr 7 unwitnessed
 pattern: the delivery, without its answer
 applier: refused pr 7 unwitnessed
+pattern: the delivery, its base a branch's name with an accent and a plus
+applier: refused pr 7 applied
+pattern: the delivery, its base a name no branch can have
+applier: refused pr 7 body
 gh: calls: 0
 
 == 7. a release the terms passed, with no one asked
@@ -80,91 +77,67 @@ agent: gives a merge: pass, exit 0
 applier: refused pr 7 unwitnessed
 gh: calls: 0
 
-== 8. GitHub fails partway
+== 8. GitHub fails partway, and the applier stops for a person
 agent: proposes pull request 8, while GitHub cannot be read: ask
 agent: proposes pull request 9, whose merge's answer is lost: ask
-decider: accepts 2, each released to the applier
+agent: proposes pull request 13, while the applier's credential has lapsed: ask
+agent: proposes pull request 14, whose comment GitHub does not take: ask
+decider: accepts 4, each released to the applier
 applier: refused pr 8 read
 applier: applied pr 9
+applier: apply: pr 13: GitHub refused the applier's credential, HTTP 401, at the read: renew it, then pipe this release again (README.md, "When it stops partway")
 gh: GET repos/example/widgets/pulls/8
 gh: GET repos/example/widgets/pulls/9
 gh: PUT repos/example/widgets/pulls/9/merge
 gh: GET repos/example/widgets/pulls/9
 gh: POST repos/example/widgets/issues/9/comments
 gh: POST repos/example/widgets/statuses/<commit>
+gh: GET repos/example/widgets/pulls/13
+applier: apply: merged pr 14, but its comment or status was not posted: post them by hand (README.md)
+gh: GET repos/example/widgets/pulls/14
+gh: PUT repos/example/widgets/pulls/14/merge
+gh: GET repos/example/widgets/pulls/14
+gh: POST repos/example/widgets/issues/14/comments
+pattern: pull request 8, piped again once GitHub answers
 applier: applied pr 8
 gh: GET repos/example/widgets/pulls/8
 gh: PUT repos/example/widgets/pulls/8/merge
 gh: GET repos/example/widgets/pulls/8
 gh: POST repos/example/widgets/issues/8/comments
 gh: POST repos/example/widgets/statuses/<commit>
-
-== 9. it stops, for a person
-agent: proposes pull request 13, whose comment GitHub does not take: ask
-agent: proposes pull request 14, whose status GitHub does not take: ask
-agent: proposes pull request 15, whose merge GitHub answers and does not make: ask
-agent: proposes pull request 16, which GitHub cannot read once merged: ask
-agent: proposes pull request 17, read with a lapsed credential: ask
-agent: proposes pull request 18, merged with a lapsed credential: ask
-decider: accepts 6, each released to the applier
-applier: apply: merged pr 13, but its comment or status was not posted: post them by hand (README.md)
+pattern: pull request 14's comment and status, posted by hand from the kept delivery
+gh: POST repos/example/widgets/issues/14/comments
+gh: POST repos/example/widgets/statuses/<commit>
+gh: statuses on pull request 14's merge commit: 1
+pattern: pull request 13, piped again once the credential is renewed, which lapses again
+applier: apply: pr 13: GitHub refused the applier's credential, HTTP 401, at the merge call, which merged nothing: renew it, then remove its receipt id's line from applied.jsonl and pipe it again (README.md, "When it stops partway")
+gh: GET repos/example/widgets/pulls/13
+gh: PUT repos/example/widgets/pulls/13/merge
+pattern: pull request 13, its receipt id taken out of applied.jsonl and piped again
+applier: apply: pr 13: GitHub answered the merge call, and the pull request read again is not merged: check it by hand
 gh: GET repos/example/widgets/pulls/13
 gh: PUT repos/example/widgets/pulls/13/merge
 gh: GET repos/example/widgets/pulls/13
-gh: POST repos/example/widgets/issues/13/comments
-applier: apply: merged pr 14, but its comment or status was not posted: post them by hand (README.md)
-gh: GET repos/example/widgets/pulls/14
-gh: PUT repos/example/widgets/pulls/14/merge
-gh: GET repos/example/widgets/pulls/14
-gh: POST repos/example/widgets/issues/14/comments
-gh: POST repos/example/widgets/statuses/<commit>
-applier: apply: pr 15: GitHub answered the merge call, and the pull request read again is not merged: check it by hand
-gh: GET repos/example/widgets/pulls/15
-gh: PUT repos/example/widgets/pulls/15/merge
-gh: GET repos/example/widgets/pulls/15
-applier: apply: pr 16: the merge call ended and the pull request could not be read again: check by hand whether it merged, and into which base
-gh: GET repos/example/widgets/pulls/16
-gh: PUT repos/example/widgets/pulls/16/merge
-gh: GET repos/example/widgets/pulls/16
-applier: apply: pr 17: GitHub refused the applier's credential, HTTP 401, at the read: renew it, then pipe this release again (README.md, "When it stops partway")
-gh: GET repos/example/widgets/pulls/17
-applier: apply: pr 18: GitHub refused the applier's credential, HTTP 401, at the merge call, which merged nothing: renew it, then remove its receipt id's line from applied.jsonl and pipe it again (README.md, "When it stops partway")
-gh: GET repos/example/widgets/pulls/18
-gh: PUT repos/example/widgets/pulls/18/merge
-pattern: pull request 13's comment and status, posted by hand from the kept delivery
-gh: POST repos/example/widgets/issues/13/comments
-gh: POST repos/example/widgets/statuses/<commit>
-gh: statuses on pull request 13's merge commit: 1
-pattern: pull request 17, piped again once the credential is renewed
-applier: applied pr 17
-gh: GET repos/example/widgets/pulls/17
-gh: PUT repos/example/widgets/pulls/17/merge
-gh: GET repos/example/widgets/pulls/17
-gh: POST repos/example/widgets/issues/17/comments
-gh: POST repos/example/widgets/statuses/<commit>
-pattern: pull request 18, its receipt id taken out of applied.jsonl and piped again
-applier: applied pr 18
-gh: GET repos/example/widgets/pulls/18
-gh: PUT repos/example/widgets/pulls/18/merge
-gh: GET repos/example/widgets/pulls/18
-gh: POST repos/example/widgets/issues/18/comments
-gh: POST repos/example/widgets/statuses/<commit>
+gh: pull request 13 merged: no
+pattern: pull request 13, found unmerged by hand, its receipt id taken out again and piped again
+applier: apply: pr 13: the merge call ended and the pull request could not be read again: check by hand whether it merged, and into which base
+gh: GET repos/example/widgets/pulls/13
+gh: PUT repos/example/widgets/pulls/13/merge
+gh: GET repos/example/widgets/pulls/13
+gh: pull request 13 merged: yes
 
-== 10. a pull request merged, or closed, before the applier's merge call
+== 9. a pull request merged, closed or retargeted before the applier's merge call
 agent: proposes pull request 7, merged already: ask
 agent: proposes pull request 12, closed: ask
-decider: accepts 2, each released to the applier
-applier: refused pr 7 merged
-applier: refused pr 12 closed
-gh: GET repos/example/widgets/pulls/7
-gh: GET repos/example/widgets/pulls/12
-
-== 11. the base changed between the read and the merge
 agent: proposes pull request 10 into main: ask
 agent: proposes pull request 11 into main: ask
-decider: accepts 2, each released to the applier
+decider: accepts 4, each released to the applier
+applier: refused pr 7 merged
+applier: refused pr 12 closed
 applier: refused pr 10 merge
 applier: apply: pr 11 merged into next, not into the base released: a person must handle it; no comment or status was posted
+gh: GET repos/example/widgets/pulls/7
+gh: GET repos/example/widgets/pulls/12
 gh: GET repos/example/widgets/pulls/10
 gh: PUT repos/example/widgets/pulls/10/merge
 gh: GET repos/example/widgets/pulls/11
@@ -173,10 +146,10 @@ gh: GET repos/example/widgets/pulls/11
 gh: pull request 10 merged: no, statuses on its merge commit: 0
 gh: pull request 11 merged: yes, statuses on its merge commit: 0
 
-== 12. the auditor, from the merge commit back to its receipt
+== 10. the auditor, from the merge commit back to its receipt
 auditor: the status names the receipt of the comment's delivery: yes
 auditor: verify exits 0
-verify: valid: 75 receipts signed
+verify: valid: 57 receipts signed
 verify: terms: not checked: the declarations are sealed; with every member's opening, --open checks them
 verify: <the receipt> witnessed: signed by the decider's key, bound to role decider
 verify: body: the part of <the receipt> is the one it names
