@@ -9,8 +9,8 @@
 # LABEL names the applier's mediator in the labels config, which placket finds where the caller's
 # XDG_CONFIG_HOME, or its default, says; FILE is the file it writes. It sets nothing up. It fetches
 # each release with `placket get --label LABEL --keep --json` and handles it, and stops once the queue
-# is empty. It writes each release's text to FILE in place of what FILE held, through a file beside
-# it renamed over it, and prints `applied accepted FILE` or `applied changed FILE`; or it prints
+# is empty. It writes each release's text to FILE in place of what FILE held, through a new file
+# beside it, mode 0600, renamed over it, and prints `applied accepted FILE` or `applied changed FILE`; or it prints
 # `refused <reason>` and writes nothing. The reasons, in the order it checks them:
 #   body         the delivery is not a text of kind proposal or changed-version;
 #   unwitnessed  it carries no answer call, or the call is not an accept of a proposal or a change of
@@ -47,8 +47,9 @@ apply() {
 	accepted | changed) ;;
 	*) echo "refused $verdict"; return ;;
 	esac
-	jq -j '.delivery.text' "$tmp/d.json" >"$file.apply.$$"
-	mv "$file.apply.$$" "$file"
+	# mktemp makes the file beside FILE under a name nobody can guess, and fails if anything is there.
+	part=$(mktemp "$file.XXXXXX")
+	jq -j '.delivery.text' "$tmp/d.json" >"$part" && mv "$part" "$file" || { rm -f "$part"; exit 1; }
 	echo "applied $verdict $file"
 }
 

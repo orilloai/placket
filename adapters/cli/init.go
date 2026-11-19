@@ -39,6 +39,9 @@ const (
 	fileTerms    = ".terms"
 )
 
+// applierDir is the directory of D the fetch line puts the example's applier in.
+const applierDir = "applier"
+
 // applierBase is where the fetch line init prints takes an example's applier from: the repository's
 // files at a ref, <base><ref>/patterns/<pattern>/apply.sh.
 const applierBase = "https://raw.githubusercontent.com/orilloai/placket/"
@@ -175,6 +178,13 @@ func initCommand(r *run, args []string) int {
 	if !client.Label(label) || x.longest(label) > 63 {
 		fmt.Fprintln(r.stderr, "usage: placket init: --label is 1 to 63 of a-z, 0-9 and -, and with its parties' names no longer than 63")
 		return r.tool(codeUsage)
+	}
+	// The applier is fetched into D/applier/, so no Accord's directory may be that one.
+	for _, a := range x.accords {
+		if x.pattern != "" && label+a.suffix == applierDir {
+			fmt.Fprintln(r.stderr, "usage: placket init: --label "+applierDir+" names the directory the applier is fetched into")
+			return r.tool(codeUsage)
+		}
 	}
 	cfgDir := client.ConfigDir(r.getenv)
 	if cfgDir == "" {
@@ -543,17 +553,25 @@ func (w *initWriter) print(x example, done []foundAccord) {
 	if x.pattern == "" {
 		return
 	}
-	version := ""
+	version, revision := "", ""
 	if bi, ok := debug.ReadBuildInfo(); ok {
 		version = bi.Main.Version
+		for _, s := range bi.Settings {
+			if s.Key == "vcs.revision" {
+				revision = s.Value
+			}
+		}
 	}
-	ref := ApplierRef(version)
-	if ref == "main" {
+	ref := ApplierRef(version, revision)
+	switch ref {
+	case "main":
 		fmt.Fprintln(r.stderr, LineInitFetchMain)
-	} else {
+	case version:
 		fmt.Fprintf(r.stderr, LineInitFetch+"\n", ref)
+	default:
+		fmt.Fprintf(r.stderr, LineInitFetchCommit+"\n", version, ref)
 	}
-	script := filepath.Join(w.d, "applier", "apply.sh")
+	script := filepath.Join(w.d, applierDir, "apply.sh")
 	fetch := shellLine("curl", "-fsSL", "--create-dirs", "-o", script, applierBase+ref+"/patterns/"+x.pattern+"/apply.sh")
 	fmt.Fprintln(r.stderr, "  "+fetch)
 	apply := shellLine("sh", script, applier, x.target)
@@ -586,13 +604,20 @@ func sortByActor(l []json.RawMessage) []json.RawMessage {
 // alpha, beta or rc at most; a pseudo-version, a dirty build and (devel) are not.
 var releaseTag = regexp.MustCompile(`^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-(alpha|beta|rc)(\.(0|[1-9][0-9]*))?)?$`)
 
-// ApplierRef is the ref init's fetch line takes an applier at, for a build of the version Go
-// stamped: the version itself when it is a release tag, and main otherwise.
-func ApplierRef(version string) string {
-	if releaseTag.MatchString(version) {
-		return version
+// commitHash is a full git commit hash, as Go stamps it in vcs.revision.
+var commitHash = regexp.MustCompile(`^[0-9a-f]{40}$`)
+
+// ApplierRef is the ref init's fetch line takes an applier at, for a build of the version and the
+// commit Go stamped: for a release tag, the tag's commit when the build carries it, since a tag can
+// be moved and a commit cannot, or else the tag; and main for any other build.
+func ApplierRef(version, revision string) string {
+	if !releaseTag.MatchString(version) {
+		return "main"
 	}
-	return "main"
+	if commitHash.MatchString(revision) {
+		return revision
+	}
+	return version
 }
 
 // printable reports whether s is UTF-8 that a terminal prints as it is: no control or format

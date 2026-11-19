@@ -256,7 +256,9 @@ func TestInitKeysArePrivate(t *testing.T) {
 // TestInitNeverOverwrites checks what init refuses before it writes anything (U3): a --dir that is
 // not empty is exit 3, error dir-not-empty, and the directory and the config stay as they were; a
 // label the config holds already is error label-taken; a --label of 60 characters, whose entries
-// would be longer than a label may be, is error usage; and so is an example init does not know.
+// would be longer than a label may be, is error usage; and so is an example init does not know, and
+// the label applier for an example with an applier, whose Accord's directory would be the one the
+// applier is fetched into.
 func TestInitNeverOverwrites(t *testing.T) {
 	t.Parallel()
 	e, home := labelsEnv(t)
@@ -296,9 +298,10 @@ func TestInitNeverOverwrites(t *testing.T) {
 		t.Fatalf("init made its directory: %v", err)
 	}
 
-	// A label too long for its entries, and an example init does not know.
+	// A label too long for its entries, the applier's directory as a label, and an example init does not know.
 	for _, args := range [][]string{{"approve", "--label", strings.Repeat("a", 60)}, {"handoff", "--label", strings.Repeat("a", 48)},
-		{"deploy"}, {}, {"approve", "extra"}, {"approve", "--label", "Big"}} {
+		{"deploy"}, {}, {"approve", "extra"}, {"approve", "--label", "Big"},
+		{"approve", "--label", "applier"}, {"merge", "--label", "applier"}} {
 		r = run(t, e, append([]string{"init"}, args...)...)
 		if r.code != 3 || last(r.stderr) != "error usage" {
 			t.Fatalf("init %v: %v", args, r)
@@ -352,8 +355,12 @@ func TestInitHandoffFoundsTwoAccords(t *testing.T) {
 		t.Fatalf("init handoff printed:\n%s", strings.Join(lines, "\n"))
 	}
 	for i, a := range got.Accords {
-		if !strings.Contains(a.Window, " --journal "+filepath.Join(d, a.Label, "journal")+" --socket "+local.DefaultSocketWith(e.Getenv, a.Accord)) {
-			t.Fatalf("window %d: %s", i, a.Window)
+		ad := filepath.Join(d, a.Label)
+		want := "placket window --key " + filepath.Join(d, "mediator.key") + " --founding " + filepath.Join(ad, "founding.json") +
+			" --openings " + d + " --acceptances " + filepath.Join(ad, "acceptances.json") +
+			" --journal " + filepath.Join(ad, "journal") + " --socket " + local.DefaultSocketWith(e.Getenv, a.Accord)
+		if a.Window != want {
+			t.Fatalf("window %d:\n got %s\nwant %s", i, a.Window, want)
 		}
 	}
 	if got.MCP != "claude mcp add placket -- placket mcp --label handoff-plan-planner --label handoff-plan-coder --label handoff-review-coder --label handoff-review-reviewer" ||
@@ -422,17 +429,22 @@ func TestInitMergeNamesItsApplier(t *testing.T) {
 	}
 }
 
-// TestInitFetchesAtTheVersionTag: a build whose version is a release tag fetches its applier at that
-// tag; any other, a pseudo-version, a dirty build or none, from main.
+// TestInitFetchesAtTheVersionTag: a build whose version is a release tag fetches its applier at the
+// tag's commit when the build carries the commit, and at the tag when it does not; any other build, a
+// pseudo-version, a dirty build or none, from main, whatever commit it carries.
 func TestInitFetchesAtTheVersionTag(t *testing.T) {
 	t.Parallel()
-	for v, want := range map[string]string{
-		"v0.1.0": "v0.1.0", "v1.12.3": "v1.12.3", "v0.2.0-rc.1": "v0.2.0-rc.1",
-		"(devel)": "main", "": "main", "v0.1.0+dirty": "main", "v0.0.0-20261118120000-abcdefabcdef": "main",
-		"v0.1.1-0.20261118120000-abcdefabcdef": "main", "v0.1": "main",
+	commit := strings.Repeat("0123456789", 4)
+	for _, c := range []struct{ version, revision, want string }{
+		{"v0.1.0", commit, commit}, {"v0.2.0-rc.1", commit, commit},
+		{"v0.1.0", "", "v0.1.0"}, {"v1.12.3", "", "v1.12.3"}, {"v0.2.0-rc.1", "", "v0.2.0-rc.1"},
+		{"v0.1.0", "abcdef0", "v0.1.0"}, {"v0.1.0", strings.ToUpper("abcdef") + commit[6:], "v0.1.0"},
+		{"(devel)", commit, "main"}, {"", "", "main"}, {"v0.1.0+dirty", commit, "main"},
+		{"v0.0.0-20261118120000-abcdefabcdef", commit, "main"}, {"v0.1.1-0.20261118120000-abcdefabcdef", "", "main"},
+		{"v0.1", "", "main"},
 	} {
-		if got := cli.ApplierRef(v); got != want {
-			t.Errorf("version %q fetches at %q, want %q", v, got, want)
+		if got := cli.ApplierRef(c.version, c.revision); got != c.want {
+			t.Errorf("version %q, commit %q fetches at %q, want %q", c.version, c.revision, got, c.want)
 		}
 	}
 }
@@ -444,9 +456,14 @@ func TestInitQuotesItsPaths(t *testing.T) {
 	e, home := labelsEnv(t)
 	d := filepath.Join(home, "my dir")
 	got, _ := initRun(t, e, "approve", "--dir", d)
-	if !strings.Contains(got.Accords[0].Window, " --key '"+filepath.Join(d, "mediator.key")+"' ") ||
-		got.Apply != "sh '"+filepath.Join(d, "applier", "apply.sh")+"' approve-applier FILE" {
-		t.Fatalf("init's lines: %+v", got)
+	q := func(p ...string) string { return "'" + filepath.Join(append([]string{d}, p...)...) + "'" }
+	window := "placket window --key " + q("mediator.key") + " --founding " + q("approve", "founding.json") +
+		" --openings " + q() + " --acceptances " + q("approve", "acceptances.json") +
+		" --journal " + q("approve", "journal") + " --socket " + local.DefaultSocketWith(e.Getenv, got.Accords[0].Accord)
+	fetch := "curl -fsSL --create-dirs -o " + q("applier", "apply.sh") +
+		" https://raw.githubusercontent.com/orilloai/placket/main/patterns/local-apply/apply.sh"
+	if got.Accords[0].Window != window || got.Fetch != fetch || got.Apply != "sh "+q("applier", "apply.sh")+" approve-applier FILE" {
+		t.Fatalf("init's lines: %+v\nwant window %s\nwant fetch %s", got, window, fetch)
 	}
 	e2, home2 := labelsEnv(t)
 	r := run(t, e2, "init", "approve", "--dir", filepath.Join(home2, "a\x1bb"))
