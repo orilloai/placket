@@ -182,14 +182,15 @@ same=/sku # CHANGE: the JSON Pointer, inside the value, of the field that names 
 # delivery, no file of inbox, no receipt id. It normalizes the record as the proposer did and asks
 # released whether exactly those bytes are a whole part, or the value at $at inside one, of a
 # proposal or a changed version that crossed to the receiver and that the receiver kept. Then it asks
-# released --every for every release of the same record, and only when the match is the last of them
-# does the export run.
+# released --every for every release of the same record, and for every release of this value, and
+# only when the last release of the record is one of this value's does the export run. The same value
+# released again is still the latest.
 guard() {
 	normalize <"$1" >"$1.check"
 	value=$1.check
+	# A value inside a body has no newline after it, and released compares its bytes exactly.
+	printf %s "$(cat "$value")" >"$value.at"
 	if [ -n "$at" ]; then
-		# A value inside a body has no newline after it, and released compares its bytes exactly.
-		printf %s "$(cat "$value")" >"$value.at"
 		set -- --at "$at" --value-file "$value.at"
 	else
 		set -- --file "$value"
@@ -211,7 +212,12 @@ guard() {
 		say guard "refuses $(cat "$value"): released as a $(jq -r '.kind' released.out), but released --every for $key exit $rc"
 		return
 	fi
-	if [ "$(jq -r '.receiptId' released.out)" != "$(jq -r '.matches[-1].receiptId' every.out)" ]; then
+	# Every release of exactly this value, among the parts the receiver kept: the path $at, empty for
+	# the whole part, read in each.
+	rc=0
+	placket released --json --state "$receiver_state" --kind proposal --kind changed-version \
+		--at "$at" --value-file "$value.at" --every >mine.out 2>/dev/null || rc=$?
+	if [ "$rc" -ne 0 ] || ! jq -e --slurpfile e every.out '$e[0].matches[-1].receiptId as $l | any(.matches[]; .receiptId == $l)' mine.out >/dev/null; then
 		say guard "refuses $(cat "$value"): released as a $(jq -r '.kind' released.out), but not the latest of $(jq '.matches | length' every.out) releases of $key"
 		return
 	fi
@@ -243,18 +249,21 @@ guard current-6.json
 say export "$(wc -l <export.jsonl | tr -d ' ') records exported"
 
 step "6. a record replaced later matches its own receipt, and is refused as not the latest"
+# The new price is proposed twice, and accepted each time: the same value released again.
 echo '{ "sku": "TB-100", "price": 19.1, "currency": "EUR" }' >tb-100b.json
-propose tb-100b.json
-question
-rc=0
-placket answer $(as approver) --json --question "$q" >answer.out 2>/dev/null || rc=$?
-answered accepts
+for _ in 1 2; do
+	propose tb-100b.json
+	question
+	rc=0
+	placket answer $(as approver) --json --question "$q" >answer.out 2>/dev/null || rc=$?
+	answered accepts
+done
 placket get $(as receiver) --all --out inbox --json --keep >get.out 2>/dev/null
 say receiver "fetched $(jq '.deliveries | length' get.out) more"
 echo '{"sku":"TB-100","price":"19.10","currency":"EUR"}' >current-7.json
 say guard "the old record of TB-100, since replaced"
 guard current-1.json
-say guard "the new record of TB-100"
+say guard "the new record of TB-100, released twice"
 guard current-7.json
 say export "$(wc -l <export.jsonl | tr -d ' ') records exported, the last $(tail -n 1 export.jsonl)"
 

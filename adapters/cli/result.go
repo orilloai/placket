@@ -95,20 +95,32 @@ func (s *session) closing(question string, wait int, untilClosed bool) int {
 // queued (client.FetchOwn): first among the parts kept, then by fetching, every delivery fetched
 // recorded and kept, and each that is not its own printed as get prints it. It prints the text found,
 // or not fetched. A delivery whose record could not be written is printed all the same, before the
-// state directory's error.
+// state directory's error; one whose body cannot be written either is kept in kept.jsonl, as get
+// keeps it, and the error is error file kept. The state lock is held from the fetch to that keep.
 func (s *session) fetchOwn(question, closing string) int {
+	if err := s.c.Lock(); err != nil {
+		return s.r.failed(err)
+	}
+	defer s.c.Unlock()
 	own, err := s.c.FetchOwn(s.r.env.Context, question, closing)
+	written := true
 	for _, d := range own.Others {
-		s.r.show(d)
+		written = s.r.show(d)
 		s.r.add(memberDeliveries, deliveryObject(d, true))
 	}
 	if err != nil {
-		// The answer the window handed over before a record failed is no longer queued: it is
-		// printed, and then the error.
+		// The delivery the window handed over before a record failed is no longer queued: it is
+		// printed, and then the error. Its body not written, it is kept.
 		if own.Delivery != nil {
-			line(s.r.stdout, s.r.screen(own.Delivery.Bytes()))
+			written = writeLine(s.r.stdout, s.r.screen(own.Delivery.Bytes()))
 			s.r.put(memberFetched, true)
 			s.r.put(memberAnswer, deliveryObject(own.Delivery, true))
+		}
+		if own.Unkept != nil && !written {
+			if kerr := s.c.Dir().Keep(own.Unkept); kerr != nil {
+				return s.r.failed(kerr)
+			}
+			return s.r.tool(codeFile, detailKept)
 		}
 		return s.r.failed(err)
 	}

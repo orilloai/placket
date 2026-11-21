@@ -650,12 +650,16 @@ func (c *Client) Result(ctx context.Context, question string, wait int) (local.R
 
 // An Own is what FetchOwn found: the answer or the version to the question, nil when it was not
 // fetched; whether it came from what the key had kept; every other delivery it fetched on the way, in
-// the order fetched, each recorded and kept; and the reply of a fetch that was refused.
+// the order fetched, each recorded and kept; and the reply of a fetch that was refused. With an
+// error, Unkept is the kept.jsonl line of the delivery the window handed over whose record could not
+// be written, the answer or the last of the others, which is not kept, for a caller that cannot hand
+// its body over to keep; nil when there is none.
 type Own struct {
 	Delivery *Delivery
 	Kept     bool
 	Others   []*Delivery
 	Reply    local.Reply
+	Unkept   []byte
 }
 
 // keptDelivery is a line of kept.jsonl read as a fetched part. An answer line, {"answer","salt"},
@@ -690,6 +694,7 @@ func (c *Client) FetchOwn(ctx context.Context, question, closing string) (Own, e
 			// A delivery the window handed over is no longer queued: it is returned with the error,
 			// as the answer or among the others, so the caller still has its body.
 			if g.Delivery != nil {
+				own.Unkept = g.Kept
 				if IsOwn(g.Delivery, question, closing) {
 					own.Delivery = g.Delivery
 				} else {

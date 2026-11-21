@@ -169,16 +169,22 @@ func getCommand(r *run, args []string) int {
 	return g.held(g.run(*wait))
 }
 
-// A getting is one get's fetches: its flags, whether it holds the state lock, and the bodies its
-// object holds, with the kept.jsonl lines of those not kept yet.
+// A getting is one get's fetches: its flags, whether it holds the state lock, the error of a lock
+// it could not take again, and the bodies its object holds, with the kept.jsonl lines of those not
+// kept yet.
 type getting struct {
 	s         *session
 	out       string
 	keep, all bool
 	locked    bool
+	unlocked  error
 	bodies    int
 	pending   [][]byte
 }
+
+// relocking, when set, is called by get before it takes the state lock again for a delivery whose
+// record failed after a wait. Only a test sets it.
+var relocking func()
 
 func (g *getting) lock() bool {
 	if err := g.s.c.Lock(); err != nil {
@@ -204,9 +210,18 @@ func (g *getting) run(wait int) int {
 		d, kept, code, err := s.fetch(w, g.keep)
 		if err != nil {
 			// The window handed d over and its record failed: the body goes to the user first,
-			// under the lock if it can be taken, since a body not written is kept.
-			if !g.locked && s.c.Lock() == nil {
-				g.locked = true
+			// under the lock, since a body not written is kept. A wait held no lock, so it is taken
+			// again; when it cannot be, nothing more is written to the state directory
+			// (state-lock), and a body not written then is lost, with the lock's error.
+			if !g.locked {
+				if relocking != nil {
+					relocking()
+				}
+				if lerr := s.c.Lock(); lerr != nil {
+					g.unlocked = lerr
+				} else {
+					g.locked = true
+				}
 			}
 			if code := g.write(d, kept, false); code != ExitOK {
 				return code
@@ -233,10 +248,10 @@ func (g *getting) run(wait int) int {
 
 // held prints the object, with --json, under the lock get holds, and returns the exit code: code,
 // or, when the object holds a body and cannot be written, tool error file kept, once each body it
-// holds that was not kept is kept.
+// holds that was not kept is kept. Without the lock nothing is kept, and the code stands.
 func (g *getting) held(code int) int {
 	r := g.s.r
-	if !r.asJSON || r.printJSON(code) || g.bodies == 0 {
+	if !r.asJSON || r.printJSON(code) || g.bodies == 0 || !g.locked {
 		return code
 	}
 	for _, k := range g.pending {
@@ -263,6 +278,9 @@ func (g *getting) write(d *delivery, line []byte, kept bool) int {
 		}
 	}
 	lost := func() int {
+		if g.unlocked != nil {
+			return r.failed(g.unlocked)
+		}
 		if !kept {
 			if err := g.s.c.Dir().Keep(line); err != nil {
 				return r.failed(err)

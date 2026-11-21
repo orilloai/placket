@@ -344,7 +344,13 @@ func readJSON(path string) ([]byte, bool) {
 }
 
 // line writes b and a line feed.
-func line(w io.Writer, b []byte) { _, _ = w.Write(append(append([]byte(nil), b...), '\n')) }
+func line(w io.Writer, b []byte) { writeLine(w, b) }
+
+// writeLine writes b and a line feed to w, and reports whether it was written.
+func writeLine(w io.Writer, b []byte) bool {
+	_, err := w.Write(append(append([]byte(nil), b...), '\n'))
+	return err == nil
+}
 
 // canonicalJSON is the canonical bytes of v.
 func canonicalJSON(v any) []byte {

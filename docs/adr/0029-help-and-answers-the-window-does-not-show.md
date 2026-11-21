@@ -43,7 +43,8 @@ Record 0021 is silent on what `get` does when it cannot hand a body over. A body
 
 - A body `get` cannot write to standard output is kept in `kept.jsonl`, unless `--keep` or `--all` kept it already, and `get` ends in `error file kept`, exit 3, as it already did for a body it could not write under `--out`. With `--all` it stops at the first body it cannot write. The binary ignores SIGPIPE, so a write to a closed pipe is an error `get` acts on, not a signal that kills the process.
 - With `--json`, the object goes to standard output after the command's work. When it holds a body and cannot be written, `get` keeps each body it holds that it had not kept, and ends in `error file kept`, exit 3. Only `get` changes its exit code this way; what other commands do when their object cannot be written is unchanged.
-- A delivery whose record in the state directory fails after the door handed it over, `delivered.jsonl`, `salts.jsonl`, or `kept.jsonl` under `--keep`, is still handed over: `client.Get` returns the delivery with the state directory's error, and `get` writes the body as it would, then prints the error. The order of the records is unchanged, and the ones after the failure are not written.
+- A delivery whose record in the state directory fails after the door handed it over, `delivered.jsonl`, `salts.jsonl`, or `kept.jsonl` under `--keep`, is still handed over: `client.Get` returns the delivery with the state directory's error, and `get` writes the body as it would, then prints the error. The order of the records is unchanged, and the ones after the failure are not written. `result` and `give --wait`, which fetch through `client.FetchOwn`, print such a delivery the same way, and keep it in `kept.jsonl` when its body cannot be written either, ending in `error file kept`.
+- Every write to the state directory after a fetch is made under the state lock. `get --wait` holds no lock while it waits, so it takes the lock again before it writes the body; when that fails, it writes nothing more to the state directory, and ends in the lock's error.
 
 This is the guarantee: the user still has the body, and is told what failed. A stronger one, such as keeping a body before any record is written, is a decision about the fetch contract and is not made here.
 
@@ -53,6 +54,7 @@ These go with the change, each recorded here as `api-compat` asks.
 
 - `state.Error` gains `Detail`, and `state.DetailTooLarge`, `too-large`, is its one value: an `actor` or `seq` file over its 4 KiB limit was reported as a file that is not regular, `error file actor`, and is now `error state actor too-large`. The code stays `state`; no new code is added.
 - `client.ConfigDir` and `local.DefaultSocketWith` treat an `XDG_CONFIG_HOME`, `XDG_RUNTIME_DIR`, `HOME` or `TMPDIR` that is not an absolute path as unset, as `local.DefaultJournalWith` already did, so no default lands under whatever directory a command was started in. Record 0024's description of both defaults reads with that rule.
+- `client.Own` gains `Unkept`: with the error of a record that failed, the `kept.jsonl` line of the delivery the window handed over, which is not kept, for a caller that cannot write its body to keep it under the lock it holds.
 - `local.Run`, for a window started proposed, refuses with setup's `opening-missing` before it listens when it does not hold every member's opening (setup-contract-13), as founding does once acceptances are given.
 
 ## Consequences
