@@ -1,0 +1,16 @@
+{
+  "name": "placket",
+  "owner": {
+    "name": "Orillo Labs"
+  },
+  "metadata": {
+    "description": "Placket's skills for Claude Code."
+  },
+  "plugins": [
+    {
+      "name": "placket",
+      "source": "./",
+      "description": "Skills that install placket and set it up with you, and find where it could gate what your agents do."
+    }
+  ]
+}
