@@ -65,7 +65,7 @@ Its conclusion is "the mediator released a part naming this SHA, and key K of th
 4. Shows what the applied release left on GitHub: the merge at the body's head, the comment before the status, and the status on the merge commit, naming the receipt and linking the comment, with neither the body nor the salt in it.
 5. Pipes pull request 7's kept delivery to the applier again, which refuses it as `applied`, then altered copies of it: without its answer, its answer a change, its answer from the agent's key, each `unwitnessed`; and a base no branch can have, and two deliveries on one input, each a `body`.
 6. A release the second Accord's terms passed, with no answer call, is refused `unwitnessed`.
-7. GitHub fails partway, and the applier stops for a person each time: the repository no longer reads, a rate limit on the merge call, a comment GitHub does not take after the merge, a pull request retargeted after the read, a pull request that cannot be read again after its merge, and a merge call answered as made that merged nothing. Then a person does what "When it stops partway" says for the first three.
+7. GitHub fails partway, and the applier stops for a person each time: the repository no longer reads, a rate limit on the merge call, a comment GitHub does not take after the merge, a status GitHub does not take after the comment, a pull request retargeted after the read, a pull request that cannot be read again after its merge, and a merge call answered as made that merged nothing. Each stop line names what failed. Then a person sends the applier TERM while GitHub reads pull request 22, and it stops with `apply: interrupted at pr 22`. Then a person does what "When it stops partway" says for the first three, and pipes pull request 22 again.
 8. A body that spells the repository otherwise than GitHub does is refused `repo`.
 9. Thirty-two statuses named `placket` are set on pull request 7's merge commit after the applier's own. The auditor tries each, newest first, refuses them, and reaches the applier's on the second page, with the lines `verify` prints.
 
@@ -96,7 +96,7 @@ jq -c 'select(.receiptId == "ID") | {delivery: .}' kept.jsonl | sh apply.sh LABE
 - **The merge call got no answer, or a server's error, and the pull request then reads as unmerged.** That release is refused `merge`, and is not tried again.
 - **The pull request merged into another base than the one released.** No comment or status is posted. See to it by hand: the merge did not go as released.
 - **The pull request cannot be read again after the merge call, or reads as unmerged after GitHub answered the merge as made.** See by hand whether it merged, and where. If it merged at the body's head into the body's base, post its record as below.
-- **The merge happened and its comment or its status was not posted.** Post both by hand from the kept delivery, the comment first:
+- **The merge happened and its comment was not posted** (`neither its comment nor its status was posted`). Post both by hand from the kept delivery, the comment first:
 
   ```
   jq -c 'select(.receiptId == "ID") | {body: ("    " + tojson)}' kept.jsonl | gh api -X POST repos/OWNER/NAME/issues/N/comments --input -
@@ -107,5 +107,8 @@ jq -c 'select(.receiptId == "ID") | {delivery: .}' kept.jsonl | sh apply.sh LABE
   ```
   jq -nc --arg url URL '{state: "success", context: "placket", description: "ID", target_url: $url}' | gh api -X POST repos/OWNER/NAME/statuses/COMMIT --input -
   ```
+
+- **The merge happened and its comment was posted, but its status was not** (`its comment was posted, but its status was not`). The line gives the comment's `html_url`. Post the status alone, as above, with that URL; a second comment is not needed.
+- **An INT or a TERM.** The applier stops once the command under way ends, exit 1, with `apply: interrupted at pr N` while it handles a release, or `apply: interrupted` between releases. For pull request N, look at `applied.jsonl` and at GitHub. If the receipt id is not in `applied.jsonl`, nothing was merged: pipe the release again. If it is there and the pull request is unmerged, take the id's line out and pipe it again. If it merged, post whatever of its comment and status is missing, as above. With no pull request named, the last line of `kept.jsonl` may be a release `placket get` fetched as the signal came and the applier never handled: if the applier printed no `applied` or `refused` line for it, pipe it again.
 
 - **A crash.** The receipt id is synced to `applied.jsonl` before the merge call. A crash after that and before the merge leaves the release refused as `applied` on a second try: if the pull request is unmerged, take the id's line out of `applied.jsonl` and pipe it again. A crash after the merge and before the comment leaves a merge with no record or status: post both by hand, as above.
