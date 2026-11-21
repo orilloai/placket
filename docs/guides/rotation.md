@@ -16,7 +16,7 @@ placket window close --key mediator.key --founding founding.json --journal journ
 close=$(sed -n 's/^close //p' close.out)
 ```
 
-It closes every question still open, a timeout where its deadline has passed and `closed` otherwise, and writes the close receipt last. Its first line on standard error is `close <id>`. Nothing waits for a member to fetch: a delivery not yet fetched stays fetchable, and the close lists it. To hand the close to the members, start the window again on the journal, or run the close with `--socket`: once a member's queue is empty, every `placket get` returns the close and keeps it as `close.json`.
+It closes every question still open, a timeout where its deadline has passed and `closed` otherwise, and writes the close receipt last. Its first line on standard error is `close <id>`. Nothing waits for a member to fetch, unless the close's receipt would pass `MaxReply`: a delivery not yet fetched stays fetchable, and the close lists it. Each delivery not yet fetched makes the receipt longer, so one member that gives parts to a receiver that never fetches can keep the close from being written, and the successor below, which names the close in `supersedes`, waits with it (threat model L22). To hand the close to the members, start the window again on the journal, or run the close with `--socket`: once a member's queue is empty, every `placket get` returns the close and keeps it as `close.json`.
 
 ## 2. Found the successor under a new key
 

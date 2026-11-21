@@ -21,6 +21,9 @@
 #   its seal salt;
 # - the threat model's judge provider row names the model, the key and the fixed words a request
 #   carries beside the part's kind, body and instruction;
+# - the threat model's L22, decision record 0022 and the rotation guide say that one member can keep
+#   the close from being written, by giving parts to a receiver that never fetches, and that a
+#   successor pinned by supersedes waits with it;
 # - no Markdown file names a hosted placket service or a roadmap for one, and a line planted in a copy
 #   of the tree is refused.
 set -u
@@ -287,6 +290,42 @@ if printf '%s\n' "$row" | grep -q "model" && printf '%s\n' "$row" | grep -q 'the
 	ok "docs/security/threat-model.md: the judge provider's row names the model, the key and the fixed words sent"
 else
 	fail "docs/security/threat-model.md: the judge provider's row does not name the model, the key and the fixed words a request carries"
+fi
+
+# R25: one member can keep the close from being written. L22 is found by its label; the record's and
+# the guide's sentences by their own words.
+l22=$(grep -E '^- \*\*L22\.' docs/security/threat-model.md)
+missing=""
+for p in 'one member can keep the close from being written' 'a receiver that never fetches' \
+	'The close then waits until that receiver fetches, and so does a successor that names the close in `supersedes`' \
+	'a successor without `supersedes` does not wait'; do
+	printf '%s\n' "$l22" | grep -qF "$p" || missing="$missing
+$p"
+done
+if [ -z "$l22" ]; then
+	fail "docs/security/threat-model.md has no item labelled L22"
+elif [ -n "$missing" ]; then
+	fail "docs/security/threat-model.md: L22 does not say that one member can keep the close, and a pinned successor, waiting on a receiver that never fetches" "$(printf '%s' "$missing" | sed 1d)"
+else
+	ok "docs/security/threat-model.md: L22 says one member can keep the close, and a pinned successor, waiting"
+fi
+waits=$(tr '\n' ' ' <docs/adr/0022-the-close.md | grep -oE '[^.]*the close waits on fetches[^.]*')
+if [ -z "$waits" ]; then
+	fail "docs/adr/0022-the-close.md has no sentence that says the close waits on fetches"
+elif printf '%s\n' "$waits" | grep -q 'rare'; then
+	fail "docs/adr/0022-the-close.md calls the case where the close waits on fetches rare; one member can cause it" "$waits"
+else
+	ok "docs/adr/0022-the-close.md: the close waiting on fetches is not called rare"
+fi
+nothing=$(tr '\n' ' ' <docs/guides/rotation.md | grep -oE 'Nothing waits for a member to fetch[^.]*')
+if [ -z "$nothing" ]; then
+	fail "docs/guides/rotation.md has no sentence that starts \"Nothing waits for a member to fetch\""
+elif ! printf '%s\n' "$nothing" | grep -q 'MaxReply'; then
+	fail "docs/guides/rotation.md: \"Nothing waits for a member to fetch\" does not name MaxReply" "$nothing"
+elif ! grep -q 'threat model L22' docs/guides/rotation.md; then
+	fail "docs/guides/rotation.md does not point to the threat model's L22"
+else
+	ok "docs/guides/rotation.md: nothing waits for a fetch unless the close would pass MaxReply (L22)"
 fi
 
 # R24: no Markdown file names a hosted placket service or a roadmap. hosted <dir> prints each line
