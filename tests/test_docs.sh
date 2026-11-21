@@ -167,14 +167,54 @@ if step 6 | grep -q 'pull request made for the check' && step 6 | grep -q 'Actio
 else
 	fail "$custody: step 6 does not try the merge on a pull request made for the check, or check the Actions secrets"
 fi
-six=$(step 6)
-if printf '%s\n' "$six" | grep -o 'gh secret set [^ ]*' | grep -qv '^gh secret set "\$name"$'; then
-	fail "$custody: step 6 sets an Actions secret under a fixed name, which can overwrite one or leave one behind"
-elif printf '%s\n' "$six" | grep -q 'gh secret set' && ! { printf '%s\n' "$six" | grep -q 'name=[A-Z_]*\$(openssl rand' &&
-	printf '%s\n' "$six" | grep -q 'gh secret set "\$name" [^`]* && gh secret delete "\$name"'; }; then
-	fail "$custody: step 6 sets an Actions secret without a random name and a delete of it when the set passes"
+# The Actions secrets command of step 6 is run, with a stand-in openssl and gh first on PATH: when
+# openssl fails or gives too few digits, gh is never called; when it gives 32 hex digits, gh sets a
+# secret named PLACKET_CUSTODY_CHECK_ and those digits, and deletes that same name only if the set
+# passed.
+step 6 | grep -o '`[^`]*gh secret set[^`]*`' | tr -d '`' >"$tmp/secrets.sh"
+mkdir "$tmp/stand-in"
+cat >"$tmp/stand-in/openssl" <<'STAND_IN'
+#!/bin/sh
+case $OPENSSL_GIVES in
+fail) printf 'ab'; exit 1 ;;
+nothing) exit 0 ;;
+short) echo 0123abc ;;
+hex) echo 0123456789abcdef0123456789abcdef ;;
+esac
+STAND_IN
+cat >"$tmp/stand-in/gh" <<'STAND_IN'
+#!/bin/sh
+echo "$*" >>"$GH_LOG"
+[ "$1 $2" != "secret set" ] || exit "$GH_SET_EXIT"
+STAND_IN
+chmod +x "$tmp/stand-in/openssl" "$tmp/stand-in/gh"
+# secrets <openssl gives> <set exit>: runs the command, and prints what gh was called with.
+secrets() {
+	: >"$tmp/gh.log"
+	(cd "$tmp" && OPENSSL_GIVES=$1 GH_SET_EXIT=$2 GH_LOG="$tmp/gh.log" PATH="$tmp/stand-in:$PATH" \
+		sh "$tmp/secrets.sh" >/dev/null 2>&1)
+	cat "$tmp/gh.log"
+}
+name=PLACKET_CUSTODY_CHECK_0123456789abcdef0123456789abcdef
+if [ "$(wc -l <"$tmp/secrets.sh" | tr -d ' ')" != 1 ]; then
+	fail "$custody: step 6 has not one gh secret set command"
 else
-	ok "$custody: the Actions secrets check names its secret at random and deletes it if the set passes"
+	bad=
+	for gives in fail nothing short; do
+		called=$(secrets "$gives" 1)
+		[ -z "$called" ] || bad="$bad${bad:+; }with openssl giving $gives, gh was called: $called"
+	done
+	called=$(secrets hex 1)
+	[ "$called" = "secret set $name --repo OWNER/NAME --body x" ] ||
+		bad="$bad${bad:+; }with the set refused, gh was called: $called"
+	called=$(secrets hex 0 | tr '\n' '|')
+	[ "$called" = "secret set $name --repo OWNER/NAME --body x|secret delete $name --repo OWNER/NAME|" ] ||
+		bad="$bad${bad:+; }with the set passed, gh was called: $called"
+	if [ -n "$bad" ]; then
+		fail "$custody: step 6's Actions secrets command does not set only a secret named at random, deleted if the set passes" "$bad"
+	else
+		ok "$custody: the Actions secrets check sets only a secret named at random, and deletes it if the set passes"
+	fi
 fi
 one=$(step 1)
 if ! printf '%s\n' "$one" | grep -q 'Workflows'; then
