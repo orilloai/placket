@@ -83,23 +83,13 @@ func (Asked) Format(f fmt.State, _ rune) { _, _ = f.Write([]byte("local.Asked"))
 // keep the reply under MaxReply), a refusal (Rejection, Error or Door), or none of them, a plain ok.
 type Reply struct {
 	Outcome, Release *mediator.Outcome
-	// Salt is never set: the answerer mints its answer's salt, and the reply carries none.
-	//
-	// Deprecated: the answerer keeps the salt it minted (docs/adr/0021-who-decided-and-the-answer-call.md).
-	// It is removed at the release.
-	Salt     []byte
-	Delivery []byte
-	// AnswerCall is never set: the answer call is inside the delivery, its answer member.
-	//
-	// Deprecated: read the delivery's answer (docs/adr/0021-who-decided-and-the-answer-call.md). It
-	// is removed at the release.
-	AnswerCall  []byte
-	Questions   []Asked
-	IsQuestions bool
-	More        bool
-	Rejection   mediator.RejectionCode
-	Error       mediator.ErrorCode
-	Door        DoorCode
+	Delivery         []byte
+	Questions        []Asked
+	IsQuestions      bool
+	More             bool
+	Rejection        mediator.RejectionCode
+	Error            mediator.ErrorCode
+	Door             DoorCode
 	// Close is the close receipt a get on a closed Accord returns once the caller's queue is empty
 	// (close-3, docs/adr/0022-the-close.md).
 	Close []byte

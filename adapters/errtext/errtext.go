@@ -72,9 +72,6 @@ var table = map[key]string{
 	{FromError, "question"}:  "A reloaded open question does not match the receipts; restore the journal's questions file.",
 	{FromError, "closed"}:    "The Accord is closed already; nothing more can close it.",
 	{FromError, "close"}:     "The journal was cut inside a close; run placket window close to finish it.",
-	{FromError, "salt"}:      "No mediator returns this code any more; update the window.",
-	{FromError, "answer"}:    "No mediator returns this code any more; update the window.",
-	{FromError, "action"}:    "No mediator returns this code any more; update the window.",
 
 	// adapters/client.Code.
 	{FromClient, "bad-config"}:         "The labels config is not in its format; fix mediators.json against api/config/mediators.json.",

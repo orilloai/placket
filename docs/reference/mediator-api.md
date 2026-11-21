@@ -417,8 +417,6 @@ Every code `placket mcp` can return, by where it comes from: a code in a door re
 | `door` | `stale` | The call's time is more than 60 seconds from the window's clock; set the clock right and call again. |
 | `door` | `too-large` | The call is longer than the door reads; send a smaller part. |
 | `door` | `wrong-accord` | The window serves another Accord than the call names; check the mediator's Accord id. |
-| `error` | `action` | No mediator returns this code any more; update the window. |
-| `error` | `answer` | No mediator returns this code any more; update the window. |
 | `error` | `at` | A time does not keep the timestamp rule; the window's clock is wrong, so check it. |
 | `error` | `close` | The journal was cut inside a close; run placket window close to finish it. |
 | `error` | `closed` | The Accord is closed already; nothing more can close it. |
@@ -426,7 +424,6 @@ Every code `placket mcp` can return, by where it comes from: a code in a door re
 | `error` | `internal` | The mediator could not write a receipt or delivery; see the window's log and restart it. |
 | `error` | `journal` | A reloaded receipt does not verify or names another Accord; restore the journal or close the Accord. |
 | `error` | `question` | A reloaded open question does not match the receipts; restore the journal's questions file. |
-| `error` | `salt` | No mediator returns this code any more; update the window. |
 | `error` | `unfounded` | The window's mediator is not founded; restart the window on its founding set. |
 | `rejection` | `accord-mismatch` | The message names another Accord than the window's; name this mediator's Accord. |
 | `rejection` | `answer-body` | The answer's text and salt do not fit its call; send the text whose salted digest the call signs. |

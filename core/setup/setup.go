@@ -81,12 +81,6 @@ type Openings struct {
 	Some    bool
 }
 
-// CheckUnknown was row 8's code, when a term could name a check.
-//
-// Deprecated: founding never returns it. Row 8 is JudgeUnknown, and a term with checks is
-// TermInvalid (docs/adr/0021-who-decided-and-the-answer-call.md). It is removed at the release.
-const CheckUnknown Code = "check-unknown"
-
 // CodeAt is not a founding code: the founding time its caller gave does not keep the timestamp rule.
 const CodeAt Code = "at"
 
@@ -122,20 +116,9 @@ type Term struct {
 	With []string
 	// Kinds are the kinds its select names.
 	Kinds []string
-	// Checks is always nil.
-	//
-	// Deprecated: a term names no check; founding refuses a term with checks as TermInvalid
-	// (docs/adr/0021-who-decided-and-the-answer-call.md). It is removed at the release.
-	Checks []Check
 	// Resolve is the rule of a maybe term, and nil on any other.
 	Resolve *Rule
 }
-
-// A Check was a check a term named.
-//
-// Deprecated: nothing builds or reads one (docs/adr/0021-who-decided-and-the-answer-call.md). It is
-// removed at the release.
-type Check struct{ Name, Corpus string }
 
 // Use is what a term grants a judge: to decide where the terms would ask, or to advise only
 // (setup-contract-1, composition-7).
@@ -348,7 +331,6 @@ func (a *Accord) Terms(actor string) []Term {
 		c := t
 		c.With = append([]string(nil), t.With...)
 		c.Kinds = append([]string(nil), t.Kinds...)
-		c.Checks = nil
 		if t.Resolve != nil {
 			r := Rule{To: append([]string(nil), t.Resolve.To...), Timeout: t.Resolve.Timeout,
 				Judges: append([]Judge(nil), t.Resolve.Judges...)}
