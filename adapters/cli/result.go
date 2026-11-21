@@ -127,6 +127,11 @@ func (s *session) fetchOwn(question, closing string) int {
 	if code, refused := s.r.refusal(own.Reply); refused {
 		return code
 	}
+	// The other deliveries are there wherever fetched is, an empty list when there are none
+	// (commands-1).
+	if len(own.Others) == 0 {
+		s.r.put(memberDeliveries, []any{})
+	}
 	if own.Delivery == nil {
 		fmt.Fprintln(s.r.stderr, LineNotFetched)
 		s.r.put(memberFetched, false)

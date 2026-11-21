@@ -67,6 +67,13 @@ The first release. Placket mediates the parts that cross between parties under t
 - `placket show` prints what a receipt claims and who decided; `placket log` exports the journal's rows, and `placket reconcile` compares each party's records with the journal.
 - A state directory's `actor` or `seq` file over 4 KiB is `error state <file> too-large`, and a state file replaced whose directory could not be synced is `error state <file>`.
 - Every journal, state file, door format, handed file and reply is read strictly: a repeated member, ill-formed UTF-8 or a member name in another case is refused, and a journal or state file must be a regular file.
+- `placket verify` prints `<receipt id> contradicted: the call given for it does not fit` for an answer whose call given does not fit its receipt, and for a release after such an answer; such a receipt fails `witness` and is never printed `witnessed` or `unwitnessed`.
+- `placket verify --view` with `--subset` is `usage`; with no receipt of the viewer's in the list, the view line says none was checked; a view that is not the one accepted is `error founding acceptance-view` before any validity code; and a formed part with no row in the view matches only as `block` `no-match`.
+- `placket verify --json` names its number of receipts `receiptCount`, not `verified`; in `show` and `released`, `verified` stays the boolean `false`.
+- `placket verify --delivery` prints the `body` line also when the log does not conform, and a delivery with an empty or absent `receiptId` is `error delivery`.
+- A closing with reason `closed` at another time than the first such closing fails `close` at its own line; the requirement text now says so (close-4).
+- `placket reconcile` refuses one party's kept records given twice: `error verify kept --kept N actor`.
+- `--json` turns on the object in every spelling of true, such as `--json=1`, even when a flag cannot be read; `give --wait --json` and `result --json` always hold `deliveries` beside `fetched`, `[]` when the wait fetched no other delivery.
 
 ### Close and rotate
 

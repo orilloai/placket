@@ -7,7 +7,8 @@
 // It implements verify-1 (what a verifier is given: the Accord id, its founding set, the receipts,
 // and optionally answer calls, a subset and a delivery), verify-2 (the conformance table: founding,
 // Accord, parties, decision, witness and body) and verify-3 (an answer is witnessed by a call that
-// checks, and is otherwise unwitnessed, never a failure). Its decision row re-runs composition.Decide,
+// checks, contradicted by one that does not fit, a failure, and with no call unwitnessed, never a
+// failure). Its decision row re-runs composition.Decide,
 // the one decision module, only when the card's kernel hash is the one its caller trusts
 // (one-decision-module, docs/adr/0021-who-decided-and-the-answer-call.md). With one member's view,
 // rows 0a and 4a check that the view is the one the member accepted and that each receipt of the
@@ -47,13 +48,16 @@ type Evidence struct {
 }
 
 // Witness is what a receipt an answer decided says of its answer (verify-3): witnessed by a call
-// that checks, or unwitnessed, when no call given matches it. A receipt no answer decided has none.
+// that checks, unwitnessed, when no call given matches it, or contradicted, when the call given for
+// it does not fit, which fails row 4. A receipt no answer decided has none.
 type Witness string
 
-// The two witnesses (verify-3).
+// The three witnesses (verify-3). Contradicted is an outcome under the code witness, never a
+// witness of the answer: a receipt contradicted always fails row 4.
 const (
-	Witnessed   Witness = "witnessed"
-	Unwitnessed Witness = "unwitnessed"
+	Witnessed    Witness = "witnessed"
+	Unwitnessed  Witness = "unwitnessed"
+	Contradicted Witness = "contradicted"
 )
 
 // A Decision is one receipt's decider, by its index in the list (receipt-11, verify-2): its by, the
@@ -129,6 +133,8 @@ type question struct {
 	deadline  string
 	closing   int
 	release   int
+	// witness is the witness of the question's closing, which its release reads (verify-3).
+	witness Witness
 }
 
 // Check checks the evidence (verify-1, verify-2). Without a founding set it checks validity alone,
@@ -326,9 +332,12 @@ func (c *checker) receipt(i int) Code {
 	}
 	// Row 4: the witness of an answer. It is read even after a failed row, for the report.
 	if p.By.Decider == receipts.ByAnswer && d.Checked {
-		w, ok := c.witness(i, s, place, q)
-		if !ok && failed == "" {
+		w := c.witness(i, s, place, q)
+		if w == Contradicted && failed == "" {
 			failed = CodeWitness
+		}
+		if q != nil && place.Role == receipts.RoleClosing {
+			q.witness = w
 		}
 		d.Witness = w
 	} else if p.By.Decider == receipts.ByAnswer {
@@ -433,21 +442,23 @@ func (c *checker) decided(i int, s receipts.Statement, place receipts.Place, q *
 // witness is row 4 for a receipt an answer decided (verify-3): a call given whose typed hash is the
 // receipt's by.answer must read, name this Accord and the receipt's question, take the action the
 // receipt records, name its digest, be signed by the member who may take that action, and ask for
-// release exactly where a release receipt follows. With no such call the answer is unwitnessed.
-func (c *checker) witness(i int, s receipts.Statement, place receipts.Place, q *question) (Witness, bool) {
+// release exactly where a release receipt follows. A release reads its closing's call, so a release
+// after a closing that is contradicted is contradicted too. With no such call the answer is
+// unwitnessed; with one that does not fit it is contradicted, and fails row 4.
+func (c *checker) witness(i int, s receipts.Statement, place receipts.Place, q *question) Witness {
 	p := s.Predicate
 	b, has := c.calls[p.By.Answer]
 	if !has {
-		return Unwitnessed, true
+		return Unwitnessed
 	}
 	c.used[p.By.Answer] = true
 	call, err := answer.Read(b)
 	if err != nil || call.Accord != c.e.Accord || q == nil || call.Question != q.ask.ID {
-		return "", false
+		return Contradicted
 	}
 	if place.Role == receipts.RoleRelease {
-		// A release follows only an answer whose call asks for one.
-		return Witnessed, call.Release && (call.Action == answer.Accepted || call.Action == answer.Changed)
+		// A release follows only an answer whose call asks for one, and fits it.
+		return fits(q.witness != Contradicted && call.Release && (call.Action == answer.Accepted || call.Action == answer.Changed))
 	}
 	asker := q.ask.Predicate.From
 	switch p.Reason {
@@ -455,16 +466,16 @@ func (c *checker) witness(i int, s receipts.Statement, place receipts.Place, q *
 		// With the rule unknown, the module not this build's, the answerers are not known either: the
 		// signer must at least be a member.
 		signer := contains(q.answerers, call.From) || (!q.rule && c.a.Member(call.From))
-		return Witnessed, call.Action == answer.Declined && signer
+		return fits(call.Action == answer.Declined && signer)
 	case receipts.ReasonCancelled:
-		return Witnessed, call.Action == answer.Cancelled && call.From == asker
+		return fits(call.Action == answer.Cancelled && call.From == asker)
 	}
 	want := answer.Accepted
 	if s.Subject.Name == receipts.NameChanged {
 		want = answer.Changed
 	}
 	if call.Action != want || call.Digest != s.Subject.Digest || call.From != p.From {
-		return "", false
+		return Contradicted
 	}
 	// A passing answer whose call asks for release has its release receipt right after it, unless it
 	// is a change whose receiver is its answerer or its asker, which releases nothing (maybe-10). In a
@@ -476,10 +487,18 @@ func (c *checker) witness(i int, s receipts.Statement, place receipts.Place, q *
 		released := next < len(c.r.Subset.Places) && c.r.Subset.Places[next].Role == receipts.RoleRelease &&
 			c.r.Subset.Places[next].Question == q.index
 		if !nothing && !released {
-			return "", false
+			return Contradicted
 		}
 	}
-	return Witnessed, true
+	return Witnessed
+}
+
+// fits is the witness of a call given that fits its receipt, or not.
+func fits(ok bool) Witness {
+	if ok {
+		return Witnessed
+	}
+	return Contradicted
 }
 
 // answerers are the members whose bindings give them a role of roles, in actor-reference order
@@ -509,8 +528,9 @@ func contains(l []string, s string) bool {
 // Body is row 5 of verify-2, and the only place it runs: the delivery's receipt is one of the
 // report's, by its id, and the salted digest of the delivery's body under its salt is that receipt's
 // subject digest, of its kind (crossing-3). It reads only the delivery and the receipt the report
-// verified. A delivery whose receipt is not in the report fails body at index -1, and one whose body
-// or salt does not make the digest at its receipt's index.
+// verified. A delivery whose receipt is not in the report fails body at index -1, an empty or absent
+// receiptId included, since a close is no receipt a delivery names; one whose body or salt does not
+// make the digest fails at its receipt's index.
 func Body(r Report, delivery []byte) error {
 	v, _, err := shape.Decode(delivery)
 	o, ok := v.(shape.Object)
@@ -520,7 +540,8 @@ func Body(r Report, delivery []byte) error {
 	id, _ := o["receiptId"].(string)
 	index := -1
 	for i, x := range r.Subset.Verified {
-		if x.Statement().ID == id {
+		// A close's statement is the zero one: a delivery never names a close.
+		if _, isClose := x.Close(); !isClose && x.Statement().ID == id {
 			index = i
 			break
 		}

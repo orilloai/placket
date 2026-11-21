@@ -415,13 +415,16 @@ type Report struct {
 // Reconcile compares the presented receipts with what each party kept, by the rows of section 9, and
 // reports what is in one record and not the other (receipt-7). It verifies first and reports only
 // when every row passes. Before any row, it checks that each kept record names its party by an actor
-// reference: one that does not fails kept at the record's index in kept, and its error names no
-// party, so text a caller passed never reaches the error.
+// reference, and that no party's records are given twice: a record that does not, or a second
+// record for an actor already given, fails kept at the record's index in kept, and its error names
+// no party, so text a caller passed never reaches the error.
 func Reconcile(mediator, accord, card string, presented [][]byte, kept []Kept) (Report, error) {
+	given := map[string]bool{}
 	for i, k := range kept {
-		if !isReference(k.Actor) {
+		if !isReference(k.Actor) || given[k.Actor] {
 			return Report{}, &Error{Code: CodeKept, Index: i}
 		}
+		given[k.Actor] = true
 	}
 	// Row 1.
 	verified, err := Verify(mediator, presented)

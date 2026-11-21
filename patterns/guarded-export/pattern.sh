@@ -274,7 +274,7 @@ jq -r '.log.rows[] | "log: \(.kind) \(.word) \(.reason)" + (if .answer != "" the
 jq -r '"log: \(.log.claim)", "log: \(.log.notClaimed)"' log.out
 rc=0
 placket verify --json --mediator "$(ref mediator)" --receipts journal --founding founding.json >verify.out 2>/dev/null || rc=$?
-jq -r '"verify: \(.verified) receipts verified, exit \(.exit)", "verify: pass \(.counts.pass), block \(.counts.block), ask \(.counts.ask), releases \(.releases)"' verify.out
+jq -r '"verify: \(.receiptCount) receipts verified, exit \(.exit)", "verify: pass \(.counts.pass), block \(.counts.block), ask \(.counts.ask), releases \(.releases)"' verify.out
 
 kill "$window_pid"
 wait "$window_pid" 2>/dev/null || :

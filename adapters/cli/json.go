@@ -3,6 +3,8 @@ package cli
 import (
 	"encoding/json"
 	"io"
+	"strconv"
+	"strings"
 	"sync"
 
 	"github.com/orilloai/placket/core/mediator"
@@ -97,17 +99,27 @@ func (r *run) setJSON(on bool) {
 	}
 }
 
-// wantsJSON reports whether --json is among the arguments, for a command whose flags were not read.
+// wantsJSON reports whether --json is among the arguments, for a command whose flags were not read:
+// -json or --json, alone or with a value after = that the flag package reads as true, in any of the
+// spellings strconv.ParseBool reads (commands-1). The last one before -- decides, as in the flag
+// package.
 func wantsJSON(args []string) bool {
+	on := false
 	for _, a := range args {
-		switch a {
-		case "--":
-			return false
-		case "-json", "--json", "-json=true", "--json=true":
-			return true
+		if a == "--" {
+			break
+		}
+		name, value, valued := strings.Cut(strings.TrimPrefix(strings.TrimPrefix(a, "-"), "-"), "=")
+		if !strings.HasPrefix(a, "-") || name != "json" {
+			continue
+		}
+		if !valued {
+			on = true
+		} else if v, err := strconv.ParseBool(value); err == nil {
+			on = v
 		}
 	}
-	return false
+	return on
 }
 
 // printJSON prints the object with the exit code, escaped on a terminal as any JSON line is, and
