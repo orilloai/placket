@@ -127,7 +127,7 @@ echo "local-apply at main" >"$repo/patterns/local-apply/README.md"
 echo "a file added on main" >"$repo/patterns/local-apply/later.txt"
 mkdir -p "$repo/patterns/new-on-main"
 echo "new" >"$repo/patterns/new-on-main/README.md"
-printf -- '- `new-on-main`: new. Checked against placket main@0000000.\n' >>"$repo/patterns/README.md"
+printf -- '- `new-on-main`: new.\n' >>"$repo/patterns/README.md"
 g add -A && g commit -q -m main
 tagged=$(g rev-parse v0.1.0)
 main=$(g rev-parse main)
