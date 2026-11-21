@@ -68,7 +68,7 @@ Checked by: `make ci`, step `no-hidden-text`. It reads only the files git tracks
 
 ## `outside-commits-signed-off`
 
-No commit of a change carries a `Signed-off-by` in a bot's name: a name, or an email's local part, that ends in `[bot]`. On a pull request opened from outside the project, every commit of the change that is not a merge carries a `Signed-off-by` whose email is its author's. The project is the pull requests opened by `orillo-swarm[bot]`, `orillo-loom[bot]` and `jlindenger`; they need no sign-off. Pull requests opened by `dependabot[bot]` are exempt from the whole rule. Only the change's own commits are read, from the merge base with `main` to the head.
+No commit of a change carries a `Signed-off-by` in a bot's name: one that holds `[bot]` anywhere, since GitHub ends a bot's login in `[bot]` and a person's login cannot hold brackets. On a pull request opened from outside the project, every commit of the change that is not a merge carries a `Signed-off-by` whose email is its author's. The project is the pull requests opened by `orillo-swarm[bot]`, `orillo-loom[bot]` and `jlindenger`; they need no sign-off. Pull requests opened by `dependabot[bot]` are exempt from the whole rule. Only the change's own commits are read, from the merge base with `main` to the head.
 
 Why: a sign-off is a person's statement under the Developer Certificate of Origin, so an outside contributor's commits carry their own, and a bot's certifies nothing.
 

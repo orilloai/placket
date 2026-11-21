@@ -766,3 +766,39 @@ func TestSignOffAnyBytes(t *testing.T) {
 		signedRefused,
 	), 1)
 }
+
+// A sign-off is a bot's wherever its value names the bot, whatever text follows the email.
+func TestBotSignOffWithTrailingText(t *testing.T) {
+	r := newRepo(t)
+	r.branch()
+	a := r.commitBy(someone, "First\n\n"+botSignOff+" extra")
+	b := r.commitBy(someone, "Second\n\nSigned-off-by: orillo-loom[bot] and more")
+	want := lines(
+		noRedGreen,
+		"outside-commits-signed-off: "+a+": signed off by a bot",
+		"outside-commits-signed-off: "+b+": signed off by a bot",
+		signedRefused,
+	)
+	for _, o := range []string{"", "orillo-swarm[bot]", "jlindenger", "someone"} {
+		opener(t, o, o == "")
+		out, code := r.judge()
+		expect(t, out, code, want, 1)
+	}
+}
+
+// The commits are judged as they stand before the change's tests run, whatever a test then does to
+// the repository's refs.
+func TestSignOffsJudgedBeforeTests(t *testing.T) {
+	r := newRepo(t)
+	r.branch()
+	r.lay("refs-moved", "feature")
+	c := r.commitBy(someone, "Add the feature")
+	opener(t, "someone", false)
+	out, code := r.judge()
+	expect(t, out, code, lines(
+		"red-green-tests: tests/test_refs.sh: red (fails)",
+		"red-green-tests: ok, 1 red on base, 1 green at head, 0 reported",
+		"outside-commits-signed-off: "+c+": no sign-off by its author",
+		signedRefused,
+	), 1)
+}

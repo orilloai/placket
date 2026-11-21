@@ -34,19 +34,11 @@ type changeCommit struct {
 	signOffs []string // each Signed-off-by value, "Name <email>"
 }
 
-// judgeSignOffs judges the commits from base to head, for the opener given, and returns the rule's
-// lines, unprefixed; none when there is no opener and nothing to refuse.
-func judgeSignOffs(g git, baseRev, headRev, opener string) ([]string, bool, error) {
+// judgeSignOffs judges the commits from the base commit to the head commit, for the opener given, and
+// returns the rule's lines, unprefixed; none when there is no opener and nothing to refuse.
+func judgeSignOffs(g git, base, head, opener string) ([]string, bool, error) {
 	if opener == dependabot {
 		return []string{"ok, opened by Dependabot"}, false, nil
-	}
-	base, err := g.commit(baseRev)
-	if err != nil {
-		return nil, false, err
-	}
-	head, err := g.commit(headRev)
-	if err != nil {
-		return nil, false, err
 	}
 	cs, err := g.changeCommits(base, head)
 	if err != nil {
@@ -63,8 +55,8 @@ func judgeSignOffs(g git, baseRev, headRev, opener string) ([]string, bool, erro
 	for _, c := range cs {
 		bot, byAuthor := false, false
 		for _, s := range c.signOffs {
-			name, email := splitIdent(s)
-			bot = bot || isBot(name) || isBot(localPart(email))
+			email := identEmail(s)
+			bot = bot || isBot(s)
 			byAuthor = byAuthor || (email != "" && strings.EqualFold(email, c.author))
 		}
 		switch {
@@ -91,26 +83,24 @@ func judgeSignOffs(g git, baseRev, headRev, opener string) ([]string, bool, erro
 	return []string{"ok, " + strconv.Itoa(signed) + " commits signed off by their authors"}, false, nil
 }
 
-// splitIdent splits "Name <email>" into its name and email; with no angle brackets, the whole value
-// is the name.
-func splitIdent(s string) (name, email string) {
-	i := strings.LastIndex(s, "<")
-	if i < 0 || !strings.HasSuffix(s, ">") {
-		return strings.TrimSpace(s), ""
+// identEmail is the email of a sign-off, "Name <email>": what its first angle brackets hold; with
+// none, it has no email.
+func identEmail(s string) string {
+	_, rest, ok := strings.Cut(s, "<")
+	if !ok {
+		return ""
 	}
-	return strings.TrimSpace(s[:i]), strings.TrimSpace(s[i+1 : len(s)-1])
+	email, _, ok := strings.Cut(rest, ">")
+	if !ok {
+		return ""
+	}
+	return strings.TrimSpace(email)
 }
 
-// localPart is the part of an email before its last @.
-func localPart(email string) string {
-	if i := strings.LastIndex(email, "@"); i >= 0 {
-		return email[:i]
-	}
-	return email
-}
-
-// isBot reports whether a name, or an email's local part, is a bot's: GitHub ends a bot's login in [bot].
-func isBot(s string) bool { return strings.HasSuffix(strings.ToLower(s), "[bot]") }
+// isBot reports whether a sign-off is a bot's: GitHub ends a bot's login in [bot], and a person's
+// login cannot hold brackets, so a sign-off that holds [bot] anywhere, in its name, its email or text
+// beside them, is a bot's.
+func isBot(s string) bool { return strings.Contains(strings.ToLower(s), "[bot]") }
 
 // childEnv is the environment of every process the program starts: its own, less the opener, so that
 // no test it runs passes or fails by who opened the pull request. It starts from os.Environ, as
