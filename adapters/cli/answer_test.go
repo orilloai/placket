@@ -288,6 +288,41 @@ func TestAnswerReadsEveryPage(t *testing.T) {
 	}
 }
 
+// TestAnswerRefusesPagesThatDoNotAdvance answers a question the window does not show on a page that
+// says there are more but gives no cursor, and then on one whose cursor is the one it was asked
+// after. Neither lets answer, change or decline read the rest of the questions, so each is tool
+// error reply, exit 3, sends no resolve, and its last call is the questions it read.
+func TestAnswerRefusesPagesThatDoNotAdvance(t *testing.T) {
+	t.Parallel()
+	a := newAccord(t, "proposer", "applier", "decider")
+	a.start(t)
+	q := a.openOne(t, "Rename total.")
+	w := newFakeWindow(t, a.dir)
+	w.set(t, map[string]any{"ok": false, "rejection": "no-open-question"})
+	for _, c := range []struct {
+		name  string
+		pages map[string]map[string]any
+	}{
+		{"no cursor", map[string]map[string]any{
+			"": {"ok": true, "questions": []any{}, "more": true},
+		}},
+		{"the same cursor", map[string]map[string]any{
+			"":       {"ok": true, "questions": []any{}, "more": true, "cursor": "page-2"},
+			"page-2": {"ok": true, "questions": []any{}, "more": true, "cursor": "page-2"},
+		}},
+	} {
+		for after, page := range c.pages {
+			w.setPage(t, after, page)
+		}
+		for _, args := range [][]string{{"answer", "--question", q}, {"change", "--question", q, "--text", "Rename it."}, {"decline", "--question", q, "--comment", "No."}} {
+			r := run(t, env(), w.as(a, "decider", args...)...)
+			if r.code != 3 || r.stderr != "error reply\n" || !bytes.Contains(w.lastCall(), []byte(`"op":"questions"`)) {
+				t.Fatalf("%s after a page with %s: %v, last call %s", args[0], c.name, r, w.lastCall())
+			}
+		}
+	}
+}
+
 // TestOnlyAnAnswererAnswers answers an open question as a member whose binding gives it no role the
 // question's rule names: the window does not show it the question, so the answer reaches the window,
 // which rejects it with not-an-answerer, exit 2, and the question stays open (maybe-6).
