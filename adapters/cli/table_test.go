@@ -86,6 +86,9 @@ func checkRow(t *testing.T, name string, row cli.Row, rows map[string]cli.Row) {
 		if f.Sentence == "" {
 			t.Errorf("%s: --%s has no sentence", name, f.Name)
 		}
+		if f.Own && !f.Required {
+			t.Errorf("%s: --%s is checked by the command itself and not required", name, f.Name)
+		}
 		if (f.Value == "") != (f.Kind == cli.KindSwitch) {
 			t.Errorf("%s: --%s: a switch takes no value, and only it: %q", name, f.Name, f.Value)
 		}
@@ -141,6 +144,54 @@ func checkRow(t *testing.T, name string, row cli.Row, rows map[string]cli.Row) {
 			t.Errorf("%s: the usage %q does not name --%s", name, row.Usage, n)
 		}
 	}
+	// A flag that may be given more than once is the one the usage writes with ... after it.
+	for n, f := range listed {
+		if want[n] && repeatedInUsage(row.Usage, n) != (f.Kind == cli.KindList) {
+			t.Errorf("%s: the usage %q and the row's kind, %v, disagree on whether --%s may be given more than once", name, row.Usage, f.Kind, n)
+		}
+	}
+	// A flag the usage writes outside square brackets and outside a group of alternatives is one
+	// the command needs, and a flag the row requires is written so at least once.
+	needed := neededInUsage(row.Usage)
+	for n, f := range listed {
+		if !want[n] {
+			continue
+		}
+		if needed[n] && !f.Required {
+			t.Errorf("%s: the usage %q writes --%s as needed, and its row does not require it", name, row.Usage, n)
+		}
+		if f.Required && !needed[n] {
+			t.Errorf("%s: its row requires --%s, and the usage %q writes it as optional", name, n, row.Usage)
+		}
+	}
+}
+
+// repeatedInUsage reports whether a usage writes the flag with ... after it, and its value, and any
+// closing bracket.
+func repeatedInUsage(usage, name string) bool {
+	return regexp.MustCompile(`--` + regexp.QuoteMeta(name) + `( <[^>]*>)?\]?\.\.\.`).MatchString(usage)
+}
+
+// neededInUsage are the flags a usage writes outside every [...] and (... | ...).
+func neededInUsage(usage string) map[string]bool {
+	out := map[string]bool{}
+	depth := 0
+	for i := 0; i < len(usage); i++ {
+		switch usage[i] {
+		case '[', '(':
+			depth++
+		case ']', ')':
+			depth--
+		case '-':
+			if m := usageFlagRE.FindStringSubmatch(usage[i:]); m != nil && strings.HasPrefix(usage[i:], m[0]) {
+				if depth == 0 {
+					out[m[1]] = true
+				}
+				i += len(m[0]) - 1
+			}
+		}
+	}
+	return out
 }
 
 // defaultOf is a flag's default as the flag package prints it: its row's, or the zero value of its

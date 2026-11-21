@@ -46,6 +46,7 @@ func watchCommand(r *run, args []string) int {
 	var labels many
 	fs.list(&labels, "label")
 	count := fs.number("count")
+	// --label is required, and checked here: a watch with none prints only error usage.
 	if !r.parse(fs, args) || len(labels) == 0 || *count < 0 {
 		return r.tool(codeUsage)
 	}

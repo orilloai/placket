@@ -82,6 +82,10 @@ func render(spec map[string]string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
+	c1, err := link("commands-1")
+	if err != nil {
+		return nil, err
+	}
 	rows := cli.Table()
 	names := map[string]bool{}
 	for _, r := range rows {
@@ -98,6 +102,8 @@ Every command of ` + "`placket`" + `: what it does, its usage, its arguments and
 With ` + "`--json`" + `, every command but ` + "`mcp`" + ` prints its result as one JSON object on standard output instead; its exit code and standard error stay the same. Each command's object holds the members [section 11 of the protocol](` + sec11 + `) gives it, under the requirement ids each command below cites.
 
 In a usage, ` + "`<socket flags>`" + ` stands for ` + "`--key <file> --socket <path> --accord <id>`" + `, or ` + "`--label <label>`" + ` in their place, and then ` + "`[--state <dir>]`" + `: the flags of every command that calls a window. A flag in square brackets is optional, ` + "`|`" + ` separates flags of which one is given, and ` + "`...`" + ` after a flag means it may be given more than once.
+
+` + "`placket <command> --help`" + ` prints a command's flags on standard output, each with the sentence this page gives it, and exits 0 ([commands-1](` + c1 + `)).
 
 ## Exit codes
 

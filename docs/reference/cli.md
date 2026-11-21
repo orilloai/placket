@@ -8,6 +8,8 @@ With `--json`, every command but `mcp` prints its result as one JSON object on s
 
 In a usage, `<socket flags>` stands for `--key <file> --socket <path> --accord <id>`, or `--label <label>` in their place, and then `[--state <dir>]`: the flags of every command that calls a window. A flag in square brackets is optional, `|` separates flags of which one is given, and `...` after a flag means it may be given more than once.
 
+`placket <command> --help` prints a command's flags on standard output, each with the sentence this page gives it, and exits 0 ([commands-1](../../spec/protocol.md#commands-1-one-object-on-standard-output)).
+
 ## Exit codes
 
 | Code | What it means |
@@ -349,7 +351,7 @@ Usage: `placket watch --label <label>... [--count <n>]`
 
 | Flag | Required | Default | What it is |
 |---|---|---|---|
-| `--label <label>` | no |  | A mediator of the labels config to watch, given once per mediator; at least one is needed. |
+| `--label <label>` | yes |  | A mediator of the labels config to watch, given once per mediator; at least one is needed. |
 | `--count <n>` | no |  | Exit once this many questions are printed; without it, run until interrupted. |
 | `--json` | no |  | Print the result as one JSON object on standard output. |
 
@@ -419,7 +421,7 @@ Usage: `placket decline <socket flags> --question <id> --comment <text>`
 | `--label <label>` | no |  | A mediator of the labels config, by its label, or by its Accord id when it has none, in place of `--key`, `--socket` and `--accord`. |
 | `--state <dir>` | no |  | The member's state directory; by default `<key file>.state/<the Accord id's hex>/`. |
 | `--question <id>` | yes |  | The question's id: the receipt id of its ask. |
-| `--comment <text>` | no |  | The comment a decline needs: why, for the asker. |
+| `--comment <text>` | yes |  | The comment a decline needs: why, for the asker. |
 | `--json` | no |  | Print the result as one JSON object on standard output. |
 
 Its `--json` object follows [commands-1](../../spec/protocol.md#commands-1-one-object-on-standard-output), [commands-2](../../spec/protocol.md#commands-2-outcomes-questions-and-answers).
@@ -508,7 +510,7 @@ Exit codes: `0`, `3`.
 
 Serve the mediators of the labels given to an agent as MCP tools, on standard input and output, as one party's client.
 
-Usage: `placket mcp --label <label>... [--allow-answering]`
+Usage: `placket mcp [--label <label>]... [--allow-answering]`
 
 | Flag | Required | Default | What it is |
 |---|---|---|---|

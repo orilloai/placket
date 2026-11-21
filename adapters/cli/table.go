@@ -82,6 +82,10 @@ type Flag struct {
 	// Required is a flag the command needs, and refuses its run without as error usage. A socket
 	// command's --key, --socket and --accord are not: --label may take their place.
 	Required bool
+	// Own is set on a required flag the command checks itself, with its value, so that a run
+	// without it ends as the command says, such as decline's error comment, and not with the line
+	// `--x is required`.
+	Own      bool
 	Sentence string
 }
 
@@ -251,7 +255,7 @@ var table = []Row{
 	{Words: []string{"watch"}, Summary: "Wait on the questions of one or more mediators and print each new question once, as it opens, with the lines that answer it; it never answers.",
 		Usage: "--label <label>... [--count <n>]",
 		Flags: withJSON(
-			Flag{Name: "label", Kind: KindList, Value: "<label>", Sentence: "A mediator of the labels config to watch, given once per mediator; at least one is needed."},
+			Flag{Name: "label", Kind: KindList, Value: "<label>", Required: true, Own: true, Sentence: "A mediator of the labels config to watch, given once per mediator; at least one is needed."},
 			Flag{Name: "count", Kind: KindNumber, Value: "<n>", Sentence: "Exit once this many questions are printed; without it, run until interrupted."}),
 		JSON: []string{"commands-1"}, Exits: []int{ExitOK, ExitRejected, ExitTool}},
 	{Words: []string{"answer"}, Summary: "Accept a question, asking for release unless `--no-release`, and print the answer's outcome, then the release's.",
@@ -273,7 +277,7 @@ var table = []Row{
 	{Words: []string{"decline"}, Summary: "Decline a question, then give the asker the comment, and say whether the comment crossed.",
 		Usage: "<socket flags> --question <id> --comment <text>",
 		Flags: socketRow(questionRow,
-			Flag{Name: "comment", Value: "<text>", Sentence: "The comment a decline needs: why, for the asker."}),
+			Flag{Name: "comment", Value: "<text>", Required: true, Own: true, Sentence: "The comment a decline needs: why, for the asker."}),
 		JSON: []string{"commands-1", "commands-2"}, Exits: []int{ExitOK, ExitBlock, ExitRejected, ExitTool}},
 	{Words: []string{"cancel"}, Summary: "Cancel, as its asker, a question of the key's own, and print the outcome.",
 		Usage: "<socket flags> --question <id>",
@@ -297,7 +301,7 @@ var table = []Row{
 		Flags: withJSON(),
 		JSON:  []string{"commands-1"}, Exits: []int{ExitOK, ExitTool}},
 	{Words: []string{"mcp"}, Summary: "Serve the mediators of the labels given to an agent as MCP tools, on standard input and output, as one party's client.",
-		Usage: "--label <label>... [--allow-answering]",
+		Usage: "[--label <label>]... [--allow-answering]",
 		Flags: []Flag{
 			{Name: "label", Kind: KindList, Value: "<label>", Sentence: "A mediator of the labels config to serve, given once per mediator."},
 			{Name: "allow-answering", Kind: KindSwitch, Sentence: "Serve a label whose key answers questions too; by default such a label is refused."}},
@@ -430,14 +434,15 @@ func (fs *flagSet) list(m *many, name string) {
 	fs.Var(m, name, f.Sentence)
 }
 
-// required are the flags of the row the command needs, in the row's order, but those named.
+// required are the flags of the row the command needs, in the row's order, but those named and
+// those it checks itself.
 func (fs *flagSet) required(but ...string) []string {
 	if fs.row == nil {
 		return nil
 	}
 	var out []string
 	for _, f := range fs.row.Flags {
-		if f.Required && !contains(but, f.Name) {
+		if f.Required && !f.Own && !contains(but, f.Name) {
 			out = append(out, f.Name)
 		}
 	}

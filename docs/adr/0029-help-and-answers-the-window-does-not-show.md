@@ -18,13 +18,13 @@ Two behaviours of the command line stopped a person with an error the docs did n
 
 - The command prints its usage on standard output: `usage: placket <command> [flags]`, one line per flag it reads, in name order, each starting `--<name>` with the flag's kind, its usage and any default that is not the zero value, and then one line per subcommand, `placket <subcommand> [flags]`. Standard error is empty, and the exit is 0.
 - It reads no file, socket or state, and checks no flag the command requires: the flags are read up to `--help` and the command stops there.
-- With `--json` it prints one object: `command`, `exit` 0, `flags`, a list of `{"default","name","usage"}` in name order, as Go's flag package holds them, and `subcommands` when there are any.
+- With `--json` it prints one object: `command`, `exit` 0, `flags`, a list of `{"default","name","usage"}` in name order, each usage its row's sentence and each default as Go's flag package holds it, and `subcommands` when there are any.
 - `key --help` names `key new` and `key ref`, and `window --help` prints the window's flags and names `window close`. `init --help` names one `init <example>` per example, since the example is a word before the flags. `key new --help`, `window close --help` and `init approve --help` print that subcommand's flags.
 - `placket --help` prints the usage line and one line per command, or with `--json` `{"commands":[...],"exit":0}`.
 - `mcp` takes no `--json`, because its standard output carries the MCP protocol. `mcp --help` prints its usage like any command; `mcp --help --json` is refused as `mcp --json` is, `{"error":"usage","exit":3}`, so that `mcp` keeps taking no `--json`.
 - `--help` given as a flag's value, as in `give --text --help`, is that value. `placket` alone and a command that does not exist stay the error `usage`, exit 3.
 
-The usage text is built from each command's flag set, so it cannot list a flag the command does not read. A declarative command table, which would also give a generated usage reference, is later work.
+The usage text is built from each command's row of the command line's command table (`adapters/cli/table.go`), which also gives the flags the command reads, so it cannot list a flag the command does not read. Each flag's line is its flag and value as the row writes them, its sentence and any default: the text `docs/reference/cli.md` gives it, generated from the same rows. The subcommands are the rows one word longer and the values of the row's first argument, such as `init`'s examples.
 
 ### Answers to a question the window does not show
 
