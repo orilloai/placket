@@ -137,7 +137,9 @@ for job in $jobs; do
 		PATH=$tmp/bin:$PATH TMPDIR=$short/$job exec env -u PLACKET_JEV_KEY perl -e "$LEADER" sh pattern.sh
 	) >"$out" 2>&1 </dev/null &
 	group=$!
-	(exec perl -e "$LEADER" sh -c "sleep $LIMIT; kill -KILL -$group") >/dev/null 2>&1 &
+	# Before the kill, the watchdog records the processes still running, so a timeout names what it
+	# was waiting on.
+	(exec perl -e "$LEADER" sh -c "sleep $LIMIT; ps -axo pid,ppid,pgid,stat,etime,command >$tmp/ps.$job 2>&1; kill -KILL -$group") >/dev/null 2>&1 &
 	watchdog=$!
 	wait "$group"
 	rc=$?
@@ -153,6 +155,10 @@ for job in $jobs; do
 	if [ "$rc" -ne 0 ]; then
 		if [ "$rc" -eq 137 ]; then fail "$job: killed, or did not end within ${LIMIT}s"; else fail "$job: exit $rc"; fi
 		sed 's/^/    | /' "$out"
+		if [ -s "$tmp/ps.$job" ]; then
+			echo "    processes still running at ${LIMIT}s:"
+			sed 's/^/    ps | /' "$tmp/ps.$job"
+		fi
 	elif ! cmp -s "$run/expected.txt" "$out"; then
 		fail "$job: printed what expected.txt does not say"
 		diff -u "$run/expected.txt" "$out" | sed 's/^/    | /'
