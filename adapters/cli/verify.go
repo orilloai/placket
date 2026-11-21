@@ -71,9 +71,9 @@ func oneAccord(list []receipts.Verified) (string, int) {
 		a, c := accordOf(v)
 		switch {
 		case a != a0:
-			return codeAccord, i
+			return detailAccord, i
 		case c != c0:
-			return codeCard, i
+			return detailCard, i
 		}
 	}
 	return "", -1

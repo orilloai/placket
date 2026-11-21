@@ -32,7 +32,7 @@ func init() {
 }
 
 // codeDirNotEmpty: init's --dir holds something already, and init writes nothing.
-const codeDirNotEmpty = "dir-not-empty"
+const codeDirNotEmpty code = "dir-not-empty"
 
 // The files init writes in each Accord's directory, beside the keys and openings in its own.
 const (

@@ -22,7 +22,7 @@ func init() {
 
 // codeSeal is seal's own error: the declaration is not one the key signed, or its opening could not
 // be written.
-const codeSeal = "seal"
+const codeSeal code = "seal"
 
 // OpeningSuffix ends the name of an opening's file: <the hex of the actor reference>.opening.json
 // (setup-contract-13).

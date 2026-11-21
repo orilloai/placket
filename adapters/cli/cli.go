@@ -54,31 +54,40 @@ const (
 	ExitOpen     = 4
 )
 
+// code is the type of the command line's own tool errors, whose sentences adapters/errtext holds
+// under its key adapters/cli. It is an alias, so a code passes as the string its error line prints.
+// A detail word that follows a code is untyped, and so is a code another package declares.
+type code = string
+
 // The tool errors a command prints, besides the codes of the packages it calls.
 const (
-	codeUsage   = "usage"
-	codeBody    = "body"
-	codeText    = "text"
-	codeData    = "data"
-	codeTerms   = "terms"
-	codeFile    = "file"
-	codeUntil   = "until"
-	codeComment = "comment"
-	codeChanged = "changed"
-	codeFormat  = "format"
-	codeFound   = "founding"
-	codeVerify  = "verify"
-	// codeClosed is a close of a journal already closed (close-3); detailSuperseded, under verify, a
-	// successor whose supersedes does not pin this log's close (close-4).
+	codeUsage   code = "usage"
+	codeBody    code = "body"
+	codeText    code = "text"
+	codeData    code = "data"
+	codeTerms   code = "terms"
+	codeFile    code = "file"
+	codeUntil   code = "until"
+	codeComment code = "comment"
+	codeChanged code = "changed"
+	codeFormat  code = "format"
+	codeFound   code = "founding"
+	codeVerify  code = "verify"
+	// codeClosed is a close of a journal already closed (close-3), the mediator's code;
+	// detailSuperseded, under verify, a successor whose supersedes does not pin this log's close
+	// (close-4).
 	codeClosed       = string(mediator.CodeClosed)
 	detailSuperseded = "superseded"
 	// codeDelivery: verify's --delivery is not a delivery, or its receipt is none of the receipts.
-	codeDelivery = "delivery"
-	codeAccord   = string(export.CodeAccord)
-	codeCard     = string(export.CodeCard)
-	codePath     = "path"
+	codeDelivery code = "delivery"
+	// detailAccord and detailCard follow error verify for a journal of more than one Accord or card.
+	detailAccord = string(export.CodeAccord)
+	detailCard   = string(export.CodeCard)
+	// codeCard: card could not build a card with the judges given.
+	codeCard code = string(export.CodeCard)
+	codePath code = "path"
 	// codeInternal: a failure no other code names.
-	codeInternal = "internal"
+	codeInternal code = "internal"
 	// detailKept follows error file when a fetched body could not be written and was kept instead.
 	detailKept = "kept"
 	// detailKernel follows error founding when a window's card names another module than this
@@ -88,8 +97,8 @@ const (
 	detailLimit = "limit"
 	// codeJudge: a --judge file is not a judge's config, with ReadConfig's code after it; and,
 	// following error founding, the window's judge configs are not the ones its card lists.
-	codeJudge   = "judge"
-	detailJudge = codeJudge
+	codeJudge   code = "judge"
+	detailJudge      = string(codeJudge)
 )
 
 // Env is what a command takes from the world.
