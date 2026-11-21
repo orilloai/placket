@@ -383,7 +383,7 @@ Every code `placket mcp` can return, by where it comes from: a code in a door re
 
 | From | Code | Cause and fix |
 |---|---|---|
-| `adapters/client` | `asked` | The window does not show the question as its ask's receipt names it, so nothing was signed; list the questions again. |
+| `adapters/client` | `asked` | What the window shows of the question is not the part its ask's receipt names, so nothing was signed; list the questions again. |
 | `adapters/client` | `bad-config` | The labels config is not in its format; fix mediators.json against api/config/mediators.json. |
 | `adapters/client` | `envelope` | The envelope could not be signed; check the key file holds a key. |
 | `adapters/client` | `label-taken` | Two entries of the labels config have one label; give each entry its own label. |

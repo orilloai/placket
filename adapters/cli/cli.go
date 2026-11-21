@@ -126,6 +126,13 @@ type run struct {
 	rep     *report
 	// fs is the flag set the command read, so that what a command takes can be listed.
 	fs *flag.FlagSet
+	// subs are the subcommands, or init's examples, the command's --help names; helped is set once
+	// --help printed the usage it asked for (help.go).
+	subs   []string
+	helped bool
+	// printed is set once the object is printed, by Run, or by a command that must know whether it
+	// was written, as get does.
+	printed bool
 }
 
 type command func(r *run, args []string) int
@@ -147,7 +154,7 @@ func Run(env Env, args []string, stdin io.Reader, stdout, stderr io.Writer) int 
 	r := &run{env: env, stdin: stdin, stdout: stdout, stderr: stderr, realOut: stdout, rep: newReport()}
 	r.setJSON(wantsJSON(args))
 	code := r.dispatch(args)
-	if r.asJSON {
+	if r.asJSON && !r.printed {
 		r.printJSON(code)
 	}
 	return code
@@ -156,6 +163,9 @@ func Run(env Env, args []string, stdin io.Reader, stdout, stderr io.Writer) int 
 func (r *run) dispatch(args []string) int {
 	if len(args) == 0 {
 		return r.usage()
+	}
+	if helpFlag(args[0]) {
+		return r.commandList()
 	}
 	c, ok := commands[args[0]]
 	if !ok {
@@ -174,8 +184,13 @@ func (r *run) usage() int {
 	return r.tool(codeUsage)
 }
 
-// tool prints a tool error's code, and any detail, and returns its exit code.
+// tool prints a tool error's code, and any detail, and returns its exit code. Once --help printed
+// the usage it asked for, parse has returned false and the command stops through tool, which then
+// prints nothing and returns 0.
 func (r *run) tool(code string, detail ...string) int {
+	if r.helped {
+		return ExitOK
+	}
 	r.put(memberError, code)
 	if len(detail) > 0 {
 		r.put(memberDetail, detail)
@@ -269,10 +284,14 @@ func flags(name string) *flag.FlagSet {
 }
 
 // parse parses the flags; a flag that is wrong, or a flag required and missing, is a usage error.
-// --json, once read, decides whether the result is printed as JSON.
+// --json, once read, decides whether the result is printed as JSON. --help, -help or -h, as a flag
+// and not a flag's value, prints the command's usage instead (help) and checks no flag required.
 func (r *run) parse(fs *flag.FlagSet, args []string, required ...string) bool {
 	r.fs = fs
 	err := fs.Parse(args)
+	if errors.Is(err, flag.ErrHelp) && r.help(fs) {
+		return false
+	}
 	if f := fs.Lookup(flagJSON); err == nil && f != nil {
 		r.setJSON(f.Value.String() == "true")
 	}

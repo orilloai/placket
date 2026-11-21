@@ -110,8 +110,9 @@ func wantsJSON(args []string) bool {
 	return false
 }
 
-// printJSON prints the object with the exit code, escaped on a terminal as any JSON line is.
-func (r *run) printJSON(code int) {
+// printJSON prints the object with the exit code, escaped on a terminal as any JSON line is, and
+// reports whether it was written. Once it has run, Run prints no object again.
+func (r *run) printJSON(code int) bool {
 	r.rep.mu.Lock()
 	r.rep.top[memberExit] = code
 	b := canonicalJSON(r.rep.top)
@@ -120,7 +121,9 @@ func (r *run) printJSON(code int) {
 	}
 	r.rep.mu.Unlock()
 	r.stdout = r.realOut
-	line(r.stdout, r.screenJSON(b))
+	r.printed = true
+	_, err := r.stdout.Write(append(append([]byte(nil), r.screenJSON(b)...), '\n'))
+	return err == nil
 }
 
 // outcomeObject is an outcome as the object holds it, under the word its line prints.

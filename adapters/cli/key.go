@@ -2,6 +2,7 @@ package cli
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/orilloai/placket/adapters/keyfile"
 )
@@ -11,9 +12,17 @@ func init() {
 }
 
 // keyCommand is `key new --out F`, which writes a new key file and prints its reference, and
-// `key ref --key F`, which prints the reference of a key file. Neither prints a seed.
+// `key ref --key F`, which prints the reference of a key file. Neither prints a seed. `key --help`
+// names both.
 func keyCommand(r *run, args []string) int {
 	if len(args) == 0 {
+		return r.usage()
+	}
+	if strings.HasPrefix(args[0], "-") {
+		r.subs = []string{"key new", "key ref"}
+		if !r.parse(flags("key"), args) {
+			return r.tool(codeUsage)
+		}
 		return r.usage()
 	}
 	switch args[0] {
