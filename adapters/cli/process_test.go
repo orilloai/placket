@@ -2,6 +2,7 @@ package cli_test
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -107,8 +108,8 @@ func TestCommandsAtOnce(t *testing.T) {
 
 // TestAWindowKilled kills a window process with SIGKILL while a question is open and a released
 // proposal is not yet fetched, and starts it again: the question is closed by one receipt, an answer
-// to it is tool error asked, since the window no longer shows it, the proposal is fetched once, and verify passes over the journal
-// (restart-reproducible, LOG-13, LOG-18).
+// to it reaches the window, which rejects it with no-open-question, the proposal is fetched once, and
+// verify passes over the journal (restart-reproducible, LOG-13, LOG-18).
 func TestAWindowKilled(t *testing.T) {
 	t.Parallel()
 	a := newAccord(t, "proposer", "applier", "decider")
@@ -149,7 +150,7 @@ func TestAWindowKilled(t *testing.T) {
 	if r.code != 1 || !regexp.MustCompile(`^undeliverable `+receiptID+`\n$`).MatchString(r.stderr) {
 		t.Fatalf("result: %v", r)
 	}
-	if r := run(t, env(), a.as("decider", "answer", "--question", open)...); r.code != 3 || r.stderr != "error asked\n" {
+	if r := run(t, env(), a.as("decider", "answer", "--question", open)...); r.code != 2 || r.stderr != "rejected no-open-question\n" {
 		t.Fatalf("an answer after the restart: %v", r)
 	}
 	got := a.drain(t, "applier")
@@ -161,5 +162,32 @@ func TestAWindowKilled(t *testing.T) {
 	}
 	if !strings.Contains(logs[1].String(), "reloaded block undeliverable ") {
 		t.Fatalf("the restarted window: %s", logs[1])
+	}
+}
+
+// TestAGetToAClosedPipe runs the get process with standard output a pipe whose reader has closed:
+// the process is not killed by the signal a closed pipe sends, but exits 3 with error file kept on
+// standard error, and kept.jsonl holds the delivery.
+func TestAGetToAClosedPipe(t *testing.T) {
+	t.Parallel()
+	a := newAccord(t, "p1", "p2")
+	a.start(t)
+	ids := give(t, a, []string{"one"})
+	pr, pw, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	_ = pr.Close()
+	var stderr bytes.Buffer
+	c := exec.Command(bin, a.as("p2", "get")...)
+	c.Stdout, c.Stderr = pw, &stderr
+	err = c.Run()
+	_ = pw.Close()
+	var ee *exec.ExitError
+	if !errors.As(err, &ee) || ee.ExitCode() != 3 || !strings.HasSuffix(stderr.String(), "\nerror file kept\n") {
+		t.Fatalf("get to a closed pipe: %v\n%s", err, stderr.String())
+	}
+	if got := keptIDs(t, a.state("p2")); len(got) != 1 || got[0] != ids[0] {
+		t.Fatalf("kept.jsonl holds %v, want %v", got, ids)
 	}
 }

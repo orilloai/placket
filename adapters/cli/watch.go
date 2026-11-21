@@ -35,7 +35,8 @@ type sighting struct {
 // printed N; it runs until interrupted otherwise, and exits 0 then. The first failure of any label's
 // loop, a refusal or an error, ends it with that refusal's or error's exit. A question the window
 // shows that is not the part its ask's receipt names is not printed: watch says so on standard error,
-// once, with LineMisstated, and goes on.
+// once, with LineMisstated, and goes on. A question it cannot write to standard output, as when the
+// pipe's reader has gone, ends it, tool error file.
 //
 // With --json each question is one object on a line of its own, as it opens: label, id, kind, asker,
 // deadline, form, the part as questions shows it, and commands, the three lines; the command's
@@ -96,7 +97,11 @@ func watchCommand(r *run, args []string) int {
 				fmt.Fprintf(r.stderr, LineMisstated+"\n", s.label, field(s.misstated))
 				continue
 			}
-			r.printQuestion(s.label, s.q)
+			// With its output closed, as when its reader has gone, watch has no one to show a
+			// question to, so it ends.
+			if !r.printQuestion(s.label, s.q) {
+				return r.tool(codeFile)
+			}
 			if printed++; *count > 0 && printed == *count {
 				return ExitOK
 			}
@@ -164,8 +169,9 @@ func answerLines(label, id string) []string {
 }
 
 // printQuestion prints one question watch shows: as a block on standard output, each field another
-// party wrote escaped, or with --json as one object on a line of its own.
-func (r *run) printQuestion(label string, q local.Asked) {
+// party wrote escaped, or with --json as one object on a line of its own. It reports whether it was
+// written.
+func (r *run) printQuestion(label string, q local.Asked) bool {
 	lines := answerLines(label, q.ID)
 	if r.asJSON {
 		o := map[string]any{"label": label, "id": q.ID, "kind": q.Kind, "asker": q.Asker, "deadline": q.Deadline, "form": q.Form,
@@ -176,9 +182,10 @@ func (r *run) printQuestion(label string, q local.Asked) {
 		case q.Size != nil:
 			o["size"] = *q.Size
 		}
-		line(r.realOut, r.screenJSON(canonicalJSON(o)))
-		return
+		_, err := r.realOut.Write(append(append([]byte(nil), r.screenJSON(canonicalJSON(o))...), '\n'))
+		return err == nil
 	}
-	fmt.Fprintln(r.stdout, "question "+q.ID+"\n"+"label "+label+"\n"+"kind "+field(q.Kind)+"\n"+"asker "+field(q.Asker)+"\n"+
+	_, err := fmt.Fprintln(r.stdout, "question "+q.ID+"\n"+"label "+label+"\n"+"kind "+field(q.Kind)+"\n"+"asker "+field(q.Asker)+"\n"+
 		"deadline "+field(q.Deadline)+"\n"+strings.Join(lines, "\n")+"\n")
+	return err == nil
 }

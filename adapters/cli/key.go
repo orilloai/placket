@@ -2,6 +2,7 @@ package cli
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/orilloai/placket/adapters/keyfile"
 )
@@ -12,9 +13,14 @@ func init() {
 	subcommands["key ref"] = keyRefCommand
 }
 
-// keyCommand is key with no subcommand, or one it does not have: error usage. Neither subcommand
-// prints a seed.
-func keyCommand(r *run, _ []string) int { return r.usage() }
+// keyCommand is key with no subcommand, or one it does not have: error usage. `key --help` names
+// both subcommands. Neither subcommand prints a seed.
+func keyCommand(r *run, args []string) int {
+	if len(args) > 0 && strings.HasPrefix(args[0], "-") && !r.parse(newFlags("key"), args) {
+		return r.tool(codeUsage)
+	}
+	return r.usage()
+}
 
 // keyNewCommand is `key new --out F`, which writes a new key file and prints its reference.
 func keyNewCommand(r *run, args []string) int {

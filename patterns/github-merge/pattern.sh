@@ -273,28 +273,50 @@ say agent "gives a merge of pull request 7: $(jq -r '.outcome.word' give.out), e
 applier passed "$repo"
 
 step "7. GitHub fails partway, and the applier stops for a person"
-for n in 15 16 17 18 19 20; do body "pr$n.json" "$n"; done
+for n in 15 16 17 23 18 19 20 22; do body "pr$n.json" "$n"; done
 propose "pull request 15, while the applier's installation no longer reaches the repository" pr15.json
 propose "pull request 16, while GitHub limits the applier's rate" pr16.json
 propose "pull request 17, whose comment GitHub does not take" pr17.json
+propose "pull request 23, whose status GitHub does not take" pr23.json
 propose "pull request 18, retargeted to next after the applier reads it" pr18.json
 propose "pull request 19, which merges and cannot be read again" pr19.json
 propose "pull request 20, whose merge call is answered as made and merges nothing" pr20.json
+propose "pull request 22, while a person stops the applier" pr22.json
 decide
 cat >>"$events" <<E
 GET repos/$repo/pulls/15 fail 404
 GET repos/$repo fail 404
 PUT repos/$repo/pulls/16/merge fail 429
 POST repos/$repo/issues/17/comments fail 500
+POST repos/$repo/statuses/$(jq -r '.merge_commit_sha' "$here/stand-in/fixtures/repos/$repo/pulls/23.json") fail 500
 GET repos/$repo/pulls/18 retarget next
 GET repos/$repo/pulls/19 pass
 GET repos/$repo/pulls/19 fail none
 PUT repos/$repo/pulls/20/merge hollow
+GET repos/$repo/pulls/22 hold
 E
 # Each stop leaves the releases queued after it in the queue, for the next run.
-for run in 15 16 17 18 19 20; do
+for run in 15 16 17 23 18 19 20; do
 	applier merge "$repo"
 done
+# A person stops the applier with TERM while GitHub reads pull request 22: the stand-in holds the read
+# until the signal is sent, and the applier stops once the read ends. It runs in the background, so
+# its own process id is the one signalled; an INT would be ignored by a background job of this shell.
+GH_STAND_IN_SAY=yes sh "$here/apply.sh" merge "$repo" >interrupted.out 2>&1 3>&1 &
+pid=$!
+i=0
+until [ -f "$here/stand-in/state/held" ]; do
+	i=$((i + 1))
+	[ "$i" -lt 300 ] || { echo "the stand-in did not hold the read of pull request 22"; exit 1; }
+	pause
+done
+say pattern "TERM sent to the applier while GitHub reads pull request 22"
+kill -TERM "$pid"
+: >"$here/stand-in/state/go"
+rc=0
+wait "$pid" || rc=$?
+sed '/^gh: /!s/^/applier: /' interrupted.out
+say pattern "the applier exited $rc"
 # unkeep N: takes pull request N's receipt id out of applied.jsonl, as README.md says to do by hand.
 unkeep() {
 	id=$(kept "pr$1.json" | jq -r '.delivery.receiptId')
@@ -312,6 +334,8 @@ kept pr17.json | jq -c --slurpfile c hand.json '{state: "success", context: "pla
 	gh api -X POST "repos/$repo/statuses/$(pull .merge_commit_sha 17)" --input - >/dev/null
 say gh "statuses on pull request 17's merge commit: $(gh api "repos/$repo/commits/$(pull .merge_commit_sha 17)/statuses" | jq length)"
 say gh "pull request 18 merged into $(pull .base.ref 18), with $(gh api "repos/$repo/commits/$(pull .merge_commit_sha 18)/statuses" | jq length) statuses"
+say pattern "pull request 22, piped again from the kept delivery, since nothing of it was done"
+kept pr22.json | applier merge "$repo" -
 
 step "8. a repository spelled otherwise than GitHub spells it"
 body case.json 21 main "" Example/Widgets

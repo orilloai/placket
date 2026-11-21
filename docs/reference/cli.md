@@ -85,7 +85,13 @@ Its subcommands: [`key new`](#key-new), [`key ref`](#key-ref).
 |---|---|---|
 | `<subcommand>` | `new`, `ref` | What to do: `key new` or `key ref`. |
 
-Exit codes: `3`.
+| Flag | Required | Default | What it is |
+|---|---|---|---|
+| `--json` | no |  | Print the result as one JSON object on standard output. |
+
+Its `--json` object follows [commands-1](../../spec/protocol.md#commands-1-one-object-on-standard-output).
+
+Exit codes: `0`, `3`.
 
 ## `key new`
 
@@ -657,7 +663,7 @@ Two kinds of code follow another and are not listed here. After `error verify`, 
 | `adapters/cli` | `until` | The binding's --until is not a timestamp in whole seconds; write it as 2099-01-01T00:00:00Z is written. |
 | `adapters/cli` | `usage` | The command, an argument or a flag is not one it takes, a flag's value is not of its form, or a flag it needs is missing, as the line before says; run it as its usage in the CLI reference says. |
 | `adapters/cli` | `verify` | The receipts do not verify, and the detail names the verifier's code with the file and the line, accord or card for a journal of more than one Accord or card, or superseded for a successor that does not pin this log's close; restore the journal, or give the successor that supersedes this Accord. |
-| `adapters/client` | `asked` | The window does not show the question as its ask's receipt names it, so nothing was signed; list the questions again. |
+| `adapters/client` | `asked` | What the window shows of the question is not the part its ask's receipt names, so nothing was signed; list the questions again. |
 | `adapters/client` | `bad-config` | The labels config is not in its format; fix mediators.json against api/config/mediators.json. |
 | `adapters/client` | `envelope` | The envelope could not be signed; check the key file holds a key. |
 | `adapters/client` | `label-taken` | Two entries of the labels config have one label; give each entry its own label. |

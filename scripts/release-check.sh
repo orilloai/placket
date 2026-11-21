@@ -75,7 +75,8 @@ fi
 
 # checksums
 lines=0
-while read -r want name; do
+# A last line with no line feed after it is read all the same.
+while read -r want name || [ -n "$want" ]; do
 	name=${name#\*}
 	file=$dir/$name
 	[ "$mode" = snapshot ] && [ "$name" = install.sh ] && file=$root/install.sh

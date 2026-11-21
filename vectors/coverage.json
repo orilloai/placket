@@ -326,8 +326,8 @@
     "scenarios": {"a repeated top-level name": {"tests": ["core/conformance:TestHeaderFirst"]}}
   },
   "commands-1": {
-    "tests": ["adapters/cli:TestJSONAGiveThatPasses", "adapters/cli:TestJSONARefusedCommand", "adapters/cli:TestJSONEveryResultUnderEveryFlag"],
-    "scenarios": {"a give that passes": {"tests": ["adapters/cli:TestJSONAGiveThatPasses"]}, "a refused command": {"tests": ["adapters/cli:TestJSONARefusedCommand"]}, "every result under every flag": {"tests": ["adapters/cli:TestJSONEveryResultUnderEveryFlag"]}}
+    "tests": ["adapters/cli:TestJSONAGiveThatPasses", "adapters/cli:TestJSONARefusedCommand", "adapters/cli:TestJSONEveryResultUnderEveryFlag", "adapters/cli:TestHelpPrintsUsage", "adapters/cli:TestHelpOfPlacket", "adapters/cli:TestHelpOfASubcommand", "adapters/cli:TestGetKeepsABodyItCannotWrite"],
+    "scenarios": {"a give that passes": {"tests": ["adapters/cli:TestJSONAGiveThatPasses"]}, "a refused command": {"tests": ["adapters/cli:TestJSONARefusedCommand"]}, "a command's usage": {"tests": ["adapters/cli:TestHelpPrintsUsage", "adapters/cli:TestHelpOfPlacket"]}, "every result under every flag": {"tests": ["adapters/cli:TestJSONEveryResultUnderEveryFlag"]}}
   },
   "commands-2": {
     "tests": ["adapters/cli:TestJSONADeclineAndItsComment", "adapters/cli:TestJSONAnAskLeftOpen", "adapters/cli:TestJSONWaitsThatEndWithAnAcceptAndAChange"],

@@ -89,7 +89,7 @@ var table = map[key]string{
 	{FromClient, "mediator-collision"}: "Two entries of the labels config use one socket for two Accords, one state directory, or one Accord id with no label; give each its own socket, key or label.",
 	{FromClient, "unknown-mediator"}:   "No mediator served has that name; name one by its label, or by its Accord id when it has none, as mediators lists them.",
 	{FromClient, "reply"}:              "The window's reply is not what the call asked for; check the socket reaches this Accord's window.",
-	{FromClient, "asked"}:              "The window does not show the question as its ask's receipt names it, so nothing was signed; list the questions again.",
+	{FromClient, "asked"}:              "What the window shows of the question is not the part its ask's receipt names, so nothing was signed; list the questions again.",
 	{FromClient, "rand"}:               "The source of randomness failed; call again.",
 	{FromClient, "envelope"}:           "The envelope could not be signed; check the key file holds a key.",
 	{FromClient, "view"}:               "The key keeps no view of this Accord to accept; run placket view first.",

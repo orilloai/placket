@@ -14,6 +14,9 @@ import (
 )
 
 func main() {
+	// A write to a closed pipe returns an error, so get can keep a body it could not write, instead
+	// of the process being killed with the body lost.
+	signal.Ignore(syscall.SIGPIPE)
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	env := cli.Env{Now: time.Now, Rand: rand.Reader, Context: ctx, Getenv: os.Getenv}
 	code := cli.Run(env, os.Args[1:], os.Stdin, os.Stdout, os.Stderr)

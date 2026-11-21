@@ -153,7 +153,8 @@ var table = []Row{
 	{Words: []string{"key"}, Summary: "Make a key file, or print a key file's actor reference.",
 		Usage: "<subcommand>",
 		Args:  []Arg{{Name: "subcommand", Values: []string{"new", "ref"}, Sentence: "What to do: `key new` or `key ref`."}},
-		Exits: []int{ExitTool}},
+		Flags: withJSON(),
+		JSON:  []string{"commands-1"}, Exits: []int{ExitOK, ExitTool}},
 	{Words: []string{"key", "new"}, Summary: "Write a new key file, mode 0600, and print its actor reference; it never prints the seed.",
 		Usage: "--out <file>",
 		Flags: withJSON(Flag{Name: "out", Value: "<file>", Required: true, Sentence: "The key file to write; a file already there is never replaced."}),
@@ -379,8 +380,12 @@ type flagSet struct {
 
 // newFlags makes the flag set of the command name, which prints nothing of its own, with --json when
 // its row lists it.
-func newFlags(name string) *flagSet {
-	fs := &flagSet{FlagSet: flag.NewFlagSet(name, flag.ContinueOnError), row: rowOf(name)}
+func newFlags(name string) *flagSet { return newFlagsNamed(name, name) }
+
+// newFlagsNamed makes the flag set of the row named row, under the name a person typed, such as
+// init approve for the row init, whose argument is not a command of its own.
+func newFlagsNamed(name, row string) *flagSet {
+	fs := &flagSet{FlagSet: flag.NewFlagSet(name, flag.ContinueOnError), row: rowOf(row)}
 	fs.SetOutput(io.Discard)
 	if _, ok := fs.rowFlag(flagJSON); ok {
 		fs.switchFlag(flagJSON)

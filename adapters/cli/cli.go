@@ -136,6 +136,11 @@ type run struct {
 	rep     *report
 	// fs is the flag set the command read, so that what a command takes can be listed.
 	fs *flag.FlagSet
+	// helped is set once --help printed the usage it asked for (help.go).
+	helped bool
+	// printed is set once the object is printed, by Run, or by a command that must know whether it
+	// was written, as get does.
+	printed bool
 }
 
 type command func(r *run, args []string) int
@@ -161,7 +166,7 @@ func Run(env Env, args []string, stdin io.Reader, stdout, stderr io.Writer) int 
 	r := &run{env: env, stdin: stdin, stdout: stdout, stderr: stderr, realOut: stdout, rep: newReport()}
 	r.setJSON(wantsJSON(args))
 	code := r.dispatch(args)
-	if r.asJSON {
+	if r.asJSON && !r.printed {
 		r.printJSON(code)
 	}
 	return code
@@ -170,6 +175,9 @@ func Run(env Env, args []string, stdin io.Reader, stdout, stderr io.Writer) int 
 func (r *run) dispatch(args []string) int {
 	if len(args) == 0 {
 		return r.usage()
+	}
+	if helpFlag(args[0]) {
+		return r.commandList()
 	}
 	c, ok := commands[args[0]]
 	if !ok {
@@ -193,8 +201,13 @@ func (r *run) usage() int {
 	return r.tool(codeUsage)
 }
 
-// tool prints a tool error's code, and any detail, and returns its exit code.
+// tool prints a tool error's code, and any detail, and returns its exit code. Once --help printed
+// the usage it asked for, parse has returned false and the command stops through tool, which then
+// prints nothing and returns 0.
 func (r *run) tool(code string, detail ...string) int {
+	if r.helped {
+		return ExitOK
+	}
 	r.put(memberError, code)
 	if len(detail) > 0 {
 		r.put(memberDetail, detail)
@@ -224,6 +237,9 @@ func (r *run) failed(err error) int {
 		return r.tool(codeFile, je.File)
 	case errors.As(err, &ke):
 		return r.tool(string(ke.Code))
+	case errors.As(err, &se) && se.Detail != "":
+		// A detail, such as too-large, says what is wrong with the file beyond the code.
+		return r.tool(string(se.Code), se.File, se.Detail)
 	case errors.As(err, &se):
 		return r.tool(string(se.Code), se.File)
 	case errors.As(err, &je):
@@ -278,15 +294,21 @@ func (m *many) Set(v string) error { *m = append(*m, v); return nil }
 const flagJSON = "json"
 
 // parse parses the flags; a flag that is wrong, or a flag its row requires and missing, is a usage
-// error. --json, once read, decides whether the result is printed as JSON.
+// error. --json, once read, decides whether the result is printed as JSON. --help, -help or -h, as a
+// flag and not a flag's value, prints the command's usage from its row instead (help) and checks no
+// flag required.
 func (r *run) parse(fs *flagSet, args []string) bool {
 	return r.parseFlags(fs, args) && r.required(fs, fs.required()...)
 }
 
-// parseFlags parses the flags as parse does, without looking for the flags required.
+// parseFlags parses the flags as parse does, without looking for the flags required. After --help
+// it prints the usage and returns false, and the command's usage error then prints nothing (tool).
 func (r *run) parseFlags(fs *flagSet, args []string) bool {
 	r.fs = fs.FlagSet
 	err := fs.Parse(args)
+	if errors.Is(err, flag.ErrHelp) && r.help(fs) {
+		return false
+	}
 	if f := fs.Lookup(flagJSON); err == nil && f != nil {
 		r.setJSON(f.Value.String() == "true")
 	}

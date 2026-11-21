@@ -155,8 +155,8 @@ func requestBody(model string, r judge.Request) ([]byte, error) {
 
 // readReply reads Jev's reply strictly (parse-strict): one JSON object and nothing after it, with no
 // name twice in any object, whose answers hold the question's answer, of type choice, whose choice is
-// pass or block, and whose confidence, when it has one, is a number from 0 to 1. Members are matched
-// by their exact names; members it does not read are left alone.
+// pass or block, and whose confidence, when it has one, is a number from 0 to 1, never null. Members
+// are matched by their exact names; members it does not read are left alone.
 func readReply(b []byte) (judge.Answer, bool) {
 	if !distinct(b) {
 		return judge.Answer{}, false
@@ -182,11 +182,12 @@ func readReply(b []byte) (judge.Answer, bool) {
 	}
 	a := judge.Answer{Verdict: label}
 	if c, has := ans["confidence"]; has {
-		var conf float64
-		if json.Unmarshal(c, &conf) != nil || math.IsNaN(conf) || conf < 0 || conf > 1 {
+		// Through a pointer, so a null, which would leave a number at 0, is told from a 0.
+		var conf *float64
+		if json.Unmarshal(c, &conf) != nil || conf == nil || math.IsNaN(*conf) || *conf < 0 || *conf > 1 {
 			return judge.Answer{}, false
 		}
-		s := int(math.Round(conf * 100))
+		s := int(math.Round(*conf * 100))
 		a.Score = &s
 	}
 	return a, true

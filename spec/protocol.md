@@ -1935,7 +1935,9 @@ A command that is refused, or fails, has the members of its refusal beside what 
 
 ### commands-1 One object on standard output
 
-With `--json`, a command prints exactly one JSON object and a line feed on standard output, and nothing else there, whatever its exit code, but `watch`, which runs until it is stopped and prints one object per question before its own, as its row says; `mcp`, whose standard output carries the MCP protocol, takes no `--json`; standard error and the exit code are as without `--json`. The object has `exit`, and the members the table gives its command, of the objects the table above defines. A refusal's members name its code under the member of its kind. A command's flags that cannot be read, or that name no command, are the error `usage`, in an object, whenever `--json` is among them. Whatever combination of its flags a command runs with, the object holds every result the run produced: each outcome, closing and release the window returned to it, each delivery it fetched and each file it wrote. No flag leaves a result out or puts one in the place of another, and a list of results is there even when it is empty. On a terminal the object is escaped as the command's other JSON is, and stays the same JSON.
+With `--json`, a command prints exactly one JSON object and a line feed on standard output, and nothing else there, whatever its exit code, but `watch`, which runs until it is stopped and prints one object per question before its own, as its row says; `mcp`, whose standard output carries the MCP protocol, takes no `--json`; standard error and the exit code are as without `--json`. The object has `exit`, and the members the table gives its command, of the objects the table above defines. A refusal's members name its code under the member of its kind. A command's flags that cannot be read, or that name no command, are the error `usage`, in an object, whenever `--json` is among them. A `get` whose object holds a body and cannot be written keeps each body it holds that it had not kept, as `get` keeps a body it cannot write without `--json`, and ends in the error `file` with `kept` after it, exit 3. Whatever combination of its flags a command runs with, the object holds every result the run produced: each outcome, closing and release the window returned to it, each delivery it fetched and each file it wrote. No flag leaves a result out or puts one in the place of another, and a list of results is there even when it is empty. On a terminal the object is escaped as the command's other JSON is, and stays the same JSON.
+
+`--help`, `-help` or `-h`, given as a flag and not as a flag's value, asks for a command's usage, and is not a flag that cannot be read. The command prints on standard output the line `usage: placket <command> [flags]`, then one line per flag it reads, in name order, each starting with `--` and the flag's name, then one line per subcommand it has, `placket <subcommand> [flags]`: `key` has `key new` and `key ref`, `window` has `window close`, and `init` has one per example. It prints nothing on standard error, reads no file, socket or state, checks no flag it requires, and exits 0. With `--json` it prints one object instead: `command`, the command's name, `exit` 0, `flags`, the list of `{"default","name","usage"}`, one per flag, in name order, and `subcommands`, when it has any. `placket --help` prints the usage line and one line per command, `placket <command> [flags]`, or with `--json` `{"commands","exit":0}`. `mcp --help` prints its usage as any command does, but `mcp`, which takes no `--json`, refuses `--help` beside `--json` as it refuses `--json`, `{"error":"usage","exit":3}`. `placket` alone, and a command that does not exist, stay the error `usage`.
 
 #### Scenario: a give that passes
 
@@ -1949,6 +1951,13 @@ With `--json`, a command prints exactly one JSON object and a line feed on stand
 - Given a stranger's give, a give with no flags, and a command that does not exist
 - When each runs with `--json`
 - Then the stranger's object is `{"exit":2,"rejection":"not-a-member"}`, and the others' `{"error":"usage","exit":3}`
+
+#### Scenario: a command's usage
+
+- Given every command, `placket verify` among them, with none of the flags it requires
+- When it runs with `--help`, and separately with `-help`, `-h` and `--help --json`
+- Then standard output is its usage line and one line per flag it reads, or with `--json` one object of `command`, `exit` 0 and `flags` in name order, standard error is empty, and it exits 0
+- And `key --help` names `key new` and `key ref`, `window --help` names `window close`, `mcp --help --json` is `{"error":"usage","exit":3}`, and `give --text --help` takes `--help` as the text
 
 #### Scenario: every result under every flag
 

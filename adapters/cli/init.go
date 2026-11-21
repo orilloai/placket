@@ -160,8 +160,16 @@ func (x example) longest(l string) int {
 // person's, and the lines that fetch and run the example's applier, each command on a line of its
 // own after the line that says what it is for. Its --json object holds dir, accords (label, accord,
 // window and parties), and mcp, watch, fetch and apply, the commands.
+//
+// `init --help` names the examples, and `init <example> --help` prints the example's flags.
 func initCommand(r *run, args []string) int {
 	if len(args) == 0 || strings.HasPrefix(args[0], "-") {
+		set := newFlags("init")
+		set.text("dir")
+		set.text("label")
+		if len(args) > 0 && errors.Is(set.Parse(args), flag.ErrHelp) && r.help(set) {
+			return ExitOK
+		}
 		fmt.Fprintln(r.stderr, "usage: placket init <example> [--dir D] [--label L]; examples: "+strings.Join(exampleNames, ", "))
 		return r.tool(codeUsage)
 	}
@@ -170,7 +178,7 @@ func initCommand(r *run, args []string) int {
 		fmt.Fprintln(r.stderr, "usage: placket init: the examples are "+strings.Join(exampleNames, ", "))
 		return r.tool(codeUsage)
 	}
-	set := newFlags("init")
+	set := newFlagsNamed("init "+args[0], "init")
 	dirFlag, labelFlag := set.text("dir"), set.text("label")
 	if !r.parse(set, args[1:]) {
 		return r.tool(codeUsage)

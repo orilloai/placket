@@ -172,11 +172,17 @@ receiver_state=receiver.key.state/${accord#sha256:}
 # value in a body, such as {"summary":...,"payload":...}, names the value's JSON Pointer, such as
 # /payload: then released reads the value at that path in every part the receiver kept.
 at= # CHANGE: the path of the value inside the part; empty for the whole part
+# Placket keeps no notion of a current release: a value released and later replaced still matches its
+# own receipt. The guard adds a rule of its own, only the latest: the field at $same inside the value
+# names the record, and the guard refuses a match that is not the last release of that record in
+# fetch order.
+same=/sku # CHANGE: the JSON Pointer, inside the value, of the field that names the same record
 
 # guard FILE: the export step's guard. It holds only the record it is about to export, in FILE: no
 # delivery, no file of inbox, no receipt id. It normalizes the record as the proposer did and asks
 # released whether exactly those bytes are a whole part, or the value at $at inside one, of a
-# proposal or a changed version that crossed to the receiver and that the receiver kept. Only then
+# proposal or a changed version that crossed to the receiver and that the receiver kept. Then it asks
+# released --every for every release of the same record, and only when the match is the last of them
 # does the export run.
 guard() {
 	normalize <"$1" >"$1.check"
@@ -191,12 +197,26 @@ guard() {
 	rc=0
 	placket released --json --state "$receiver_state" --kind proposal --kind changed-version \
 		"$@" >released.out 2>/dev/null || rc=$?
-	if [ "$rc" -eq 0 ]; then
-		cat "$value" >>export.jsonl # CHANGE: your export step, run only on a match
-		say guard "exports $(cat "$value"): released as a $(jq -r '.kind' released.out)"
-	else
+	if [ "$rc" -ne 0 ]; then
 		say guard "refuses $(cat "$value"): released exit $rc"
+		return
 	fi
+	# The value of the field that names the record, as JSON, read by its JSON Pointer.
+	key=$(jq -c --arg p "$same" 'getpath($p | ltrimstr("/") | split("/") | map(gsub("~1"; "/") | gsub("~0"; "~")))' "$value" 2>/dev/null) ||
+		key=null
+	rc=0
+	placket released --json --state "$receiver_state" --kind proposal --kind changed-version \
+		--at "$at$same" --value "$key" --every >every.out 2>/dev/null || rc=$?
+	if [ "$rc" -ne 0 ]; then
+		say guard "refuses $(cat "$value"): released as a $(jq -r '.kind' released.out), but released --every for $key exit $rc"
+		return
+	fi
+	if [ "$(jq -r '.receiptId' released.out)" != "$(jq -r '.matches[-1].receiptId' every.out)" ]; then
+		say guard "refuses $(cat "$value"): released as a $(jq -r '.kind' released.out), but not the latest of $(jq '.matches | length' every.out) releases of $key"
+		return
+	fi
+	cat "$value" >>export.jsonl # CHANGE: your export step, run only on a match that is the latest
+	say guard "exports $(cat "$value"): released as a $(jq -r '.kind' released.out)"
 }
 
 step "5. the guard, before each export"
@@ -222,7 +242,7 @@ say guard "a record never proposed"
 guard current-6.json
 say export "$(wc -l <export.jsonl | tr -d ' ') records exported"
 
-step "6. a record replaced later still matches its own receipt"
+step "6. a record replaced later matches its own receipt, and is refused as not the latest"
 echo '{ "sku": "TB-100", "price": 19.1, "currency": "EUR" }' >tb-100b.json
 propose tb-100b.json
 question
@@ -231,19 +251,12 @@ placket answer $(as approver) --json --question "$q" >answer.out 2>/dev/null || 
 answered accepts
 placket get $(as receiver) --all --out inbox --json --keep >get.out 2>/dev/null
 say receiver "fetched $(jq '.deliveries | length' get.out) more"
+echo '{"sku":"TB-100","price":"19.10","currency":"EUR"}' >current-7.json
 say guard "the old record of TB-100, since replaced"
 guard current-1.json
-# released --every lists every match in fetch order; "only the latest" is a rule the caller adds.
-placket released --json --state "$receiver_state" --kind proposal --kind changed-version \
-	--at /sku --value '"TB-100"' --every >every.out 2>/dev/null
-say guard "released --every for TB-100: $(jq '.matches | length' every.out) matches, in fetch order"
-# CHANGE: your own rule for "only the latest". This one: the record the guard holds must be the last
-# release of its sku in fetch order.
-if [ "$(jq -r '.receiptId' released.out)" = "$(jq -r '.matches[-1].receiptId' every.out)" ]; then
-	say guard "the latest release of TB-100"
-else
-	say guard "not the latest release of TB-100: a caller that needs only the latest refuses it"
-fi
+say guard "the new record of TB-100"
+guard current-7.json
+say export "$(wc -l <export.jsonl | tr -d ' ') records exported, the last $(tail -n 1 export.jsonl)"
 
 step "7. the log of every crossing, and the journal verified"
 kept="--kept proposer.key.state/${accord#sha256:} --kept approver.key.state/${accord#sha256:} --kept $receiver_state"

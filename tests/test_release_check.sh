@@ -322,4 +322,24 @@ build "$dir" v0.1.0 0.1.0
 echo changed >>"$dir/install.sh"
 expect_release "a release whose install.sh is not its line is refused" 1 "release-check: refused: install.sh: checksum" "$dir"
 
+# A checksums.txt with no line feed after its last line: the last file is checked and counted all the
+# same. The checksum loop is the same for both modes.
+build "$dir" v0.1.0 0.1.0
+printf %s "$(cat "$dir/checksums.txt")" >"$tmp/checksums"
+mv "$tmp/checksums" "$dir/checksums.txt"
+if expect_release "a checksums.txt with no line feed at its end passes" 0 "release-check: ok" "$dir"; then
+	if [ "$(sed -n 2p "$out")" != "release-check: checksums: ok, 9 files" ]; then
+		echo "FAIL a checksums.txt with no line feed at its end counts its last line"
+		sed 's/^/    | /' "$out"
+		failed=1
+	else
+		echo "ok   a checksums.txt with no line feed at its end counts its last line"
+	fi
+fi
+build "$dir" v0.1.0 0.1.0
+grep -v ' install.sh$' "$dir/checksums.txt" >"$tmp/checksums"
+printf '%064d  install.sh' 0 >>"$tmp/checksums"
+mv "$tmp/checksums" "$dir/checksums.txt"
+expect_release "a wrong hash on a last line with no line feed is refused" 1 "release-check: refused: install.sh: checksum" "$dir"
+
 exit $failed
