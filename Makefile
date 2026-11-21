@@ -22,12 +22,12 @@
 .DEFAULT_GOAL := ci
 CHECKS = core-no-deps core-imports core-no-world core-no-panic specs-name-behaviour schemas-hold \
 	vectors-independent constants-once product-words-once claims-stop-at-crossing main-is-thin recipes-core-only root-module \
-	machine-rules-in-ci ci-stays-fast no-hidden-text agents-md-short
+	machine-rules-in-ci ci-stays-fast no-hidden-text agents-md-short docs-tree-holds
 TOOLCHAIN = vet lint vulnerabilities secrets race fuzz-seeds coverage-reported
 .PHONY: ci build guard $(CHECKS) modules $(TOOLCHAIN) tests runner-no-silent-pass scripts
 ci: build guard core-no-deps core-imports core-no-world core-no-panic specs-name-behaviour schemas-hold \
 	vectors-independent constants-once product-words-once claims-stop-at-crossing main-is-thin recipes-core-only root-module \
-	machine-rules-in-ci ci-stays-fast no-hidden-text agents-md-short modules vet lint vulnerabilities secrets tests race fuzz-seeds \
+	machine-rules-in-ci ci-stays-fast no-hidden-text agents-md-short docs-tree-holds modules vet lint vulnerabilities secrets tests race fuzz-seeds \
 	coverage-reported runner-no-silent-pass scripts
 
 # ci-stays-fast, the marker: make ci exports PLACKET_IN_CI=1 to every step. A make whose goals include

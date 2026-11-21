@@ -89,6 +89,7 @@ A new rule gets its name here, in the change that adds it: a heading in its topi
 - [`ci-stays-fast`](changes.md#ci-stays-fast)
 - [`no-hidden-text`](changes.md#no-hidden-text)
 - [`outside-commits-signed-off`](changes.md#outside-commits-signed-off)
+- [`docs-tree-holds`](changes.md#docs-tree-holds)
 - [`agents-md-short`](changes.md#agents-md-short)
 
 ## What the checks print and miss

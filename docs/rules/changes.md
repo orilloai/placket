@@ -74,6 +74,14 @@ Why: a sign-off is a person's statement under the Developer Certificate of Origi
 
 Checked by: the workflow's `red-green-tests` job, with `main`'s copy of `tools/redgreen/`, after the `red-green-tests` verdict. The opener is the pull request's author, passed in `PLACKET_PR_OPENER`; with none, on a push to `main` or from `make red-green-tests`, only a bot's sign-off is refused. A person's sign-off added for them by an agent, and content a merge commit adds, are the reviewer's; `docs/adr/0013-red-green-tests.md` records why.
 
+## `docs-tree-holds`
+
+`docs/README.md` is the docs tree, the page order placket.tech reads: the sections Quickstarts, Concepts, Guides, Reference, Verify and Security, in that order, each a list of `- [<title>](<path>)` entries. A tree link is relative, names a file that exists, and leaves `docs/` only for `spec/` and `vectors/`; an `#anchor` on it is a heading of that file. Every Markdown page under `docs/concepts/`, `docs/quickstarts/`, `docs/guides/`, `docs/reference/` and `docs/security/`, and `docs/verify.md`, is listed. On every page listed, every relative link names a file or directory that exists, and an `#anchor` on a Markdown file is one of its headings. Every line of a fenced block on a listed page that starts `placket ` names a command, its flags and its arguments' values as the generated CLI reference, `docs/reference/cli.md`, holds them. The contributor pages, `docs/adr/`, `docs/rules/`, `docs/style/`, `docs/release.md` and `docs/review.md`, are not asked for.
+
+Why: the site renders the docs from these files and invents no text, so a page the tree promises must exist, its links must land, and a command line on it must be one the binary takes.
+
+Checked by: `make ci`, step `docs-tree-holds`. It reads each link and anchor as GitHub resolves it, and checks a command line against the CLI reference without running it: a word the shell fills in, such as `"$d"` or `$(...)`, is not checked. The reviewer reads each page against the code and `docs/style/writing.md`.
+
 ## `agents-md-short`
 
 `AGENTS.md` stays within its limits, 150 lines and 10 KiB, and every public name has exactly one heading.

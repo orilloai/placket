@@ -59,6 +59,7 @@ func init() {
 		{name: "machine-rules-in-ci", doc: "changes.md", why: "every tool make ci fetches with go run or go install is pinned to an exact version, every action a workflow uses is pinned to a commit, and make ci runs every check and step", check: machineRulesInCI},
 		{name: "ci-stays-fast", doc: "changes.md", why: "no test or script clears PLACKET_IN_CI, the marker that stops a make ci inside make ci", check: ciStaysFast},
 		{name: "no-hidden-text", doc: "changes.md", why: "no tracked file outside testdata/ holds a bidi control character, an invisible one or a NUL byte, or is a symbolic link", check: noHiddenText},
+		{name: "docs-tree-holds", doc: "changes.md", why: "docs/README.md lists every page of the docs in its sections, every page it lists exists, every link on them resolves, and every placket line on them names a command, flags and values docs/reference/cli.md holds", check: docsTreeHolds},
 		{name: "agents-md-short", doc: "changes.md", why: "AGENTS.md stays within 150 lines and 10 KiB, every public name has exactly one heading in docs/rules/ and a line in its index, and every link to a rule's heading resolves", check: agentsMDShort},
 	}
 }

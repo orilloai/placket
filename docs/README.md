@@ -1,6 +1,6 @@
 # The docs
 
-Placket's documentation, in the order a reader takes it: a quickstart for each entry point, the words placket uses, the guides, the references, how to verify a journal, and what placket protects. Each page is a file of this repository, and placket.tech takes the order of its pages from this list.
+Placket's documentation, in the order a reader takes it: a quickstart for each entry point, the words placket uses, the guides, the references, how to verify a journal, and what placket protects. Each page is a file of this repository, and placket.tech takes the order of its pages from this list. `make ci` checks that every page listed here exists, that every link on these pages resolves, and that every `placket` command line on them names a real command and real flags (`docs-tree-holds`, in `docs/rules/changes.md`).
 
 ## Quickstarts
 
