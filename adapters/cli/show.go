@@ -19,9 +19,9 @@ func init() {
 // <word> <reason> <kind> <at>; from <ref> to <ref>; the module line; the receipt's claim line; the
 // scope line. A close receipt, as get keeps it in close.json, shows as showClose says.
 func showCommand(r *run, args []string) int {
-	fs := flags("show")
-	path := fs.String("receipt", "", "a file holding one receipt")
-	if !r.parse(fs, args, "receipt") {
+	fs := newFlags("show")
+	path := fs.text("receipt")
+	if !r.parse(fs, args) {
 		return r.tool(codeUsage)
 	}
 	b, err := os.ReadFile(*path)

@@ -22,7 +22,7 @@ func mediatorObject(m client.Mediator) map[string]any {
 // check across entries: error label-taken I J or error mediator-collision I J (client.DecodeConfig).
 // Its object holds mediators, the list.
 func mediatorsCommand(r *run, args []string) int {
-	fs := flags("mediators")
+	fs := newFlags("mediators")
 	if !r.parse(fs, args) {
 		return r.tool(codeUsage)
 	}

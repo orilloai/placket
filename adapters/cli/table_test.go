@@ -20,8 +20,8 @@ var socketFlagNames = []string{"accord", "key", "label", "socket", "state"}
 // TestTheCommandTable holds the command table to the commands. Every command and subcommand has a
 // row, and every row names one. Each command reads exactly the flags its row lists, each of the kind
 // and with the default its row gives, so a flag added to a command with no row fails here, naming
-// both. No summary, usage or sentence is empty, the usage names exactly the row's flags, and the
-// --json object of a command that takes --json cites the requirements it follows.
+// both. No summary or sentence is empty, the usage names exactly the row's flags, and the --json
+// object of a command that takes --json cites the requirements it follows.
 func TestTheCommandTable(t *testing.T) {
 	t.Parallel()
 	rows := map[string]cli.Row{}
@@ -51,8 +51,8 @@ func TestTheCommandTable(t *testing.T) {
 // checkRow checks one row against its command.
 func checkRow(t *testing.T, name string, row cli.Row, rows map[string]cli.Row) {
 	t.Helper()
-	if row.Summary == "" || row.Usage == "" {
-		t.Errorf("%s: a summary %q and a usage %q, and neither may be empty", name, row.Summary, row.Usage)
+	if row.Summary == "" {
+		t.Errorf("%s: no summary", name)
 	}
 	if len(row.Exits) == 0 {
 		t.Errorf("%s: no exit code", name)

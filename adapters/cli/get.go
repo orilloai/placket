@@ -127,11 +127,11 @@ func writeOut(d *delivery, out string) (string, bool) {
 // empty queue; with --out each is without its body and with the path of its file, once written
 // (commands-1, commands-3).
 func getCommand(r *run, args []string) int {
-	fs := flags("get")
+	fs := newFlags("get")
 	so := socketFlags(fs)
-	out, keep := fs.String("out", "", "directory for the body"), fs.Bool("keep", false, "keep the part")
-	all := fs.Bool("all", false, "fetch every delivery")
-	wait := fs.Int("wait", 0, "seconds to wait for a delivery, at most 60")
+	out, keep := fs.text("out"), fs.switchFlag("keep")
+	all := fs.switchFlag("all")
+	wait := fs.number("wait")
 	if !r.parseSocket(fs, args, so) || *wait < 0 || *wait > local.MaxWait {
 		return r.tool(codeUsage)
 	}

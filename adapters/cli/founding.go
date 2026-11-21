@@ -22,12 +22,12 @@ func init() {
 // output and its Accord id and card hash on standard error, and after them a line that names the
 // card's module when it is not this build's (docs/adr/0012-the-kernel-hash.md).
 func foundingCommand(r *run, args []string) int {
-	fs := flags("founding")
-	policy, med, card := fs.String("policy", "", "policy"), fs.String("mediator", "", "mediator"), fs.String("card", "", "card")
+	fs := newFlags("founding")
+	policy, med, card := fs.text("policy"), fs.text("mediator"), fs.text("card")
 	var decls, binds many
-	fs.Var(&decls, "seal", "a declaration's seal entry")
-	fs.Var(&binds, "binding", "a binding")
-	if !r.parse(fs, args, "policy", "mediator", "card", "seal", "binding") {
+	fs.list(&decls, "seal")
+	fs.list(&binds, "binding")
+	if !r.parse(fs, args) {
 		return r.tool(codeUsage)
 	}
 	// The files are read in a fixed order, so the first that cannot be read names its code.

@@ -15,7 +15,7 @@ func init() {
 // the comment does not cross, it says so.
 func declineCommand(r *run, args []string) int {
 	var comment *string
-	s, question, code := answerFlags(r, "decline", args, func(fs *flagSet) { comment = fs.String("comment", "", "the comment") })
+	s, question, code := answerFlags(r, "decline", args, func(fs *flagSet) { comment = fs.text("comment") })
 	if s == nil {
 		return code
 	}

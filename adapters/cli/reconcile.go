@@ -19,12 +19,12 @@ func init() {
 // {"missing","removed","unrecorded"} on standard output and one line per entry on standard error,
 // or that there is nothing to reconcile.
 func reconcileCommand(r *run, args []string) int {
-	fs := flags("reconcile")
-	med, accord, card := fs.String("mediator", "", "mediator"), fs.String("accord", "", "accord"), fs.String("card", "", "card")
-	dir := fs.String("receipts", "", "journal directory")
+	fs := newFlags("reconcile")
+	med, accord, card := fs.text("mediator"), fs.text("accord"), fs.text("card")
+	dir := fs.text("receipts")
 	var kept many
-	fs.Var(&kept, "kept", "a state directory")
-	if !r.parse(fs, args, "mediator", "accord", "card", "receipts", "kept") {
+	fs.list(&kept, "kept")
+	if !r.parse(fs, args) {
 		return r.tool(codeUsage)
 	}
 	list, err := journal.ReadReceipts(*dir, r.stderr)

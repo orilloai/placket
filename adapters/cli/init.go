@@ -3,6 +3,7 @@ package cli
 import (
 	"encoding/json"
 	"errors"
+	"flag"
 	"fmt"
 	"io"
 	"io/fs"
@@ -169,12 +170,18 @@ func initCommand(r *run, args []string) int {
 		fmt.Fprintln(r.stderr, "usage: placket init: the examples are "+strings.Join(exampleNames, ", "))
 		return r.tool(codeUsage)
 	}
-	set := flags("init")
-	dirFlag, labelFlag := set.String("dir", "", "the directory to write in, empty or new"), set.String("label", args[0], "the label")
+	set := newFlags("init")
+	dirFlag, labelFlag := set.text("dir"), set.text("label")
 	if !r.parse(set, args[1:]) {
 		return r.tool(codeUsage)
 	}
-	label := *labelFlag
+	// The label is the example's name unless --label is given, even given empty.
+	label := args[0]
+	set.Visit(func(f *flag.Flag) {
+		if f.Name == "label" {
+			label = *labelFlag
+		}
+	})
 	if !client.Label(label) || x.longest(label) > 63 {
 		fmt.Fprintln(r.stderr, "usage: placket init: --label is 1 to 63 of a-z, 0-9 and -, and with its parties' names no longer than 63")
 		return r.tool(codeUsage)

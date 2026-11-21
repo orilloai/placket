@@ -24,10 +24,10 @@ func init() {
 // adapter's version and the config's typed hash (setup-contract-4, docs/adr/0023-judges.md). No
 // other card is built by the command line, so --default is required.
 func cardCommand(r *run, args []string) int {
-	fs := flags("card")
-	def := fs.Bool("default", false, "this build's card")
+	fs := newFlags("card")
+	def := fs.switchFlag("default")
 	var judges many
-	fs.Var(&judges, "judge", "a judge's config, once per judge")
+	fs.list(&judges, "judge")
 	if !r.parse(fs, args) {
 		return r.tool(codeUsage)
 	}
