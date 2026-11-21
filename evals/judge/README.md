@@ -16,7 +16,9 @@ A basic eval of a judge: 30 synthetic labelled cases, and a command that runs th
 ## Running it
 
 ```
-PLACKET_JEV_KEY=... make judge-eval JUDGE=patterns/shadow-judge/judge.json
+# Type the key: it is not echoed, and it stays out of the shell's history.
+stty -echo; read -r PLACKET_JEV_KEY; stty echo; export PLACKET_JEV_KEY
+make judge-eval JUDGE=patterns/shadow-judge/judge.json
 ```
 
 `CASES=FILE` runs another case file. Each case is one request to the config's host, carrying the case's kind and text and the config's instruction, within the judge's budget of 20 seconds. The key is read once from `PLACKET_JEV_KEY` and written nowhere.

@@ -31,7 +31,7 @@ const (
 // TestDeliveryExamplesMatchTheirBodies reads each accepted delivery example as a receiver would:
 // its receipt is the current predicate type's, signed under the examples' key, its id is the
 // receipt's (receipt-1), it names the delivery's kind and its body by the salted digest crossing-3
-// defines, and its by names the answer call inside the delivery exactly when one is there.
+// defines, and its by names the answer call inside the delivery when one is there.
 func TestDeliveryExamplesMatchTheirBodies(t *testing.T) {
 	seed, err := hex.DecodeString(exampleSeed)
 	if err != nil {
@@ -111,19 +111,15 @@ func checkExample(t *testing.T, d client.Delivery, mediator string) {
 	if st.Subject.Name != d.Kind {
 		t.Fatalf("the receipt names kind %q, the delivery %q", st.Subject.Name, d.Kind)
 	}
-	if len(d.Answer) > 0 {
-		if st.Predicate.By.Decider != receipts.ByAnswer || st.Predicate.By.Answer != answer.ID(d.Answer) {
-			t.Fatalf("the receipt's by is %+v, not the answer call inside the delivery, %s", st.Predicate.By, answer.ID(d.Answer))
-		}
-	} else if st.Predicate.By.Decider == receipts.ByAnswer {
-		t.Fatal("the receipt's by names an answer, but the delivery holds no answer call")
+	if len(d.Answer) > 0 && (st.Predicate.By.Decider != receipts.ByAnswer || st.Predicate.By.Answer != answer.ID(d.Answer)) {
+		t.Fatalf("the receipt's by is %+v, not the answer call inside the delivery, %s", st.Predicate.By, answer.ID(d.Answer))
 	}
 }
 
 // signExample returns the example b with its receipt written again under key: the predicate the
 // receipt held, its subject the delivery's kind and the salted digest of its body, by the answer
-// call inside the delivery when there is one, else by the terms, and its receiptId the new
-// receipt's. Every other byte of b stays as it was.
+// call inside the delivery when there is one, else by the by the receipt held, else by the terms,
+// and its receiptId the new receipt's. Every other byte of b stays as it was.
 func signExample(t *testing.T, b []byte, d client.Delivery, key signing.Key) []byte {
 	t.Helper()
 	var env struct {
@@ -145,6 +141,7 @@ func signExample(t *testing.T, b []byte, d client.Delivery, key signing.Key) []b
 				Hash, Sender string
 				Seq          int64
 			}
+			By json.RawMessage
 		}
 	}
 	if err := json.Unmarshal(payload, &old); err != nil {
@@ -152,8 +149,21 @@ func signExample(t *testing.T, b []byte, d client.Delivery, key signing.Key) []b
 	}
 	p := old.Predicate
 	by := receipts.By{Decider: receipts.ByTerms}
-	if len(d.Answer) > 0 {
+	var held map[string]string
+	switch {
+	case len(d.Answer) > 0:
 		by = receipts.By{Decider: receipts.ByAnswer, Answer: answer.ID(d.Answer)}
+	case json.Unmarshal(p.By, &held) == nil && len(held) == 1:
+		for k, v := range held {
+			switch by = (receipts.By{Decider: receipts.Decider(k)}); by.Decider {
+			case receipts.ByJudge:
+				by.Judge = v
+			case receipts.ByAnswer:
+				by.Answer = v
+			case receipts.ByMediator:
+				by.Event = receipts.Event(v)
+			}
+		}
 	}
 	salt, ok := client.SaltBytes(d.Salt)
 	if !ok {

@@ -64,10 +64,11 @@ joined() {
 flags() { grep -oE -- '--[a-z][a-z-]*' | sort -u | tr '\n' ' '; }
 
 # section <file> <heading>: the lines of the section under the heading "<heading>", to the next
-# heading of its level or above.
+# heading of its level or above outside a code block.
 section() {
 	awk -v h="$2" '
-		f && /^#+ / { n = index($0, " ") - 1; if (n <= level) exit }
+		/^```/ { fence = !fence }
+		f && !fence && /^#+ / { n = index($0, " ") - 1; if (n <= level) exit }
 		f { print }
 		$0 == h { f = 1; level = index($0, " ") - 1 }
 	' "$1"

@@ -4,7 +4,7 @@ An agent proposes to merge a pull request on GitHub. You accept it, or decline i
 
 This guide starts with `placket` on your `PATH`. The [install section of the README](../../README.md#install) says how to get it there. Nothing here needs a judge's key. The applier also needs GitHub's command line, `gh`, and `jq`.
 
-## Five words
+## Six words
 
 - An **Accord** is the agreement between the parties: here the agent, you, and the applier that merges. A mediator, the window you start, runs it and signs a receipt for every decision.
 - Each party's **terms** say what may cross to or from it. The agent's terms say its `merge` to the applier is asked of the role `decider`, which your key holds, and list no judge, since a merge cannot be undone. Each party's terms are sealed from the others; you consent to your own view of what will cross.
@@ -50,7 +50,7 @@ Run the `placket watch` line `init` printed, `placket watch --label merge-person
 
 ## 6. Apply
 
-Fetch the applier with the line `init` printed. It takes [`patterns/github-merge/apply.sh`](../../patterns/github-merge/apply.sh) from the repository at the commit of your build's version tag, or from `main` for a build with no version tag, which can change at any time. It holds your merge credential and is what lets only accepted merges through, and nothing checks the file it fetches, so read it, and its [`README.md`](../../patterns/github-merge/README.md), before you run it. Then run it, as custody step 4 says, with the repository in place of `OWNER/NAME`:
+Fetch the applier with the line `init` printed. It takes [`patterns/github-merge/apply.sh`](../../patterns/github-merge/apply.sh) from the repository at the commit of your build's version tag when the build carries that commit, else at the tag itself, which can be moved, or from `main` for a build with no version tag, which can change at any time. It holds your merge credential and is what lets only accepted merges through, and nothing checks the file it fetches, so read it, and its [`README.md`](../../patterns/github-merge/README.md), before you run it. Then run it, as custody step 4 says, with the repository in place of `OWNER/NAME`:
 
 ```sh
 sh ~/.config/placket/merge/applier/apply.sh merge-applier OWNER/NAME

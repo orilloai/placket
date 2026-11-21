@@ -312,7 +312,7 @@ func TestTheDocsNameTheFixedWords(t *testing.T) {
 }
 
 // docPlace returns the place of a Markdown doc that starts with the line start: a heading's section,
-// to the next heading of its level or above, or else the one line.
+// to the next heading of its level or above outside a code block, or else the one line.
 func docPlace(doc, start string) (string, bool) {
 	lines := strings.Split(doc, "\n")
 	for i, l := range lines {
@@ -323,9 +323,12 @@ func docPlace(doc, start string) (string, bool) {
 		if !strings.HasPrefix(l, "#") {
 			return l, true
 		}
-		end := len(lines)
+		end, fence := len(lines), false
 		for j := i + 1; j < len(lines); j++ {
-			if h := strings.Index(lines[j], "# "); strings.HasPrefix(lines[j], "#") && h+1 <= level {
+			if strings.HasPrefix(lines[j], "```") {
+				fence = !fence
+			}
+			if h := strings.Index(lines[j], "# "); !fence && strings.HasPrefix(lines[j], "#") && h+1 <= level {
 				end = j
 				break
 			}

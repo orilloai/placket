@@ -49,7 +49,7 @@ Each of placket's three uses starts with one `placket init`, which founds its ex
 
 1. **Approve before apply**, the one to start with: an agent proposes the text of a file, you accept, change or decline it, and an applier writes only what you accepted. `placket init approve`, then [`docs/guides/approve.md`](docs/guides/approve.md). As `init` sets it up, every key is in your own account, so the gate records and checks each decision but does not hold against an agent that can run commands as you; for that, the agent runs in an account of its own, as [the guide says](docs/guides/approve.md#what-this-setup-does-not-stop).
 2. **An out-gate on a merge**: an agent proposes a merge on GitHub, you answer it, and an applier merges only what you accepted, at the head commit you accepted. `placket init merge`, then [`docs/guides/merge.md`](docs/guides/merge.md).
-3. **Handoffs between agents**: a planner hands a plan to a coder, and the coder its work to a reviewer, across two mediators, each handoff with a receipt. `placket init handoff`, then [`docs/guides/handoff.md`](docs/guides/handoff.md).
+3. **Handoffs between agents**: a planner hands a plan to a coder, and the coder its work to a reviewer, across two Accords, each with a window of its own and both under one mediator key, each handoff with a receipt. `placket init handoff`, then [`docs/guides/handoff.md`](docs/guides/handoff.md).
 
 ## What a receipt claims
 
@@ -95,7 +95,7 @@ A party also checks its own receipts against the view it accepted, with no other
 placket verify --accord "$accord" --receipts journal --founding founding.json --view "proposer.key.state/${accord#sha256:}/view.json"
 ```
 
-It prints one line per receipt of the party's own, such as `view of <key>: receipts.jsonl line 1 receipt <id> matches give proposal to <key>: ask`, and then `view of <key>: every receipt of its own, 13, matches the view it accepted`. A receipt that does not match exits 1 and names its line; a view that is not the one the party accepted is `error founding acceptance-view`. It does not read the closings a party signs as an answerer on questions it neither asked nor received, nor crossings between two other parties.
+It prints one line per receipt of the party's own, such as `view of <key>: receipts.jsonl line 1 receipt <id> matches give proposal to <key>: ask`, and then `view of <key>: every receipt of its own, 13, matches the view it accepted`. A receipt that does not match exits 1 and names its line; a view that is not the one the party accepted is `error founding acceptance-view`. It does not read the closings a party signs as an answerer on questions it neither asked nor received, nor crossings between two other parties. A view holds its party's own seal salt, the one its seal in the founding set is made with, so a party that hands its view over, to a verifier or anyone else, discloses its seal salt with it: whoever holds the salt can test a guess at that party's declaration against its seal.
 
 ## Found an Accord
 
@@ -141,7 +141,7 @@ Each party's binding is signed by that party's own principal, under the policy i
 - `placket window` refuses to run an Accord whose card names another module: it prints that line and `error founding kernel`, and starts nothing. After an upgrade that changes the module, found the Accord again with the new binary's card; the old journal still verifies.
 - `placket verify --founding` prints that line after the module line, still verifies, and says that conformance was not checked, since this build cannot decide again as another module would.
 
-Its first receipt, `seq` 1 of the proposer's chain to the applier, is the first proposal's ask:
+The first receipt of the committed demo journal, line 1 of `scripts/demo/journal/receipts.jsonl`, is `seq` 1 of the proposer's chain to the applier, the first proposal's ask:
 
 ```
 {"payload":"eyJfdHlwZSI6Imh0dHBzOi8vaW4tdG90by5pby9TdGF0ZW1lbnQvdjEiLCJwcmVkaWNhdGUiOnsiYWNjb3JkIjoic2hhMjU2OjA1YzlkMGU0M2NiODA3YTI3ODIwNTQyNWJmMjgzMTQ1ZTI4NDE5ZjM4MGM3ZmJhY2M5ZDc0ZjY3NGZjZDQzMTIiLCJhdCI6IjIwMjYtMTEtMThUMTc6Mjg6MDFaIiwiYnkiOiJ0ZXJtcyIsImNhcmQiOiJzaGEyNTY6ZTM2N2Q1ZTE4MjA5OGJiYjNhM2NlOTYwYjMyMjFhYTJhMWMwZDZlZDJmYzc5MGRmYTQ2MDRlNjA0MTkxZDZhNSIsImVudmVsb3BlIjp7Imhhc2giOiJzaGEyNTY6NmMxYmE4YTI1MWNhNGQ1YzMyOGUyY2Q2ODI2MjQ3OGE5YmViNzBhYzk0NDU0MGViYTAyN2M5M2FkYjg1NzMxYiIsInNlbmRlciI6ImVkMjU1MTk6NzBkZWU1OGZhMTlhMTc3OTVlOWU0ZjM5MjkwNmYwY2JhZTE5NDE0YzAxNTBkYjk3NGUyYjEwYTljMzFkMjA0ZCIsInNlcSI6MX0sImZyb20iOiJlZDI1NTE5OjcwZGVlNThmYTE5YTE3Nzk1ZTllNGYzOTI5MDZmMGNiYWUxOTQxNGMwMTUwZGI5NzRlMmIxMGE5YzMxZDIwNGQiLCJraW5kIjoiY3Jvc3NpbmciLCJtZWRpYXRvciI6ImVkMjU1MTk6Mzg3NmRkZGM1ZDUzZjcwZjE0YmUyYTk5NmRmZmJlMzU4NGQ3MmU4ZDJhMDExMTQ3NDgzMDg1N2E1NWNhMmQyMyIsInJlYXNvbiI6Im1heWJlIiwic2VxIjoxLCJ0byI6ImVkMjU1MTk6MGI1MzE2MWM3MWJlMTEyZTM4NjE3MDdmMzUwMWZhYTNhM2JjMDJkOTk3NWMxN2I3ZjA3MzQwOTc5Mjg1NDEzZiIsInZlcmRpY3QiOiJlc2NhbGF0ZSJ9LCJwcmVkaWNhdGVUeXBlIjoiaHR0cHM6Ly9wbGFja2V0LnRlY2gvcmVjZWlwdC8wLjEiLCJzdWJqZWN0IjpbeyJkaWdlc3QiOnsic2FsdGVkLXNoYTI1NiI6IjFhMGZiMTcwMTQxYzZmZTI0NzcwYTQ4Y2I0YjQ5MjMxMWNhNmM0Y2Y0MDBiODNiZTAyMmQ5NDk2YTIwYTE2ZDcifSwibmFtZSI6InByb3Bvc2FsIn1dfQ==","payloadType":"application/vnd.in-toto+json","signatures":[{"keyid":"ed25519:3876dddc5d53f70f14be2a996dffbe3584d72e8d2a0111474830857a55ca2d23","sig":"emfBC4s1Koswx9+uZiCEn3taVDvedYKdi3/R/Usau2y0T1Wva17bvtYvqNazNILcfxqp4miwQfT2Dd9XW7vdAw=="}]}
@@ -151,20 +151,20 @@ and `placket show --receipt` prints, on standard error, then on standard output:
 
 ```
 not verified
-ask maybe proposal 2026-11-17T23:16:47Z
-from ed25519:09a2c472e9fa29ae1ae30e50e4ad1d571b29b560fa2e421a3757e5777b5f1882 to ed25519:8e7f0e0d4ba3528921802a367c7052acaedc6f3a3dfab36fd1d8bbee4a5a54c4
+ask maybe proposal 2026-11-18T17:28:01Z
+from ed25519:70dee58fa19a17795e9e4f392906f0cbae19414c0150db974e2b10a9c31d204d to ed25519:0b53161c71be112e3861707f3501faa3a3bc02d9975c17b7f07340979285413f
 module: named by card sha256:e367d5e182098bbb3a3ce960b3221aa2a1c0d6ed2fc790dfa4604e604191d6a5.
 claim: the mediator held this part and asked the roles its terms name. This receipt delivered nothing.
 not claimed: what any party did with a part after it crossed; anything that did not go through this mediator; reworded or derived content; who was at a key.
 not verified: this receipt was decoded without checking its signature, its mediator or its chain
-receipt sha256:4925f6a58adb9bed2f9348a95c68d6d2860b67836dfc52d0793b25009129b73f
-crossing from ed25519:09a2c472e9fa29ae1ae30e50e4ad1d571b29b560fa2e421a3757e5777b5f1882 to ed25519:8e7f0e0d4ba3528921802a367c7052acaedc6f3a3dfab36fd1d8bbee4a5a54c4
+receipt sha256:bc209e7137c6c452d01f06a983f1af942b97df6f436d0b0ed3a98ce3b8edd0e8
+crossing from ed25519:70dee58fa19a17795e9e4f392906f0cbae19414c0150db974e2b10a9c31d204d to ed25519:0b53161c71be112e3861707f3501faa3a3bc02d9975c17b7f07340979285413f
 verdict escalate, reason maybe
 by terms
-subject proposal, salted-sha256 a0e94f005108aeb4a4a73830846f1219beb079f07f698557aaef8204087f3e78
-accord sha256:bd42073727815c781d8e4ed9dad0f4623fca33452e80a646186d5b34bda6ca3e, card sha256:e367d5e182098bbb3a3ce960b3221aa2a1c0d6ed2fc790dfa4604e604191d6a5
-mediator ed25519:45ab60359f021810335f6d356444bde8b6dfc42e1ef8210e524f0b10d9e511d7, seq 1, at 2026-11-17T23:16:47Z
-envelope of ed25519:09a2c472e9fa29ae1ae30e50e4ad1d571b29b560fa2e421a3757e5777b5f1882, seq 1, hash sha256:0ee8df76c9eee8455da37f9866e4ec766307c9421442c7cfd2f30bdda776bb71
+subject proposal, salted-sha256 1a0fb170141c6fe24770a48cb4b492311ca6c4cf400b83be022d9496a20a16d7
+accord sha256:05c9d0e43cb807a278205425bf283145e28419f380c7fbacc9d74f674fcd4312, card sha256:e367d5e182098bbb3a3ce960b3221aa2a1c0d6ed2fc790dfa4604e604191d6a5
+mediator ed25519:3876dddc5d53f70f14be2a996dffbe3584d72e8d2a0111474830857a55ca2d23, seq 1, at 2026-11-18T17:28:01Z
+envelope of ed25519:70dee58fa19a17795e9e4f392906f0cbae19414c0150db974e2b10a9c31d204d, seq 1, hash sha256:6c1ba8a251ca4d5c328e2cd68262478a9beb70ac944540eba027c93adb85731b
 ```
 
 ## Judges
@@ -173,10 +173,12 @@ A `maybe` term may list judges, each to `decide` or to `advise`, where the terms
 
 ```
 placket card --default --judge judge.json >card.json
-PLACKET_JEV_KEY=... placket window --key mediator.key --founding founding.json --socket /tmp/plk.s --journal journal --judge judge.json
+# Type the key: it is not echoed, and it stays out of the shell's history.
+stty -echo; read -r PLACKET_JEV_KEY; stty echo; export PLACKET_JEV_KEY
+placket window --key mediator.key --founding founding.json --openings openings --socket /tmp/plk.s --journal journal --judge judge.json
 ```
 
-`judge.json` is the judge's config: its name, provider, host, model, threshold and instruction. Its hash goes into the card, and the window runs only the configs its card lists. The key is read once from `PLACKET_JEV_KEY` and written nowhere; at start the window prints which kinds may go to which host, or that a judge with no key sends nothing. A request carries the part's kind, its body and the instruction, and nothing else; a raw body is never sent. What each judge said goes in the journal's `judged/` directory, never in a receipt. `patterns/shadow-judge/` runs a judge to advise, with no key; `docs/security/threat-model.md` says what a judge can and cannot be trusted with.
+`judge.json` is the judge's config: its name, provider, host, model, threshold and instruction. Its hash goes into the card, and the window runs only the configs its card lists. The key is read once from `PLACKET_JEV_KEY` and written nowhere; at start the window prints which kinds may go to which host, or that a judge with no key sends nothing. A request goes to the path `/v1/systemone` on the config's host. It carries the part's kind, its body and the config's instruction and model, and the adapter's fixed words: one question, `verdict`, of type `choice`, between two criteria, `pass`, "The content meets the instruction.", and `block`, "The content does not meet the instruction." Nothing else of the part goes, and a raw body is never sent. What each judge said goes in the journal's `judged/` directory, never in a receipt. `patterns/shadow-judge/` runs a judge to advise, with no key; `docs/security/threat-model.md` says what a judge can and cannot be trusted with.
 
 ## Where to start
 

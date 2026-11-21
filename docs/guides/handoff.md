@@ -1,12 +1,12 @@
 # Handoffs between agents
 
-One agent hands work to another under terms, and each handoff has a receipt. A planner hands a plan to a coder through one mediator, and the coder hands its work to a reviewer through another. Nobody is asked: the terms pass each handoff, and refuse anything they do not name. This guide sets up `placket init handoff`.
+One agent hands work to another under terms, and each handoff has a receipt. A planner hands a plan to a coder through one window, and the coder hands its work to a reviewer through another. Nobody is asked: the terms pass each handoff, and refuse anything they do not name. This guide sets up `placket init handoff`.
 
 This guide starts with `placket` on your `PATH`. The [install section of the README](../../README.md#install) says how to get it there. Nothing here needs a judge's key.
 
 ## Five words
 
-- An **Accord** is the agreement between the parties of one mediator. Here there are two: `handoff-plan`, between the planner and the coder, and `handoff-review`, between the coder and the reviewer. Each has its own window, journal and keys, and the coder holds one key in each.
+- An **Accord** is the agreement between the parties of one window. Here there are two: `handoff-plan`, between the planner and the coder, and `handoff-review`, between the coder and the reviewer. Each has its own window and journal, and its own key for each party, so the coder holds one key in each; one mediator key signs the receipts of both.
 - Each party's **terms** say what may cross to or from it. The planner's terms let it give a `plan` to the coder, and the coder's let it get one; in the other Accord, the coder gives its `work` to the reviewer. A part of a kind no term names is blocked. Each party's terms are sealed from the others; each consents to its own view of what will cross.
 - An **ask** holds a part until a role the terms name answers it, with accept, change or decline. These terms ask nobody, so every handoff passes or is blocked at once; [the `approve` guide](approve.md) shows an ask.
 - A **receipt** is the mediator's signed statement of one decision about one part. Each window keeps its own in its journal, and each delivery a party fetches carries its receipt.
@@ -54,7 +54,7 @@ placket verify --accord REVIEW --founding "$d/handoff-review/founding.json" --ac
 	--receipts "$d/handoff-review/journal" $(opens review)
 ```
 
-Each prints `valid: <n> receipts signed by mediator <key>` and `conforms: every decision is one this Accord let its decider make`. The two journals are checked apart: one mediator's receipts say nothing of the other's.
+Each prints `valid: <n> receipts signed by mediator <key>` and `conforms: every decision is one this Accord let its decider make`. Both name the same mediator key, the one `init` wrote for both Accords. The two journals are still checked apart: each Accord's receipts say nothing of the other's.
 
 ## Next
 
