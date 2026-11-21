@@ -194,3 +194,83 @@ func TestAResultHandsOverWhatItCannotRecord(t *testing.T) {
 		})
 	}
 }
+
+// TestAResultKeepsWhatItCanNeitherRecordNorWrite asks a question that the decider accepts, with and
+// without a part of kind answer given to the proposer first, and runs result when the proposer's
+// state directory cannot take delivered.jsonl, made read-only with kept.jsonl already there, and its
+// standard output fails every write. The first delivery result fetches, no longer queued, is kept in
+// kept.jsonl, and standard error ends in error file kept, exit 3.
+func TestAResultKeepsWhatItCanNeitherRecordNorWrite(t *testing.T) {
+	t.Parallel()
+	for _, body := range []string{"Yes.", "Not the answer."} {
+		t.Run(body, func(t *testing.T) {
+			t.Parallel()
+			a := newAccord(t, "proposer", "applier", "decider")
+			a.start(t)
+			q := a.openOne(t, "Rename total.")
+			if body != "Yes." {
+				must(t, a.as("decider", "give", "--to", a.refs["proposer"], "--kind", "answer", "--re", q, "--text", body)...)
+			}
+			must(t, a.as("decider", "answer", "--question", q, "--text", "Yes.")...)
+			dir := a.state("proposer")
+			before := len(keptLines(t, dir))
+			if before == 0 {
+				t.Fatal("kept.jsonl holds nothing before result")
+			}
+			if err := os.Chmod(dir, 0o500); err != nil {
+				t.Fatal(err)
+			}
+			t.Cleanup(func() { _ = os.Chmod(dir, 0o700) })
+			r := runBroken(t, a.as("proposer", "result", "--question", q)...)
+			if l := r.lines(); r.code != 3 || len(l) == 0 || l[len(l)-1] != "error file kept" {
+				t.Fatalf("result: %v", r)
+			}
+			k := keptLines(t, dir)
+			if len(k) != before+1 || str(k[before]["text"]) != body {
+				t.Fatalf("kept.jsonl holds %d lines, want %d, the last %q", len(k), before+1, body)
+			}
+		})
+	}
+}
+
+// TestGetWritesNoStateWithoutTheLock fetches a note with get --wait when the state directory cannot
+// take delivered.jsonl, made read-only with kept.jsonl already there, and standard output fails
+// every write. With the lock taken again after the wait, the body is kept and get ends in error
+// file kept. When the lock cannot be taken again, its file no longer writable, nothing is written
+// to kept.jsonl and get ends in error state lock, exit 3. Not parallel: it sets get's hook.
+func TestGetWritesNoStateWithoutTheLock(t *testing.T) {
+	for _, c := range []struct {
+		name   string
+		broken bool
+		want   string
+		kept   int
+	}{{"the lock taken again", false, "error file kept", 1}, {"the lock not taken again", true, "error state lock", 0}} {
+		t.Run(c.name, func(t *testing.T) {
+			a := newAccord(t, "p1", "p2")
+			a.start(t)
+			if r := must(t, a.as("p2", "get")...); r.stderr != "no delivery\n" {
+				t.Fatalf("the first get: %v", r)
+			}
+			ids := give(t, a, []string{"one"})
+			dir := a.state("p2")
+			if err := os.WriteFile(filepath.Join(dir, "kept.jsonl"), nil, 0o600); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.Chmod(dir, 0o500); err != nil {
+				t.Fatal(err)
+			}
+			t.Cleanup(func() { _ = os.Chmod(dir, 0o700) })
+			if c.broken {
+				cli.SetRelocking(func() { _ = os.Chmod(filepath.Join(dir, "lock"), 0o400) })
+				t.Cleanup(func() { cli.SetRelocking(nil) })
+			}
+			r := runBroken(t, a.as("p2", "get", "--wait", "1")...)
+			if l := r.lines(); r.code != 3 || len(l) != 2 || !strings.HasPrefix(l[0], "delivery "+ids[0]+" kind note ") || l[1] != c.want {
+				t.Fatalf("get: %v", r)
+			}
+			if got := keptIDs(t, dir); len(got) != c.kept {
+				t.Fatalf("kept.jsonl holds %v", got)
+			}
+		})
+	}
+}
