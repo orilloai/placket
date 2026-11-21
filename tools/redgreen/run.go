@@ -159,7 +159,7 @@ func (w *worktree) runPackage(dir string, names []string) (map[string]outcome, e
 		rel = "./" + strings.TrimPrefix(dir, mod+"/")
 	}
 	cmd := exec.Command("go", "test", "-count=1", "-json", "-run", "^("+strings.Join(names, "|")+")$", rel)
-	cmd.Dir = filepath.Join(w.dir, filepath.FromSlash(mod))
+	cmd.Dir, cmd.Env = filepath.Join(w.dir, filepath.FromSlash(mod)), childEnv()
 	var out bytes.Buffer
 	cmd.Stdout = &out
 	err := cmd.Run()
@@ -204,7 +204,7 @@ func (w *worktree) runPackage(dir string, names []string) (map[string]outcome, e
 // runShell runs a shell test from the worktree's root: it passes when it exits 0.
 func (w *worktree) runShell(p string) (outcome, error) {
 	cmd := exec.Command("sh", p)
-	cmd.Dir = w.dir
+	cmd.Dir, cmd.Env = w.dir, childEnv()
 	err := cmd.Run()
 	if err == nil {
 		return passed, nil

@@ -10,8 +10,21 @@
 //	red-green-tests: ok, <n> red on base, <n> green at head, <n> reported
 //	red-green-tests: refused: <why> (docs/rules/tests.md#red-green-tests)
 //
-// It exits 0 when ok, 1 when refused and 3 when it could not judge (a bad argument, no go or git, a
-// base that is not an ancestor of the head). A tool error is never a pass.
+// It also judges a second rule, outside-commits-signed-off (docs/rules/changes.md), on the commits
+// from B to H, before it runs any test, and prints its lines after the first rule's: none is signed
+// off by a bot, and, on a pull request from outside the project, each commit that is not a merge is
+// signed off by its author. Who opened the pull request comes from the environment variable
+// PLACKET_PR_OPENER; unset or empty, there is no opener, and the rule refuses only a bot's sign-off
+// and prints nothing else. With an opener it prints one ok line on a pass. No process the program
+// starts sees the variable.
+//
+//	outside-commits-signed-off: <commit>: signed off by a bot
+//	outside-commits-signed-off: <commit>: no sign-off by its author
+//	outside-commits-signed-off: ok, <n> commits signed off by their authors
+//	outside-commits-signed-off: refused: <why> (docs/rules/changes.md#outside-commits-signed-off)
+//
+// It exits 0 when both rules are ok, 1 when either refuses and 3 when it could not judge (a bad
+// argument, no go or git, a base that is not an ancestor of the head). A tool error is never a pass.
 //
 // Usage: redgreen [-C dir] <base> [<head>]; head is HEAD by default.
 package main
@@ -66,7 +79,19 @@ func run(args []string, out io.Writer) int {
 	if fs.NArg() == 2 {
 		head = fs.Arg(1)
 	}
-	lines, refused, err := judge(git{dir: *dir}, fs.Arg(0), head)
+	g := git{dir: *dir}
+	base, headCommit, err := resolve(g, fs.Arg(0), head)
+	if err != nil {
+		fmt.Fprintf(out, "%s: error: %v\n", name, err)
+		return exitTool
+	}
+	// The sign-offs are judged first, on the commits resolve gave, and printed after red-green-tests'.
+	signLines, signRefused, err := judgeSignOffs(g, base, headCommit, os.Getenv(openerVar))
+	if err != nil {
+		fmt.Fprintf(out, "%s: error: %v\n", signName, err)
+		return exitTool
+	}
+	lines, refused, err := judge(g, base, headCommit)
 	if err != nil {
 		fmt.Fprintf(out, "%s: error: %v\n", name, err)
 		return exitTool
@@ -74,7 +99,10 @@ func run(args []string, out io.Writer) int {
 	for _, l := range lines {
 		fmt.Fprintf(out, "%s: %s\n", name, l)
 	}
-	if refused {
+	for _, l := range signLines {
+		fmt.Fprintf(out, "%s: %s\n", signName, l)
+	}
+	if refused || signRefused {
 		return exitNo
 	}
 	return exitOK
@@ -112,27 +140,32 @@ type touched struct {
 	tag  bool   // a Go test behind a build tag, not run
 }
 
-// judge compares the change from base to head and returns the verdict's lines, last line included.
-func judge(g git, baseRev, headRev string) ([]string, bool, error) {
+// resolve finds the tools the check needs and the commits its arguments name, once for both rules,
+// and checks that the base is an ancestor of the head.
+func resolve(g git, baseRev, headRev string) (base, head string, err error) {
 	if _, err := exec.LookPath("git"); err != nil {
-		return nil, false, errors.New("no git on PATH")
+		return "", "", errors.New("no git on PATH")
 	}
 	if _, err := exec.LookPath("go"); err != nil {
-		return nil, false, errors.New("no go on PATH")
+		return "", "", errors.New("no go on PATH")
 	}
-	base, err := g.commit(baseRev)
-	if err != nil {
-		return nil, false, err
+	if base, err = g.commit(baseRev); err != nil {
+		return "", "", err
 	}
-	head, err := g.commit(headRev)
-	if err != nil {
-		return nil, false, err
+	if head, err = g.commit(headRev); err != nil {
+		return "", "", err
 	}
 	if ok, err := g.isAncestor(base, head); err != nil {
-		return nil, false, err
+		return "", "", err
 	} else if !ok {
-		return nil, false, fmt.Errorf("%s is not an ancestor of %s", baseRev, headRev)
+		return "", "", fmt.Errorf("%s is not an ancestor of %s", baseRev, headRev)
 	}
+	return base, head, nil
+}
+
+// judge compares the change from the base commit to the head commit, both as resolve gives them, and
+// returns the verdict's lines, last line included.
+func judge(g git, base, head string) ([]string, bool, error) {
 	baseTree, err := g.tree(base)
 	if err != nil {
 		return nil, false, err

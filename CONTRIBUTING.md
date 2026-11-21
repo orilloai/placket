@@ -9,7 +9,7 @@ Everyone here follows the [code of conduct](CODE_OF_CONDUCT.md). Report a securi
 There are three, and they never mix in one pull request:
 
 1. **A protocol or code change**: the requirement text, formats, vectors, Go code, docs.
-2. **A rules change**: `AGENTS.md`, this file, `docs/rules/`, `docs/review.md`, `docs/security/secure-coding.md`, `docs/style/`, `review/`, or a check: the `Makefile`'s checks and steps, the checker in `tools/guard/` and the check `red-green-tests` in `tools/redgreen/`, with their tests.
+2. **A rules change**: `AGENTS.md`, this file, `docs/rules/`, `docs/review.md`, `docs/security/secure-coding.md`, `docs/style/`, `review/`, or a check: the `Makefile`'s checks and steps, the checker in `tools/guard/` and the checks `red-green-tests` and `outside-commits-signed-off` in `tools/redgreen/`, with their tests.
 3. **A workflow change**: anything under `.github/workflows/`. These are the maintainer's alone.
 
 A rules or workflow change is its own pull request, flagged as such. A change cannot alter the checks that judge it.
@@ -70,7 +70,7 @@ A pattern is a runnable template for one caller's job, under `patterns/<job>/`; 
 
 - **Welcome, however it is made.** Use any tools you like, agents included, and an agent may open the pull request. Every contribution needs a person in the loop who answers for it.
 - **You answer for every line**, and can explain it. We do not ask which tools you used.
-- **Signing off.** Sign off your commits yourself, with `git commit -s`, under the Developer Certificate of Origin. The sign-off is your own statement as a person, so an agent never adds one, whether its own or yours.
+- **Signing off.** Sign off your commits yourself, with `git commit -s`, under the Developer Certificate of Origin. The sign-off is your own statement as a person, so an agent never adds one, whether its own or yours ([`outside-commits-signed-off`](docs/rules/changes.md#outside-commits-signed-off)).
 - **When nobody answers.** A change that nobody answers for, or whose author cannot explain it, gets one reply asking for that. If nothing changes, it is closed.
-- **This project holds itself to the same rules.** Agents build most of placket. Its own commits carry no sign-off, because Orillo owns that work and the maintainer answers for it by approving each change.
+- **This project holds itself to the same rules.** Agents build most of placket. Its own commits carry no sign-off, because Orillo owns that work and the maintainer answers for it by approving each change. Some commits from before the check carry an agent's sign-off; such a line certifies nothing.
 - **Your agent** should read `AGENTS.md`, the same file this project's own agents read.

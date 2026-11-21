@@ -250,8 +250,9 @@ judge-eval:
 # and no test is removed or skipped unexplained (docs/rules/tests.md#red-green-tests). Not a step of ci: it
 # needs main and scratch worktrees. It judges the commits from the merge base of BASE and HEAD to
 # HEAD, so commit first; uncommitted changes are not read. The workflow runs the same program, built
-# from main's copy (docs/adr/0013-red-green-tests.md). It exits 0 when ok, 1 when refused and 3 when
-# it could not judge.
+# from main's copy (docs/adr/0013-red-green-tests.md). It then checks outside-commits-signed-off with
+# no opener, so only a bot's sign-off is refused (docs/rules/changes.md#outside-commits-signed-off). It
+# exits 0 when ok, 1 when either refuses and 3 when it could not judge.
 BASE ?= origin/main
 .PHONY: red-green-tests
 red-green-tests:
