@@ -6,6 +6,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -187,6 +188,42 @@ func TestADeliveryIsPersistedBeforeItIsReturned(t *testing.T) {
 	}
 	if g, err := a.Get(context.Background(), 0, false); err != nil || g.Delivery != nil {
 		t.Fatalf("the queue after the kill: %+v, %v", g, err)
+	}
+}
+
+// TestAGetThatCannotRecordStillHandsOver fetches a note with client.Get when the state directory
+// cannot take delivered.jsonl, made read-only before the file is: Get returns the delivery the
+// window handed over and the state directory's error naming the file, and the window's queue is
+// empty after it.
+func TestAGetThatCannotRecordStillHandsOver(t *testing.T) {
+	t.Parallel()
+	w := newWorld(t)
+	if _, err := w.open(t, "proposer").Give(context.Background(), client.Message{To: w.refs["applier"], Kind: "note", Body: note("One.")}, false); err != nil {
+		t.Fatal(err)
+	}
+	a := w.open(t, "applier")
+	if err := a.Lock(); err != nil {
+		t.Fatal(err)
+	}
+	a.Unlock()
+	dir := a.Dir().Path()
+	if err := os.Chmod(dir, 0o500); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(dir, 0o700) })
+	g, err := a.Get(context.Background(), 0, false)
+	var se *state.Error
+	if !errors.As(err, &se) || se.Code != state.CodeState || se.File != state.FileDelivered {
+		t.Fatalf("client.Get: %v, want the state error of %s", err, state.FileDelivered)
+	}
+	if g.Delivery == nil || g.Delivery.Text == nil || *g.Delivery.Text != "One." || len(g.Kept) == 0 {
+		t.Fatalf("client.Get handed over %+v", g.Delivery)
+	}
+	if err := os.Chmod(dir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if g, err := a.Get(context.Background(), 0, false); err != nil || g.Delivery != nil {
+		t.Fatalf("the queue after: %+v, %v", g.Delivery, err)
 	}
 }
 
