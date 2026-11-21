@@ -13,7 +13,7 @@ type git struct{ dir string }
 // run runs git with the arguments given, the standard input in, and returns its standard output.
 func (g git) run(in string, args ...string) (string, error) {
 	cmd := exec.Command("git", args...)
-	cmd.Dir = g.dir
+	cmd.Dir, cmd.Env = g.dir, childEnv()
 	if in != "" {
 		cmd.Stdin = strings.NewReader(in)
 	}
@@ -41,7 +41,7 @@ func (g git) commit(rev string) (string, error) {
 // isAncestor reports whether a is an ancestor of b, or b itself.
 func (g git) isAncestor(a, b string) (bool, error) {
 	cmd := exec.Command("git", "merge-base", "--is-ancestor", a, b)
-	cmd.Dir = g.dir
+	cmd.Dir, cmd.Env = g.dir, childEnv()
 	err := cmd.Run()
 	if err == nil {
 		return true, nil
@@ -110,4 +110,29 @@ func (g git) trailers(base, head string) ([]trailer, error) {
 		}
 	}
 	return ts, nil
+}
+
+// changeCommits lists every commit reachable from head and not from base, oldest first, with its
+// author's email, whether it is a merge, and its Signed-off-by trailers, read as git reads trailers.
+func (g git) changeCommits(base, head string) ([]changeCommit, error) {
+	out, err := g.run("", "log", "-z", "--reverse",
+		"--format=%h%x1f%ae%x1f%P%x1f%(trailers:key=Signed-off-by,valueonly,unfold,separator=%x1e)", base+".."+head)
+	if err != nil {
+		return nil, err
+	}
+	var cs []changeCommit
+	for _, rec := range strings.Split(out, "\x00") {
+		f := strings.Split(strings.Trim(rec, "\n"), "\x1f")
+		if len(f) != 4 || f[0] == "" {
+			continue
+		}
+		c := changeCommit{hash: f[0], author: f[1], merge: len(strings.Fields(f[2])) > 1}
+		for _, s := range strings.Split(f[3], "\x1e") {
+			if s = strings.TrimSpace(s); s != "" {
+				c.signOffs = append(c.signOffs, s)
+			}
+		}
+		cs = append(cs, c)
+	}
+	return cs, nil
 }

@@ -10,8 +10,20 @@
 //	red-green-tests: ok, <n> red on base, <n> green at head, <n> reported
 //	red-green-tests: refused: <why> (docs/rules/tests.md#red-green-tests)
 //
-// It exits 0 when ok, 1 when refused and 3 when it could not judge (a bad argument, no go or git, a
-// base that is not an ancestor of the head). A tool error is never a pass.
+// It then judges a second rule, outside-commits-signed-off (docs/rules/changes.md), on the commits
+// from B to H: none is signed off by a bot, and, on a pull request from outside the project, each
+// commit that is not a merge is signed off by its author. Who opened the pull request comes from the
+// environment variable PLACKET_PR_OPENER; unset or empty, there is no opener, and the rule refuses
+// only a bot's sign-off and prints nothing else. With an opener it prints one ok line on a pass. No
+// process the program starts sees the variable.
+//
+//	outside-commits-signed-off: <commit>: signed off by a bot
+//	outside-commits-signed-off: <commit>: no sign-off by its author
+//	outside-commits-signed-off: ok, <n> commits signed off by their authors
+//	outside-commits-signed-off: refused: <why> (docs/rules/changes.md#outside-commits-signed-off)
+//
+// It exits 0 when both rules are ok, 1 when either refuses and 3 when it could not judge (a bad
+// argument, no go or git, a base that is not an ancestor of the head). A tool error is never a pass.
 //
 // Usage: redgreen [-C dir] <base> [<head>]; head is HEAD by default.
 package main
@@ -74,7 +86,15 @@ func run(args []string, out io.Writer) int {
 	for _, l := range lines {
 		fmt.Fprintf(out, "%s: %s\n", name, l)
 	}
-	if refused {
+	signLines, signRefused, err := judgeSignOffs(git{dir: *dir}, fs.Arg(0), head, os.Getenv(openerVar))
+	if err != nil {
+		fmt.Fprintf(out, "%s: error: %v\n", signName, err)
+		return exitTool
+	}
+	for _, l := range signLines {
+		fmt.Fprintf(out, "%s: %s\n", signName, l)
+	}
+	if refused || signRefused {
 		return exitNo
 	}
 	return exitOK

@@ -25,7 +25,7 @@ This file is the entry point for anyone who builds or reviews placket, agents fi
 - `docs/rules/`: every rule, once, under its public name. `docs/style/`, `docs/security/`, `docs/review.md`: style, security, review.
 - `tests/`: the shell tests `make ci` runs, `tests/test_*.sh`, with fixtures under `tests/testdata/`.
 - `tools/guard/`: the checker behind the checks of `make ci` that read the tree. Changed only in a rules change.
-- `tools/redgreen/`: the `red-green-tests` check. Changed only in a rules change; GitHub runs `main`'s copy.
+- `tools/redgreen/`: the checks `red-green-tests` and `outside-commits-signed-off`. Changed only in a rules change; GitHub runs `main`'s copy.
 - `scripts/`: scripts run by hand or by a workflow, such as the demo, each with its test in `tests/`.
 - `.github/`: workflows, templates and code owners. Workflows are the maintainer's alone.
 - `review/` (none yet): the review passes, the maintainer's to change.
@@ -42,7 +42,7 @@ Fixtures for any check go under a `testdata/` directory, which Go's tools and `m
 - Rules, checks, workflows and review change only in a change of their own, which the maintainer approves (`CONTRIBUTING.md`, Kinds of change; no public name of its own).
 - A change that alters what placket does for someone, a capability's scope or what it must not do stops for the maintainer (`deltas-stop-for-intent`).
 - Secrets never print, in errors, logs or any format verb (`secrets-never-print`, `error-text-no-content`).
-- An agent never adds a `Signed-off-by` line, its own or anyone's. Only a person signs off, for themselves. (`CONTRIBUTING.md`, Commits; no public name of its own)
+- An agent never adds a `Signed-off-by` line, its own or anyone's. Only a person signs off, for themselves (`outside-commits-signed-off`; `CONTRIBUTING.md`, Commits).
 
 ## Read before you change
 

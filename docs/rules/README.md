@@ -2,7 +2,7 @@
 
 Every rule of placket has a short public name, and this is the one place they all appear together. Each rule lives once, under its name, as a heading of one topic file below, so `core.md#core-no-world` is a stable link. Under each heading: the rule, a `Why:` line and a `Checked by:` line.
 
-A check in `make ci` starts its message with the rule's name, and its last line links the rule's heading, so `core-no-world: core/x/x.go:12: ...` points straight at it. A reviewer's finding cites the name too. Rules for parts not built yet are stated now, and each applies from the first change that builds its part. A rule a machine can check is checked by `make ci`, or, for `red-green-tests`, by a job of its own beside it; the rest are the reviewer's.
+A check in `make ci` starts its message with the rule's name, and its last line links the rule's heading, so `core-no-world: core/x/x.go:12: ...` points straight at it. A reviewer's finding cites the name too. Rules for parts not built yet are stated now, and each applies from the first change that builds its part. A rule a machine can check is checked by `make ci`, or, for `red-green-tests` and `outside-commits-signed-off`, by a job of its own beside it; the rest are the reviewer's.
 
 A new rule gets its name here, in the change that adds it: a heading in its topic file and a line in this index. `make ci` (`agents-md-short`) refuses a heading missing from the index, a name with no heading or two, and a link to a heading that does not exist.
 
@@ -88,6 +88,7 @@ A new rule gets its name here, in the change that adds it: a heading in its topi
 - [`machine-rules-in-ci`](changes.md#machine-rules-in-ci)
 - [`ci-stays-fast`](changes.md#ci-stays-fast)
 - [`no-hidden-text`](changes.md#no-hidden-text)
+- [`outside-commits-signed-off`](changes.md#outside-commits-signed-off)
 - [`agents-md-short`](changes.md#agents-md-short)
 
 ## What the checks print and miss
