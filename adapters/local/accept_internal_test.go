@@ -66,7 +66,13 @@ func TestAReplyThatCannotBeEncodedIsTheDoors(t *testing.T) {
 // returns, the socket at the path answers, mode 0600, and the directory is gone.
 func TestTheSocketIsPrivateBeforeItIsReachable(t *testing.T) {
 	t.Parallel()
-	dir := t.TempDir()
+	// A socket's path is short-limited, and TMPDIR on a Mac is long: the directory is under /tmp.
+	dir, err := os.MkdirTemp("/tmp", "pl")
+	if err != nil {
+		dir = t.TempDir()
+	} else {
+		t.Cleanup(func() { _ = os.RemoveAll(dir) })
+	}
 	path := filepath.Join(dir, "w.sock")
 	var seen string
 	l, err := listen(path, func(bound string) {
