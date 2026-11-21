@@ -56,12 +56,20 @@ const (
 	CodeActor Code = "state-actor"
 )
 
-// Error is a state directory that could not be used: its code, and the file at fault. Its text is
-// the package and the code alone; File, which may be a path, is for the caller to print.
+// Error is a state directory that could not be used: its code, the file at fault, and, where one
+// tells the caller more than the code, a detail. Its text is the package and the code alone; File,
+// which may be a path, and Detail are for the caller to print.
 type Error struct {
 	Code Code
 	File string
+	// Detail is DetailTooLarge, or empty. It is one of this package's constants, never anything read
+	// from the file.
+	Detail string
 }
+
+// DetailTooLarge is the detail of an actor or seq file longer than the most read of it, so a
+// regular file that is only too long is not taken for one that is not regular.
+const DetailTooLarge = "too-large"
 
 // Error returns "state: " and the code.
 func (e *Error) Error() string { return "state: " + string(e.Code) }
@@ -131,7 +139,7 @@ func Open(path, actor string, stderr io.Writer) (*Dir, error) {
 	b, err := readSmall(d.file(FileActor))
 	switch {
 	case errors.Is(err, fs.ErrNotExist):
-		if err := writeFile(d.file(FileActor), []byte(actor+"\n")); err != nil {
+		if err := d.writeFile(FileActor, []byte(actor+"\n")); err != nil {
 			return nil, err
 		}
 	case err != nil:
@@ -287,7 +295,7 @@ func ParseSeq(b []byte) (int64, bool) {
 
 // SetSeq records n as the last envelope seq the mediator took.
 func (d *Dir) SetSeq(n int64) error {
-	return writeFile(d.file(FileSeq), []byte(strconv.FormatInt(n, 10)+"\n"))
+	return d.writeFile(FileSeq, []byte(strconv.FormatInt(n, 10)+"\n"))
 }
 
 // envelopeLine is one line of envelopes.jsonl.
@@ -322,7 +330,7 @@ func (d *Dir) DropEnvelope(seq int64, hash string) error {
 	if !dropped {
 		return nil
 	}
-	return writeFile(d.file(FileEnvelopes), out)
+	return d.writeFile(FileEnvelopes, out)
 }
 
 // ParseEnvelope reads one line of envelopes.jsonl: {"hash","seq"} in canonical form, seq at least
@@ -552,21 +560,28 @@ const maxLine = 4 << 20
 const maxSmall = 4 << 10
 
 // readErr is CodeState for the file name, whose read failed with err. Where the file is not a regular
-// file, errors.Is also finds lines.ErrNotRegular in it.
+// file, errors.Is also finds lines.ErrNotRegular in it; where it is too long, its Detail is
+// DetailTooLarge.
 func readErr(name string, err error) error {
 	e := &Error{Code: CodeState, File: name}
-	if errors.Is(err, lines.ErrNotRegular) {
+	switch {
+	case errors.Is(err, lines.ErrNotRegular):
 		return lines.NotRegular(e)
+	case errors.Is(err, errTooLarge):
+		e.Detail = DetailTooLarge
 	}
 	return e
 }
 
+// errTooLarge is readSmall's failure for a file longer than maxSmall.
+var errTooLarge = errors.New("state: too large")
+
 // readSmall reads the actor or seq file at path, which must be a regular file of at most maxSmall
-// bytes.
+// bytes: errTooLarge for a longer one.
 func readSmall(path string) ([]byte, error) {
 	b, ok, err := lines.ReadAll(path, maxSmall)
 	if err == nil && !ok {
-		err = lines.ErrNotRegular
+		err = errTooLarge
 	}
 	return b, err
 }
@@ -585,10 +600,13 @@ func Lines(b []byte) [][]byte {
 	}
 }
 
-// writeFile replaces the file at path with b, mode 0600, through a file beside it, synced.
-func writeFile(path string, b []byte) error {
-	name := filepath.Base(path)
-	f, err := os.CreateTemp(filepath.Dir(path), "."+name+".*")
+// writeFile replaces the directory's file name with b, mode 0600, through a file beside it, synced,
+// and then syncs the directory. A directory sync that fails is CodeState for the file, though the
+// file was replaced: until the directory is synced the new name may not survive a crash, and a
+// caller told it was written would go on as if it would.
+func (d *Dir) writeFile(name string, b []byte) error {
+	path := d.file(name)
+	f, err := os.CreateTemp(d.path, "."+name+".*")
 	if err != nil {
 		return &Error{Code: CodeState, File: name}
 	}
@@ -600,9 +618,8 @@ func writeFile(path string, b []byte) error {
 		_ = os.Remove(tmp)
 		return &Error{Code: CodeState, File: name}
 	}
-	if dir, err := os.Open(filepath.Dir(path)); err == nil {
-		_ = dir.Sync()
-		_ = dir.Close()
+	if d.sync() != nil {
+		return &Error{Code: CodeState, File: name}
 	}
 	return nil
 }
@@ -623,7 +640,7 @@ func (d *Dir) KeepView(view []byte) error {
 	if len(view) == 0 || bytes.ContainsAny(view, "\n") {
 		return &Error{Code: CodeState, File: FileView}
 	}
-	return writeFile(d.file(FileView), append(append([]byte(nil), view...), '\n'))
+	return d.writeFile(FileView, append(append([]byte(nil), view...), '\n'))
 }
 
 // KeepAcceptance keeps the acceptance the member signed and the window took, its canonical bytes and
@@ -632,7 +649,7 @@ func (d *Dir) KeepAcceptance(acceptance []byte) error {
 	if len(acceptance) == 0 || bytes.ContainsAny(acceptance, "\n") {
 		return &Error{Code: CodeState, File: FileAcceptance}
 	}
-	return writeFile(d.file(FileAcceptance), append(append([]byte(nil), acceptance...), '\n'))
+	return d.writeFile(FileAcceptance, append(append([]byte(nil), acceptance...), '\n'))
 }
 
 // View reads the kept view, its line feed removed; ok is false when none is kept.

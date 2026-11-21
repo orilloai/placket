@@ -22,13 +22,24 @@ const ConfigFile = "mediators.json"
 const MaxConfig = 1 << 20
 
 // ConfigDir is placket's config directory under the environment getenv reads: $XDG_CONFIG_HOME/placket,
-// or else ~/.config/placket, with ~ the HOME it reads; empty when neither is set.
+// or else ~/.config/placket, with ~ the HOME it reads; empty when neither is set. A value that is not
+// an absolute path counts as unset, as for local.DefaultJournalWith.
 func ConfigDir(getenv func(string) string) string {
-	if d := getenv("XDG_CONFIG_HOME"); d != "" {
+	if d := absEnv(getenv, "XDG_CONFIG_HOME"); d != "" {
 		return filepath.Join(d, "placket")
 	}
-	if h := getenv("HOME"); h != "" {
+	if h := absEnv(getenv, "HOME"); h != "" {
 		return filepath.Join(h, ".config", "placket")
+	}
+	return ""
+}
+
+// absEnv is the environment variable name as getenv reads it when it is an absolute path, and
+// otherwise empty: a relative one counts as unset, so the config is never read from whatever
+// directory the command was started in.
+func absEnv(getenv func(string) string, name string) string {
+	if d := getenv(name); filepath.IsAbs(d) {
+		return d
 	}
 	return ""
 }

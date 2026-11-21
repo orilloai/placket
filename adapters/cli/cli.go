@@ -220,6 +220,9 @@ func (r *run) failed(err error) int {
 		return r.tool(codeFile, je.File)
 	case errors.As(err, &ke):
 		return r.tool(string(ke.Code))
+	case errors.As(err, &se) && se.Detail != "":
+		// A detail, such as too-large, says what is wrong with the file beyond the code.
+		return r.tool(string(se.Code), se.File, se.Detail)
 	case errors.As(err, &se):
 		return r.tool(string(se.Code), se.File)
 	case errors.As(err, &je):
