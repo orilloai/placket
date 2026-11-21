@@ -2,6 +2,7 @@ package cli_test
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -210,5 +211,33 @@ func TestWatchSaysWhatTheWindowMisstates(t *testing.T) {
 	}
 	if got, want := w.stderr.String(), fmt.Sprintf(cli.LineMisstated+"\n", "approve", q1); got != want {
 		t.Fatalf("watch said %q, want %q", got, want)
+	}
+}
+
+// TestWatchEndsWhenItsOutputCloses watches with --count 2, with and without --json, while one
+// question is open and standard output fails every write, as a pipe whose reader has gone: watch
+// does not wait for a second question it could not print either, but ends at the first, tool error
+// file, exit 3.
+func TestWatchEndsWhenItsOutputCloses(t *testing.T) {
+	t.Parallel()
+	a := newAccord(t, "proposer", "applier", "decider")
+	a.start(t)
+	a.openOne(t, "One.")
+	e, _ := labelsEnv(t, a.entry("decider", "approve"))
+	for _, args := range [][]string{{"watch", "--label", "approve", "--count", "2"}, {"watch", "--label", "approve", "--count", "2", "--json"}} {
+		done := make(chan result, 1)
+		go func() {
+			var stderr bytes.Buffer
+			code := cli.Run(e, args, strings.NewReader(""), brokenWriter{}, &stderr)
+			done <- result{"", stderr.String(), code}
+		}()
+		select {
+		case r := <-done:
+			if r.code != 3 || r.stderr != "error file\n" {
+				t.Fatalf("%v: %v", args, r)
+			}
+		case <-time.After(10 * time.Second):
+			t.Fatalf("%v went on with its output closed", args)
+		}
 	}
 }
