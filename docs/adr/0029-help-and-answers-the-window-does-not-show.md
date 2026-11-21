@@ -47,6 +47,14 @@ Record 0021 is silent on what `get` does when it cannot hand a body over. A body
 
 This is the guarantee: the user still has the body, and is told what failed. A stronger one, such as keeping a body before any record is written, is a decision about the fetch contract and is not made here.
 
+### Names and defaults
+
+These go with the change, each recorded here as `api-compat` asks.
+
+- `state.Error` gains `Detail`, and `state.DetailTooLarge`, `too-large`, is its one value: an `actor` or `seq` file over its 4 KiB limit was reported as a file that is not regular, `error file actor`, and is now `error state actor too-large`. The code stays `state`; no new code is added.
+- `client.ConfigDir` and `local.DefaultSocketWith` treat an `XDG_CONFIG_HOME`, `XDG_RUNTIME_DIR`, `HOME` or `TMPDIR` that is not an absolute path as unset, as `local.DefaultJournalWith` already did, so no default lands under whatever directory a command was started in. Record 0024's description of both defaults reads with that rule.
+- `local.Run`, for a window started proposed, refuses with setup's `opening-missing` before it listens when it does not hold every member's opening (setup-contract-13), as founding does once acceptances are given.
+
 ## Consequences
 
 - A script that relied on `--help` exiting 3 now sees 0 and a usage text on standard output.

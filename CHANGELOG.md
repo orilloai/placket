@@ -29,7 +29,8 @@ The first release. Placket mediates the parts that cross between parties under t
 - A principal binds each party to its roles with `placket bind --policy FILE`, under a policy that says which roles each principal may grant. A policy may name, in `supersedes`, the earlier Accord and the close it replaces.
 - `placket card --default` prints the card of the decision module the binary runs, and a window refuses a card that names another.
 - `placket key new` writes a key file atomically, mode 0600, and never over a file; a key file that another user can read or write, or owns, is refused with `key-mode`.
-- A window with no `--socket` or `--journal` takes its Accord's default socket and journal, and a window given its default socket makes the socket's directory.
+- A window with no `--socket` or `--journal` takes its Accord's default socket and journal, and a window given its default socket makes the socket's directory. An `XDG_` variable, `HOME` or `TMPDIR` that is not an absolute path counts as unset for the default socket, the labels config and the default journal alike.
+- A window started proposed, with no acceptances, refuses to start without every member's opening, `opening-missing`, before it listens.
 
 ### Ask, answer and release
 
@@ -52,7 +53,7 @@ The first release. Placket mediates the parts that cross between parties under t
 ### Judges
 
 - A `maybe` term may list judges, each to `decide` or to `advise`, where the terms would ask a person, and the card lists the judges a term may name; founding refuses an unknown judge with `judge-unknown`. Where both sides list the same judges, the window asks the `decide` judges in order within 20 seconds, and the first pass or block decides the part; otherwise the part is asked. `advise` judges run after the receipt and decide nothing. A judge never answers a question and never runs at release.
-- v0.1.0's one judge provider is Jev, with your own key from `PLACKET_JEV_KEY`. `placket card --default --judge FILE` lists a judge's config in the card, and `placket window --judge FILE` runs only the configs its card lists. At start the window prints which kinds each judge may be sent and to which host.
+- v0.1.0's one judge provider is Jev, with your own key from `PLACKET_JEV_KEY`. A Jev reply whose confidence is `null` is unparsable, so the part falls through to a person, never a score of 0. `placket card --default --judge FILE` lists a judge's config in the card, and `placket window --judge FILE` runs only the configs its card lists. At start the window prints which kinds each judge may be sent and to which host.
 - A caller's give while its last give is with a judge is refused with the door code `judge-busy`. What each judge said is kept in the journal's `judged/` directory, never in a receipt.
 - `make judge-eval JUDGE=FILE` runs the synthetic labelled cases of `evals/judge/` against a judge's config, by hand, with your key; `patterns/shadow-judge/` runs a judge to advise beside the approver.
 
@@ -63,6 +64,7 @@ The first release. Placket mediates the parts that cross between parties under t
 - `placket verify --view V`: a party checks its own receipts against the view it accepted, with no other party's terms.
 - `placket verify` says which key witnessed each answer, checks a subset with `--subset` and one delivery's body with `--delivery`, and prints `complete` for a whole journal that ends in its close.
 - `placket show` prints what a receipt claims and who decided; `placket log` exports the journal's rows, and `placket reconcile` compares each party's records with the journal.
+- A state directory's `actor` or `seq` file over 4 KiB is `error state <file> too-large`, and a state file replaced whose directory could not be synced is `error state <file>`.
 - Every journal, state file, door format, handed file and reply is read strictly: a repeated member, ill-formed UTF-8 or a member name in another case is refused, and a journal or state file must be a regular file.
 
 ### Close and rotate

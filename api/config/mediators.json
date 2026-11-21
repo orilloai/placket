@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://placket.tech/api/0.1/config/mediators.json",
   "title": "The labels config",
-  "description": "mediators.json in placket's config directory ($XDG_CONFIG_HOME/placket, else ~/.config/placket): the mediators one user reaches. A label is a local, human name, never signed. Relative paths are taken under the config directory. Entries must not collide: no two have one label, no two of different Accords use one socket, no two use one state directory, and no two of one Accord are both unlabelled; those checks are the client's, not this schema's.",
+  "description": "mediators.json in placket's config directory ($XDG_CONFIG_HOME/placket, else ~/.config/placket, a variable that is not an absolute path counting as unset): the mediators one user reaches. A label is a local, human name, never signed. Relative paths are taken under the config directory. Entries must not collide: no two have one label, no two of different Accords use one socket, no two use one state directory, and no two of one Accord are both unlabelled; those checks are the client's, not this schema's.",
   "type": "object",
   "required": [
     "mediators"
