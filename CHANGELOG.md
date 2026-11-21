@@ -20,6 +20,7 @@ The first release. Placket mediates the parts that cross between parties under t
 - Each release archive holds `NOTICE` beside `LICENSE` and `README.md`.
 - `placket --help` lists the commands, and `--help`, `-help` or `-h` on any command prints its usage on standard output, its flags one a line, and exits 0; with `--json` it prints one object of the command's flags. This corrects commands-1, under which `--help` was the error `usage`; `docs/adr/0029-help-and-answers-the-window-does-not-show.md` says why.
 - `placket version` prints which build the binary is: its version, its commit and the commit's time when the build carries them, the Go release it was built with, and the decision module's version and hash.
+- `patterns/guarded-export/`: a receiver's guard exports a value only when exactly that value was released to it, and refuses a record that a later release of the same record replaced, before it appends it.
 - `patterns/local-apply/`: an applier writes a file only with the text the deciding role accepted, or the version it changed it to, and nothing for a decline.
 
 ### Found an Accord
@@ -48,7 +49,7 @@ The first release. Placket mediates the parts that cross between parties under t
 - `placket watch` prints each new question once, as it opens, with the lines that answer it. `questions`, `get` and `result` take `--wait N`, up to 60 seconds, and a call that waits holds no lock.
 - The mediator API: the door's calls and replies, written as JSON Schemas under `api/`, with worked calls, recorded replies and a reference generated from them, `docs/reference/mediator-api.md`. `adapters/client` is the client the command line and `placket mcp` share.
 - `patterns/notifier/`: each new question runs one command of yours, on `placket watch`.
-- `patterns/github-merge/`: an agent's merge on GitHub happens only through `apply.sh`, after placket released it and the deciding role accepted it, at exactly the head commit released. The applier posts the delivery as a comment on the pull request and sets a `placket` commit status naming its receipt, and an auditor follows a merge commit back to `placket verify`. `custody.md` lists the GitHub ruleset, the accounts and the credentials the applier rests on.
+- `patterns/github-merge/`: an agent's merge on GitHub happens only through `apply.sh`, after placket released it and the deciding role accepted it, at exactly the head commit released. The applier posts the delivery as a comment on the pull request and sets a `placket` commit status naming its receipt, and an auditor follows a merge commit back to `placket verify`. `custody.md` lists the GitHub ruleset, the accounts and the credentials the applier rests on. `apply.sh` says why it stopped: `apply: interrupted at pr <N>` on INT or TERM, and which post failed when GitHub takes the comment or the status and not the other.
 
 ### Judges
 
