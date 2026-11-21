@@ -11,13 +11,16 @@
 #   gives it: the tag's commit, else the tag itself, which can be moved;
 # - patterns/github-merge/custody.md: the agent sits only on the second ruleset's bypass list, the
 #   first ruleset restricts creations, one applier serves one base branch, the forced command is
-#   restricted, the check runs on a pull request made for it and covers the Actions secrets, and step
-#   1 says what is known of the Workflows permission;
+#   restricted, the check runs on a pull request made for it and covers the Actions secrets, writing
+#   only a secret named at random that it deletes if the write passes, and step 1 says what is known
+#   of the Workflows permission;
 # - each guide's "N words" heading counts the words it defines in bold;
 # - the handoff guide gives each Accord no mediator key of its own;
 # - docs/release.md's example module line shows the decision module's KernelVersion;
 # - the README's view paragraph and the threat model's P24 say that handing over a view discloses
 #   its seal salt;
+# - the threat model's judge provider row names the model, the key and the fixed words a request
+#   carries beside the part's kind, body and instruction;
 # - no Markdown file names a hosted placket service or a roadmap for one, and a line planted in a copy
 #   of the tree is refused.
 set -u
@@ -164,6 +167,15 @@ if step 6 | grep -q 'pull request made for the check' && step 6 | grep -q 'Actio
 else
 	fail "$custody: step 6 does not try the merge on a pull request made for the check, or check the Actions secrets"
 fi
+six=$(step 6)
+if printf '%s\n' "$six" | grep -o 'gh secret set [^ ]*' | grep -qv '^gh secret set "\$name"$'; then
+	fail "$custody: step 6 sets an Actions secret under a fixed name, which can overwrite one or leave one behind"
+elif printf '%s\n' "$six" | grep -q 'gh secret set' && ! { printf '%s\n' "$six" | grep -q 'name=[A-Z_]*\$(openssl rand' &&
+	printf '%s\n' "$six" | grep -q 'gh secret set "\$name" [^`]* && gh secret delete "\$name"'; }; then
+	fail "$custody: step 6 sets an Actions secret without a random name and a delete of it when the set passes"
+else
+	ok "$custody: the Actions secrets check names its secret at random and deletes it if the set passes"
+fi
 one=$(step 1)
 if ! printf '%s\n' "$one" | grep -q 'Workflows'; then
 	fail "$custody: step 1 names no Workflows permission"
@@ -226,6 +238,15 @@ if grep -E '^- \*\*P24\.' docs/security/threat-model.md | grep -q 'discloses its
 	ok "docs/security/threat-model.md: P24 says a view handed over discloses its seal salt"
 else
 	fail "docs/security/threat-model.md: P24 does not say that handing over a view discloses its seal salt"
+fi
+
+# The threat model's summary of what a judge provider is sent names, beside the part's kind, body and
+# instruction, the rest of the request: the config's model, the key and the adapter's fixed words.
+row=$(grep '^| Judge provider |' docs/security/threat-model.md)
+if printf '%s\n' "$row" | grep -q "model" && printf '%s\n' "$row" | grep -q 'the key' && printf '%s\n' "$row" | grep -q 'fixed words'; then
+	ok "docs/security/threat-model.md: the judge provider's row names the model, the key and the fixed words sent"
+else
+	fail "docs/security/threat-model.md: the judge provider's row does not name the model, the key and the fixed words a request carries"
 fi
 
 # R24: no Markdown file names a hosted placket service or a roadmap. hosted <dir> prints each line

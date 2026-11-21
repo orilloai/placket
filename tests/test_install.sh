@@ -403,28 +403,42 @@ else
 	ok
 fi
 
-# install.sh cut short, after any of its lines but the last, runs nothing: curl is never called and
-# nothing is installed, as when a `curl | sh` download stops part way.
-current="install.sh cut after any line but its last runs nothing"
-lines=$(wc -l <"$root/install.sh" | tr -d ' ')
+# install.sh cut short runs nothing: curl is never called and nothing is installed, as when a
+# `curl | sh` download stops part way. It is cut after each of its lines but the last, and after each
+# byte from the line that closes main() on, but the one that drops only the final newline, since a cut inside the call that ends the file is where a
+# prefix could still run as a command of its own. A cut inside main()'s body leaves it unclosed, which
+# sh refuses before it runs a line.
+current="install.sh cut after any line but its last, or any byte of its last lines, runs nothing"
+size=$(wc -c <"$root/install.sh" | tr -d ' ')
+close=$(grep -n '^}$' "$root/install.sh" | tail -n 1 | cut -d: -f1)
+from=$(head -n "$((close - 1))" "$root/install.sh" | wc -c | tr -d ' ')
 mkdir "$tmp/cutdest"
 ran=
-i=1
-while [ "$i" -lt "$lines" ]; do
+run_cut() { # run_cut LABEL: pipes $tmp/cut.sh, a cut of install.sh, to sh
 	rm -f "$tmp/curl.log"
-	head -n "$i" "$root/install.sh" | (cd "$tmp" && env HOME="$tmp/cutdest" PATH="$tools" PLACKET_RELEASE_BASE="file://$rel" \
-		PLACKET_INSTALL_DIR="$tmp/cutdest" "$shell" -s) >/dev/null 2>&1
+	(cd "$tmp" && env HOME="$tmp/cutdest" PATH="$tools" PLACKET_RELEASE_BASE="file://$rel" \
+		PLACKET_INSTALL_DIR="$tmp/cutdest" "$shell" -s) <"$tmp/cut.sh" >/dev/null 2>&1
 	if [ -s "$tmp/curl.log" ] || [ -n "$(ls -A "$tmp/cutdest")" ]; then
-		ran="$ran $i"
+		ran="$ran $1"
 		rm -rf "$tmp/cutdest" && mkdir "$tmp/cutdest"
 	fi
+}
+lines=$(wc -l <"$root/install.sh" | tr -d ' ')
+i=1
+while [ "$i" -lt "$lines" ]; do
+	head -n "$i" "$root/install.sh" >"$tmp/cut.sh" && run_cut "line-$i"
+	i=$((i + 1))
+done
+i=$from
+while [ "$i" -lt "$((size - 1))" ]; do
+	head -c "$i" "$root/install.sh" >"$tmp/cut.sh" && run_cut "byte-$i"
 	i=$((i + 1))
 done
 : >"$out"
-if [ "$lines" -lt 2 ]; then
-	fail "install.sh has $lines lines"
+if [ "$lines" -lt 2 ] || [ -z "$close" ] || [ -n "$(tail -c 1 "$root/install.sh")" ]; then
+	fail "install.sh has $lines lines, its last closing brace is at line ${close:-none}, or it does not end in a newline"
 elif [ -n "$ran" ]; then
-	fail "cut after line$ran, it downloaded or installed"
+	fail "cut after$ran, it downloaded or installed"
 else
 	ok
 fi

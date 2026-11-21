@@ -52,7 +52,7 @@ grep ' install.sh$' checksums.txt | shasum -a 256 -c
 sh install.sh
 ```
 
-`--version vX.Y.Z` installs that release in place of the latest: `sh install.sh --version v0.1.0`, or `| sh -s -- --version v0.1.0`. `PLACKET_RELEASE_BASE`, when set, is the URL of a directory holding a release's files, which replaces either: an `https://` URL or a `file://` directory, and every download is held to that scheme; any other is refused before anything is downloaded. `tests/test_install.sh` points it at a `file://` directory. The whole script is one function, called on its last line, so a download cut short runs nothing.
+`--version vX.Y.Z` installs that release in place of the latest: `sh install.sh --version v0.1.0`, or `| sh -s -- --version v0.1.0`. `PLACKET_RELEASE_BASE`, when set, is the URL of a directory holding a release's files, which replaces either: an `https://` URL or a `file://` directory, and every download is held to that scheme; any other is refused before anything is downloaded. `tests/test_install.sh` points it at a `file://` directory. The whole script is one function, called in braces on its last line, so a download cut short anywhere, within that line too, runs nothing.
 
 ### Homebrew
 

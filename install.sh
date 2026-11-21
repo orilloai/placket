@@ -174,4 +174,6 @@ main() {
 	"$dir/placket" version
 }
 
-main "$@"
+# The call sits in braces, so a download cut anywhere before the closing brace leaves sh a group it
+# never closes, which it refuses before it runs anything; a bare `main` cut from `main "$@"` would run.
+{ main "$@"; }
