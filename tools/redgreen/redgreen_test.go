@@ -750,3 +750,19 @@ func TestMergeNeedsNoSignOff(t *testing.T) {
 		signedRefused,
 	), 1)
 }
+
+// Every commit of the change is judged, whatever bytes its sign-offs hold.
+func TestSignOffAnyBytes(t *testing.T) {
+	r := newRepo(t)
+	r.branch()
+	a := r.commitBy(someone, "First\n\nSigned-off-by: Other\x1f\x1e <other@example.com>\n"+botSignOff)
+	b := r.commitBy(someone, "Second\n\nSigned-off-by: Someone\x1f <other@example.com>\x1e")
+	opener(t, "someone", false)
+	out, code := r.judge()
+	expect(t, out, code, lines(
+		noRedGreen,
+		"outside-commits-signed-off: "+a+": signed off by a bot",
+		"outside-commits-signed-off: "+b+": no sign-off by its author",
+		signedRefused,
+	), 1)
+}

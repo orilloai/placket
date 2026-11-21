@@ -114,20 +114,34 @@ func (g git) trailers(base, head string) ([]trailer, error) {
 
 // changeCommits lists every commit reachable from head and not from base, oldest first, with its
 // author's email, whether it is a merge, and its Signed-off-by trailers, read as git reads trailers.
+// Each field is on a line of its own: no header holds a newline, and no unfolded trailer does. A
+// record that does not line up with the commits of the range fails the judgement, never skips it.
 func (g git) changeCommits(base, head string) ([]changeCommit, error) {
-	out, err := g.run("", "log", "-z", "--reverse",
-		"--format=%h%x1f%ae%x1f%P%x1f%(trailers:key=Signed-off-by,valueonly,unfold,separator=%x1e)", base+".."+head)
+	list, err := g.run("", "rev-list", "--reverse", base+".."+head)
 	if err != nil {
 		return nil, err
 	}
-	var cs []changeCommit
-	for _, rec := range strings.Split(out, "\x00") {
-		f := strings.Split(strings.Trim(rec, "\n"), "\x1f")
-		if len(f) != 4 || f[0] == "" {
-			continue
+	hashes := strings.Fields(list)
+	out, err := g.run("", "log", "-z", "--reverse",
+		"--format=%H%n%h%n%P%n%ae%n%(trailers:key=Signed-off-by,valueonly,unfold)", base+".."+head)
+	if err != nil {
+		return nil, err
+	}
+	var recs []string
+	if out = strings.TrimSuffix(out, "\x00"); out != "" {
+		recs = strings.Split(out, "\x00")
+	}
+	if len(recs) != len(hashes) {
+		return nil, fmt.Errorf("git log: %d commits read, %d in the range", len(recs), len(hashes))
+	}
+	cs := make([]changeCommit, 0, len(recs))
+	for i, rec := range recs {
+		f := strings.Split(rec, "\n")
+		if len(f) < 5 || f[0] != hashes[i] || f[len(f)-1] != "" {
+			return nil, fmt.Errorf("git log: commit %d of the range is unreadable", i+1)
 		}
-		c := changeCommit{hash: f[0], author: f[1], merge: len(strings.Fields(f[2])) > 1}
-		for _, s := range strings.Split(f[3], "\x1e") {
+		c := changeCommit{hash: f[1], author: f[3], merge: len(strings.Fields(f[2])) > 1}
+		for _, s := range f[4 : len(f)-1] {
 			if s = strings.TrimSpace(s); s != "" {
 				c.signOffs = append(c.signOffs, s)
 			}
