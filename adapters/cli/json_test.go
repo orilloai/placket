@@ -170,7 +170,8 @@ func TestJSONAnAskLeftOpen(t *testing.T) {
 }
 
 // TestJSONWaitsThatEndWithAnAcceptAndAChange waits with --json on two proposals: the first accepted
-// and the second changed, each answer with --json (commands-2).
+// and the second changed, each answer with --json (commands-2). Each wait fetched only its own
+// answer or version, so deliveries is there and empty, as fetched is (commands-1).
 func TestJSONWaitsThatEndWithAnAcceptAndAChange(t *testing.T) {
 	t.Parallel()
 	a := newAccord(t, "proposer", "applier", "decider")
@@ -190,7 +191,7 @@ func TestJSONWaitsThatEndWithAnAcceptAndAChange(t *testing.T) {
 		t.Fatalf("the wait: %v", r)
 	}
 	o := object(t, r)
-	members(t, o, "exit", "outcome", "question", "closing", "release", "fetched", "answer")
+	members(t, o, "exit", "outcome", "question", "closing", "release", "fetched", "answer", "deliveries")
 	outcomeIs(t, o["outcome"], "ask", "maybe")
 	is(t, o, "question", quote(q))
 	c := sub(t, o["closing"])
@@ -200,6 +201,7 @@ func TestJSONWaitsThatEndWithAnAcceptAndAChange(t *testing.T) {
 	is(t, c, "receipt", string(answered["receipt"]))
 	is(t, sub(t, o["release"]), "receiptId", string(released["receiptId"]))
 	is(t, o, "fetched", "true")
+	is(t, o, "deliveries", "[]")
 	d := sub(t, o["answer"])
 	members(t, d, "receiptId", "receipt", "messageId", "kind", "salt", "re", "text", "answer")
 	is(t, d, "kind", `"answer"`)
@@ -223,6 +225,7 @@ func TestJSONWaitsThatEndWithAnAcceptAndAChange(t *testing.T) {
 	o = object(t, r)
 	is(t, sub(t, o["closing"]), "word", `"changed"`)
 	is(t, o, "fetched", "true")
+	is(t, o, "deliveries", "[]")
 	d = sub(t, o["answer"])
 	is(t, d, "kind", `"changed-version"`)
 	is(t, d, "text", `"Keep notes, hidden."`)
@@ -580,7 +583,7 @@ func TestJSONAShownReceiptAndAVerifiedJournal(t *testing.T) {
 	plain = must(t, verify...)
 	r = run(t, env(), append(verify, "--json")...)
 	o = object(t, r)
-	members(t, o, "exit", "verified", "mediator", "accord", "card", "operator", "runs", "module", "judges", "members", "counts",
+	members(t, o, "exit", "receiptCount", "mediator", "accord", "card", "operator", "runs", "module", "judges", "members", "counts",
 		"questionsClosed", "questionsOpen", "releases", "blockedReleases", "predicates", "claim", "notClaimed",
 		"valid", "conforms", "complete", "decisions", "custody", "starts", "unmatched", "terms", "seals", "views")
 	ann, bob := `{"actor":`+quote(a.refs["ann"])+`,"principal":`+quote(a.refs["principal"])+`,"roles":["peer"]}`,
@@ -589,7 +592,7 @@ func TestJSONAShownReceiptAndAVerifiedJournal(t *testing.T) {
 		ann, bob = bob, ann
 	}
 	for name, want := range map[string]string{
-		"verified": "1", "mediator": quote(a.refs["mediator"]), "accord": quote(a.id), "card": quote(a.card),
+		"receiptCount": "1", "mediator": quote(a.refs["mediator"]), "accord": quote(a.id), "card": quote(a.card),
 		"operator": quote(a.refs["operator"]), "runs": `"process"`, "members": "[" + ann + "," + bob + "]",
 		"module": `{"hash":"` + composition.KernelHash() + `","version":"` + composition.KernelVersion + `"}`, "judges": "[]",
 		"counts": `{"ask":0,"block":0,"pass":1}`, "questionsClosed": "0", "questionsOpen": "0", "releases": "0", "blockedReleases": "0",
@@ -601,7 +604,7 @@ func TestJSONAShownReceiptAndAVerifiedJournal(t *testing.T) {
 		t.Fatalf("stderr %q, want %q", r.stderr, plain.stderr)
 	}
 	o = object(t, run(t, env(), "verify", "--mediator", a.refs["mediator"], "--receipts", a.journal(), "--json"))
-	members(t, o, "exit", "verified", "mediator", "accord", "card", "counts",
+	members(t, o, "exit", "receiptCount", "mediator", "accord", "card", "counts",
 		"questionsClosed", "questionsOpen", "releases", "blockedReleases", "predicates", "claim", "notClaimed",
 		"valid", "conforms", "complete", "decisions", "starts", "unmatched")
 

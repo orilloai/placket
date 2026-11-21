@@ -525,3 +525,20 @@ func playDecline(t *testing.T, args []string) {
 		t.Fatalf("decline: %v", r)
 	}
 }
+
+// TestJSONInEverySpellingOfTrue gives --json in each spelling the flag package reads as true, beside
+// a flag that cannot be read: the object is the error usage; with --json=false, or a later false,
+// there is no object (commands-1).
+func TestJSONInEverySpellingOfTrue(t *testing.T) {
+	t.Parallel()
+	for _, on := range []string{"--json", "-json", "--json=1", "--json=t", "--json=T", "--json=TRUE", "--json=true", "--json=True", "-json=1"} {
+		if r := run(t, env(), "verify", on, "--nope"); r.code != 3 || r.stdout != `{"error":"usage","exit":3}`+"\n" {
+			t.Errorf("%s: %v", on, r)
+		}
+	}
+	for _, off := range [][]string{{"--json=false"}, {"--json=0"}, {"--json=F"}, {"--json", "--json=false"}} {
+		if r := run(t, env(), append(append([]string{"verify"}, off...), "--nope")...); r.code != 3 || r.stdout != "" {
+			t.Errorf("%q: %v", off, r)
+		}
+	}
+}

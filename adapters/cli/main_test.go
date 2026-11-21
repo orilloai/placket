@@ -137,6 +137,13 @@ func newAccord(t testing.TB, parties ...string) *accord {
 // of the parties it binds. A party by does not name is bound by principal.
 func newAccordBy(t testing.TB, by map[string]string, parties ...string) *accord {
 	t.Helper()
+	return newAccordWith(t, by, nil, parties...)
+}
+
+// newAccordWith makes an Accord as newAccordBy does, and the binding of each party named in more
+// gives it the roles more names after its own, which the policy also holds.
+func newAccordWith(t testing.TB, by map[string]string, more map[string][]string, parties ...string) *accord {
+	t.Helper()
 	principalOf := func(p string) string {
 		if pr, ok := by[p]; ok {
 			return pr
@@ -182,15 +189,17 @@ func newAccordBy(t testing.TB, by map[string]string, parties ...string) *accord 
 	}
 	for _, p := range parties {
 		_, role := termsOf(p)
-		if !contains(roles, role) {
-			roles = append(roles, role)
-		}
 		pr := principalOf(p)
 		if !contains(principals, pr) {
 			principals = append(principals, pr)
 		}
-		if !contains(grants[pr], role) {
-			grants[pr] = append(grants[pr], role)
+		for _, r := range append([]string{role}, more[p]...) {
+			if !contains(roles, r) {
+				roles = append(roles, r)
+			}
+			if !contains(grants[pr], r) {
+				grants[pr] = append(grants[pr], r)
+			}
 		}
 	}
 	var entries []any
@@ -204,7 +213,11 @@ func newAccordBy(t testing.TB, by map[string]string, parties ...string) *accord 
 		terms, role := termsOf(p)
 		decl := must(t, "declare", "--key", a.key(p), "--terms", write(p+".terms", terms)).stdout
 		entry := must(t, "seal", "--key", a.key(p), "--declaration", write(p+".declaration", decl), "--out", a.openings()).stdout
-		bind := must(t, "bind", "--key", a.key(principalOf(p)), "--actor", a.refs[p], "--role", role, "--mediator", a.refs["mediator"], "--until", "2099-01-01T00:00:00Z", "--policy", policy).stdout
+		bindArgs := []string{"bind", "--key", a.key(principalOf(p)), "--actor", a.refs[p], "--role", role}
+		for _, extra := range more[p] {
+			bindArgs = append(bindArgs, "--role", extra)
+		}
+		bind := must(t, append(bindArgs, "--mediator", a.refs["mediator"], "--until", "2099-01-01T00:00:00Z", "--policy", policy)...).stdout
 		args = append(args, "--seal", write(p+".seal", entry), "--binding", write(p+".binding", bind))
 	}
 	args = append(args,

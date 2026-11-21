@@ -16,6 +16,7 @@ import (
 
 	"github.com/orilloai/placket/adapters/cli"
 	"github.com/orilloai/placket/adapters/journal"
+	"github.com/orilloai/placket/adapters/keyfile"
 	"github.com/orilloai/placket/core/canonical"
 	"github.com/orilloai/placket/core/receipts"
 )
@@ -619,5 +620,52 @@ func TestTornCloseAtStart(t *testing.T) {
 	c := must(t, a.closeArgs()...)
 	if len(c.lines()) != 1 || !bytes.Equal(a.receipts(t), full) {
 		t.Fatalf("completing the close: %v", c)
+	}
+}
+
+// TestVerifyClosedClosingsAtTwoTimes closes two open proposals and signs the second's closing again a
+// second later: two closings with reason closed at two times fail close at the second's line, when
+// they end the list and when the close follows them (close-4).
+func TestVerifyClosedClosingsAtTwoTimes(t *testing.T) {
+	t.Parallel()
+	a := newAccord(t, "proposer", "applier", "decider")
+	a.start(t)
+	a.openOne(t, "One.")
+	a.openOne(t, "Two.")
+	a.window.stop(t)
+	a.closeNow(t)
+	lines := a.journalLines(t)
+	if len(lines) != 5 {
+		t.Fatalf("the closed journal holds %d receipts, not 5", len(lines))
+	}
+	st, err := receipts.Decode(lines[3])
+	if err != nil || st.Predicate.Reason != receipts.ReasonClosed {
+		t.Fatalf("the second closing: %+v, %v", st, err)
+	}
+	at, err := time.Parse(time.RFC3339, st.Predicate.At)
+	if err != nil {
+		t.Fatal(err)
+	}
+	p := st.Predicate
+	p.At = at.Add(time.Second).UTC().Format("2006-01-02T15:04:05Z")
+	mk, err := keyfile.Read(a.key("mediator"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	later, _, err := receipts.Build(st.Subject, p, mk)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for name, l := range map[string][][]byte{
+		"ending the list":  {lines[0], lines[1], lines[2], later},
+		"before the close": {lines[0], lines[1], lines[2], later, lines[4]},
+	} {
+		dir := t.TempDir()
+		if err := os.WriteFile(filepath.Join(dir, journal.FileReceipts), append(bytes.Join(l, []byte("\n")), '\n'), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		if r := run(t, env(), "verify", "--receipts", dir, "--accord", a.id, "--founding", a.founding()); r.code != cli.ExitTool || r.stderr != "error verify close receipts.jsonl line 4\n" {
+			t.Fatalf("%s: %v", name, r)
+		}
 	}
 }

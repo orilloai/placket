@@ -448,3 +448,106 @@ func TestARecodedCallIsNotTheCall(t *testing.T) {
 		t.Fatalf("the twin alone: %+v, %v", r, err)
 	}
 }
+
+// TestAContradictedCallIsNeverWitnessed fails row 4 by each of its branches: a call of another
+// Accord, a release whose call asks for none, a decline and a cancel signed by a key that may not
+// take that action, an accept signed by another member, and a passing accept whose call asks for a
+// release with none after it. Each receipt that fails row 4 is contradicted, never witnessed or
+// unwitnessed; a release after a contradicted accept is contradicted too, and an accept whose call
+// fits stays witnessed when only its release fails (verify-1 row 4, verify-3).
+func TestAContradictedCallIsNeverWitnessed(t *testing.T) {
+	t.Parallel()
+	w := journal(t)
+	call, err := answer.Read(w.call)
+	if err != nil {
+		t.Fatal(err)
+	}
+	stAsk, _ := receipts.Decode(w.list[1])
+	stAccept, _ := receipts.Decode(w.list[2])
+	stRelease, _ := receipts.Decode(w.list[3])
+	askPair := [2]string{stAsk.Predicate.From, stAsk.Predicate.To}
+	// answered is the note and the ask, then the closing and, when release is true, its release, each
+	// decided by the call b.
+	answered := func(b []byte, closing receipts.Predicate, release bool) [][]byte {
+		s := newSigner(t)
+		s.list = append(s.list, w.list[0], w.list[1])
+		s.chains[askPair], s.ids[askPair] = 2, stAsk.ID
+		closing.By = receipts.By{Decider: receipts.ByAnswer, Answer: answer.ID(b)}
+		sub := stAccept.Subject
+		if closing.Verdict == "block" {
+			sub = stAsk.Subject
+		}
+		s.add(t, sub, closing)
+		if release {
+			rl := stRelease.Predicate
+			rl.By = closing.By
+			s.add(t, stRelease.Subject, rl)
+		}
+		return s.list
+	}
+	refusal := func(reason string) receipts.Predicate {
+		p := stAccept.Predicate
+		p.Verdict, p.Reason = "block", reason
+		return p
+	}
+	for name, c := range map[string]struct {
+		call    answer.Call
+		key     string
+		closing receipts.Predicate
+		release bool
+		other   bool // the card's module is not the trusted one, so row 3 does not fail first
+		index   int
+		want    []Witness
+	}{
+		"another Accord": {answer.Call{Accord: "sha256:" + strings.Repeat("ab", 32), Question: call.Question, Action: call.Action, Digest: call.Digest, Release: true},
+			"decider", stAccept.Predicate, true, false, 2, []Witness{"", "", Contradicted, Contradicted}},
+		"another member's accept": {answer.Call{Accord: call.Accord, Question: call.Question, Action: call.Action, Digest: call.Digest, Release: true},
+			"proposer", stAccept.Predicate, true, false, 2, []Witness{"", "", Contradicted, Contradicted}},
+		"a release the call does not ask for": {answer.Call{Accord: call.Accord, Question: call.Question, Action: call.Action, Digest: call.Digest},
+			"decider", stAccept.Predicate, true, false, 3, []Witness{"", "", Witnessed, Contradicted}},
+		"a release the call asks for, not there": {answer.Call{Accord: call.Accord, Question: call.Question, Action: call.Action, Digest: call.Digest, Release: true},
+			"decider", stAccept.Predicate, false, false, 2, []Witness{"", "", Contradicted}},
+		"a decline by a stranger": {answer.Call{Accord: call.Accord, Question: call.Question, Action: answer.Declined, From: ptesting.Key(t, "stranger").Reference()},
+			"stranger", refusal(receipts.ReasonDeclined), false, true, 2, []Witness{"", "", Contradicted}},
+		"a cancel by the decider": {answer.Call{Accord: call.Accord, Question: call.Question, Action: answer.Cancelled, From: ptesting.Key(t, "decider").Reference()},
+			"decider", refusal(receipts.ReasonCancelled), false, true, 2, []Witness{"", "", Contradicted}},
+	} {
+		b, err := answer.Sign(c.call, ptesting.Key(t, c.key))
+		if err != nil {
+			t.Fatal(err)
+		}
+		e := w.evidence()
+		e.Receipts, e.Answers = answered(b, c.closing, c.release), [][]byte{b}
+		if c.other {
+			e.Kernel = composition.KernelHash()
+		}
+		r, err := Check(e)
+		var got []Witness
+		for _, d := range r.Decisions {
+			got = append(got, d.Witness)
+		}
+		if !isCode(err, CodeWitness, c.index) || strings.Join(ws(got), ",") != strings.Join(ws(c.want), ",") {
+			t.Errorf("%s: got %v with witnesses %v, want witness at %d with %v", name, err, got, c.index, c.want)
+		}
+	}
+}
+
+// TestABodyOfNoReceiptAfterAClose gives a list that ends in its close a delivery whose receiptId is
+// empty, and one with none: the close's statement is the zero one, but a delivery names a receipt of
+// a decision, so each fails body at index -1 (verify-1 row 5).
+func TestABodyOfNoReceiptAfterAClose(t *testing.T) {
+	t.Parallel()
+	list, set, accord, _ := closedJournal(t, "2026-11-12T09:30:00Z")
+	r, err := Check(Evidence{Accord: accord, Founding: set.Set, Openings: set.Openings, Acceptances: set.Acceptances, Receipts: list, Kernel: kernelOf(set.Set)})
+	if err != nil || r.Close == "" {
+		t.Fatalf("a closed journal: %+v, %v", r, err)
+	}
+	for name, d := range map[string]string{
+		"an empty receiptId": `{"receiptId":"","kind":"proposal","salt":"` + strings.Repeat("00", 32) + `","text":"x"}`,
+		"no receiptId":       `{"kind":"proposal","salt":"` + strings.Repeat("00", 32) + `","text":"x"}`,
+	} {
+		if err := Body(r, []byte(d)); !isCode(err, CodeBody, -1) {
+			t.Errorf("%s: got %v, want body at -1", name, err)
+		}
+	}
+}

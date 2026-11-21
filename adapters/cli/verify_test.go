@@ -12,6 +12,7 @@ import (
 
 	"github.com/orilloai/placket/adapters/cli"
 	"github.com/orilloai/placket/adapters/keyfile"
+	"github.com/orilloai/placket/core/answer"
 	"github.com/orilloai/placket/core/canonical"
 	"github.com/orilloai/placket/core/receipts"
 )
@@ -584,5 +585,252 @@ func TestVerifyAgainstAView(t *testing.T) {
 	}
 	if r := run(t, env(), "verify", "--receipts", a.journal(), "--accord", a.id, "--founding", a.founding(), "--view", filepath.Join(t.TempDir(), "none.json")); r.code != cli.ExitTool || r.stderr != "error file view\n" {
 		t.Fatalf("--view of no file: %v", r)
+	}
+}
+
+// reanswered is a copy of the accepted journal with no answers.jsonl, whose accept and release name,
+// in place of the decider's call, the call change makes of it signed by the key of name; and a file
+// that holds that call alone.
+func reanswered(t *testing.T, a *accord, name string, change func(*answer.Call)) (dir, calls string) {
+	t.Helper()
+	dir = copyDir(t, a.journal())
+	b, err := os.ReadFile(filepath.Join(dir, "answers.jsonl"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Remove(filepath.Join(dir, "answers.jsonl")); err != nil {
+		t.Fatal(err)
+	}
+	c, err := answer.Read(bytes.Split(b, []byte("\n"))[0])
+	if err != nil {
+		t.Fatal(err)
+	}
+	change(&c)
+	k, err := keyfile.Read(a.key(name))
+	if err != nil {
+		t.Fatal(err)
+	}
+	call, err := answer.Sign(c, k)
+	if err != nil {
+		t.Fatal(err)
+	}
+	mk, err := keyfile.Read(a.key("mediator"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	rb, _ := os.ReadFile(filepath.Join(dir, "receipts.jsonl"))
+	lines := bytes.Split(bytes.TrimSuffix(rb, []byte("\n")), []byte("\n"))
+	for i := 1; i < len(lines); i++ {
+		st, err := receipts.Decode(lines[i])
+		if err != nil {
+			t.Fatal(err)
+		}
+		p := st.Predicate
+		p.By.Answer = answer.ID(call)
+		if lines[i], _, err = receipts.Build(st.Subject, p, mk); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := os.WriteFile(filepath.Join(dir, "receipts.jsonl"), append(bytes.Join(lines, []byte("\n")), '\n'), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	calls = filepath.Join(t.TempDir(), "calls")
+	if err := os.WriteFile(calls, append(call, '\n'), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	return dir, calls
+}
+
+// TestVerifyContradictedCalls gives the accepted journal a call that reads but that the proposer
+// signed, not the decider whose accept it is: the accept and its release are each contradicted, the
+// log does not conform with witness at the accept's line, and it exits 1. With the decider's call
+// asking for no release, the accept is witnessed and only the release is contradicted. No receipt
+// that fails row 4 is printed witnessed or unwitnessed (verify-1 row 4, verify-3, commands-8).
+func TestVerifyContradictedCalls(t *testing.T) {
+	t.Parallel()
+	a, _ := accepted(t)
+	witnessed := func(id string) string {
+		return fmt.Sprintf(cli.LineWitnessed, id, a.refs["decider"], a.refs["principal"], "decider")
+	}
+	for name, c := range map[string]struct {
+		key        string
+		change     func(*answer.Call)
+		lines      func(ids []string) []string
+		failedLine int
+	}{
+		"signed by another member": {"proposer", func(*answer.Call) {}, func(ids []string) []string {
+			return []string{fmt.Sprintf(cli.LineContradicted, ids[1]), fmt.Sprintf(cli.LineContradicted, ids[2])}
+		}, 2},
+		"asking for no release": {"decider", func(c *answer.Call) { c.Release = false }, func(ids []string) []string {
+			return []string{witnessed(ids[1]), fmt.Sprintf(cli.LineContradicted, ids[2])}
+		}, 3},
+	} {
+		dir, calls := reanswered(t, a, c.key, c.change)
+		ids := journalIDs(t, a, dir)
+		r := verifyAccord(t, a, dir, "--answers", calls)
+		l := r.lines()
+		i := slices.Index(l, fmt.Sprintf(cli.LineTermsDecided, 1))
+		if r.code != 1 || i < 2 || !slices.Equal(l[i-2:i], c.lines(ids)) || !slices.Contains(l, fmt.Sprintf(cli.LineNotConform, "witness", c.failedLine)) {
+			t.Fatalf("%s: %v", name, r)
+		}
+	}
+}
+
+// TestVerifyAViewWithASubset gives --view with --subset: the view check reads every receipt of the
+// viewer's, which a subset may leave out, so it is error usage, in an object with --json (commands-8).
+func TestVerifyAViewWithASubset(t *testing.T) {
+	t.Parallel()
+	a, _ := accepted(t)
+	base := []string{"verify", "--receipts", a.journal(), "--accord", a.id, "--founding", a.founding(), "--view", filepath.Join(a.state("applier"), "view.json"), "--subset"}
+	if r := run(t, env(), base...); r.code != cli.ExitTool || r.stderr != "error usage\n" || r.stdout != "" {
+		t.Fatalf("--view --subset: %v", r)
+	}
+	if r := run(t, env(), append(base, "--json")...); r.code != cli.ExitTool || r.stdout != `{"error":"usage","exit":3}`+"\n" {
+		t.Fatalf("--view --subset --json: %v", r)
+	}
+}
+
+// TestVerifyAViewWithNoReceiptOfItsOwn checks the decider's view against the accepted journal: the
+// decider gave, got and asked nothing, its accept closing a question it neither asked nor received,
+// so the view line says no receipt was checked, viewCheck holds it, and it exits 0 (verify-2,
+// commands-8).
+func TestVerifyAViewWithNoReceiptOfItsOwn(t *testing.T) {
+	t.Parallel()
+	a, _ := accepted(t)
+	args := []string{"verify", "--receipts", a.journal(), "--accord", a.id, "--founding", a.founding(), "--view", filepath.Join(a.state("decider"), "view.json")}
+	want := fmt.Sprintf(cli.LineViewNone, a.refs["decider"])
+	r := run(t, env(), args...)
+	l := r.lines()
+	if i := slices.Index(l, cli.LineConformSealed); r.code != 0 || i < 0 || i+2 >= len(l) || l[i+1] != want || l[i+2] != cli.LineNotComplete {
+		t.Fatalf("a view with no receipt of its own: %v", r)
+	}
+	o := object(t, run(t, env(), append(args, "--json")...))
+	is(t, o, "viewCheck", quote(want))
+	is(t, o, "viewReceipts", "[]")
+}
+
+// TestVerifyReadsTheViewBeforeValidity gives a view with one row changed and a journal whose second
+// receipt's signature is broken: the view is read first, so it is error founding acceptance-view and
+// no validity code is printed (verify-1 row 0a).
+func TestVerifyReadsTheViewBeforeValidity(t *testing.T) {
+	t.Parallel()
+	a, _ := accepted(t)
+	b, err := os.ReadFile(filepath.Join(a.state("applier"), "view.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	changed := filepath.Join(t.TempDir(), "view.json")
+	if err := os.WriteFile(changed, bytes.Replace(b, []byte(`"timeout":3600`), []byte(`"timeout":3601`), 1), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	dir := copyDir(t, a.journal())
+	lines := a.journalLines(t)
+	i := bytes.Index(lines[1], []byte(`"sig":"`)) + len(`"sig":"`)
+	lines[1][i] = map[bool]byte{true: 'B', false: 'A'}[lines[1][i] == 'A']
+	if err := os.WriteFile(filepath.Join(dir, "receipts.jsonl"), append(bytes.Join(lines, []byte("\n")), '\n'), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if r := run(t, env(), "verify", "--receipts", dir, "--mediator", a.refs["mediator"]); r.code != cli.ExitTool || r.stderr != "error verify signature receipts.jsonl line 2\n" {
+		t.Fatalf("the broken journal alone: %v", r)
+	}
+	r := run(t, env(), "verify", "--receipts", dir, "--accord", a.id, "--founding", a.founding(), "--view", changed)
+	if r.code != cli.ExitTool || r.stderr != "error founding acceptance-view\n" || r.stdout != "" {
+		t.Fatalf("a changed view and a broken journal: %v", r)
+	}
+}
+
+// TestVerifyABodyOfALogThatDoesNotConform checks the applier's delivery of the released proposal
+// against the accepted journal with one more receipt whose decision breaks the terms: the log does
+// not conform with decision at that line, and the body line still says the part is its receipt's,
+// exit 1; with one byte of the body changed the body line says so, and the conforms line keeps the
+// decision code (verify-1 row 5, commands-8).
+func TestVerifyABodyOfALogThatDoesNotConform(t *testing.T) {
+	t.Parallel()
+	a, _ := accepted(t)
+	got := must(t, a.as("applier", "get", "--json")...)
+	saved := filepath.Join(a.dir, "delivery.json")
+	if err := os.WriteFile(saved, []byte(got.stdout), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	dir := copyDir(t, a.journal())
+	ids := journalIDs(t, a, dir)
+	b, _ := os.ReadFile(filepath.Join(dir, "receipts.jsonl"))
+	release, err := receipts.Decode(bytes.Split(b, []byte("\n"))[2])
+	if err != nil {
+		t.Fatal(err)
+	}
+	mk, err := keyfile.Read(a.key("mediator"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	p := release.Predicate
+	p.Seq, p.Prev, p.By = p.Seq+1, release.ID, receipts.By{Decider: receipts.ByTerms}
+	p.Envelope = receipts.Envelope{Sender: p.From, Seq: p.Envelope.Seq + 1, Hash: "sha256:" + strings.Repeat("ef", 32)}
+	bad, _, err := receipts.Build(receipts.Subject{Name: "secret", Digest: strings.Repeat("ab", 32)}, p, mk)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "receipts.jsonl"), append(append(b, bad...), '\n'), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	r := verifyAccord(t, a, dir, "--delivery", saved)
+	if l := r.lines(); r.code != 1 || !slices.Contains(l, fmt.Sprintf(cli.LineNotConform, "decision", 4)) || !slices.Contains(l, fmt.Sprintf(cli.LineBody, ids[2])) {
+		t.Fatalf("the body of a log that does not conform: %v", r)
+	}
+	changed := strings.Replace(got.stdout, "Rename total.", "Rename totaL.", 1)
+	if changed == got.stdout {
+		t.Fatal("no byte changed")
+	}
+	if err := os.WriteFile(saved, []byte(changed), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	r = verifyAccord(t, a, dir, "--delivery", saved)
+	if l := r.lines(); r.code != 1 || !slices.Contains(l, fmt.Sprintf(cli.LineNotConform, "decision", 4)) || !slices.Contains(l, fmt.Sprintf(cli.LineBodyNot, 3)) {
+		t.Fatalf("a changed body of a log that does not conform: %v", r)
+	}
+}
+
+// TestVerifyADeliveryOfNoReceiptAfterAClose gives a closed journal a delivery whose receiptId is
+// empty, and one with none: a close is no receipt a delivery names, so each is error delivery, exit
+// 3 (verify-1 row 5, commands-8).
+func TestVerifyADeliveryOfNoReceiptAfterAClose(t *testing.T) {
+	t.Parallel()
+	a := notedAccord(t)
+	a.closeNow(t)
+	saved := filepath.Join(a.dir, "delivery.json")
+	salt := strings.Repeat("00", 32)
+	for name, d := range map[string]string{
+		"an empty receiptId": `{"delivery":{"receiptId":"","kind":"note","salt":"` + salt + `","text":"One."}}`,
+		"no receiptId":       `{"delivery":{"kind":"note","salt":"` + salt + `","text":"One."}}`,
+	} {
+		if err := os.WriteFile(saved, []byte(d+"\n"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		if r := run(t, env(), "verify", "--receipts", a.journal(), "--mediator", a.refs["mediator"], "--delivery", saved); r.code != cli.ExitTool || r.stderr != "error delivery\n" {
+			t.Fatalf("%s: %v", name, r)
+		}
+	}
+}
+
+// TestVerifyUnwitnessedNamesTheBindingsRoles verifies, with no call, an accept and its release by a
+// decider whose binding gives it the roles decider and reviewer, while the question's rule names
+// decider alone: both lines name the two roles, as the binding gives them, since the rule is not
+// known when the terms are sealed (commands-8).
+func TestVerifyUnwitnessedNamesTheBindingsRoles(t *testing.T) {
+	t.Parallel()
+	a := newAccordWith(t, nil, map[string][]string{"decider": {"reviewer"}}, "proposer", "applier", "decider")
+	a.start(t)
+	q := a.openOne(t, "Rename total.")
+	must(t, a.as("decider", "answer", "--question", q)...)
+	bare := copyDir(t, a.journal())
+	if err := os.Remove(filepath.Join(bare, "answers.jsonl")); err != nil {
+		t.Fatal(err)
+	}
+	ids := journalIDs(t, a, bare)
+	r := run(t, env(), "verify", "--receipts", bare, "--accord", a.id, "--founding", a.founding())
+	l := r.lines()
+	if r.code != 0 || !slices.Contains(l, fmt.Sprintf(cli.LineUnwitnessed, ids[1], "decider,reviewer")) ||
+		!slices.Contains(l, fmt.Sprintf(cli.LineUnwitnessed, ids[2], "decider,reviewer")) {
+		t.Fatalf("an unwitnessed answer of two roles: %v", r)
 	}
 }
