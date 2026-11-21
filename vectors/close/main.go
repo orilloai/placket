@@ -203,5 +203,23 @@ func main() {
 			return r
 		}()), failsAt("close", 4)),
 	)
+
+	// close-4: closings with reason closed at two times. Two proposals are asked, the first closed at
+	// 09:30 and the second at 09:31, both from the decider; the second fails close at its own index,
+	// whether it ends the list or the close follows it.
+	{
+		s := scene(askAndLog)
+		q1 := s.Give(at(1), kit.Proposer, 1, message(askAndLog, "proposal-1", "proposal", kit.Applier), kit.Applier, "escalate", "maybe")
+		p2 := message(askAndLog, "proposal-2", "proposal", kit.Applier)
+		s.Give(at(2), kit.Proposer, 2, p2, kit.Applier, "escalate", "maybe")
+		s.CloseAccord(at(30), nil, []kit.Closing{{Question: q1, From: decider}})
+		w := s.Written()
+		second, _ := s.Write("resolution", decider, kit.Proposer, "proposal", kit.Digest(kit.PartOf(p2)), at(31), kit.Proposer, 2, kit.Hash(kit.Canon(p2)), "block", "closed", kit.ByClose)
+		two := append(append([]kit.Obj{}, w[:3]...), second)
+		vs = append(vs,
+			verify("closed-closings-at-two-times", "close-4, section 8 row 8: two closings with reason closed, at 09:30 and at 09:31, ending the list, as a close cut short leaves it: the second fails close at its own index", two, failsAt("close", 3)),
+			verify("closed-closings-at-two-times-then-a-close", "close-4, section 8 row 8: two closings with reason closed, at 09:30 and at 09:31, followed by a close at 09:30: the second closing fails close at its own index, before the close is read", append(two, w[3]), failsAt("close", 3)),
+		)
+	}
 	kit.Main("close", vs)
 }
