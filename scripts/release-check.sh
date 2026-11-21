@@ -25,6 +25,10 @@
 #               a +dirty build: with --release it is the tag, with --snapshot it ends with the first 12
 #               characters of HEAD's commit
 set -u
+# sort puts names in the same order on every host only in the C locale: the archive check compares
+# the names it holds as one sorted list.
+LC_ALL=C
+export LC_ALL
 
 root=$(cd "$(dirname "$0")/.." && pwd)
 workflow=orilloai/placket/.github/workflows/release.yml

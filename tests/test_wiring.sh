@@ -123,7 +123,7 @@ while read -r rule files; do
 	# Its closing line, and on the next line its time.
 	if ! awk -v r="$rule" '
 		prev { if ($0 ~ "^time: " r ": [0-9]+s$") found = 1; prev = 0 }
-		index($0, r ": refused: ") == 1 && / [(]docs[/]rules[/][a-z]+[.]md#/ { prev = 1 }
+		index($0, r ": refused: ") == 1 && $0 ~ "[(]docs/rules/[a-z]+[.]md#" { prev = 1 }
 		END { exit !found }' "$out"; then fail="$rule's closing line is not followed by its time"; fi
 done <"$tmp/expect"
 if [ -z "$fail" ]; then
