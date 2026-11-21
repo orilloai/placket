@@ -2,6 +2,9 @@ package cli_test
 
 import (
 	"bytes"
+	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -9,7 +12,9 @@ import (
 	"regexp"
 	"strings"
 	"testing"
+	"time"
 
+	"github.com/orilloai/placket/adapters/client"
 	"github.com/orilloai/placket/core/answer"
 	"github.com/orilloai/placket/core/receipts"
 )
@@ -34,7 +39,8 @@ func (a *accord) receipts(t testing.TB) []byte {
 // comment, and a change with no version, an empty one, or a file that is not UTF-8, with tool error
 // changed: each exits 3, sends no call, and leaves the question open. A change with a comment gives
 // the comment to the asker with re the question; a decline of a closed question, which the window
-// no longer shows, is tool error asked, exit 3, and gives no comment (RCP-01, RCP-02, RCP-05, RCP-12).
+// no longer shows, reaches the window, which rejects it with no-open-question, exit 2, with --json
+// too, and gives no comment (RCP-01, RCP-02, RCP-05, RCP-12, maybe-7).
 func TestAnAnswerNeedsItsText(t *testing.T) {
 	t.Parallel()
 	a := newAccord(t, "proposer", "applier", "decider")
@@ -73,8 +79,12 @@ func TestAnAnswerNeedsItsText(t *testing.T) {
 		t.Fatalf("the proposer fetched %v", got)
 	}
 	r = run(t, env(), a.as("decider", "decline", "--question", q, "--comment", "Too late.")...)
-	if r.code != 3 || r.stderr != "error asked\n" {
+	if r.code != 2 || r.stderr != "rejected no-open-question\n" || r.stdout != "" {
 		t.Fatalf("a decline of a closed question: %v", r)
+	}
+	r = run(t, env(), a.as("decider", "decline", "--question", q, "--comment", "Too late.", "--json")...)
+	if r.code != 2 || r.stderr != "rejected no-open-question\n" || r.stdout != `{"exit":2,"rejection":"no-open-question"}`+"\n" {
+		t.Fatalf("a decline of a closed question with --json: %v", r)
 	}
 	if got := a.drain(t, "proposer"); len(got) != 0 {
 		t.Fatalf("a refused decline gave a comment: %v", got)
@@ -203,9 +213,12 @@ func TestTheAnswerCallTravelsWithTheAnswer(t *testing.T) {
 }
 
 // TestAnswerSignsOnlyWhatItChecked answers a question a window shows under a salt that does not make
-// the ask's receipt's digest, and then one the window does not show at all: answer is tool error
-// asked and sends no resolve call, its last call the questions it read; questions prints nothing of
-// the misstated part and is tool error asked (U12).
+// the ask's receipt's digest: answer, change and decline are tool error asked and send no resolve
+// call, their last call the questions they read; questions prints nothing of the misstated part and
+// is tool error asked (U12). A question the window does not show is answered, and the window's
+// refusal printed: rejected no-open-question, exit 2, the last call the resolve. A reply to questions
+// that is a plain ok and no questions is tool error reply, for questions and for each answer, and
+// the last call is still the questions.
 func TestAnswerSignsOnlyWhatItChecked(t *testing.T) {
 	t.Parallel()
 	a := newAccord(t, "proposer", "applier", "decider")
@@ -225,12 +238,106 @@ func TestAnswerSignsOnlyWhatItChecked(t *testing.T) {
 	if r := run(t, env(), w.as(a, "decider", "questions")...); r.code != 3 || r.stderr != "error asked\n" || r.stdout != "" {
 		t.Fatalf("questions of a part the window misstates: %v", r)
 	}
-	w.set(t, map[string]any{"ok": true, "questions": []any{}})
+	w.set(t, map[string]any{"ok": false, "rejection": "no-open-question"})
+	w.setOp(t, "questions", map[string]any{"ok": true, "questions": []any{}})
 	for _, args := range [][]string{{"answer", "--question", q}, {"change", "--question", q, "--text", "Rename it."}, {"decline", "--question", q, "--comment", "No."}} {
 		r := run(t, env(), w.as(a, "decider", args...)...)
-		if r.code != 3 || r.stderr != "error asked\n" || !bytes.Contains(w.lastCall(), []byte(`"op":"questions"`)) {
+		if r.code != 2 || r.stderr != "rejected no-open-question\n" || !bytes.Contains(w.lastCall(), []byte(`"op":"resolve"`)) {
 			t.Fatalf("%s of a question the window does not show: %v, last call %s", args[0], r, w.lastCall())
 		}
+	}
+	w.setOp(t, "questions", map[string]any{"ok": true})
+	for _, args := range [][]string{{"answer", "--question", q}, {"change", "--question", q, "--text", "Rename it."}, {"decline", "--question", q, "--comment", "No."}} {
+		r := run(t, env(), w.as(a, "decider", args...)...)
+		if r.code != 3 || r.stderr != "error reply\n" || !bytes.Contains(w.lastCall(), []byte(`"op":"questions"`)) {
+			t.Fatalf("%s after a reply to questions that is no questions: %v, last call %s", args[0], r, w.lastCall())
+		}
+	}
+	if r := run(t, env(), w.as(a, "decider", "questions")...); r.code != 3 || r.stderr != "error reply\n" || r.stdout != "" {
+		t.Fatalf("questions after a reply that is no questions: %v", r)
+	}
+}
+
+// TestAnswerReadsEveryPage answers a question the window shows only on the second page of its
+// questions: the first page shows none and says there are more, so answer asks again after its
+// cursor, finds the question as its ask's receipt names it, and sends the resolve, whose reply it
+// prints. Had it stopped at the first page it would have sent no resolve.
+func TestAnswerReadsEveryPage(t *testing.T) {
+	t.Parallel()
+	a := newAccord(t, "proposer", "applier", "decider")
+	a.start(t)
+	q := a.openOne(t, "Rename total.")
+	c, err := client.Open(client.Mediator{Accord: a.id, Key: a.key("decider"), Socket: a.socket()}, client.Options{Now: time.Now, Rand: rand.Reader})
+	if err != nil {
+		t.Fatal(err)
+	}
+	shown, err := c.Questions(context.Background(), 0, "")
+	if err != nil || len(shown.Questions) != 1 || shown.Questions[0].ID != q {
+		t.Fatalf("the window shows %d questions, %v", len(shown.Questions), err)
+	}
+	ask := bytes.Split(a.receipts(t), []byte("\n"))[0]
+	entry := map[string]any{"id": q, "asker": a.refs["proposer"], "kind": "proposal", "deadline": "2099-01-01T00:00:00Z",
+		"form": "text", "text": "Rename total.", "size": 13, "receipt": json.RawMessage(ask), "salt": hex.EncodeToString(shown.Questions[0].Salt)}
+	w := newFakeWindow(t, a.dir)
+	w.set(t, map[string]any{"ok": false, "rejection": "no-open-question"})
+	w.setPage(t, "", map[string]any{"ok": true, "questions": []any{}, "more": true, "cursor": "page-2"})
+	w.setPage(t, "page-2", map[string]any{"ok": true, "questions": []any{entry}, "cursor": "page-3"})
+	r := run(t, env(), w.as(a, "decider", "answer", "--question", q)...)
+	if r.code != 2 || r.stderr != "rejected no-open-question\n" || !bytes.Contains(w.lastCall(), []byte(`"op":"resolve"`)) {
+		t.Fatalf("an answer to a question on the second page: %v, last call %s", r, w.lastCall())
+	}
+}
+
+// TestAnswerRefusesPagesThatDoNotAdvance answers a question the window does not show on a page that
+// says there are more but gives no cursor, and then on one whose cursor is the one it was asked
+// after. Neither lets answer, change or decline read the rest of the questions, so each is tool
+// error reply, exit 3, sends no resolve, and its last call is the questions it read.
+func TestAnswerRefusesPagesThatDoNotAdvance(t *testing.T) {
+	t.Parallel()
+	a := newAccord(t, "proposer", "applier", "decider")
+	a.start(t)
+	q := a.openOne(t, "Rename total.")
+	w := newFakeWindow(t, a.dir)
+	w.set(t, map[string]any{"ok": false, "rejection": "no-open-question"})
+	for _, c := range []struct {
+		name  string
+		pages map[string]map[string]any
+	}{
+		{"no cursor", map[string]map[string]any{
+			"": {"ok": true, "questions": []any{}, "more": true},
+		}},
+		{"the same cursor", map[string]map[string]any{
+			"":       {"ok": true, "questions": []any{}, "more": true, "cursor": "page-2"},
+			"page-2": {"ok": true, "questions": []any{}, "more": true, "cursor": "page-2"},
+		}},
+	} {
+		for after, page := range c.pages {
+			w.setPage(t, after, page)
+		}
+		for _, args := range [][]string{{"answer", "--question", q}, {"change", "--question", q, "--text", "Rename it."}, {"decline", "--question", q, "--comment", "No."}} {
+			r := run(t, env(), w.as(a, "decider", args...)...)
+			if r.code != 3 || r.stderr != "error reply\n" || !bytes.Contains(w.lastCall(), []byte(`"op":"questions"`)) {
+				t.Fatalf("%s after a page with %s: %v, last call %s", args[0], c.name, r, w.lastCall())
+			}
+		}
+	}
+}
+
+// TestOnlyAnAnswererAnswers answers an open question as a member whose binding gives it no role the
+// question's rule names: the window does not show it the question, so the answer reaches the window,
+// which rejects it with not-an-answerer, exit 2, and the question stays open (maybe-6).
+func TestOnlyAnAnswererAnswers(t *testing.T) {
+	t.Parallel()
+	a := newAccord(t, "proposer", "applier", "decider")
+	a.start(t)
+	q := a.openOne(t, "Rename total.")
+	before := a.receipts(t)
+	r := run(t, env(), a.as("applier", "answer", "--question", q)...)
+	if r.code != 2 || r.stderr != "rejected not-an-answerer\n" || r.stdout != "" {
+		t.Fatalf("an answer by a member that answers nothing: %v", r)
+	}
+	if !bytes.Equal(a.receipts(t), before) || a.question(t, "decider") != q {
+		t.Fatal("a rejected answer wrote a receipt or closed the question")
 	}
 }
 

@@ -44,7 +44,7 @@ Checked by: the reviewer.
 
 ## `machine-rules-in-ci`
 
-Every rule a machine can check is checked by `make ci`, the one entry point, and GitHub runs it on every pull request and every push to `main`. The one exception is `red-green-tests`, which compares a change with `main` and so runs in a job of its own beside `ci`. A rule no machine can check stays on the reviewer's list.
+Every rule a machine can check is checked by `make ci`, the one entry point, and GitHub runs it on every pull request and every push to `main`. The two exceptions are `red-green-tests` and `outside-commits-signed-off`, which compare a change with `main` and so run in a job of their own beside `ci`. A rule no machine can check stays on the reviewer's list.
 
 Why: a rule that only a reviewer enforces is enforced only when the reviewer remembers.
 
@@ -65,6 +65,14 @@ No tracked text file outside `testdata/` holds a bidi control character or invis
 Why: such a character makes what a reviewer reads differ from what the compiler, the shell or an agent reads, and a link can lead a reader to a file the check does not read.
 
 Checked by: `make ci`, step `no-hidden-text`. It reads only the files git tracks, so a binary built in a checkout, or an editor's scratch file, passes a local run as it passes a clean checkout.
+
+## `outside-commits-signed-off`
+
+No commit of a change carries a `Signed-off-by` in a bot's name: one that holds `[bot]` anywhere, since GitHub ends a bot's login in `[bot]` and a person's login cannot hold brackets. On a pull request opened from outside the project, every commit of the change that is not a merge carries a `Signed-off-by` whose email is its author's. The project is the pull requests opened by `orillo-swarm[bot]`, `orillo-loom[bot]` and `jlindenger`; they need no sign-off. Pull requests opened by `dependabot[bot]` are exempt from the whole rule. Only the change's own commits are read, from the merge base with `main` to the head.
+
+Why: a sign-off is a person's statement under the Developer Certificate of Origin, so an outside contributor's commits carry their own, and a bot's certifies nothing.
+
+Checked by: the workflow's `red-green-tests` job, with `main`'s copy of `tools/redgreen/`, after the `red-green-tests` verdict. The opener is the pull request's author, passed in `PLACKET_PR_OPENER`; with none, on a push to `main` or from `make red-green-tests`, only a bot's sign-off is refused. A person's sign-off added for them by an agent, and content a merge commit adds, are the reviewer's; `docs/adr/0013-red-green-tests.md` records why.
 
 ## `agents-md-short`
 

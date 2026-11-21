@@ -13,7 +13,7 @@ type git struct{ dir string }
 // run runs git with the arguments given, the standard input in, and returns its standard output.
 func (g git) run(in string, args ...string) (string, error) {
 	cmd := exec.Command("git", args...)
-	cmd.Dir = g.dir
+	cmd.Dir, cmd.Env = g.dir, childEnv()
 	if in != "" {
 		cmd.Stdin = strings.NewReader(in)
 	}
@@ -41,7 +41,7 @@ func (g git) commit(rev string) (string, error) {
 // isAncestor reports whether a is an ancestor of b, or b itself.
 func (g git) isAncestor(a, b string) (bool, error) {
 	cmd := exec.Command("git", "merge-base", "--is-ancestor", a, b)
-	cmd.Dir = g.dir
+	cmd.Dir, cmd.Env = g.dir, childEnv()
 	err := cmd.Run()
 	if err == nil {
 		return true, nil
@@ -110,4 +110,43 @@ func (g git) trailers(base, head string) ([]trailer, error) {
 		}
 	}
 	return ts, nil
+}
+
+// changeCommits lists every commit reachable from head and not from base, oldest first, with its
+// author's email, whether it is a merge, and its Signed-off-by trailers, read as git reads trailers.
+// Each field is on a line of its own: no header holds a newline, and no unfolded trailer does. A
+// record that does not line up with the commits of the range fails the judgement, never skips it.
+func (g git) changeCommits(base, head string) ([]changeCommit, error) {
+	list, err := g.run("", "rev-list", "--reverse", base+".."+head)
+	if err != nil {
+		return nil, err
+	}
+	hashes := strings.Fields(list)
+	out, err := g.run("", "log", "-z", "--reverse",
+		"--format=%H%n%h%n%P%n%ae%n%(trailers:key=Signed-off-by,valueonly,unfold)", base+".."+head)
+	if err != nil {
+		return nil, err
+	}
+	var recs []string
+	if out = strings.TrimSuffix(out, "\x00"); out != "" {
+		recs = strings.Split(out, "\x00")
+	}
+	if len(recs) != len(hashes) {
+		return nil, fmt.Errorf("git log: %d commits read, %d in the range", len(recs), len(hashes))
+	}
+	cs := make([]changeCommit, 0, len(recs))
+	for i, rec := range recs {
+		f := strings.Split(rec, "\n")
+		if len(f) < 5 || f[0] != hashes[i] || f[len(f)-1] != "" {
+			return nil, fmt.Errorf("git log: commit %d of the range is unreadable", i+1)
+		}
+		c := changeCommit{hash: f[1], author: f[3], merge: len(strings.Fields(f[2])) > 1}
+		for _, s := range f[4 : len(f)-1] {
+			if s = strings.TrimSpace(s); s != "" {
+				c.signOffs = append(c.signOffs, s)
+			}
+		}
+		cs = append(cs, c)
+	}
+	return cs, nil
 }

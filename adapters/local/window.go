@@ -60,11 +60,6 @@ type Window struct {
 	Disk journal.Disk
 	// Now is the door's clock (door-owns-clock): read once per call, and at each idle tick.
 	Now func() time.Time
-	// Rand is read by nothing: the answerer mints its answer's salt, and the door mints none.
-	//
-	// Deprecated: setting it changes nothing (door-owns-clock,
-	// docs/adr/0021-who-decided-and-the-answer-call.md). It is removed at the release.
-	Rand io.Reader
 	// Stderr takes the journal's repairs and clean-ups.
 	Stderr io.Writer
 	// Event, when set, is told of every event, from the window's one goroutine.
@@ -246,7 +241,8 @@ type parked struct {
 // bytes of MaxSocketPath whose last element has fewer than 4 bytes (privateBound). Otherwise it opens the journal and takes
 // its lock; founds the Accord at the current second on an empty journal or reloads the journal's, journaling the closings of what a stop left open; removes a stale socket
 // file; and only then listens. On an empty journal with no Acceptances it starts the Accord proposed
-// instead (setup-contract-15): it runs founding's rows 1 to 17 with every opening, emits
+// instead (setup-contract-15): it runs founding's rows 1 to 17 with every opening, and with any
+// fewer, none included, is setup's *Error opening-missing before it listens (setup-contract-13); emits
 // EventStarted with Proposed set, serves only view and accept, refuses every other call with
 // NotFounded, and founds once every member has accepted, at that time, handing acceptances.json to
 // Accepted before it journals the founding, then emits EventFounded. A founded journal with no
@@ -377,6 +373,11 @@ func (w *window) start() (bool, error) {
 			return false, err
 		}
 		if w.cfg.Acceptances == nil {
+			// A proposed Accord shows each member a view of every term and then decides, so it needs
+			// every opening, as mediator.Found does once acceptances are given (setup-contract-13).
+			if !w.a.TermsChecked() {
+				return false, &setup.Error{Code: setup.OpeningMissing}
+			}
 			w.accepted = map[string][]byte{}
 			return false, nil
 		}

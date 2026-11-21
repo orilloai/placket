@@ -18,7 +18,9 @@ The first release. Placket mediates the parts that cross between parties under t
 - A Homebrew cask for macOS and Linux, `brew install --cask orilloai/tap/placket`, from the release's archives at their checksums; each release attaches it, and the tap takes it from the published release.
 - Two skills, in `skills/`, for any agent that reads `SKILL.md`: `placket-setup` installs placket with the person's yes and sets up a pattern, fetched at the binary's release tag, or an Accord of their own, ending with the line that adds `placket mcp` to their agent; `placket-scout` reads a repository or product description, only locally, and lists where an agent's action cannot be undone or leaves the system, with the gate and what its receipts would prove. A Claude Code plugin bundles them: `/plugin marketplace add orilloai/placket`, then `/plugin install placket@placket`.
 - Each release archive holds `NOTICE` beside `LICENSE` and `README.md`.
+- `placket --help` lists the commands, and `--help`, `-help` or `-h` on any command prints its usage on standard output, its flags one a line, and exits 0; with `--json` it prints one object of the command's flags. This corrects commands-1, under which `--help` was the error `usage`; `docs/adr/0029-help-and-answers-the-window-does-not-show.md` says why.
 - `placket version` prints which build the binary is: its version, its commit and the commit's time when the build carries them, the Go release it was built with, and the decision module's version and hash.
+- `patterns/guarded-export/`: a receiver's guard exports a value only when exactly that value was released to it, and refuses a record that a later release of the same record replaced, before it appends it.
 - `patterns/local-apply/`: an applier writes a file only with the text the deciding role accepted, or the version it changed it to, and nothing for a decline.
 
 ### Found an Accord
@@ -28,15 +30,17 @@ The first release. Placket mediates the parts that cross between parties under t
 - A principal binds each party to its roles with `placket bind --policy FILE`, under a policy that says which roles each principal may grant. A policy may name, in `supersedes`, the earlier Accord and the close it replaces.
 - `placket card --default` prints the card of the decision module the binary runs, and a window refuses a card that names another.
 - `placket key new` writes a key file atomically, mode 0600, and never over a file; a key file that another user can read or write, or owns, is refused with `key-mode`.
-- A window with no `--socket` or `--journal` takes its Accord's default socket and journal, and a window given its default socket makes the socket's directory.
+- A window with no `--socket` or `--journal` takes its Accord's default socket and journal, and a window given its default socket makes the socket's directory. An `XDG_` variable, `HOME` or `TMPDIR` that is not an absolute path counts as unset for the default socket, the labels config and the default journal alike.
+- A window started proposed, with no acceptances, refuses to start without every member's opening, `opening-missing`, before it listens.
 
 ### Ask, answer and release
 
 - A part the terms ask about is held, and a person in the role the terms name accepts it, changes it or declines it with `placket answer`, `change` or `decline`. An accept releases the part as it was sent; a change releases the person's version and returns it to the asker; a decline releases nothing. `placket give --wait` and `placket result` wait for the outcome.
 - Each answer is one call the answerer signs, over the answer's salted digest under a salt it mints. The call travels inside every delivery it releases, and the journal keeps every call it took. `--no-release` signs an answer that asks for no release, and `answer --keep` keeps the call and its salt.
-- `placket answer`, `change` and `decline` first check that the window shows the question as its ask's receipt names it, and stop with `error asked` when it does not. `placket cancel` is the asker's withdrawal of its own question.
+- `placket answer`, `change` and `decline` first read every page of the questions the window shows, and stop with `error asked`, signing nothing, when the part it shows is not the one its ask's receipt names. A question the window does not show goes to the window, whose refusal is printed: `rejected no-open-question` for one already closed, `rejected not-an-answerer` for a key that does not answer it. `placket cancel` is the asker's withdrawal of its own question.
 - Every salt is exactly 32 bytes, and placket mints 32. A text or a flag that is not valid UTF-8 is refused, never repaired.
 - A part may carry its `mediaType`, which its delivery carries.
+- A body `placket get` fetched is never lost. One it cannot write to standard output, as to a closed pipe, or to its `--out` file is kept in `kept.jsonl`, and `get` ends in `error file kept`; with `--json`, so is each body an object it cannot write holds. A delivery whose record in the state directory cannot be written is still printed, then the error, by `get`, `result` and `give --wait` alike, and kept in `kept.jsonl` when it cannot be printed either; `placket mcp`'s `get` and `result` return it beside the error. `placket watch` ends, `error file`, once its standard output closes.
 
 ### Run agents, and several mediators
 
@@ -45,12 +49,12 @@ The first release. Placket mediates the parts that cross between parties under t
 - `placket watch` prints each new question once, as it opens, with the lines that answer it. `questions`, `get` and `result` take `--wait N`, up to 60 seconds, and a call that waits holds no lock.
 - The mediator API: the door's calls and replies, written as JSON Schemas under `api/`, with worked calls, recorded replies and a reference generated from them, `docs/reference/mediator-api.md`. `adapters/client` is the client the command line and `placket mcp` share.
 - `patterns/notifier/`: each new question runs one command of yours, on `placket watch`.
-- `patterns/github-merge/`: an agent's merge on GitHub happens only through `apply.sh`, after placket released it and the deciding role accepted it, at exactly the head commit released. The applier posts the delivery as a comment on the pull request and sets a `placket` commit status naming its receipt, and an auditor follows a merge commit back to `placket verify`. `custody.md` lists the GitHub ruleset, the accounts and the credentials the applier rests on.
+- `patterns/github-merge/`: an agent's merge on GitHub happens only through `apply.sh`, after placket released it and the deciding role accepted it, at exactly the head commit released. The applier posts the delivery as a comment on the pull request and sets a `placket` commit status naming its receipt, and an auditor follows a merge commit back to `placket verify`. `custody.md` lists the GitHub ruleset, the accounts and the credentials the applier rests on. `apply.sh` says why it stopped: `apply: interrupted at pr <N>` on INT or TERM, and which post failed when GitHub takes the comment or the status and not the other.
 
 ### Judges
 
 - A `maybe` term may list judges, each to `decide` or to `advise`, where the terms would ask a person, and the card lists the judges a term may name; founding refuses an unknown judge with `judge-unknown`. Where both sides list the same judges, the window asks the `decide` judges in order within 20 seconds, and the first pass or block decides the part; otherwise the part is asked. `advise` judges run after the receipt and decide nothing. A judge never answers a question and never runs at release.
-- v0.1.0's one judge provider is Jev, with your own key from `PLACKET_JEV_KEY`. `placket card --default --judge FILE` lists a judge's config in the card, and `placket window --judge FILE` runs only the configs its card lists. At start the window prints which kinds each judge may be sent and to which host.
+- v0.1.0's one judge provider is Jev, with your own key from `PLACKET_JEV_KEY`. A Jev reply whose confidence is `null` is unparsable, so the part falls through to a person, never a score of 0. `placket card --default --judge FILE` lists a judge's config in the card, and `placket window --judge FILE` runs only the configs its card lists. At start the window prints which kinds each judge may be sent and to which host.
 - A caller's give while its last give is with a judge is refused with the door code `judge-busy`. What each judge said is kept in the journal's `judged/` directory, never in a receipt.
 - `make judge-eval JUDGE=FILE` runs the synthetic labelled cases of `evals/judge/` against a judge's config, by hand, with your key; `patterns/shadow-judge/` runs a judge to advise beside the approver.
 
@@ -61,6 +65,7 @@ The first release. Placket mediates the parts that cross between parties under t
 - `placket verify --view V`: a party checks its own receipts against the view it accepted, with no other party's terms.
 - `placket verify` says which key witnessed each answer, checks a subset with `--subset` and one delivery's body with `--delivery`, and prints `complete` for a whole journal that ends in its close.
 - `placket show` prints what a receipt claims and who decided; `placket log` exports the journal's rows, and `placket reconcile` compares each party's records with the journal.
+- A state directory's `actor` or `seq` file over 4 KiB is `error state <file> too-large`, and a state file replaced whose directory could not be synced is `error state <file>`.
 - Every journal, state file, door format, handed file and reply is read strictly: a repeated member, ill-formed UTF-8 or a member name in another case is refused, and a journal or state file must be a regular file.
 
 ### Close and rotate
@@ -71,7 +76,7 @@ The first release. Placket mediates the parts that cross between parties under t
 ### Go API
 
 - The core's packages, one per protocol capability: `canonical`, `signing`, `setup`, `founding`, `composition`, `mediator`, `answer`, `receipts`, `conform` and the conformance runner. `mediator.SaltBytes` is 32, the length of every salt.
-- `mediator.MinSaltBytes`, equal to `mediator.SaltBytes`, is deprecated, and goes at the next release.
+- Removed before v0.1.0, each deprecated first, so no release carries them: `mediator.MinSaltBytes`, which was equal to `mediator.SaltBytes`; `mediator.Action` and its constants `Accepted`, `Changed`, `Declined` and `Cancelled`, use `answer.Action` and its constants; `mediator.CodeSalt`, `CodeAnswer` and `CodeAction`, which nothing returned; `setup.CheckUnknown`, `setup.Check` and `setup.Term.Checks`, which founding never returned, built or set; `local.Window.Rand`, which the window never read; `local.Reply.Salt` and `local.Reply.AnswerCall`, never set, since the answer call is inside the delivery; and `local.Call.Action`, never set, since the action is inside the signed call.
 
 ### The repository
 

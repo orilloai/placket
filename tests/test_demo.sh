@@ -67,8 +67,8 @@ want='^== 1\.
 ^== 7\.
 ^proposer: ask maybe sha256:
 ^proposer: exit 4$
-^proposer: error asked$
-^proposer: exit 3$
+^proposer: rejected not-an-answerer$
+^proposer: exit 2$
 ^== 8\.
 ^proposer: block no-match sha256:
 ^proposer: exit 1$

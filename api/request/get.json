@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://placket.tech/api/0.1/request/get.json",
   "title": "get: the request",
-  "description": "Fetches the next delivery queued for the key, and records it in the key's state directory before returning it. With wait, it waits for one, holding no lock.",
+  "description": "Fetches the next delivery queued for the key, and records it in the key's state directory before returning it; a delivery whose record cannot be written is returned beside the error. With wait, it waits for one, holding no lock.",
   "type": "object",
   "additionalProperties": false,
   "properties": {

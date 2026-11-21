@@ -21,7 +21,10 @@
 #   push SHA       the call is answered, and the pull request's head then moves to SHA, as a push
 #                  landing after it would;
 #   retarget REF   the call is answered, and the pull request's base then becomes REF;
-#   pass           the call is answered as it would be.
+#   pass           the call is answered as it would be;
+#   hold           the call writes state/held, waits until state/go is there, removes both, and is
+#                  then answered as it would be, so a run can signal its caller while the call is
+#                  under way.
 # fixtures/repos/OWNER/NAME/bases lists the bases the repository's ruleset lets the applier merge
 # into; a merge into any other is refused, HTTP 405, as a ruleset refuses it.
 set -eu
@@ -90,6 +93,16 @@ error() {
 	exit 1
 }
 [ "$what" != fail ] || error "$arg"
+if [ "$what" = hold ]; then
+	: >"$state/held"
+	i=0
+	until [ -f "$state/go" ]; do
+		i=$((i + 1))
+		[ "$i" -lt 300 ] || error none
+		sleep 0.1 2>/dev/null || sleep 1
+	done
+	rm -f "$state/held" "$state/go"
+fi
 
 # The repository, its owner and name in lower case, as GitHub finds it, and the rest of the path.
 rest=${path#repos/}

@@ -29,7 +29,7 @@ fail() {
 }
 
 (cd "$root" && go build -o "$tmp/placket" ./cmd/placket) || { echo "FAIL the tree's placket does not build"; exit 1; }
-"$tmp/placket" --help 2>&1 | sed -n 's/^usage: placket .*; commands: //p' | tr -d ' ' | tr ',' '\n' >"$tmp/commands"
+"$tmp/placket" --help | sed -n 's/^placket \([a-z-]*\) \[flags\]$/\1/p' >"$tmp/commands"
 [ -s "$tmp/commands" ] || { echo "FAIL placket --help lists no commands"; exit 1; }
 
 # check <file>: the skill <file> is well formed. It prints one line per fault, "<file>: <fault>",

@@ -55,6 +55,7 @@ func windowCommand(r *run, args []string) int {
 	if len(args) > 0 && args[0] == "close" {
 		return closeCommand(r, args[1:])
 	}
+	r.subs = []string{"window close"}
 	fs := flags("window")
 	keyPath, founding := fs.String("key", "", "the mediator's key file"), fs.String("founding", "", "the founding set")
 	socket, dir := fs.String("socket", "", "socket"), fs.String("journal", "", "journal directory")

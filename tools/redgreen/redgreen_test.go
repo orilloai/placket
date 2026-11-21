@@ -535,3 +535,270 @@ func TestManyHelpersCounted(t *testing.T) {
 		"red-green-tests: ok, 0 red on base, 0 green at head, 0 reported",
 	), 0)
 }
+
+// commitBy commits every change in the working tree as the author given, "Name <email>", with the
+// message given, and returns its short hash.
+func (r *repo) commitBy(author, msg string) string {
+	r.t.Helper()
+	r.git("add", "-A")
+	r.git("commit", "-q", "--allow-empty", "--author", author, "-m", msg)
+	return r.git("rev-parse", "--short", "HEAD")
+}
+
+// opener sets who opened the pull request for the rest of the case; none unsets it.
+func opener(t *testing.T, login string, none bool) {
+	t.Helper()
+	t.Setenv("PLACKET_PR_OPENER", login)
+	if none {
+		os.Unsetenv("PLACKET_PR_OPENER")
+	}
+}
+
+const (
+	noRedGreen    = "red-green-tests: ok, 0 red on base, 0 green at head, 0 reported"
+	signedRefused = "outside-commits-signed-off: refused: every commit of an outside pull request is signed off by its author, and none by a bot (docs/rules/changes.md#outside-commits-signed-off)"
+	someone       = "Someone <someone@example.com>"
+	other         = "Other <other@example.com>"
+	botSignOff    = "Signed-off-by: orillo-swarm[bot] <1+orillo-swarm[bot]@users.noreply.github.com>"
+)
+
+// U1: a commit signed off by a bot is refused, whatever the opener.
+func TestBotSignOffRefused(t *testing.T) {
+	r := newRepo(t)
+	r.branch()
+	c := r.commitBy(someone, "Say more\n\nSigned-off-by: Someone <someone@example.com>\n"+botSignOff)
+	want := lines(
+		noRedGreen,
+		"outside-commits-signed-off: "+c+": signed off by a bot",
+		signedRefused,
+	)
+	opener(t, "", true)
+	out, code := r.judge()
+	expect(t, out, code, want, 1)
+
+	for _, o := range []string{"orillo-loom[bot]", "jlindenger", "someone"} {
+		opener(t, o, false)
+		out, code = r.judge()
+		expect(t, out, code, want, 1)
+	}
+}
+
+// U2: the bot sign-offs on main, before the base, are not read; only the change's own commits are.
+func TestBotSignOffInHistoryIgnored(t *testing.T) {
+	r := newRepo(t)
+	r.commitBy(someone, "Say more on main\n\n"+botSignOff)
+	r.commitBy(someone, "And more\n\nSigned-off-by: orillo-loom-writer[bot] <2+orillo-loom-writer[bot]@users.noreply.github.com>")
+	r.branch()
+	r.commitBy(someone, "Unsigned")
+	c := r.commitBy(someone, "Signed by a bot\n\nSigned-off-by: orillo-loom[bot] <3+orillo-loom[bot]@users.noreply.github.com>")
+	opener(t, "", true)
+	out, code := r.judge()
+	expect(t, out, code, lines(
+		noRedGreen,
+		"outside-commits-signed-off: "+c+": signed off by a bot",
+		signedRefused,
+	), 1)
+}
+
+// U3: on an outside pull request, a commit with no sign-off is refused.
+func TestOutsideCommitUnsigned(t *testing.T) {
+	r := newRepo(t)
+	r.branch()
+	c := r.commitBy(someone, "Unsigned")
+	opener(t, "someone", false)
+	out, code := r.judge()
+	expect(t, out, code, lines(
+		noRedGreen,
+		"outside-commits-signed-off: "+c+": no sign-off by its author",
+		signedRefused,
+	), 1)
+}
+
+// U4: on an outside pull request, a sign-off by anyone but the commit's author is refused.
+func TestOutsideSignOffOtherAuthor(t *testing.T) {
+	r := newRepo(t)
+	r.branch()
+	c := r.commitBy("A <a@example.com>", "Signed by another\n\nSigned-off-by: A <b@example.com>")
+	opener(t, "someone", false)
+	out, code := r.judge()
+	expect(t, out, code, lines(
+		noRedGreen,
+		"outside-commits-signed-off: "+c+": no sign-off by its author",
+		signedRefused,
+	), 1)
+}
+
+// U5: on an outside pull request, commits each signed off by its author pass; the email is matched
+// without regard to case, and the name is not compared.
+func TestOutsideCommitsSignedOff(t *testing.T) {
+	r := newRepo(t)
+	r.branch()
+	r.commitBy(someone, "First\n\nSigned-off-by: Someone <someone@example.com>")
+	r.commitBy("Other <Other@Example.com>", "Second\n\nSigned-off-by: O. Ther <other@example.com>")
+	opener(t, "someone", false)
+	out, code := r.judge()
+	expect(t, out, code, lines(
+		noRedGreen,
+		"outside-commits-signed-off: ok, 2 commits signed off by their authors",
+	), 0)
+}
+
+// U6: a pull request the project opened needs no sign-off.
+func TestProjectOpenerExempt(t *testing.T) {
+	r := newRepo(t)
+	r.branch()
+	r.commitBy(someone, "Unsigned")
+	for _, o := range []string{"orillo-swarm[bot]", "orillo-loom[bot]", "jlindenger"} {
+		opener(t, o, false)
+		out, code := r.judge()
+		expect(t, out, code, lines(
+			noRedGreen,
+			"outside-commits-signed-off: ok, opened by the project",
+		), 0)
+	}
+}
+
+// U7: Dependabot's pull requests are exempt, its own bot's sign-off included.
+func TestDependabotExempt(t *testing.T) {
+	r := newRepo(t)
+	r.branch()
+	r.commitBy("dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>",
+		"Bump a module\n\nSigned-off-by: dependabot[bot] <support@github.com>")
+	opener(t, "dependabot[bot]", false)
+	out, code := r.judge()
+	expect(t, out, code, lines(
+		noRedGreen,
+		"outside-commits-signed-off: ok, opened by Dependabot",
+	), 0)
+}
+
+// U8: the opener is matched in full, and a commit's author name never exempts it.
+func TestOpenerMatchedInFull(t *testing.T) {
+	r := newRepo(t)
+	r.branch()
+	c := r.commitBy("orillo-swarm[bot] <someone@example.com>", "Unsigned")
+	want := lines(
+		noRedGreen,
+		"outside-commits-signed-off: "+c+": no sign-off by its author",
+		signedRefused,
+	)
+	for _, o := range []string{"orillo-swarm", "someone", "jlindenger2", "orillo-loom[bot] "} {
+		opener(t, o, false)
+		out, code := r.judge()
+		expect(t, out, code, want, 1)
+	}
+}
+
+// U9: an empty opener is no opener: an unsigned commit is not refused, and a bot's sign-off is.
+func TestEmptyOpenerIsNone(t *testing.T) {
+	r := newRepo(t)
+	r.branch()
+	r.commitBy(someone, "Unsigned")
+	c := r.commitBy(someone, "Signed by a bot\n\n"+botSignOff)
+	opener(t, "", false)
+	out, code := r.judge()
+	expect(t, out, code, lines(
+		noRedGreen,
+		"outside-commits-signed-off: "+c+": signed off by a bot",
+		signedRefused,
+	), 1)
+}
+
+// U11: the tests the program runs never see the opener.
+func TestOpenerNotPassedOn(t *testing.T) {
+	r := newRepo(t)
+	r.branch()
+	r.lay("opener-test", "feature")
+	r.commitBy(someone, "Add the feature\n\nSigned-off-by: Someone <someone@example.com>")
+	opener(t, "someone", false)
+	out, code := r.judge()
+	expect(t, out, code, lines(
+		"red-green-tests: tests/test_opener.sh: red (fails)",
+		"red-green-tests: ok, 1 red on base, 1 green at head, 0 reported",
+		"outside-commits-signed-off: ok, 1 commit signed off by its author",
+	), 0)
+}
+
+// On an outside pull request, a merge commit needs no sign-off, but a bot's sign-off on one is
+// refused.
+func TestMergeNeedsNoSignOff(t *testing.T) {
+	r := newRepo(t)
+	r.branch()
+	r.commitBy(someone, "First\n\nSigned-off-by: Someone <someone@example.com>")
+	r.git("checkout", "-q", "main")
+	r.lay("readme")
+	r.commitBy(other, "Say more on main")
+	r.git("checkout", "-q", "work")
+	r.git("merge", "-q", "--no-ff", "--no-edit", "main")
+	opener(t, "someone", false)
+	out, code := r.judge()
+	expect(t, out, code, lines(
+		noRedGreen,
+		"outside-commits-signed-off: ok, 1 commit signed off by its author",
+	), 0)
+
+	r.git("checkout", "-q", "main")
+	r.lay("sub-fix")
+	r.commitBy(other, "Fix Sub on main")
+	r.git("checkout", "-q", "work")
+	r.git("merge", "-q", "--no-ff", "-m", "Update from main\n\n"+botSignOff, "main")
+	c := r.git("rev-parse", "--short", "HEAD")
+	out, code = r.judge()
+	expect(t, out, code, lines(
+		noRedGreen,
+		"outside-commits-signed-off: "+c+": signed off by a bot",
+		signedRefused,
+	), 1)
+}
+
+// Every commit of the change is judged, whatever bytes its sign-offs hold.
+func TestSignOffAnyBytes(t *testing.T) {
+	r := newRepo(t)
+	r.branch()
+	a := r.commitBy(someone, "First\n\nSigned-off-by: Other\x1f\x1e <other@example.com>\n"+botSignOff)
+	b := r.commitBy(someone, "Second\n\nSigned-off-by: Someone\x1f <other@example.com>\x1e")
+	opener(t, "someone", false)
+	out, code := r.judge()
+	expect(t, out, code, lines(
+		noRedGreen,
+		"outside-commits-signed-off: "+a+": signed off by a bot",
+		"outside-commits-signed-off: "+b+": no sign-off by its author",
+		signedRefused,
+	), 1)
+}
+
+// A sign-off is a bot's wherever its value names the bot, whatever text follows the email.
+func TestBotSignOffWithTrailingText(t *testing.T) {
+	r := newRepo(t)
+	r.branch()
+	a := r.commitBy(someone, "First\n\n"+botSignOff+" extra")
+	b := r.commitBy(someone, "Second\n\nSigned-off-by: orillo-loom[bot] and more")
+	want := lines(
+		noRedGreen,
+		"outside-commits-signed-off: "+a+": signed off by a bot",
+		"outside-commits-signed-off: "+b+": signed off by a bot",
+		signedRefused,
+	)
+	for _, o := range []string{"", "orillo-swarm[bot]", "jlindenger", "someone"} {
+		opener(t, o, o == "")
+		out, code := r.judge()
+		expect(t, out, code, want, 1)
+	}
+}
+
+// The commits are judged as they stand before the change's tests run, whatever a test then does to
+// the repository's refs.
+func TestSignOffsJudgedBeforeTests(t *testing.T) {
+	r := newRepo(t)
+	r.branch()
+	r.lay("refs-moved", "feature")
+	c := r.commitBy(someone, "Add the feature")
+	opener(t, "someone", false)
+	out, code := r.judge()
+	expect(t, out, code, lines(
+		"red-green-tests: tests/test_refs.sh: red (fails)",
+		"red-green-tests: ok, 1 red on base, 1 green at head, 0 reported",
+		"outside-commits-signed-off: "+c+": no sign-off by its author",
+		signedRefused,
+	), 1)
+}

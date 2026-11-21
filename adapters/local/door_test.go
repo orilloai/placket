@@ -128,7 +128,7 @@ func TestParseCallReadsOnlyItsForm(t *testing.T) {
 	salt := saltOf("a salt")
 	good, _ := local.SignCall(p, local.OpResolve, "a", time.Date(2026, 11, 12, 9, 0, 0, 0, time.UTC), make([]byte, 16), local.ResolveArgs(answerCall, "v", salt))
 	c, code := local.ParseCall(good)
-	if code != "" || c.Op != local.OpResolve || string(c.AnswerCall) != string(answerCall) || c.Action != "" || c.Answer != "v" || !c.HasAnswer ||
+	if code != "" || c.Op != local.OpResolve || string(c.AnswerCall) != string(answerCall) || c.Answer != "v" || !c.HasAnswer ||
 		string(c.Salt) != string(salt) || !c.Verified() {
 		t.Fatalf("got %q", code)
 	}

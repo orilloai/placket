@@ -52,12 +52,6 @@ const (
 // forms (crossing-2, crossing-3).
 const SaltBytes = crossing.SaltBytes
 
-// MinSaltBytes is the length of every salt, in bytes.
-//
-// Deprecated: use SaltBytes. A salt is exactly SaltBytes long; MinSaltBytes is removed at the
-// release.
-const MinSaltBytes = SaltBytes
-
 // RejectionCode is a code a caller's operation is rejected with: what the caller did wrong, spelled
 // as the door's check tables spell it (section 4).
 type RejectionCode string
@@ -148,17 +142,6 @@ func (e *Error) Error() string {
 
 // Unwrap returns the verifier's error a journal error wraps, or nil (record 0008).
 func (e *Error) Unwrap() error { return e.Err }
-
-// The misuse codes of an answer's own inputs, from before the answer was a signed call.
-//
-// Deprecated: nothing returns them. A salt, a version or an action that does not fit is now the
-// rejection AnswerBody or AnswerCall (docs/adr/0021-who-decided-and-the-answer-call.md). They are
-// removed at the release.
-const (
-	CodeSalt   ErrorCode = "salt"
-	CodeAnswer ErrorCode = "answer"
-	CodeAction ErrorCode = "action"
-)
 
 // failure is an Error with no index.
 func failure(code ErrorCode) *Error { return &Error{Code: code, Index: -1} }
