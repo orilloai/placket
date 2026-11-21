@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/orilloai/placket/adapters/local"
 	"github.com/orilloai/placket/core/canonical"
@@ -197,5 +198,72 @@ func TestAViewIsOnlyAMembersOwn(t *testing.T) {
 	}
 	if *kept != nil {
 		t.Fatal("a refused acceptance was kept")
+	}
+}
+
+// TestAProposedWindowNeedsEveryOpening starts a window with no acceptances, which would start the
+// Accord proposed and go on to decide its crossings: given no openings, or an empty set of them, Run
+// is setup's *Error opening-missing and never listens on its socket, since a window that cannot read
+// every member's terms can neither build a member's view nor decide (setup-contract-13). Given every
+// opening it starts proposed. A close, which decides nothing, still needs none.
+func TestAProposedWindowNeedsEveryOpening(t *testing.T) {
+	t.Parallel()
+	for _, c := range []struct {
+		name     string
+		openings map[string][]byte
+	}{
+		{"no openings", nil},
+		{"an empty set of openings", map[string][]byte{}},
+	} {
+		w, cfg, kept := proposed(t)
+		cfg.Openings = c.openings
+		ready := make(chan struct{})
+		cfg.Ready = ready
+		ctx, cancel := context.WithCancel(context.Background())
+		done := make(chan error, 1)
+		go func() { done <- local.Run(ctx, cfg) }()
+		var err error
+		select {
+		case err = <-done:
+		case <-ready:
+			cancel()
+			<-done
+			t.Fatalf("%s: the window listened", c.name)
+		case <-time.After(10 * time.Second):
+			cancel()
+			t.Fatalf("%s: the window neither started nor stopped", c.name)
+		}
+		cancel()
+		var se *setup.Error
+		if !errors.As(err, &se) || se.Code != setup.OpeningMissing {
+			t.Fatalf("%s: %v, want setup: opening-missing", c.name, err)
+		}
+		if _, err := os.Lstat(w.socket); !errors.Is(err, os.ErrNotExist) {
+			t.Fatalf("%s: the socket is there: %v", c.name, err)
+		}
+		if *kept != nil {
+			t.Fatalf("%s: acceptances were handed over", c.name)
+		}
+	}
+
+	w, cfg, _ := proposed(t)
+	r := start(t, cfg)
+	r.mu.Lock()
+	started := (*r.events)[0]
+	r.mu.Unlock()
+	if started.Kind != local.EventStarted || !started.Proposed || started.Founded || started.Accord != w.accord {
+		t.Fatalf("every opening: %+v", started)
+	}
+	r.stop(t)
+
+	founded := newWorld(t)
+	start(t, founded.window(t)).stop(t)
+	if err := os.Remove(founded.socket); err != nil && !errors.Is(err, os.ErrNotExist) {
+		t.Fatal(err)
+	}
+	none := founded.window(t)
+	none.Openings = nil
+	if events, err := closeRunWith(t, none); err != nil || len(events) != 1 || events[0].Kind != local.EventClosed {
+		t.Fatalf("a close with no openings: %v, %+v", err, events)
 	}
 }

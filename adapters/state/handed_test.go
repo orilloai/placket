@@ -36,26 +36,38 @@ func TestStateErrorTextIsTheCodeAlone(t *testing.T) {
 }
 
 // TestStateErrorsQuoteNothing plants a secret in each file a state directory reads: a salt line, a
-// kept line past the cap, an actor file and a seq file. Each error's text is the package and the
-// code (error-text-no-content).
+// kept line past the cap, an actor file and a seq file, each of the last two also past its cap. Each
+// error's text is the package and the code, and the error, printed whole, holds nothing of the file
+// but its name and the detail (error-text-no-content).
 func TestStateErrorsQuoteNothing(t *testing.T) {
 	t.Parallel()
 	secret := "5e4b5e4b5e4b5e4bSEKRET"
+	readActor := func(d *state.Dir) error { _, err := state.Read(d.Path()); return err }
 	for _, c := range []struct {
 		file, body string
 		read       func(d *state.Dir) error
+		detail     string
 	}{
-		{state.FileSalts, `{"receiptId":"r","salt":"` + secret + `","x":1}` + "\n", func(d *state.Dir) error { _, err := d.Salts(); return err }},
-		{state.FileSeq, secret + "\n", func(d *state.Dir) error { _, err := d.Seq(); return err }},
-		{state.FileKept, strings.Repeat(secret, 1<<18) + "\n", func(d *state.Dir) error { _, err := d.Kept(); return err }},
+		{state.FileSalts, `{"receiptId":"r","salt":"` + secret + `","x":1}` + "\n", func(d *state.Dir) error { _, err := d.Salts(); return err }, ""},
+		{state.FileSeq, secret + "\n", func(d *state.Dir) error { _, err := d.Seq(); return err }, ""},
+		{state.FileSeq, strings.Repeat(secret, 200) + "\n", func(d *state.Dir) error { _, err := d.Seq(); return err }, state.DetailTooLarge},
+		{state.FileActor, strings.Repeat(secret, 200) + "\n", readActor, state.DetailTooLarge},
+		{state.FileKept, strings.Repeat(secret, 1<<18) + "\n", func(d *state.Dir) error { _, err := d.Kept(); return err }, ""},
 	} {
 		path := filepath.Join(t.TempDir(), "s")
 		d := open(t, path, &bytes.Buffer{})
 		if err := os.WriteFile(filepath.Join(path, c.file), []byte(c.body), 0o600); err != nil {
 			t.Fatal(err)
 		}
-		if err := c.read(d); err == nil || err.Error() != "state: state" {
-			t.Fatalf("%s: got %v, want state: state", c.file, err)
+		err := c.read(d)
+		var se *state.Error
+		if !errors.As(err, &se) || err.Error() != "state: state" || se.File != c.file || se.Detail != c.detail {
+			t.Fatalf("%s: got %#v, want state: state, file %s, detail %q", c.file, err, c.file, c.detail)
+		}
+		for _, verb := range []string{"%v", "%+v", "%#v", "%s", "%q"} {
+			if out := fmt.Sprintf(verb, err); strings.Contains(out, "SEKRET") {
+				t.Fatalf("%s: %s printed %q", c.file, verb, out)
+			}
 		}
 	}
 	path := filepath.Join(t.TempDir(), "s")
@@ -174,4 +186,52 @@ func TestStateReadsAnActorFileOfAtMost4KiB(t *testing.T) {
 	if _, err := state.Read(path); err == nil || err.Error() != "state: state" {
 		t.Fatalf("an actor file of 4 KiB and a byte: got %v", err)
 	}
+}
+
+// TestAnActorOrSeqFileOverItsCapIsTooLarge reads a state directory whose actor file, then whose seq
+// file, is 4 KiB and a byte: each is code state, naming the file, with the detail too-large, and
+// errors.Is finds no lines.ErrNotRegular in it, so it is not taken for a file of another kind. A seq
+// file that is a directory is still not regular, with no detail.
+func TestAnActorOrSeqFileOverItsCapIsTooLarge(t *testing.T) {
+	t.Parallel()
+	over := append(bytes.Repeat([]byte("1"), 4<<10), '\n')
+	check := func(name string, err error, want state.Error, notRegular bool) {
+		t.Helper()
+		var se *state.Error
+		if !errors.As(err, &se) || *se != want || errors.Is(err, lines.ErrNotRegular) != notRegular {
+			t.Fatalf("%s: got %#v, want %#v", name, err, want)
+		}
+	}
+	tooLarge := func(file string) state.Error {
+		return state.Error{Code: state.CodeState, File: file, Detail: state.DetailTooLarge}
+	}
+
+	path := filepath.Join(t.TempDir(), "s")
+	open(t, path, &bytes.Buffer{})
+	if err := os.WriteFile(filepath.Join(path, state.FileActor), over, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	_, err := state.Read(path)
+	check("an actor file read", err, tooLarge(state.FileActor), false)
+	_, err = state.Open(path, actor, &bytes.Buffer{})
+	check("an actor file opened", err, tooLarge(state.FileActor), false)
+
+	path = filepath.Join(t.TempDir(), "s")
+	d := open(t, path, &bytes.Buffer{})
+	if err := os.WriteFile(filepath.Join(path, state.FileSeq), over, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	_, err = d.Seq()
+	check("a seq file", err, tooLarge(state.FileSeq), false)
+	_, err = d.Next()
+	check("the next seq", err, tooLarge(state.FileSeq), false)
+
+	if err := os.Remove(filepath.Join(path, state.FileSeq)); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Mkdir(filepath.Join(path, state.FileSeq), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	_, err = d.Seq()
+	check("a seq file that is a directory", err, state.Error{Code: state.CodeState, File: state.FileSeq}, true)
 }
