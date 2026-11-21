@@ -98,7 +98,7 @@ func TestTheJournalKeepsEveryAcceptedCall(t *testing.T) {
 	}
 	for _, n := range []string{"applier", "proposer"} {
 		rep := w.call(t, n, local.OpGet, nil)
-		if !bytes.Contains(rep.Delivery, []byte(`"answer":`+string([]byte(accept["answer"].(json.RawMessage))))) || rep.AnswerCall != nil {
+		if !bytes.Contains(rep.Delivery, []byte(`"answer":`+string([]byte(accept["answer"].(json.RawMessage))))) {
 			t.Fatalf("%s's delivery does not carry the call inside it: %s", n, rep.Delivery)
 		}
 	}

@@ -27,8 +27,8 @@ func TestTheAnswererMintsTheAnswerSalt(t *testing.T) {
 		}
 		args := w.answerArgs(t, "decider", q.Outcome.ReceiptID, action, "Rename it.")
 		rep := w.call(t, "decider", local.OpResolve, args)
-		if rep.Outcome == nil || rep.Salt != nil {
-			t.Fatalf("%s: outcome %v, salt %x", action, rep.Outcome, rep.Salt)
+		if rep.Outcome == nil {
+			t.Fatalf("%s: outcome %v", action, rep.Outcome)
 		}
 		st, err := receipts.Decode(rep.Outcome.Receipt)
 		salt := saltOf("the answer's salt of " + q.Outcome.ReceiptID)

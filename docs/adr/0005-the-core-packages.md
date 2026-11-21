@@ -45,7 +45,7 @@ Names are the protocol text's words (`spec-words`). The canonical form's entry p
 
 - `func Found(set []byte, at string) (*Accord, error)`: the rows of founding's table, in order.
 - `type Accord struct` with `ID() string`, `Card() string`, `Mediator() string`, `Members() []string`, `Member(actor string) bool`, `Roles(actor string) []string`, `Terms(actor string) []Term`. Every read returns a copy.
-- `type Term struct { Stance, Dir string; With, Kinds []string; Checks []Check; Resolve *Rule }`, `type Check struct { Name, Corpus string }`, `type Rule struct { To []string; Timeout int64 }`, and the stance and direction constants.
+- `type Term struct { Stance, Dir string; With, Kinds []string; Resolve *Rule }`, `type Rule struct { To []string; Timeout int64 }`, and the stance and direction constants.
 - `type Code string`, with the fifteen founding codes, and `CodeAt` for a founding time that breaks the timestamp rule, which is not a founding code; `type Error struct { Code Code }`.
 
 Founding validates a declaration's terms (row 6), so it reads them into `Term` there and composition reads them from the Accord. Reading them a second time elsewhere would be a second reader of one format.

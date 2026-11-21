@@ -86,11 +86,6 @@ type Call struct {
 	// For questions: the cursor of an earlier questions reply, and whether the call carries one.
 	After    string
 	HasAfter bool
-	// Action is never set: the action of an answer is inside its signed call.
-	//
-	// Deprecated: read the action from AnswerCall with answer.Read
-	// (docs/adr/0021-who-decided-and-the-answer-call.md). It is removed at the release.
-	Action string
 	// For resolve: the answerer's signed answer call, its canonical bytes as the call carried them;
 	// the answer's text, in Answer, and whether the call carries one; and the answerer's salt, nil
 	// when the call carries none.

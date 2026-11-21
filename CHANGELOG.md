@@ -71,7 +71,7 @@ The first release. Placket mediates the parts that cross between parties under t
 ### Go API
 
 - The core's packages, one per protocol capability: `canonical`, `signing`, `setup`, `founding`, `composition`, `mediator`, `answer`, `receipts`, `conform` and the conformance runner. `mediator.SaltBytes` is 32, the length of every salt.
-- `mediator.MinSaltBytes`, equal to `mediator.SaltBytes`, is deprecated, and goes at the next release.
+- Removed before v0.1.0, each deprecated first, so no release carries them: `mediator.MinSaltBytes`, which was equal to `mediator.SaltBytes`; `mediator.Action` and its constants `Accepted`, `Changed`, `Declined` and `Cancelled`, use `answer.Action` and its constants; `mediator.CodeSalt`, `CodeAnswer` and `CodeAction`, which nothing returned; `setup.CheckUnknown`, `setup.Check` and `setup.Term.Checks`, which founding never returned, built or set; `local.Window.Rand`, which the window never read; `local.Reply.Salt` and `local.Reply.AnswerCall`, never set, since the answer call is inside the delivery; and `local.Call.Action`, never set, since the action is inside the signed call.
 
 ### The repository
 
