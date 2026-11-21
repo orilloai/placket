@@ -113,3 +113,26 @@ func TestTheConfigsPaths(t *testing.T) {
 		t.Fatalf("the config directory under HOME: %s", d)
 	}
 }
+
+// TestARelativeConfigHomeCountsAsUnset reads the config directory under environments whose
+// directories are relative: a relative XDG_CONFIG_HOME is passed over for HOME, and a relative HOME
+// with no absolute XDG_CONFIG_HOME is no config directory, as the default journal is, so the config
+// is never read from whatever directory the command was started in.
+func TestARelativeConfigHomeCountsAsUnset(t *testing.T) {
+	t.Parallel()
+	for _, c := range []struct {
+		env  map[string]string
+		want string
+	}{
+		{map[string]string{"XDG_CONFIG_HOME": "/c", "HOME": "/home/u"}, "/c/placket"},
+		{map[string]string{"XDG_CONFIG_HOME": "rel", "HOME": "/home/u"}, "/home/u/.config/placket"},
+		{map[string]string{"XDG_CONFIG_HOME": "./c", "HOME": "/home/u"}, "/home/u/.config/placket"},
+		{map[string]string{"HOME": "rel"}, ""},
+		{map[string]string{"XDG_CONFIG_HOME": "rel", "HOME": "rel"}, ""},
+		{map[string]string{}, ""},
+	} {
+		if got := client.ConfigDir(func(n string) string { return c.env[n] }); got != c.want {
+			t.Fatalf("%v: %q, want %q", c.env, got, c.want)
+		}
+	}
+}

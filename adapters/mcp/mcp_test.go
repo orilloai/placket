@@ -518,3 +518,84 @@ func TestALabelWithNoAcceptedViewIsRefused(t *testing.T) {
 		}
 	}
 }
+
+// TestAGetThatCannotRecordStillHandsOver gives the applier a note and calls get when the applier's
+// state directory cannot take delivered.jsonl, made read-only before the file is: the tool error's
+// text is the state directory's error, and the delivery the window handed over is beside it, as text
+// and as structured content. A get after it, the directory writable again, finds the queue empty.
+func TestAGetThatCannotRecordStillHandsOver(t *testing.T) {
+	t.Parallel()
+	w := newWorld(t)
+	applier := w.entry("", "applier", 0)
+	s := serve(t, &mcp.Server{Config: client.Config{Mediators: []client.Mediator{w.entry("merge", "proposer", 0), applier}}, Labels: []string{"merge", w.accords[0]}})
+	if _, e := s.call(t, "give", map[string]any{"mediator": "merge", "to": w.refs["applier"], "kind": "note", "text": "A note."}); e != "" {
+		t.Fatal(e)
+	}
+	dir := state.DefaultPath(applier.Key, applier.Accord)
+	if _, err := os.Stat(filepath.Join(dir, state.FileDelivered)); !os.IsNotExist(err) {
+		t.Fatalf("delivered.jsonl before the get: %v", err)
+	}
+	if err := os.Chmod(dir, 0o500); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(dir, 0o700) })
+	r := s.request(t, "tools/call", map[string]any{"name": "get", "arguments": map[string]any{"mediator": w.accords[0]}})
+	res, _ := r["result"].(map[string]any)
+	content, _ := res["content"].([]any)
+	if res["isError"] != true || len(content) != 2 || content[0].(map[string]any)["text"] != errtext.Text(errtext.FromState, string(state.CodeState)) {
+		t.Fatalf("get: %v", r)
+	}
+	var o struct{ Delivery struct{ Kind, Text string } }
+	if err := json.Unmarshal([]byte(content[1].(map[string]any)["text"].(string)), &o); err != nil || o.Delivery.Kind != "note" || o.Delivery.Text != "A note." {
+		t.Fatalf("get handed over %v (%v)", content[1], err)
+	}
+	if d, _ := res["structuredContent"].(map[string]any)["delivery"].(map[string]any); d == nil || d["text"] != "A note." {
+		t.Fatalf("get's structured content: %v", res["structuredContent"])
+	}
+	if err := os.Chmod(dir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if o, e := s.call(t, "get", map[string]any{"mediator": w.accords[0]}); e != "" || o["delivery"] != nil {
+		t.Fatalf("the get after: %v %s", o, e)
+	}
+}
+
+// TestAResultThatCannotRecordStillHandsOver asks a question the decider accepts, and calls result
+// when the proposer's state directory cannot take delivered.jsonl: the tool error's text is the state
+// directory's error, and the closing and the answer the window handed over are beside it.
+func TestAResultThatCannotRecordStillHandsOver(t *testing.T) {
+	t.Parallel()
+	w := newWorld(t)
+	proposer := w.entry("merge", "proposer", 0)
+	s := serve(t, &mcp.Server{Config: client.Config{Mediators: []client.Mediator{proposer}}, Labels: []string{"merge"}})
+	o, e := s.call(t, "give", map[string]any{"mediator": "merge", "to": w.refs["applier"], "kind": "proposal", "text": "Rename total."})
+	q, _ := o["question"].(string)
+	if e != "" || q == "" {
+		t.Fatalf("give: %v %s", o, e)
+	}
+	d, err := client.Open(w.entry("", "decider", 0), client.Options{Now: time.Now, Rand: rand.Reader})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := d.Resolve(context.Background(), client.Answering{Question: q, Action: answer.Accepted, Text: "Yes.", Release: true}); err != nil {
+		t.Fatal(err)
+	}
+	dir := state.DefaultPath(proposer.Key, proposer.Accord)
+	if err := os.Chmod(dir, 0o500); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(dir, 0o700) })
+	r := s.request(t, "tools/call", map[string]any{"name": "result", "arguments": map[string]any{"mediator": "merge", "question": q}})
+	res, _ := r["result"].(map[string]any)
+	content, _ := res["content"].([]any)
+	if res["isError"] != true || len(content) != 2 || content[0].(map[string]any)["text"] != errtext.Text(errtext.FromState, string(state.CodeState)) {
+		t.Fatalf("result: %v", r)
+	}
+	var got struct {
+		Closing struct{ Word string }
+		Answer  struct{ Text string }
+	}
+	if err := json.Unmarshal([]byte(content[1].(map[string]any)["text"].(string)), &got); err != nil || got.Closing.Word != "accepted" || got.Answer.Text != "Yes." {
+		t.Fatalf("result handed over %v (%v)", content[1], err)
+	}
+}

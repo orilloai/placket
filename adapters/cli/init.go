@@ -3,6 +3,7 @@ package cli
 import (
 	"encoding/json"
 	"errors"
+	"flag"
 	"fmt"
 	"io"
 	"io/fs"
@@ -122,6 +123,12 @@ var examples = map[string]example{
 	},
 }
 
+// initFlags are init's flags, in a set of the name given, with the label by default label.
+func initFlags(name, label string) (set *flag.FlagSet, dir, labelFlag *string) {
+	set = flags(name)
+	return set, set.String("dir", "", "the directory to write in, empty or new"), set.String("label", label, "the label")
+}
+
 // exampleNames are the examples init takes, in the order they are offered.
 var exampleNames = []string{"approve", "merge", "handoff"}
 
@@ -159,8 +166,17 @@ func (x example) longest(l string) int {
 // person's, and the lines that fetch and run the example's applier, each command on a line of its
 // own after the line that says what it is for. Its --json object holds dir, accords (label, accord,
 // window and parties), and mcp, watch, fetch and apply, the commands.
+//
+// `init --help` names the examples, and `init <example> --help` prints the example's flags.
 func initCommand(r *run, args []string) int {
 	if len(args) == 0 || strings.HasPrefix(args[0], "-") {
+		set, _, _ := initFlags("init", "")
+		for _, n := range exampleNames {
+			r.subs = append(r.subs, "init "+n)
+		}
+		if len(args) > 0 && errors.Is(set.Parse(args), flag.ErrHelp) && r.help(set) {
+			return ExitOK
+		}
 		fmt.Fprintln(r.stderr, "usage: placket init <example> [--dir D] [--label L]; examples: "+strings.Join(exampleNames, ", "))
 		return r.tool(codeUsage)
 	}
@@ -169,8 +185,7 @@ func initCommand(r *run, args []string) int {
 		fmt.Fprintln(r.stderr, "usage: placket init: the examples are "+strings.Join(exampleNames, ", "))
 		return r.tool(codeUsage)
 	}
-	set := flags("init")
-	dirFlag, labelFlag := set.String("dir", "", "the directory to write in, empty or new"), set.String("label", args[0], "the label")
+	set, dirFlag, labelFlag := initFlags("init "+args[0], args[0])
 	if !r.parse(set, args[1:]) {
 		return r.tool(codeUsage)
 	}

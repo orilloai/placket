@@ -32,20 +32,25 @@ type keptDelivery struct {
 // kept.jsonl when keep is set. It returns the delivery and its kept.jsonl line, or nil when nothing
 // is queued, leaving in s.handed the close receipt the reply carried in its place, if any, for get
 // to keep; a delivery that is not what its receipt says is tool error reply, and nothing of it is
-// recorded. With wait it waits on the door, without the lock, for a delivery queued.
-func (s *session) fetch(wait int, keep bool) (*delivery, []byte, int) {
+// recorded. With wait it waits on the door, without the lock, for a delivery queued. A delivery the
+// window handed over whose record could not be written is returned with the error, in err, for get
+// to hand the body over before it prints the error.
+func (s *session) fetch(wait int, keep bool) (d *delivery, kept []byte, code int, err error) {
 	g, err := s.c.Get(s.r.env.Context, wait, keep)
+	if err != nil && g.Delivery != nil {
+		return g.Delivery, g.Kept, 0, err
+	}
 	if err != nil {
-		return nil, nil, s.r.failed(err)
+		return nil, nil, s.r.failed(err), nil
 	}
 	if code, refused := s.r.refusal(g.Reply); refused {
-		return nil, nil, code
+		return nil, nil, code, nil
 	}
 	if g.Delivery == nil {
 		s.handed = g.Close
-		return nil, nil, 0
+		return nil, nil, 0, nil
 	}
-	return g.Delivery, g.Kept, 0
+	return g.Delivery, g.Kept, 0, nil
 }
 
 // keepClose keeps the close receipt a fetch was handed on a closed Accord, whose queue is empty
@@ -66,10 +71,11 @@ func (s *session) keepClose(receipt []byte) int {
 }
 
 // show prints a fetched delivery as get does: one line on standard error, each field escaped, and
-// its body on standard output, escaped on a terminal.
-func (r *run) show(d *delivery) {
+// its body on standard output, escaped on a terminal. It reports whether the body was written.
+func (r *run) show(d *delivery) bool {
 	r.head(d)
-	line(r.stdout, r.screen(d.Bytes()))
+	_, err := r.stdout.Write(append(append([]byte(nil), r.screen(d.Bytes())...), '\n'))
+	return err == nil
 }
 
 // head is a fetched delivery's line on standard error.
@@ -116,9 +122,15 @@ func writeOut(d *delivery, out string) (string, bool) {
 
 // getCommand is `get [--all] [--out DIR] [--keep] [--wait N]`, with the socket flags: it fetches
 // the next delivery. With --wait it first waits, at most N seconds and holding no lock, until a
-// delivery is queued for the key; with none by then it prints no delivery and exits 0. With --out, a directory where no file can be made is tool error file before anything is
-// fetched. A body that is fetched and cannot then be written is kept in kept.jsonl, so it is not
-// lost, and the error says so: error file kept.
+// delivery is queued for the key; with none by then it prints no delivery and exits 0. With --out, a
+// directory where no file can be made is tool error file before anything is fetched.
+//
+// A body the window has handed over is no longer queued, so get never loses it. A body that cannot
+// then be written, to standard output or to its file, is kept in kept.jsonl, and the error says so:
+// error file kept. A delivery whose record in the state directory could not be written is still
+// handed over, as get writes it, and then the state directory's error is printed. With --json, an
+// object that holds a body and cannot be written keeps each body it holds that is not kept already,
+// and is tool error file kept.
 //
 // With --all it fetches every delivery waiting, one after another under the one state lock, each
 // written as get writes it and each kept in kept.jsonl, as give --wait keeps what it fetches; it
@@ -145,32 +157,78 @@ func getCommand(r *run, args []string) int {
 	if *all {
 		r.put(memberDeliveries, []any{})
 	}
+	g := &getting{s: s, out: *out, keep: *keep || *all, all: *all}
 	// Every fetch is under the state lock, held across them under --all; a wait holds none, so with
-	// --wait the lock is taken once the first fetch is done (state-lock).
-	locked := false
-	lock := func() bool {
-		if err := s.c.Lock(); err != nil {
-			r.failed(err)
-			return false
-		}
-		locked = true
-		return true
-	}
+	// --wait the lock is taken once the first fetch is done (state-lock). The object is printed under
+	// it too, since a body it cannot write is kept.
 	defer func() {
-		if locked {
+		if g.locked {
 			s.c.Unlock()
 		}
 	}()
-	if *wait == 0 && !lock() {
+	return g.held(g.run(*wait))
+}
+
+// A getting is one get's fetches: its flags, whether it holds the state lock, the error of a lock
+// it could not take again, and the bodies its object holds, with the kept.jsonl lines of those not
+// kept yet.
+type getting struct {
+	s         *session
+	out       string
+	keep, all bool
+	locked    bool
+	unlocked  error
+	bodies    int
+	pending   [][]byte
+}
+
+// relocking, when set, is called by get before it takes the state lock again for a delivery whose
+// record failed after a wait. Only a test sets it.
+var relocking func()
+
+func (g *getting) lock() bool {
+	if err := g.s.c.Lock(); err != nil {
+		g.s.r.failed(err)
+		return false
+	}
+	g.locked = true
+	return true
+}
+
+// run fetches as get does, waiting up to wait seconds for the first delivery, and returns the exit
+// code.
+func (g *getting) run(wait int) int {
+	s, r := g.s, g.s.r
+	if wait == 0 && !g.lock() {
 		return ExitTool
 	}
 	for n := 0; ; n++ {
 		w := 0
 		if n == 0 {
-			w = *wait
+			w = wait
 		}
-		d, kept, code := s.fetch(w, *keep || *all)
-		if code == 0 && !locked && !lock() {
+		d, kept, code, err := s.fetch(w, g.keep)
+		if err != nil {
+			// The window handed d over and its record failed: the body goes to the user first,
+			// under the lock, since a body not written is kept. A wait held no lock, so it is taken
+			// again; when it cannot be, nothing more is written to the state directory
+			// (state-lock), and a body not written then is lost, with the lock's error.
+			if !g.locked {
+				if relocking != nil {
+					relocking()
+				}
+				if lerr := s.c.Lock(); lerr != nil {
+					g.unlocked = lerr
+				} else {
+					g.locked = true
+				}
+			}
+			if code := g.write(d, kept, false); code != ExitOK {
+				return code
+			}
+			return r.failed(err)
+		}
+		if code == 0 && !g.locked && !g.lock() {
 			return ExitTool
 		}
 		if d == nil {
@@ -182,45 +240,73 @@ func getCommand(r *run, args []string) int {
 			}
 			return code
 		}
-		if code := s.write(d, kept, *out, *keep || *all, *all); code != ExitOK || !*all {
+		if code := g.write(d, kept, g.keep); code != ExitOK || !g.all {
 			return code
 		}
 	}
 }
 
+// held prints the object, with --json, under the lock get holds, and returns the exit code: code,
+// or, when the object holds a body and cannot be written, tool error file kept, once each body it
+// holds that was not kept is kept. Without the lock nothing is kept, and the code stands.
+func (g *getting) held(code int) int {
+	r := g.s.r
+	if !r.asJSON || r.printJSON(code) || g.bodies == 0 || !g.locked {
+		return code
+	}
+	for _, k := range g.pending {
+		if err := g.s.c.Dir().Keep(k); err != nil {
+			return r.failed(err)
+		}
+	}
+	return r.tool(codeFile, detailKept)
+}
+
 // write writes a fetched delivery as get does: its body on standard output, or to a file of the
 // directory out with its path on standard output. A body that cannot be written is kept, unless
-// keep has kept it already, and is tool error file kept. The object holds the delivery, with its
+// kept says it is kept already, and is tool error file kept. The object holds the delivery, with its
 // body without out, and with out without it and the path once written; with all it is added to the
 // list of every delivery fetched, the path inside it.
-func (s *session) write(d *delivery, kept []byte, out string, keep, all bool) int {
-	r := s.r
-	o := deliveryObject(d, out == "")
+func (g *getting) write(d *delivery, line []byte, kept bool) int {
+	r := g.s.r
+	o := deliveryObject(d, g.out == "")
 	hold := func() {
-		if all {
+		if g.all {
 			r.add(memberDeliveries, o)
 		} else {
 			r.put(memberDelivery, o)
 		}
 	}
-	if out == "" {
-		r.show(d)
-		hold()
-		return ExitOK
-	}
-	r.head(d)
-	path, ok := writeOut(d, out)
-	if !ok {
-		hold()
-		if !keep {
-			if err := s.c.Dir().Keep(kept); err != nil {
+	lost := func() int {
+		if g.unlocked != nil {
+			return r.failed(g.unlocked)
+		}
+		if !kept {
+			if err := g.s.c.Dir().Keep(line); err != nil {
 				return r.failed(err)
 			}
 		}
 		return r.tool(codeFile, detailKept)
 	}
+	if g.out == "" {
+		hold()
+		if !r.show(d) {
+			return lost()
+		}
+		g.bodies++
+		if !kept {
+			g.pending = append(g.pending, line)
+		}
+		return ExitOK
+	}
+	r.head(d)
+	path, ok := writeOut(d, g.out)
+	if !ok {
+		hold()
+		return lost()
+	}
 	fmt.Fprintln(r.stdout, path)
-	if all {
+	if g.all {
 		o[memberPath] = path
 	} else {
 		r.put(memberPath, path)

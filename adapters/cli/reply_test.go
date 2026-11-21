@@ -17,13 +17,14 @@ import (
 )
 
 // A fakeWindow listens on a socket and answers every call with the reply it was last given,
-// whatever the call asked, except an op it was given a reply of its own for (setOp). It keeps the
-// last call it read.
+// whatever the call asked, except an op it was given a reply of its own for (setOp), and a questions
+// call whose after it was given a page for (setPage). It keeps the last call it read.
 type fakeWindow struct {
 	socket string
 	mu     sync.Mutex
 	reply  []byte
 	ops    map[string][]byte
+	pages  map[string][]byte
 	last   []byte
 }
 
@@ -44,13 +45,22 @@ func newFakeWindow(t testing.TB, dir string) *fakeWindow {
 			call, _ := bufio.NewReader(c).ReadBytes('\n')
 			var named struct {
 				Call struct {
-					Op string `json:"op"`
+					Op   string `json:"op"`
+					Args struct {
+						After string `json:"after"`
+					} `json:"args"`
 				} `json:"call"`
 			}
 			_ = json.Unmarshal(call, &named)
 			f.mu.Lock()
 			f.last = call
-			reply, ok := f.ops[named.Call.Op]
+			reply, ok := f.pages[named.Call.Args.After]
+			if named.Call.Op != "questions" {
+				ok = false
+			}
+			if !ok {
+				reply, ok = f.ops[named.Call.Op]
+			}
 			if !ok {
 				reply = f.reply
 			}
@@ -81,6 +91,19 @@ func (f *fakeWindow) setOp(t testing.TB, op string, o any) {
 		f.ops = map[string][]byte{}
 	}
 	f.ops[op] = c
+	f.mu.Unlock()
+}
+
+// setPage sets the reply to every later questions call whose after is after, "" for the first page,
+// whatever setOp and set give the others.
+func (f *fakeWindow) setPage(t testing.TB, after string, o any) {
+	t.Helper()
+	c := replyBytes(t, o)
+	f.mu.Lock()
+	if f.pages == nil {
+		f.pages = map[string][]byte{}
+	}
+	f.pages[after] = c
 	f.mu.Unlock()
 }
 

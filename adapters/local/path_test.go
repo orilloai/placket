@@ -108,6 +108,36 @@ func TestTheDefaultSocketFitsMacOS(t *testing.T) {
 	}
 }
 
+// TestARelativeEnvironmentPathCountsAsUnset reads the default socket and journal under environments
+// whose directories are relative: a relative XDG_RUNTIME_DIR is passed over for TMPDIR, a relative
+// TMPDIR for /tmp, and a relative XDG_STATE_HOME or HOME as the journal has always passed them over,
+// so that no default lands under whatever directory the command was started in.
+func TestARelativeEnvironmentPathCountsAsUnset(t *testing.T) {
+	t.Parallel()
+	accord := "sha256:" + strings.Repeat("ab", 32)
+	uid := strconv.Itoa(os.Getuid())
+	for _, c := range []struct {
+		env           map[string]string
+		socket, journ string
+	}{
+		{map[string]string{"XDG_RUNTIME_DIR": "rel", "TMPDIR": "/t"}, "/t/placket-" + uid + "/abababababab.sock", ""},
+		{map[string]string{"XDG_RUNTIME_DIR": "rel", "TMPDIR": "rel"}, "/tmp/placket-" + uid + "/abababababab.sock", ""},
+		{map[string]string{"TMPDIR": "./t"}, "/tmp/placket-" + uid + "/abababababab.sock", ""},
+		{map[string]string{"XDG_RUNTIME_DIR": "/run/u", "TMPDIR": "rel"}, "/run/u/placket/abababababab.sock", ""},
+		{map[string]string{"XDG_STATE_HOME": "rel", "HOME": "/home/u"}, "/tmp/placket-" + uid + "/abababababab.sock",
+			"/home/u/.local/state/placket/" + strings.Repeat("ab", 32)},
+		{map[string]string{"XDG_STATE_HOME": "rel", "HOME": "rel"}, "/tmp/placket-" + uid + "/abababababab.sock", ""},
+	} {
+		getenv := func(n string) string { return c.env[n] }
+		if got := local.DefaultSocketWith(getenv, accord); got != c.socket {
+			t.Fatalf("%v: the socket is %q, want %q", c.env, got, c.socket)
+		}
+		if got := local.DefaultJournalWith(getenv, accord); got != c.journ {
+			t.Fatalf("%v: the journal is %q, want %q", c.env, got, c.journ)
+		}
+	}
+}
+
 // TestASocketDirOfAnotherIsRefused makes the default socket's directory open to others, then a link
 // in its place: each is error socket.
 func TestASocketDirOfAnotherIsRefused(t *testing.T) {

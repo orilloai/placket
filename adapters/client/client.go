@@ -53,8 +53,8 @@ const (
 	CodeUnknownMediator Code = "unknown-mediator"
 	// CodeReply: the window's reply is not what the call asked for.
 	CodeReply Code = "reply"
-	// CodeAsked: the window does not show the question, or what it shows is not the part its ask's
-	// receipt names, so no answer to it is signed.
+	// CodeAsked: what the window shows of the question is not the part its ask's receipt names, so
+	// no answer to it is signed.
 	CodeAsked Code = "asked"
 	// CodeRand: the source of randomness failed.
 	CodeRand Code = "rand"
@@ -496,7 +496,9 @@ type Got struct {
 // Get fetches the next delivery and records it, under the state lock, before it returns it: its
 // receipt in delivered.jsonl, its salt in salts.jsonl, and, with keep, the delivery, the answer call
 // inside it, in kept.jsonl. A delivery that is not what its receipt says is CodeReply, and nothing
-// of it is recorded.
+// of it is recorded. Once the window has handed a delivery over it is no longer queued, so a record
+// that cannot be written returns the delivery with the state directory's error, and the caller
+// still has the body; the records after the one that failed are not written.
 //
 // With wait, in whole seconds, it first asks the window, without the lock, to hold the call until a
 // delivery is queued for the key or the wait ends; such a call takes nothing, so a client that hangs
@@ -538,22 +540,23 @@ func (c *Client) fetch(ctx context.Context, keep bool) (Got, error) {
 	if !strict.Decode(rep.Delivery, &d) || !c.about(d) {
 		return Got{}, fail(CodeReply)
 	}
+	kl := keptLine(rep.Delivery)
+	g := Got{Reply: rep, Delivery: &d, Kept: kl}
 	if err := c.dir.AddDelivered(d.Receipt); err != nil {
-		return Got{}, err
+		return g, err
 	}
 	if err := c.dir.AddSalt(d.ReceiptID, d.Salt); err != nil {
-		return Got{}, err
+		return g, err
 	}
-	kl := keptLine(rep.Delivery)
 	if keep {
 		if err := c.dir.Keep(kl); err != nil {
-			return Got{}, err
+			return g, err
 		}
 	}
 	if persisted != nil {
 		persisted()
 	}
-	return Got{Reply: rep, Delivery: &d, Kept: kl}, nil
+	return g, nil
 }
 
 // keptLine is a fetched delivery's line of kept.jsonl: the delivery as it came, the answer call
@@ -582,7 +585,8 @@ type Shown struct {
 
 // Questions asks for the open questions the key may answer, without the lock: it reads no seq and
 // writes nothing. With after, a cursor of an earlier reply, it asks only for those opened since;
-// with wait, in whole seconds, the window holds the call until there is one or the wait ends.
+// with wait, in whole seconds, the window holds the call until there is one or the wait ends. A
+// reply that is neither a refusal nor questions is CodeReply.
 func (c *Client) Questions(ctx context.Context, wait int, after string) (Shown, error) {
 	args := map[string]any{}
 	if wait > 0 {
@@ -597,6 +601,9 @@ func (c *Client) Questions(ctx context.Context, wait int, after string) (Shown, 
 	}
 	if _, _, refused := Refused(rep); refused {
 		return Shown{Reply: rep}, nil
+	}
+	if !rep.IsQuestions {
+		return Shown{}, fail(CodeReply)
 	}
 	s := Shown{Reply: rep, Questions: []local.Asked{}, More: rep.More, Cursor: rep.Cursor, Close: rep.Close}
 	for _, q := range rep.Questions {
@@ -643,12 +650,16 @@ func (c *Client) Result(ctx context.Context, question string, wait int) (local.R
 
 // An Own is what FetchOwn found: the answer or the version to the question, nil when it was not
 // fetched; whether it came from what the key had kept; every other delivery it fetched on the way, in
-// the order fetched, each recorded and kept; and the reply of a fetch that was refused.
+// the order fetched, each recorded and kept; and the reply of a fetch that was refused. With an
+// error, Unkept is the kept.jsonl line of the delivery the window handed over whose record could not
+// be written, the answer or the last of the others, which is not kept, for a caller that cannot hand
+// its body over to keep; nil when there is none.
 type Own struct {
 	Delivery *Delivery
 	Kept     bool
 	Others   []*Delivery
 	Reply    local.Reply
+	Unkept   []byte
 }
 
 // keptDelivery is a line of kept.jsonl read as a fetched part. An answer line, {"answer","salt"},
@@ -659,7 +670,8 @@ type keptDelivery struct {
 
 // FetchOwn finds the answer or the version to the question, the delivery the closing receipt queued,
 // under the state lock: first among the parts kept, then by fetching, every delivery fetched recorded
-// and kept. On an error, Own holds what was fetched before it.
+// and kept. On an error, Own holds what was fetched before it, and the delivery whose record could
+// not be written, if the window had handed one over (Get).
 func (c *Client) FetchOwn(ctx context.Context, question, closing string) (Own, error) {
 	if err := c.Lock(); err != nil {
 		return Own{}, err
@@ -679,6 +691,16 @@ func (c *Client) FetchOwn(ctx context.Context, question, closing string) (Own, e
 	for {
 		g, err := c.fetch(ctx, true)
 		if err != nil {
+			// A delivery the window handed over is no longer queued: it is returned with the error,
+			// as the answer or among the others, so the caller still has its body.
+			if g.Delivery != nil {
+				own.Unkept = g.Kept
+				if IsOwn(g.Delivery, question, closing) {
+					own.Delivery = g.Delivery
+				} else {
+					own.Others = append(own.Others, g.Delivery)
+				}
+			}
 			return own, err
 		}
 		if _, _, refused := Refused(g.Reply); refused {
@@ -719,7 +741,7 @@ type Answering struct {
 type Signed struct{ Call, Salt []byte }
 
 // Resolve answers the question (maybe-11), under the state lock: for an accept, a change or a decline
-// it first checks the question the window shows (shown); for an accept or a change it mints the
+// it first checks the question the window shows, if it shows it (shown); for an accept or a change it mints the
 // answer's salt, SaltBytes random bytes; it signs the answer call with the key, the answer's salted
 // digest in it and never its text; with keep it keeps the call and the salt; and it sends the call,
 // with the text and the salt beside it. It returns the reply, its Outcome and Release, or a refusal,
@@ -776,25 +798,42 @@ func (c *Client) Cancel(ctx context.Context, question string) (local.Reply, erro
 }
 
 // shown reads the question as the window shows it to this key's answerer and checks it before
-// anything is signed (Asked). A question the window does not show is CodeAsked too, whether or not
-// the window left some out of its reply: nothing is signed for a part that was not checked. It
-// returns a reply to stop on, a refusal or, on a closed Accord, the rejection closed, which the
-// window would give right after membership (close-3); or nil.
+// anything is signed (Asked). A question the window shows that is not the part its ask's receipt
+// names is CodeAsked: nothing is signed for a part that does not check. A question the window does
+// not show, on any page of its questions, is closed or not this key's to answer, so the call goes on
+// to the window, whose refusal says which (maybe-6, maybe-7). A page that says there are more but
+// gives no cursor, or the cursor it was asked after, leaves pages unread, so it is CodeReply and
+// nothing is signed. It returns a reply to stop on, a refusal or, on a closed Accord, the rejection
+// closed, which the window would give right after membership (close-3); or nil.
 func (c *Client) shown(ctx context.Context, question string) (*local.Reply, error) {
-	s, err := c.Questions(ctx, 0, "")
-	if err != nil {
-		return nil, err
-	}
-	if _, _, refused := Refused(s.Reply); refused {
-		return &s.Reply, nil
-	}
-	if s.Close != nil {
-		return &local.Reply{Rejection: mediator.AccordClosed}, nil
-	}
-	for _, q := range s.Questions {
-		if q.ID == question {
+	after := ""
+	for {
+		s, err := c.Questions(ctx, 0, after)
+		if err != nil {
+			return nil, err
+		}
+		if _, _, refused := Refused(s.Reply); refused {
+			return &s.Reply, nil
+		}
+		if s.Close != nil {
+			return &local.Reply{Rejection: mediator.AccordClosed}, nil
+		}
+		for _, q := range s.Questions {
+			if q.ID == question {
+				return nil, nil
+			}
+		}
+		for _, id := range s.Misstated {
+			if id == question {
+				return nil, fail(CodeAsked)
+			}
+		}
+		if !s.More {
 			return nil, nil
 		}
+		if s.Cursor == "" || s.Cursor == after {
+			return nil, fail(CodeReply)
+		}
+		after = s.Cursor
 	}
-	return nil, fail(CodeAsked)
 }

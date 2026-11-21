@@ -34,7 +34,9 @@
 #                answer and the pull request is still unmerged.
 # Where GitHub does not answer, refuses the applier's credential, or limits its rate, the applier
 # stops instead, exit 1, with a line on standard error that says what to do (README.md, "When it
-# stops partway"), so that one outage does not refuse every release queued after it.
+# stops partway"), so that one outage does not refuse every release queued after it. An INT or a
+# TERM stops it too, exit 1, once the command under way ends, with `apply: interrupted at pr <n>`
+# while it handles a release, or `apply: interrupted` between releases.
 set -eu
 
 role=decider # CHANGE: the role whose accept releases a merge, as your Accord's terms name it
@@ -51,7 +53,14 @@ here=$(cd "$(dirname "$0")" && pwd)
 applied=$here/applied.jsonl
 tmp=$(mktemp -d "${TMPDIR:-/tmp}/apply.XXXXXX")
 trap 'rm -rf "$tmp"' EXIT
-trap 'exit 1' INT TERM
+# at: the pull request whose release is being handled, or empty between releases. A signal is taken
+# once the command under way ends, so the line names where the applier stopped.
+at=
+interrupted() {
+	if [ -n "$at" ]; then echo "apply: interrupted at pr $at" >&2; else echo "apply: interrupted" >&2; fi
+	exit 1
+}
+trap interrupted INT TERM
 touch "$applied"
 
 # The keys the founding set's bindings give the deciding role. The terms that name the role are
@@ -107,6 +116,7 @@ apply() {
 		$(check)
 	EOF
 	[ "$verdict" = ok ] || { refuse "$pr" "$verdict"; return; }
+	at=$pr
 
 	if ! read_pull "$tmp/pull.json"; then
 		# A 404 is GitHub's answer for a pull request it does not have, and also for a repository the
@@ -168,9 +178,14 @@ apply() {
 	# The record: the delivery, one line of JSON, as a code block so that nothing in it renders or
 	# notifies anyone, then the status on the merge commit, which names the receipt and links it.
 	jq -c '{body: ("    " + (.delivery | tojson))}' "$tmp/d.json" >"$tmp/comment.in"
-	gh api -X POST "repos/$repo/issues/$pr/comments" --input "$tmp/comment.in" >"$tmp/comment.json" 2>/dev/null || stop "$unrecorded"
+	gh api -X POST "repos/$repo/issues/$pr/comments" --input "$tmp/comment.in" >"$tmp/comment.json" 2>/dev/null ||
+		stop "pr $pr merged, and neither its comment nor its status was posted: post both by hand from the kept delivery, the comment first"
+	# The comment's link, for the stop line, only when it is a plain URL.
+	url=$(jq -r '.html_url | strings | select(test("^https://[A-Za-z0-9._/#-]+$"))' "$tmp/comment.json" 2>/dev/null) || url=
+	[ -n "$url" ] || url="the comment's html_url"
 	jq -c --arg id "$id" '{state: "success", context: "placket", description: $id, target_url: .html_url}' "$tmp/comment.json" >"$tmp/status.in"
-	gh api -X POST "repos/$repo/statuses/$commit" --input "$tmp/status.in" >/dev/null 2>&1 || stop "$unrecorded"
+	gh api -X POST "repos/$repo/statuses/$commit" --input "$tmp/status.in" >/dev/null 2>&1 ||
+		stop "pr $pr merged and its comment was posted, but its status was not: post the status by hand from the kept delivery, its target_url $url"
 	echo "applied pr $pr"
 }
 
@@ -186,7 +201,10 @@ while :; do
 	placket get --label "$label" --keep --wait "$wait" --json >"$tmp/d.json" 2>"$tmp/get.err" || rc=$?
 	[ "$rc" -eq 0 ] || stop "placket get exited $rc: $(tail -n 1 "$tmp/get.err")"
 	case $(jq -r 'if has("delivery") then "delivery" elif has("close") then "close" else "none" end' "$tmp/d.json") in
-	delivery) apply ;;
+	delivery)
+		apply
+		at=
+		;;
 	close) echo "apply: the Accord is closed" >&2; exit 0 ;;
 	*) [ "$forever" = yes ] || exit 0 ;;
 	esac

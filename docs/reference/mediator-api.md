@@ -8,7 +8,7 @@ It has two layers. The **wire layer** (`api/wire/`) is what travels on the socke
 
 ## The wire layer
 
-A window listens on a unix socket, mode 0600, by default `<runtime>/<first 12 hex of the Accord id>.sock`, where `<runtime>` is `$XDG_RUNTIME_DIR/placket`, else `$TMPDIR/placket-<uid>`. A client connects, writes one call and a line feed, reads one reply and a line feed, and closes. It must not close its side of the socket for writing before it has read the reply. A call is at most 1 MiB, a reply at most 4 MiB, each in canonical JSON.
+A window listens on a unix socket, mode 0600, by default `<runtime>/<first 12 hex of the Accord id>.sock`, where `<runtime>` is `$XDG_RUNTIME_DIR/placket`, else `$TMPDIR/placket-<uid>`, with `/tmp` for an unset `TMPDIR`; a variable that is not an absolute path counts as unset. A client connects, writes one call and a line feed, reads one reply and a line feed, and closes. It must not close its side of the socket for writing before it has read the reply. A call is at most 1 MiB, a reply at most 4 MiB, each in canonical JSON.
 
 A call is `{"call","sig"}`: `sig` is standard base64 of the Ed25519 signature, by the caller's key, over the DSSE pre-authentication encoding of the payload type `application/vnd.placket.call+json` and the canonical bytes of `call`. The door checks a call in this order and refuses it at the first that fails, under the reply's `door` member: its size (`too-large`), its form (`bad-call`), its signature (`bad-signature`), its Accord (`wrong-accord`), its time within 60 seconds of the door's (`stale`), and its nonce, unseen in the last 120 seconds (`replayed`). The mediator then rejects what the caller did wrong under `rejection`, or names what its program did wrong under `error`.
 
@@ -300,7 +300,7 @@ Exactly one of `text` and `data`.
 
 ### get
 
-Fetches the next delivery queued for the key, and records it in the key's state directory before returning it. With wait, it waits for one, holding no lock.
+Fetches the next delivery queued for the key, and records it in the key's state directory before returning it; a delivery whose record cannot be written is returned beside the error. With wait, it waits for one, holding no lock.
 
 | Member | Value | Required | What it is |
 |---|---|---|---|
@@ -364,7 +364,7 @@ It takes no member.
 
 ## The labels config
 
-mediators.json in placket's config directory ($XDG_CONFIG_HOME/placket, else ~/.config/placket): the mediators one user reaches. A label is a local, human name, never signed. Relative paths are taken under the config directory. Entries must not collide: no two have one label, no two of different Accords use one socket, no two use one state directory, and no two of one Accord are both unlabelled; those checks are the client's, not this schema's.
+mediators.json in placket's config directory ($XDG_CONFIG_HOME/placket, else ~/.config/placket, a variable that is not an absolute path counting as unset): the mediators one user reaches. A label is a local, human name, never signed. Relative paths are taken under the config directory. Entries must not collide: no two have one label, no two of different Accords use one socket, no two use one state directory, and no two of one Accord are both unlabelled; those checks are the client's, not this schema's.
 
 | Member | Value | Required | What it is |
 |---|---|---|---|
@@ -383,7 +383,7 @@ Every code `placket mcp` can return, by where it comes from: a code in a door re
 
 | From | Code | Cause and fix |
 |---|---|---|
-| `adapters/client` | `asked` | The window does not show the question as its ask's receipt names it, so nothing was signed; list the questions again. |
+| `adapters/client` | `asked` | What the window shows of the question is not the part its ask's receipt names, so nothing was signed; list the questions again. |
 | `adapters/client` | `bad-config` | The labels config is not in its format; fix mediators.json against api/config/mediators.json. |
 | `adapters/client` | `envelope` | The envelope could not be signed; check the key file holds a key. |
 | `adapters/client` | `label-taken` | Two entries of the labels config have one label; give each entry its own label. |

@@ -1,0 +1,261 @@
+usage: placket accept [flags]
+--accord string  the Accord id
+--json  print the result as one JSON object
+--key string  key file
+--label string  a mediator of the labels config, by its label or Accord id
+--socket string  the window's socket
+--state string  state directory
+
+usage: placket answer [flags]
+--accord string  the Accord id
+--json  print the result as one JSON object
+--keep  keep the signed call
+--key string  key file
+--label string  a mediator of the labels config, by its label or Accord id
+--no-release  ask for no release
+--question string  the question's id
+--socket string  the window's socket
+--state string  state directory
+--text string  the answer (default accepted)
+
+usage: placket bind [flags]
+--actor string  the actor
+--json  print the result as one JSON object
+--key string  the principal's key file
+--mediator string  the mediator
+--policy string  the founding set's policy
+--role value  a role label
+--until string  until
+
+usage: placket cancel [flags]
+--accord string  the Accord id
+--json  print the result as one JSON object
+--key string  key file
+--label string  a mediator of the labels config, by its label or Accord id
+--question string  the question's id
+--socket string  the window's socket
+--state string  state directory
+
+usage: placket card [flags]
+--default  this build's card
+--json  print the result as one JSON object
+--judge value  a judge's config, once per judge
+
+usage: placket change [flags]
+--accord string  the Accord id
+--comment string  a comment
+--file string  a file holding the version
+--json  print the result as one JSON object
+--keep  keep the version
+--key string  key file
+--label string  a mediator of the labels config, by its label or Accord id
+--no-release  ask for no release
+--question string  the question's id
+--socket string  the window's socket
+--state string  state directory
+--text string  the version
+
+usage: placket declare [flags]
+--json  print the result as one JSON object
+--key string  key file
+--terms string  terms file
+
+usage: placket decline [flags]
+--accord string  the Accord id
+--comment string  the comment
+--json  print the result as one JSON object
+--key string  key file
+--label string  a mediator of the labels config, by its label or Accord id
+--question string  the question's id
+--socket string  the window's socket
+--state string  state directory
+
+usage: placket founding [flags]
+--binding value  a binding
+--card string  card
+--json  print the result as one JSON object
+--mediator string  mediator
+--policy string  policy
+--seal value  a declaration's seal entry
+
+usage: placket get [flags]
+--accord string  the Accord id
+--all  fetch every delivery
+--json  print the result as one JSON object
+--keep  keep the part
+--key string  key file
+--label string  a mediator of the labels config, by its label or Accord id
+--out string  directory for the body
+--socket string  the window's socket
+--state string  state directory
+--wait int  seconds to wait for a delivery, at most 60
+
+usage: placket give [flags]
+--accord string  the Accord id
+--as string  text, raw or data (default text)
+--file string  file
+--json  print the result as one JSON object
+--keep  keep the part
+--key string  key file
+--kind string  kind
+--label string  a mediator of the labels config, by its label or Accord id
+--re string  re
+--socket string  the window's socket
+--state string  state directory
+--text string  text
+--to string  receiver
+--topic string  topic
+--wait  wait for the answer
+
+usage: placket init [flags]
+--dir string  the directory to write in, empty or new
+--json  print the result as one JSON object
+--label string  the label
+placket init approve [flags]
+placket init merge [flags]
+placket init handoff [flags]
+
+usage: placket key [flags]
+--json  print the result as one JSON object
+placket key new [flags]
+placket key ref [flags]
+
+usage: placket log [flags]
+--all  a row for every crossing
+--format string  json or csv (default json)
+--json  print the result as one JSON object
+--kept value  a state directory
+--mediator string  mediator
+--no-words  empty the comments
+--receipts string  journal directory
+--words  add the texts
+
+usage: placket mcp [flags]
+--allow-answering  serve a label whose key answers questions too
+--label value  a mediator of the labels config to serve, once per mediator
+
+usage: placket mediators [flags]
+--json  print the result as one JSON object
+
+usage: placket questions [flags]
+--accord string  the Accord id
+--json  print the result as one JSON object
+--key string  key file
+--label string  a mediator of the labels config, by its label or Accord id
+--socket string  the window's socket
+--state string  state directory
+--wait int  seconds to wait for a question, at most 60
+
+usage: placket reconcile [flags]
+--accord string  accord
+--card string  card
+--json  print the result as one JSON object
+--kept value  a state directory
+--mediator string  mediator
+--receipts string  journal directory
+
+usage: placket released [flags]
+--at string  a JSON pointer into the body
+--every  every match
+--file string  the file
+--from string  the receipt's sender
+--json  print the result as one JSON object
+--kind value  a kind the part may have
+--re string  the part's re
+--state string  state directory
+--value string  the value, as text
+--value-file string  the value's bytes
+
+usage: placket result [flags]
+--accord string  the Accord id
+--json  print the result as one JSON object
+--key string  key file
+--label string  a mediator of the labels config, by its label or Accord id
+--question string  the question's id
+--socket string  the window's socket
+--state string  state directory
+--wait int  seconds to wait for the closing, at most 60
+
+usage: placket seal [flags]
+--declaration string  the signed declaration
+--json  print the result as one JSON object
+--key string  key file
+--out string  the directory the opening is written to (default .)
+
+usage: placket show [flags]
+--json  print the result as one JSON object
+--receipt string  a file holding one receipt
+
+usage: placket verify [flags]
+--acceptances string  the founding set's acceptances, acceptances.json beside it when not given
+--accord string  the Accord id
+--answers string  a file of answer calls, one a line
+--delivery string  a delivery, as get --json saved it
+--founding string  the founding set
+--json  print the result as one JSON object
+--mediator string  the mediator
+--open value  a member's opening, once per opening, for a dispute
+--receipts string  journal directory
+--subset  the receipts are a subset
+--superseded-by string  the founding set of the Accord that supersedes this one
+--view string  a member's own view, as it kept it, to check its receipts against
+
+usage: placket version [flags]
+--json  print the result as one JSON object
+
+usage: placket view [flags]
+--accord string  the Accord id
+--json  print the result as one JSON object
+--key string  key file
+--label string  a mediator of the labels config, by its label or Accord id
+--socket string  the window's socket
+--state string  state directory
+
+usage: placket watch [flags]
+--count int  exit once this many questions are printed
+--json  print the result as one JSON object
+--label value  a mediator of the labels config to watch, once per mediator
+
+usage: placket window [flags]
+--acceptances string  acceptances.json
+--founding string  the founding set
+--journal string  journal directory
+--json  print the result as one JSON object
+--judge value  a judge's config, once per judge the card lists
+--key string  the mediator's key file
+--openings string  the directory of every member's opening
+--socket string  socket
+placket window close [flags]
+
+usage: placket key new [flags]
+--json  print the result as one JSON object
+--out string  the key file to write
+
+usage: placket key ref [flags]
+--json  print the result as one JSON object
+--key string  the key file
+
+usage: placket window close [flags]
+--acceptances string  acceptances.json
+--accord string  the Accord id, the founding set's
+--founding string  the founding set
+--journal string  journal directory
+--json  print the result as one JSON object
+--key string  the mediator's key file
+--openings string  the directory of every member's opening
+--socket string  socket
+
+usage: placket init approve [flags]
+--dir string  the directory to write in, empty or new
+--json  print the result as one JSON object
+--label string  the label (default approve)
+
+usage: placket init merge [flags]
+--dir string  the directory to write in, empty or new
+--json  print the result as one JSON object
+--label string  the label (default merge)
+
+usage: placket init handoff [flags]
+--dir string  the directory to write in, empty or new
+--json  print the result as one JSON object
+--label string  the label (default handoff)

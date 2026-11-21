@@ -22,9 +22,10 @@ func DefaultSocket(accord string) string { return DefaultSocketWith(os.Getenv, a
 
 // DefaultSocketWith is the default socket of the Accord under the environment getenv reads:
 // <runtime>/<the first SocketHex hex digits of the Accord id>.sock, where <runtime> is
-// $XDG_RUNTIME_DIR/placket, or else $TMPDIR/placket-<uid>, with /tmp for an empty TMPDIR. Two
-// Accords whose ids share those digits are told apart by the labels config, which refuses two
-// entries on one socket.
+// $XDG_RUNTIME_DIR/placket, or else $TMPDIR/placket-<uid>, with /tmp for TMPDIR when it is not set.
+// A value that is not an absolute path counts as unset, as for DefaultJournalWith. Two Accords whose
+// ids share those digits are told apart by the labels config, which refuses two entries on one
+// socket.
 func DefaultSocketWith(getenv func(string) string, accord string) string {
 	h := strings.TrimPrefix(accord, canonical.HashPrefix)
 	if len(h) > SocketHex {
@@ -35,14 +36,24 @@ func DefaultSocketWith(getenv func(string) string, accord string) string {
 
 // runtimeDir is the directory of the default sockets.
 func runtimeDir(getenv func(string) string) string {
-	if d := getenv("XDG_RUNTIME_DIR"); d != "" {
+	if d := absEnv(getenv, "XDG_RUNTIME_DIR"); d != "" {
 		return filepath.Join(d, "placket")
 	}
-	tmp := getenv("TMPDIR")
+	tmp := absEnv(getenv, "TMPDIR")
 	if tmp == "" {
 		tmp = "/tmp"
 	}
 	return filepath.Join(tmp, "placket-"+strconv.Itoa(os.Getuid()))
+}
+
+// absEnv is the environment variable name as getenv reads it when it is an absolute path, and
+// otherwise empty: a relative one counts as unset, so no default lands under whatever directory the
+// command was started in.
+func absEnv(getenv func(string) string, name string) string {
+	if d := getenv(name); filepath.IsAbs(d) {
+		return d
+	}
+	return ""
 }
 
 // DefaultJournal is the journal directory of a window of the Accord given none, read from the
@@ -56,10 +67,10 @@ func DefaultJournal(accord string) string { return DefaultJournalWith(os.Getenv,
 // journal, rather than one under whatever directory the window was started in.
 func DefaultJournalWith(getenv func(string) string, accord string) string {
 	h := strings.TrimPrefix(accord, canonical.HashPrefix)
-	if d := getenv("XDG_STATE_HOME"); filepath.IsAbs(d) {
+	if d := absEnv(getenv, "XDG_STATE_HOME"); d != "" {
 		return filepath.Join(d, "placket", h)
 	}
-	if home := getenv("HOME"); filepath.IsAbs(home) {
+	if home := absEnv(getenv, "HOME"); home != "" {
 		return filepath.Join(home, ".local", "state", "placket", h)
 	}
 	return ""

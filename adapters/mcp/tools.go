@@ -80,6 +80,23 @@ func toolResult(v map[string]any) map[string]any {
 // failed is the tool error of an error a client returned.
 func failed(err error) map[string]any { return toolError(from(err)) }
 
+// failedWith is the tool error of an error a client returned beside what the call still produced,
+// such as a delivery the window handed over whose record could not be written: the error's text,
+// then the object as text, and the object as structured content.
+func failedWith(err error, v map[string]any) map[string]any {
+	r := failed(err)
+	b, merr := json.Marshal(v)
+	if merr != nil {
+		return r
+	}
+	if c, cerr := canonical.Form(b); cerr == nil {
+		b = c
+	}
+	r["content"] = append(r["content"].([]any), map[string]any{"type": "text", "text": string(b)})
+	r["structuredContent"] = v
+	return r
+}
+
 // refusal is the tool error of a reply that is a refusal, under its member's row; nil for any other.
 func refusal(rep local.Reply) map[string]any {
 	if member, code, ok := client.Refused(rep); ok {
@@ -270,9 +287,13 @@ func (s *Server) give(ctx context.Context, c *client.Client, m client.Message) m
 	return toolResult(o)
 }
 
-// get fetches the next delivery, waiting up to wait seconds for one.
+// get fetches the next delivery, waiting up to wait seconds for one. A delivery the window handed
+// over whose record could not be written is no longer queued, so the tool error holds it.
 func (s *Server) get(ctx context.Context, c *client.Client, wait int) map[string]any {
 	g, err := c.Get(ctx, wait, false)
+	if err != nil && g.Delivery != nil {
+		return failedWith(err, map[string]any{"delivery": deliveryObject(g.Delivery)})
+	}
 	if err != nil {
 		return failed(err)
 	}
@@ -350,11 +371,10 @@ func (s *Server) result(ctx context.Context, c *client.Client, question string, 
 	}
 	if answered(rep.Outcome) {
 		own, err := c.FetchOwn(ctx, question, rep.Outcome.ReceiptID)
-		if err != nil {
-			return failed(err)
-		}
-		if r := refusal(own.Reply); r != nil {
-			return r
+		if err == nil {
+			if r := refusal(own.Reply); r != nil {
+				return r
+			}
 		}
 		if own.Delivery != nil {
 			o["answer"] = deliveryObject(own.Delivery)
@@ -365,6 +385,14 @@ func (s *Server) result(ctx context.Context, c *client.Client, question string, 
 				others = append(others, deliveryObject(d))
 			}
 			o["deliveries"] = others
+		}
+		if err != nil {
+			// What was fetched before the error, and a delivery whose record could not be written,
+			// is no longer queued, so the tool error holds it.
+			if own.Delivery != nil || len(own.Others) > 0 {
+				return failedWith(err, o)
+			}
+			return failed(err)
 		}
 	}
 	return toolResult(o)
