@@ -4,8 +4,8 @@
 # First the shape patterns/README.md states: the README is there; every directory under patterns/ is a
 # job, with its README.md, pattern.sh and expected.txt; the job's README has the four sections in
 # order; its pattern.sh, and its apply.sh where it holds one, mark the lines a caller changes; and the
-# README's list names every job once, with the Placket version it was last checked against, and no
-# job that is not there.
+# README's list names every job once, and no job that is not there; a line names a version only as a
+# release tag, and with the history each tag it names is on HEAD's history.
 #
 # Then each pattern runs, one at a time, on the binary this tree builds and nothing else of the tree:
 # from a fresh copy of its own directory, with the binary's directory first on PATH and a fresh TMPDIR
@@ -77,18 +77,42 @@ for d in "$patterns"/*; do
 	done
 done
 # The list: in the section "## The patterns", up to the next heading, one line per job,
-# "- `<job>`: <the job it does>. Checked against placket <version>."
+# "- `<job>`: <the job it does>.", ending "Checked against placket <tag>." once it names a release.
 awk '/^## / { in_list = ($0 == "## The patterns"); next } in_list' "$patterns/README.md" >"$tmp/list"
 listed=$(sed -n 's/^- `\([^`]*\)`: .*$/\1/p' "$tmp/list")
 for job in $(printf "%s\n" "$listed" | sort -u); do
 	[ -d "$patterns/$job" ] || fail "patterns/README.md: lists $job, which is not a directory under patterns/"
 	[ "$(printf '%s\n' "$listed" | grep -Fcx "$job")" -eq 1 ] || fail "patterns/README.md: lists $job more than once"
-	grep -q '^- `'"$job"'`: .*[^ ]\. Checked against placket [^ ][^ ]*\.$' "$tmp/list" ||
-		fail "patterns/README.md: the line of $job does not end 'Checked against placket <version>.'"
+	grep -q '^- `'"$job"'`: .*[^ ]\.$' "$tmp/list" ||
+		fail "patterns/README.md: the line of $job does not end with a full stop"
 done
 for job in $jobs; do
 	printf '%s\n' "$listed" | grep -Fqx "$job" || fail "patterns/README.md: does not list $job"
 done
+# A version checked against is a release tag and nothing else, not main at a commit: until Placket
+# has a release, a line names none. With the history, each tag named is a tag on HEAD's history; with
+# no history, or a shallow one, that is not checked, and the test says so.
+history=yes
+if ! git -C "$root" rev-parse -q --verify HEAD >/dev/null 2>&1; then
+	history="no git history"
+elif [ "$(git -C "$root" rev-parse --is-shallow-repository 2>/dev/null)" != false ]; then
+	history="a shallow history"
+fi
+sed -n 's/^- `\([^`]*\)`: .* Checked against placket \([^ ]*\)\.$/\1 \2/p' "$tmp/list" >"$tmp/versions"
+grep '^- `' "$tmp/list" | grep -v ' Checked against placket [^ ]*\.$' | grep -i 'checked against' >"$tmp/stray"
+while read -r line; do
+	fail "patterns/README.md: a line names a version but does not end 'Checked against placket <tag>.': $line"
+done <"$tmp/stray"
+while read -r job v; do
+	if ! printf '%s\n' "$v" | grep -Eqx 'v[0-9]+\.[0-9]+\.[0-9]+(-[a-z]+(\.[0-9]+)?)?'; then
+		fail "patterns/README.md: $job is checked against $v, which is no release tag; until Placket has one, a line names no version"
+	elif [ "$history" = yes ] && ! git -C "$root" merge-base --is-ancestor "refs/tags/$v" HEAD 2>/dev/null; then
+		fail "patterns/README.md: $job is checked against $v, which is no tag on HEAD's history"
+	fi
+done <"$tmp/versions"
+if [ "$history" != yes ] && [ -s "$tmp/versions" ]; then
+	echo "ok   patterns/README.md: whether each release tag named is on HEAD's history is not checked: $history"
+fi
 if [ "$failed" -ne 0 ]; then
 	exit 1
 fi

@@ -8,6 +8,8 @@
 #   that ref; it refuses a pattern the ref lacks, a name that is not a pattern's, and a directory that
 #   holds anything. PLACKET_REPO points it at a stand-in repository built here, whose v0.1.0 tag and
 #   main differ;
+# - skills/placket-setup/SKILL.md names only patterns the tree holds, and names local-apply and
+#   github-merge as the patterns placket init approve and merge take their appliers from;
 # - .claude-plugin/marketplace.json and plugin.json parse and carry what Claude Code reads: one
 #   plugin, placket, whose source is the repository root, and a plugin.json with no version, no skill
 #   list and no MCP server, beside both skills.
@@ -91,6 +93,25 @@ else
 	echo "ok   a skill whose front matter holds more than a name and a description is refused"
 fi
 
+# The setup skill calls a placket init example a pattern only where init takes it from one: every
+# pattern it names, as patterns/<name>, is a directory of the tree, approve takes local-apply and
+# merge github-merge, and handoff, which has none, is not counted among the patterns.
+setup=$root/skills/placket-setup/SKILL.md
+: >"$out"
+for p in $(grep -oE 'patterns/[a-z0-9-]+' "$setup" | sed 's|^patterns/||' | sort -u); do
+	[ -d "$root/patterns/$p" ] || echo "names patterns/$p, which is no pattern of the tree" >>"$out"
+done
+grep -qE 'placket init approve`[^`]*`patterns/local-apply/`' "$setup" ||
+	echo "does not say that placket init approve takes its applier from patterns/local-apply/" >>"$out"
+grep -qE 'placket init merge`[^`]*`patterns/github-merge/`' "$setup" ||
+	echo "does not say that placket init merge takes its applier from patterns/github-merge/" >>"$out"
+grep -n 'Three of the patterns' "$setup" >>"$out"
+if [ -s "$out" ]; then
+	fail "skills/placket-setup/SKILL.md calls an example a pattern that init does not take from one"
+else
+	echo "ok   skills/placket-setup/SKILL.md names local-apply and github-merge for approve and merge, and every pattern it names is one"
+fi
+
 # U8: fetch-pattern.sh, against a stand-in repository whose v0.1.0 tag and main differ.
 fetch=$root/skills/placket-setup/fetch-pattern.sh
 repo=$tmp/repo
@@ -106,7 +127,7 @@ echo "local-apply at main" >"$repo/patterns/local-apply/README.md"
 echo "a file added on main" >"$repo/patterns/local-apply/later.txt"
 mkdir -p "$repo/patterns/new-on-main"
 echo "new" >"$repo/patterns/new-on-main/README.md"
-printf -- '- `new-on-main`: new. Checked against placket main@0000000.\n' >>"$repo/patterns/README.md"
+printf -- '- `new-on-main`: new.\n' >>"$repo/patterns/README.md"
 g add -A && g commit -q -m main
 tagged=$(g rev-parse v0.1.0)
 main=$(g rev-parse main)

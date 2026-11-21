@@ -19,7 +19,7 @@ version v0.1.0
 commit 0123456789abcdef0123456789abcdef01234567
 commitTime 2026-12-01T09:30:00Z
 go go1.27.4
-module 0.1.0 sha256:...
+module 0.2.0 sha256:...
 ```
 
 The version is the one Go stamps from the git state of the build: the tag for a build at a tag, a pseudo-version for any other commit, and a version ending `+dirty` for a tree with changes not committed. A build with no git information, such as one from a source tarball, prints `(devel)`. `commit` and `commitTime` are printed only when the build carries them. `module` is the decision module, as `placket card --default` names it. With `--json`, it prints one object of the same members.
@@ -37,7 +37,7 @@ curl -fsSL https://github.com/orilloai/placket/releases/latest/download/install.
 - with `cosign` on `PATH`, it verifies the bundle on `checksums.txt` before it reads a line of it, with the identity and issuer below;
 - with `gh` on `PATH` and signed in, as `gh auth status` says, it verifies the archive's provenance.
 
-It prints each check it ran, and each it skipped and why. A check that runs and fails, the checksum included, ends it with `install: refused: <file>: <reason>`, and it writes nothing. Then it installs `placket` in `$PLACKET_INSTALL_DIR`, else `~/.local/bin`, never with `sudo`, says so when that directory is not on `PATH`, and runs `placket version`.
+It prints each check it ran, and each it skipped and why. A check that runs and fails, the checksum included, ends it with `install: refused: <file>: <reason>`, and it writes nothing. Then it installs `placket` in `$PLACKET_INSTALL_DIR`, else `~/.local/bin`, never with `sudo`: it writes a file `mktemp` makes in that directory and renames it over any `placket` there, so the rename stays on one file system. It says so when that directory is not on `PATH`, and runs `placket version`.
 
 `curl | sh` runs the script before anything has checked it. To check it first, take it from the release with `checksums.txt` and its bundle, verify them, then run it:
 
@@ -52,7 +52,7 @@ grep ' install.sh$' checksums.txt | shasum -a 256 -c
 sh install.sh
 ```
 
-`--version vX.Y.Z` installs that release in place of the latest: `sh install.sh --version v0.1.0`, or `| sh -s -- --version v0.1.0`. `PLACKET_RELEASE_BASE`, when set, is the URL of a directory holding a release's files, which replaces either; `tests/test_install.sh` points it at a `file://` directory.
+`--version vX.Y.Z` installs that release in place of the latest: `sh install.sh --version v0.1.0`, or `| sh -s -- --version v0.1.0`. `PLACKET_RELEASE_BASE`, when set, is the URL of a directory holding a release's files, which replaces either: an `https://` URL or a `file://` directory, and every download is held to that scheme; any other is refused before anything is downloaded. `tests/test_install.sh` points it at a `file://` directory. The whole script is one function, called in braces on its last line, so a download cut short anywhere, within that line too, runs nothing.
 
 ### Homebrew
 
