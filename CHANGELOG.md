@@ -40,7 +40,7 @@ The first release. Placket mediates the parts that cross between parties under t
 - `placket answer`, `change` and `decline` first read every page of the questions the window shows, and stop with `error asked`, signing nothing, when the part it shows is not the one its ask's receipt names. A question the window does not show goes to the window, whose refusal is printed: `rejected no-open-question` for one already closed, `rejected not-an-answerer` for a key that does not answer it. `placket cancel` is the asker's withdrawal of its own question.
 - Every salt is exactly 32 bytes, and placket mints 32. A text or a flag that is not valid UTF-8 is refused, never repaired.
 - A part may carry its `mediaType`, which its delivery carries.
-- A body `placket get` fetched is never lost. One it cannot write to standard output, as to a closed pipe, or to its `--out` file is kept in `kept.jsonl`, and `get` ends in `error file kept`; with `--json`, so is each body an object it cannot write holds. A delivery whose record in the state directory cannot be written is still printed, then the error. `placket watch` ends, `error file`, once its standard output closes.
+- A body `placket get` fetched is never lost. One it cannot write to standard output, as to a closed pipe, or to its `--out` file is kept in `kept.jsonl`, and `get` ends in `error file kept`; with `--json`, so is each body an object it cannot write holds. A delivery whose record in the state directory cannot be written is still printed, then the error, by `get`, `result` and `give --wait` alike; `placket mcp`'s `get` and `result` return it beside the error. `placket watch` ends, `error file`, once its standard output closes.
 
 ### Run agents, and several mediators
 

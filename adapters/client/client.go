@@ -585,7 +585,8 @@ type Shown struct {
 
 // Questions asks for the open questions the key may answer, without the lock: it reads no seq and
 // writes nothing. With after, a cursor of an earlier reply, it asks only for those opened since;
-// with wait, in whole seconds, the window holds the call until there is one or the wait ends.
+// with wait, in whole seconds, the window holds the call until there is one or the wait ends. A
+// reply that is neither a refusal nor questions is CodeReply.
 func (c *Client) Questions(ctx context.Context, wait int, after string) (Shown, error) {
 	args := map[string]any{}
 	if wait > 0 {
@@ -600,6 +601,9 @@ func (c *Client) Questions(ctx context.Context, wait int, after string) (Shown, 
 	}
 	if _, _, refused := Refused(rep); refused {
 		return Shown{Reply: rep}, nil
+	}
+	if !rep.IsQuestions {
+		return Shown{}, fail(CodeReply)
 	}
 	s := Shown{Reply: rep, Questions: []local.Asked{}, More: rep.More, Cursor: rep.Cursor, Close: rep.Close}
 	for _, q := range rep.Questions {
@@ -662,7 +666,8 @@ type keptDelivery struct {
 
 // FetchOwn finds the answer or the version to the question, the delivery the closing receipt queued,
 // under the state lock: first among the parts kept, then by fetching, every delivery fetched recorded
-// and kept. On an error, Own holds what was fetched before it.
+// and kept. On an error, Own holds what was fetched before it, and the delivery whose record could
+// not be written, if the window had handed one over (Get).
 func (c *Client) FetchOwn(ctx context.Context, question, closing string) (Own, error) {
 	if err := c.Lock(); err != nil {
 		return Own{}, err
@@ -682,6 +687,15 @@ func (c *Client) FetchOwn(ctx context.Context, question, closing string) (Own, e
 	for {
 		g, err := c.fetch(ctx, true)
 		if err != nil {
+			// A delivery the window handed over is no longer queued: it is returned with the error,
+			// as the answer or among the others, so the caller still has its body.
+			if g.Delivery != nil {
+				if IsOwn(g.Delivery, question, closing) {
+					own.Delivery = g.Delivery
+				} else {
+					own.Others = append(own.Others, g.Delivery)
+				}
+			}
 			return own, err
 		}
 		if _, _, refused := Refused(g.Reply); refused {

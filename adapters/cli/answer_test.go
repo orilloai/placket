@@ -216,7 +216,9 @@ func TestTheAnswerCallTravelsWithTheAnswer(t *testing.T) {
 // the ask's receipt's digest: answer, change and decline are tool error asked and send no resolve
 // call, their last call the questions they read; questions prints nothing of the misstated part and
 // is tool error asked (U12). A question the window does not show is answered, and the window's
-// refusal printed: rejected no-open-question, exit 2, the last call the resolve.
+// refusal printed: rejected no-open-question, exit 2, the last call the resolve. A reply to questions
+// that is a plain ok and no questions is tool error reply, for questions and for each answer, and
+// the last call is still the questions.
 func TestAnswerSignsOnlyWhatItChecked(t *testing.T) {
 	t.Parallel()
 	a := newAccord(t, "proposer", "applier", "decider")
@@ -243,6 +245,16 @@ func TestAnswerSignsOnlyWhatItChecked(t *testing.T) {
 		if r.code != 2 || r.stderr != "rejected no-open-question\n" || !bytes.Contains(w.lastCall(), []byte(`"op":"resolve"`)) {
 			t.Fatalf("%s of a question the window does not show: %v, last call %s", args[0], r, w.lastCall())
 		}
+	}
+	w.setOp(t, "questions", map[string]any{"ok": true})
+	for _, args := range [][]string{{"answer", "--question", q}, {"change", "--question", q, "--text", "Rename it."}, {"decline", "--question", q, "--comment", "No."}} {
+		r := run(t, env(), w.as(a, "decider", args...)...)
+		if r.code != 3 || r.stderr != "error reply\n" || !bytes.Contains(w.lastCall(), []byte(`"op":"questions"`)) {
+			t.Fatalf("%s after a reply to questions that is no questions: %v, last call %s", args[0], r, w.lastCall())
+		}
+	}
+	if r := run(t, env(), w.as(a, "decider", "questions")...); r.code != 3 || r.stderr != "error reply\n" || r.stdout != "" {
+		t.Fatalf("questions after a reply that is no questions: %v", r)
 	}
 }
 

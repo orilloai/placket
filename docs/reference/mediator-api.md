@@ -300,7 +300,7 @@ Exactly one of `text` and `data`.
 
 ### get
 
-Fetches the next delivery queued for the key, and records it in the key's state directory before returning it. With wait, it waits for one, holding no lock.
+Fetches the next delivery queued for the key, and records it in the key's state directory before returning it; a delivery whose record cannot be written is returned beside the error. With wait, it waits for one, holding no lock.
 
 | Member | Value | Required | What it is |
 |---|---|---|---|

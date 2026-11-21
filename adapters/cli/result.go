@@ -94,7 +94,8 @@ func (s *session) closing(question string, wait int, untilClosed bool) int {
 // fetchOwn finds the answer or the version to the question, the delivery the closing receipt
 // queued (client.FetchOwn): first among the parts kept, then by fetching, every delivery fetched
 // recorded and kept, and each that is not its own printed as get prints it. It prints the text found,
-// or not fetched.
+// or not fetched. A delivery whose record could not be written is printed all the same, before the
+// state directory's error.
 func (s *session) fetchOwn(question, closing string) int {
 	own, err := s.c.FetchOwn(s.r.env.Context, question, closing)
 	for _, d := range own.Others {
@@ -102,6 +103,13 @@ func (s *session) fetchOwn(question, closing string) int {
 		s.r.add(memberDeliveries, deliveryObject(d, true))
 	}
 	if err != nil {
+		// The answer the window handed over before a record failed is no longer queued: it is
+		// printed, and then the error.
+		if own.Delivery != nil {
+			line(s.r.stdout, s.r.screen(own.Delivery.Bytes()))
+			s.r.put(memberFetched, true)
+			s.r.put(memberAnswer, deliveryObject(own.Delivery, true))
+		}
 		return s.r.failed(err)
 	}
 	if code, refused := s.r.refusal(own.Reply); refused {
