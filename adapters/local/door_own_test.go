@@ -15,31 +15,7 @@ import (
 	"time"
 
 	"github.com/orilloai/placket/adapters/local"
-	"github.com/orilloai/placket/core/answer"
 )
-
-// failingRand is a source of randomness that always fails.
-type failingRand struct{}
-
-func (failingRand) Read([]byte) (int, error) { return 0, errors.New("no randomness") }
-
-// TestAWindowsRandIsReadByNothing answers an ask while the window's Rand fails: the window mints no
-// salt, so the answer, under the answerer's own salt, passes as if Rand worked (door-owns-clock).
-func TestAWindowsRandIsReadByNothing(t *testing.T) {
-	t.Parallel()
-	w := newWorld(t)
-	cfg := w.window(t)
-	cfg.Rand = failingRand{}
-	start(t, cfg)
-	q := w.give(t, "proposer", "applier", "p-1", "proposal", "Rename total.")
-	if q.Outcome == nil || q.Outcome.Verdict != "escalate" {
-		t.Fatalf("the proposal was not asked: %v", q.Outcome)
-	}
-	rep := w.call(t, "decider", local.OpResolve, w.answerArgs(t, "decider", q.Outcome.ReceiptID, answer.Accepted, "accepted"))
-	if rep.Outcome == nil || rep.Outcome.Verdict != "pass" || rep.Door != "" {
-		t.Fatalf("got outcome %v, door %q", rep.Outcome, rep.Door)
-	}
-}
 
 // replyFromSocket runs a socket that answers one call with reply and a line feed, and returns what a client
 // read from it.
@@ -151,7 +127,7 @@ func TestNoSecretPrintsFromACallReplyOrAsked(t *testing.T) {
 	msg := secret
 	for _, v := range []any{
 		local.Call{Message: []byte(secret), Answer: secret, Bytes: []byte(secret), Salt: []byte(secret), AnswerCall: []byte(secret)},
-		local.Reply{Salt: []byte(secret), Delivery: []byte(secret), AnswerCall: []byte(secret)},
+		local.Reply{Delivery: []byte(secret)},
 		local.Asked{Message: &msg, Kind: secret, Salt: []byte(secret), Raw: []byte(secret), Receipt: []byte(secret)},
 	} {
 		noSecretPrints(t, v, secret)

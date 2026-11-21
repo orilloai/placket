@@ -60,11 +60,6 @@ type Window struct {
 	Disk journal.Disk
 	// Now is the door's clock (door-owns-clock): read once per call, and at each idle tick.
 	Now func() time.Time
-	// Rand is read by nothing: the answerer mints its answer's salt, and the door mints none.
-	//
-	// Deprecated: setting it changes nothing (door-owns-clock,
-	// docs/adr/0021-who-decided-and-the-answer-call.md). It is removed at the release.
-	Rand io.Reader
 	// Stderr takes the journal's repairs and clean-ups.
 	Stderr io.Writer
 	// Event, when set, is told of every event, from the window's one goroutine.

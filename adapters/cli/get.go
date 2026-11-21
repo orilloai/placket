@@ -176,9 +176,16 @@ type getting struct {
 	out       string
 	keep, all bool
 	locked    bool
-	bodies    int
-	pending   [][]byte
+	// unlocked is the error of taking the state lock again after a wait, when it failed: a body
+	// then not written is lost, and get ends with this error.
+	unlocked error
+	bodies   int
+	pending  [][]byte
 }
+
+// relocking, when set, is called by get before it takes the state lock again for a delivery whose
+// record failed after a wait. Only a test sets it.
+var relocking func()
 
 func (g *getting) lock() bool {
 	if err := g.s.c.Lock(); err != nil {
@@ -204,9 +211,18 @@ func (g *getting) run(wait int) int {
 		d, kept, code, err := s.fetch(w, g.keep)
 		if err != nil {
 			// The window handed d over and its record failed: the body goes to the user first,
-			// under the lock if it can be taken, since a body not written is kept.
-			if !g.locked && s.c.Lock() == nil {
-				g.locked = true
+			// under the lock, since a body not written is kept. A wait held no lock, so it is taken
+			// again; when it cannot be, nothing more is written to the state directory
+			// (state-lock), and a body not written then is lost, with the lock's error.
+			if !g.locked {
+				if relocking != nil {
+					relocking()
+				}
+				if lerr := s.c.Lock(); lerr != nil {
+					g.unlocked = lerr
+				} else {
+					g.locked = true
+				}
 			}
 			if code := g.write(d, kept, false); code != ExitOK {
 				return code
@@ -263,6 +279,9 @@ func (g *getting) write(d *delivery, line []byte, kept bool) int {
 		}
 	}
 	lost := func() int {
+		if g.unlocked != nil {
+			return r.failed(g.unlocked)
+		}
 		if !kept {
 			if err := g.s.c.Dir().Keep(line); err != nil {
 				return r.failed(err)

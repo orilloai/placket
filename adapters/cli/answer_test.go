@@ -244,6 +244,16 @@ func TestAnswerSignsOnlyWhatItChecked(t *testing.T) {
 			t.Fatalf("%s of a question the window does not show: %v, last call %s", args[0], r, w.lastCall())
 		}
 	}
+	w.setOp(t, "questions", map[string]any{"ok": true})
+	for _, args := range [][]string{{"answer", "--question", q}, {"change", "--question", q, "--text", "Rename it."}, {"decline", "--question", q, "--comment", "No."}} {
+		r := run(t, env(), w.as(a, "decider", args...)...)
+		if r.code != 3 || r.stderr != "error reply\n" || !bytes.Contains(w.lastCall(), []byte(`"op":"questions"`)) {
+			t.Fatalf("%s after a reply to questions that is no questions: %v, last call %s", args[0], r, w.lastCall())
+		}
+	}
+	if r := run(t, env(), w.as(a, "decider", "questions")...); r.code != 3 || r.stderr != "error reply\n" || r.stdout != "" {
+		t.Fatalf("questions after a reply that is no questions: %v", r)
+	}
 }
 
 // TestAnswerReadsEveryPage answers a question the window shows only on the second page of its
@@ -273,6 +283,41 @@ func TestAnswerReadsEveryPage(t *testing.T) {
 	r := run(t, env(), w.as(a, "decider", "answer", "--question", q)...)
 	if r.code != 2 || r.stderr != "rejected no-open-question\n" || !bytes.Contains(w.lastCall(), []byte(`"op":"resolve"`)) {
 		t.Fatalf("an answer to a question on the second page: %v, last call %s", r, w.lastCall())
+	}
+}
+
+// TestAnswerRefusesPagesThatDoNotAdvance answers a question the window does not show on a page that
+// says there are more but gives no cursor, and then on one whose cursor is the one it was asked
+// after. Neither lets answer, change or decline read the rest of the questions, so each is tool
+// error reply, exit 3, sends no resolve, and its last call is the questions it read.
+func TestAnswerRefusesPagesThatDoNotAdvance(t *testing.T) {
+	t.Parallel()
+	a := newAccord(t, "proposer", "applier", "decider")
+	a.start(t)
+	q := a.openOne(t, "Rename total.")
+	w := newFakeWindow(t, a.dir)
+	w.set(t, map[string]any{"ok": false, "rejection": "no-open-question"})
+	for _, c := range []struct {
+		name  string
+		pages map[string]map[string]any
+	}{
+		{"no cursor", map[string]map[string]any{
+			"": {"ok": true, "questions": []any{}, "more": true},
+		}},
+		{"the same cursor", map[string]map[string]any{
+			"":       {"ok": true, "questions": []any{}, "more": true, "cursor": "page-2"},
+			"page-2": {"ok": true, "questions": []any{}, "more": true, "cursor": "page-2"},
+		}},
+	} {
+		for after, page := range c.pages {
+			w.setPage(t, after, page)
+		}
+		for _, args := range [][]string{{"answer", "--question", q}, {"change", "--question", q, "--text", "Rename it."}, {"decline", "--question", q, "--comment", "No."}} {
+			r := run(t, env(), w.as(a, "decider", args...)...)
+			if r.code != 3 || r.stderr != "error reply\n" || !bytes.Contains(w.lastCall(), []byte(`"op":"questions"`)) {
+				t.Fatalf("%s after a page with %s: %v, last call %s", args[0], c.name, r, w.lastCall())
+			}
+		}
 	}
 }
 

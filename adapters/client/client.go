@@ -585,7 +585,8 @@ type Shown struct {
 
 // Questions asks for the open questions the key may answer, without the lock: it reads no seq and
 // writes nothing. With after, a cursor of an earlier reply, it asks only for those opened since;
-// with wait, in whole seconds, the window holds the call until there is one or the wait ends.
+// with wait, in whole seconds, the window holds the call until there is one or the wait ends. A
+// reply that is neither a refusal nor questions is CodeReply.
 func (c *Client) Questions(ctx context.Context, wait int, after string) (Shown, error) {
 	args := map[string]any{}
 	if wait > 0 {
@@ -600,6 +601,9 @@ func (c *Client) Questions(ctx context.Context, wait int, after string) (Shown, 
 	}
 	if _, _, refused := Refused(rep); refused {
 		return Shown{Reply: rep}, nil
+	}
+	if !rep.IsQuestions {
+		return Shown{}, fail(CodeReply)
 	}
 	s := Shown{Reply: rep, Questions: []local.Asked{}, More: rep.More, Cursor: rep.Cursor, Close: rep.Close}
 	for _, q := range rep.Questions {
@@ -646,12 +650,16 @@ func (c *Client) Result(ctx context.Context, question string, wait int) (local.R
 
 // An Own is what FetchOwn found: the answer or the version to the question, nil when it was not
 // fetched; whether it came from what the key had kept; every other delivery it fetched on the way, in
-// the order fetched, each recorded and kept; and the reply of a fetch that was refused.
+// the order fetched, each recorded and kept; and the reply of a fetch that was refused. With an
+// error, Unkept is the kept.jsonl line of the delivery the window handed over whose record could not
+// be written, the answer or the last of the others, which is not kept, for a caller that cannot hand
+// its body over to keep; nil when there is none.
 type Own struct {
 	Delivery *Delivery
 	Kept     bool
 	Others   []*Delivery
 	Reply    local.Reply
+	Unkept   []byte
 }
 
 // keptDelivery is a line of kept.jsonl read as a fetched part. An answer line, {"answer","salt"},
@@ -662,7 +670,8 @@ type keptDelivery struct {
 
 // FetchOwn finds the answer or the version to the question, the delivery the closing receipt queued,
 // under the state lock: first among the parts kept, then by fetching, every delivery fetched recorded
-// and kept. On an error, Own holds what was fetched before it.
+// and kept. On an error, Own holds what was fetched before it, and the delivery whose record could
+// not be written, if the window had handed one over (Get).
 func (c *Client) FetchOwn(ctx context.Context, question, closing string) (Own, error) {
 	if err := c.Lock(); err != nil {
 		return Own{}, err
@@ -682,6 +691,16 @@ func (c *Client) FetchOwn(ctx context.Context, question, closing string) (Own, e
 	for {
 		g, err := c.fetch(ctx, true)
 		if err != nil {
+			// A delivery the window handed over is no longer queued: it is returned with the error,
+			// as the answer or among the others, so the caller still has its body.
+			if g.Delivery != nil {
+				own.Unkept = g.Kept
+				if IsOwn(g.Delivery, question, closing) {
+					own.Delivery = g.Delivery
+				} else {
+					own.Others = append(own.Others, g.Delivery)
+				}
+			}
 			return own, err
 		}
 		if _, _, refused := Refused(g.Reply); refused {
@@ -782,9 +801,10 @@ func (c *Client) Cancel(ctx context.Context, question string) (local.Reply, erro
 // anything is signed (Asked). A question the window shows that is not the part its ask's receipt
 // names is CodeAsked: nothing is signed for a part that does not check. A question the window does
 // not show, on any page of its questions, is closed or not this key's to answer, so the call goes on
-// to the window, whose refusal says which (maybe-6, maybe-7). It returns a reply to stop on, a
-// refusal or, on a closed Accord, the rejection closed, which the window would give right after
-// membership (close-3); or nil.
+// to the window, whose refusal says which (maybe-6, maybe-7). A page that says there are more but
+// gives no cursor, or the cursor it was asked after, leaves pages unread, so it is CodeReply and
+// nothing is signed. It returns a reply to stop on, a refusal or, on a closed Accord, the rejection
+// closed, which the window would give right after membership (close-3); or nil.
 func (c *Client) shown(ctx context.Context, question string) (*local.Reply, error) {
 	after := ""
 	for {
@@ -808,8 +828,11 @@ func (c *Client) shown(ctx context.Context, question string) (*local.Reply, erro
 				return nil, fail(CodeAsked)
 			}
 		}
-		if !s.More || s.Cursor == "" || s.Cursor == after {
+		if !s.More {
 			return nil, nil
+		}
+		if s.Cursor == "" || s.Cursor == after {
+			return nil, fail(CodeReply)
 		}
 		after = s.Cursor
 	}

@@ -11,23 +11,6 @@ import (
 	"github.com/orilloai/placket/core/receipts"
 )
 
-// Action is what an answer does to a question.
-//
-// Deprecated: use answer.Action, its one definition (constants-once,
-// docs/adr/0021-who-decided-and-the-answer-call.md). It is removed at the release.
-type Action = answer.Action
-
-// The four actions of an answer.
-//
-// Deprecated: use answer.Accepted, answer.Changed, answer.Declined and answer.Cancelled. They are
-// removed at the release.
-const (
-	Accepted  = answer.Accepted
-	Changed   = answer.Changed
-	Declined  = answer.Declined
-	Cancelled = answer.Cancelled
-)
-
 // A Resolution is an answer as its caller gives it (section 6, maybe-11): Call, the signed answer
 // call's canonical bytes, which say the question, the action and whether it asks for release; and,
 // for an accept or a change, Text, the answer's text or the version, and Salt, the salt the

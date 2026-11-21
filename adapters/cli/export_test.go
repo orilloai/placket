@@ -92,3 +92,7 @@ func Version(bi *debug.BuildInfo, asJSON bool) string {
 	}
 	return out.String()
 }
+
+// SetRelocking sets the hook get calls before it takes the state lock again for a delivery whose
+// record failed after a wait.
+func SetRelocking(f func()) { relocking = f }

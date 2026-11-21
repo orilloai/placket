@@ -10,7 +10,7 @@ For a gate that holds against the agent, run the agent in an operating system ac
 
 This guide starts with `placket` on your `PATH`. The [install section of the README](../../README.md#install) says how to get it there. Nothing here needs a judge's key.
 
-## Five words
+## Six words
 
 - An **Accord** is the agreement between the parties: here the agent, you, and the applier that writes the file. A mediator, the window you start, runs it and signs a receipt for every decision.
 - Each party's **terms** say what may cross to or from it. The agent's terms say its `proposal` to the applier is asked of the role `decider`, which your key holds. Each party's terms are sealed from the others; you consent to your own view of what will cross.
@@ -60,7 +60,7 @@ Then run one of the lines `watch` printed: `placket answer` accepts, `placket ch
 
 ## 5. Apply
 
-Fetch the applier with the line `init` printed. It takes [`patterns/local-apply/apply.sh`](../../patterns/local-apply/apply.sh) from the repository at the commit of your build's version tag, or from `main` for a build with no version tag, which can change at any time. Nothing checks the file it fetches, so read it before you run it: it is short. Then run it with the file to write in place of `FILE`:
+Fetch the applier with the line `init` printed. It takes [`patterns/local-apply/apply.sh`](../../patterns/local-apply/apply.sh) from the repository at the commit of your build's version tag when the build carries that commit, else at the tag itself, which can be moved, or from `main` for a build with no version tag, which can change at any time. Nothing checks the file it fetches, so read it before you run it: it is short. Then run it with the file to write in place of `FILE`:
 
 ```sh
 sh ~/.config/placket/approve/applier/apply.sh approve-applier notes.txt

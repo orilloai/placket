@@ -317,7 +317,7 @@ func (w *lockedWriter) Write(p []byte) (int, error) {
 	return w.b.Write(p)
 }
 
-// A world is one Accord's files, its clock and its salt and nonce sources.
+// A world is one Accord's files, its clock and its nonce source.
 type world struct {
 	set         []byte
 	openings    map[string][]byte
@@ -326,7 +326,6 @@ type world struct {
 	socket      string
 	journal     string
 	clock       *clock
-	salts       *counter
 	nonces      *counter
 	seqs        map[string]int64
 	// disk is what the world's windows write their journal through; nil is the system's.
@@ -339,13 +338,13 @@ func newWorld(t testing.TB) *world {
 	id, _ := canonical.TypedHash(s.set)
 	d := shortDir(t)
 	return &world{set: s.set, openings: s.openings, acceptances: s.acceptances, accord: id, socket: filepath.Join(d, "s"), journal: filepath.Join(d, "j"),
-		clock: &clock{t: time.Date(2026, 11, 12, 9, 0, 0, 0, time.UTC)}, salts: &counter{name: "salts"},
+		clock:  &clock{t: time.Date(2026, 11, 12, 9, 0, 0, 0, time.UTC)},
 		nonces: &counter{name: "nonces"}, seqs: map[string]int64{}}
 }
 
 func (w *world) window(t testing.TB) local.Window {
 	return local.Window{Key: key(t, "mediator"), Founding: w.set, Openings: w.openings, Acceptances: w.acceptances, Socket: w.socket, Journal: w.journal,
-		Now: w.clock.Now, Rand: w.salts, Idle: 20 * time.Millisecond, Disk: w.disk}
+		Now: w.clock.Now, Idle: 20 * time.Millisecond, Disk: w.disk}
 }
 
 func (w *world) client(t testing.TB, name string) *local.Client {

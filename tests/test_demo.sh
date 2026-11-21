@@ -4,7 +4,10 @@
 # party's check of its own receipts against its view included. Then it
 # verifies the demo journal committed under scripts/demo/, the one the README shows a receipt of, as
 # any party can with its terms sealed and then with every opening,
-# with the binary the run built, and checks that its card names that binary's module.
+# with the binary the run built, and checks that its card names that binary's module. Last, it checks
+# the README's receipt: the sentence before it names the committed journal's receipts.jsonl, the
+# block is that file's line 1, byte for byte, and the show output under it is what placket show
+# --receipt prints for it.
 set -u
 
 root=$(cd "$(dirname "$0")/.." && pwd)
@@ -177,6 +180,40 @@ if "$tmp/run/placket" verify --accord "$accord" --receipts "$demo/journal" --fou
 else
 	echo "FAIL the committed demo journal does not verify"
 	sed 's/^/    | /' "$tmp/verify"
+	failed=1
+fi
+
+# The README's receipt is the committed journal's first, named so in the sentence before it, and the
+# show output under it is what placket show --receipt prints for that receipt, standard error first.
+# blocks: each code block of the README, its lines, after the line "@@ <the sentence before it>",
+# the last line of text above its fence.
+awk '/^```/ { if (!fence) print "@@ " last; fence = !fence; next } fence { print; next } NF { last = $0 }' "$root/README.md" >"$tmp/blocks"
+sentence=$(grep -B 1 -x -F "$(head -n 1 "$demo/journal/receipts.jsonl")" "$tmp/blocks" | sed -n 's/^@@ //p')
+first=$(grep -n -x -F "$(head -n 1 "$demo/journal/receipts.jsonl")" "$tmp/blocks" | head -n 1 | cut -d: -f1)
+case $sentence in
+*'scripts/demo/journal/receipts.jsonl'*) echo "ok   the sentence before the README's receipt names scripts/demo/journal/receipts.jsonl" ;;
+*)
+	echo "FAIL the sentence before the README's receipt does not name where it comes from, scripts/demo/journal/receipts.jsonl"
+	echo "    | ${sentence:-no block of the README is line 1 of the committed journal}"
+	failed=1
+	;;
+esac
+if [ -n "$first" ] && [ "$(sed -n "$((first - 1))p;$((first + 1))p" "$tmp/blocks" | sed -n 's/^@@ .*/@@/p' | wc -l)" -eq 2 ]; then
+	echo "ok   the README's receipt is line 1 of scripts/demo/journal/receipts.jsonl, byte for byte"
+else
+	echo "FAIL no code block of the README is line 1 of scripts/demo/journal/receipts.jsonl, alone and byte for byte"
+	failed=1
+fi
+head -n 1 "$demo/journal/receipts.jsonl" >"$tmp/receipt.json"
+"$tmp/run/placket" show --receipt "$tmp/receipt.json" >"$tmp/show.out" 2>"$tmp/show.err"
+cat "$tmp/show.err" "$tmp/show.out" >"$tmp/show"
+# The block after the receipt's.
+awk -v n="${first:-0}" 'NR > n && /^@@ / { b++; next } NR > n && b == 1 { print } b > 1 { exit }' "$tmp/blocks" >"$tmp/shown"
+if [ -n "$first" ] && [ -s "$tmp/show" ] && cmp -s "$tmp/show" "$tmp/shown"; then
+	echo "ok   the README's show output is what placket show --receipt prints for that receipt"
+else
+	echo "FAIL the README's show output is not what placket show --receipt prints for line 1 of the committed journal"
+	diff "$tmp/show" "$tmp/shown" | sed 's/^/    > /'
 	failed=1
 fi
 [ "$failed" -eq 0 ]

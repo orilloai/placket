@@ -12,7 +12,7 @@ Use it when a receiver publishes, loads or sends on values that came to it throu
 
 The guard holds only the value it is about to export. It needs no receipt id, no delivery and no file the fetch wrote: it asks the receiver's state directory, which the fetch kept.
 
-Placket keeps no notion of a current release: a value released and later replaced still matches its own receipt. So the guard adds a rule of its own, only the latest, before it exports. Once `released` matches the value, the guard asks `released --every` for every release of the same record, named by the field at `same` (here `/sku`), in fetch order, and refuses a match that is not the last. Which field names "the same record", and what "latest" means, is the caller's to decide. A caller that wants any value ever released, not only the latest, drops that rule.
+Placket keeps no notion of a current release: a value released and later replaced still matches its own receipt. So the guard adds a rule of its own, only the latest, before it exports. Once `released` matches the value, the guard asks `released --every` for every release of the same record, named by the field at `same` (here `/sku`), in fetch order, and for every release of the value itself, and refuses the value unless the last release of the record is one of its own. A value released again, unchanged, is still the latest. Which field names "the same record", and what "latest" means, is the caller's to decide. A caller that wants any value ever released, not only the latest, drops that rule.
 
 It does not normalize for you. Placket compares bytes. The proposer normalizes each record before it crosses, and the guard normalizes the value it holds by the same rule before it asks. A value spelled another way matches only when the rule turns it into the same bytes.
 
@@ -61,7 +61,7 @@ claim: each receipt is this mediator's signed decision about one part under this
 3. The proposer normalizes three records and gives each one. The approver accepts the first, changes the second with release, and declines the third.
 4. The receiver fetches every delivery to `inbox/` with `get --all --out inbox --json --keep`.
 5. The guard checks six values before an export step: the accepted record, spelled another way, and the changed version are exported; the record as first proposed, the declined one, the accepted one with one byte changed, and one never proposed are refused.
-6. A new price for the first record is accepted. The old record still matches its own receipt, but `released --every` shows it is not the last of the two releases of TB-100, so the guard refuses it before the export step, and `export.jsonl` gains no line for it. The new record is the latest, and is exported.
+6. A new price for the first record is proposed twice, unchanged, and accepted each time. The old record still matches its own receipt, but `released --every` shows it is not the last of the three releases of TB-100, so the guard refuses it before the export step, and `export.jsonl` gains no line for it. The new record, released twice, is the latest, and is exported.
 7. `log --all` prints a row for every crossing, and `verify` passes on the journal.
 
 ## Making it yours

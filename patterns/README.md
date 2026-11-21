@@ -6,13 +6,13 @@ A pattern is a runnable template for one caller's job: a proposer, an approver, 
 
 ## The patterns
 
-One line per pattern: its directory, the job it does, and the Placket version it was last checked against.
+One line per pattern: its directory and the job it does, and, once Placket has a release, the release it was last checked against.
 
-- `github-merge`: an applier merges a pull request only when placket released a merge of it that the deciding role accepted, at the head commit released, and records the delivery for an auditor. Checked against placket main@a3a1b1a.
-- `guarded-export`: a receiver's guard exports a value only when exactly that value was released to it. Checked against placket main@6620793.
-- `local-apply`: an applier writes a file only with the text the deciding role accepted, or the version it changed it to, and nothing for a decline. Checked against placket 952cc15.
-- `notifier`: each new question an approver may answer runs one command, with its label and id, as it opens. Checked against placket 75a6493.
-- `shadow-judge`: a judge reads each part the terms ask a person about and decides nothing, beside the person's answer. Checked against placket e3972d6.
+- `github-merge`: an applier merges a pull request only when placket released a merge of it that the deciding role accepted, at the head commit released, and records the delivery for an auditor.
+- `guarded-export`: a receiver's guard exports a value only when exactly that value was released to it.
+- `local-apply`: an applier writes a file only with the text the deciding role accepted, or the version it changed it to, and nothing for a decline.
+- `notifier`: each new question an approver may answer runs one command, with its label and id, as it opens.
+- `shadow-judge`: a judge reads each part the terms ask a person about and decides nothing, beside the person's answer.
 
 ## What a pattern is made of
 
@@ -49,7 +49,7 @@ Each run has a process group of its own, which the test kills whatever happens, 
 A line in the list reads:
 
 ```
-- `<job>`: <the job it does>. Checked against placket <version>.
+- `<job>`: <the job it does>.
 ```
 
-`<version>` names the Placket the pattern last ran green on: a release tag, or, until Placket has one, `main` at a short commit hash, such as `main@b997be6`. A pull request that changes a command a pattern uses keeps that pattern green in the same pull request, and updates its version. A pattern never scripts around a gap in Placket: a gap is an issue to file (`CONTRIBUTING.md`, Patterns).
+Until Placket has a release tag, a line names no version: `make ci` runs every pattern on the tree beside it, so a pattern works with the Placket in the same commit. Once Placket has one, a line may end `Checked against placket <tag>.`, naming the release the pattern last ran green on, such as `v0.1.0`; a version is a release tag and nothing else. A pull request that changes a command a pattern uses keeps that pattern green in the same pull request. A pattern never scripts around a gap in Placket: a gap is an issue to file (`CONTRIBUTING.md`, Patterns).
