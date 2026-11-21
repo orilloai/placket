@@ -18,6 +18,7 @@ The first release. Placket mediates the parts that cross between parties under t
 - A Homebrew cask for macOS and Linux, `brew install --cask orilloai/tap/placket`, from the release's archives at their checksums; each release attaches it, and the tap takes it from the published release.
 - Two skills, in `skills/`, for any agent that reads `SKILL.md`: `placket-setup` installs placket with the person's yes and sets up a pattern, fetched at the binary's release tag, or an Accord of their own, ending with the line that adds `placket mcp` to their agent; `placket-scout` reads a repository or product description, only locally, and lists where an agent's action cannot be undone or leaves the system, with the gate and what its receipts would prove. A Claude Code plugin bundles them: `/plugin marketplace add orilloai/placket`, then `/plugin install placket@placket`.
 - Each release archive holds `NOTICE` beside `LICENSE` and `README.md`.
+- `placket --help` lists the commands, and `--help`, `-help` or `-h` on any command prints its usage on standard output, its flags one a line, and exits 0; with `--json` it prints one object of the command's flags. This corrects commands-1, under which `--help` was the error `usage`; `docs/adr/0029-help-and-answers-the-window-does-not-show.md` says why.
 - `placket version` prints which build the binary is: its version, its commit and the commit's time when the build carries them, the Go release it was built with, and the decision module's version and hash.
 - `patterns/local-apply/`: an applier writes a file only with the text the deciding role accepted, or the version it changed it to, and nothing for a decline.
 
@@ -34,9 +35,10 @@ The first release. Placket mediates the parts that cross between parties under t
 
 - A part the terms ask about is held, and a person in the role the terms name accepts it, changes it or declines it with `placket answer`, `change` or `decline`. An accept releases the part as it was sent; a change releases the person's version and returns it to the asker; a decline releases nothing. `placket give --wait` and `placket result` wait for the outcome.
 - Each answer is one call the answerer signs, over the answer's salted digest under a salt it mints. The call travels inside every delivery it releases, and the journal keeps every call it took. `--no-release` signs an answer that asks for no release, and `answer --keep` keeps the call and its salt.
-- `placket answer`, `change` and `decline` first check that the window shows the question as its ask's receipt names it, and stop with `error asked` when it does not. `placket cancel` is the asker's withdrawal of its own question.
+- `placket answer`, `change` and `decline` first read every page of the questions the window shows, and stop with `error asked`, signing nothing, when the part it shows is not the one its ask's receipt names. A question the window does not show goes to the window, whose refusal is printed: `rejected no-open-question` for one already closed, `rejected not-an-answerer` for a key that does not answer it. `placket cancel` is the asker's withdrawal of its own question.
 - Every salt is exactly 32 bytes, and placket mints 32. A text or a flag that is not valid UTF-8 is refused, never repaired.
 - A part may carry its `mediaType`, which its delivery carries.
+- A body `placket get` fetched is never lost. One it cannot write to standard output, as to a closed pipe, or to its `--out` file is kept in `kept.jsonl`, and `get` ends in `error file kept`; with `--json`, so is each body an object it cannot write holds. A delivery whose record in the state directory cannot be written is still printed, then the error. `placket watch` ends, `error file`, once its standard output closes.
 
 ### Run agents, and several mediators
 
