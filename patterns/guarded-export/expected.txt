@@ -35,15 +35,16 @@ guard: a record never proposed
 guard: refuses {"currency":"EUR","price":"1.00","sku":"TB-900"}: released exit 1
 export: 2 records exported
 
-== 6. a record replaced later still matches its own receipt
+== 6. a record replaced later matches its own receipt, and is refused as not the latest
 proposer: gives {"currency":"EUR","price":"19.10","sku":"TB-100"}: ask, exit 4
 approver: reads {"currency":"EUR","price":"19.10","sku":"TB-100"}
 approver: accepts: answer pass, release released, exit 0
 receiver: fetched 1 more
 guard: the old record of TB-100, since replaced
-guard: exports {"currency":"EUR","price":"18.40","sku":"TB-100"}: released as a proposal
-guard: released --every for TB-100: 2 matches, in fetch order
-guard: not the latest release of TB-100: a caller that needs only the latest refuses it
+guard: refuses {"currency":"EUR","price":"18.40","sku":"TB-100"}: released as a proposal, but not the latest of 2 releases of "TB-100"
+guard: the new record of TB-100
+guard: exports {"currency":"EUR","price":"19.10","sku":"TB-100"}: released as a proposal
+export: 3 records exported, the last {"currency":"EUR","price":"19.10","sku":"TB-100"}
 
 == 7. the log of every crossing, and the journal verified
 log: proposal ask maybe answer accepted, released

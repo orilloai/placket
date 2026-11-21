@@ -99,10 +99,12 @@ applier: refused pr 7 unwitnessed
 agent: proposes pull request 15, while the applier's installation no longer reaches the repository
 agent: proposes pull request 16, while GitHub limits the applier's rate
 agent: proposes pull request 17, whose comment GitHub does not take
+agent: proposes pull request 23, whose status GitHub does not take
 agent: proposes pull request 18, retargeted to next after the applier reads it
 agent: proposes pull request 19, which merges and cannot be read again
 agent: proposes pull request 20, whose merge call is answered as made and merges nothing
-decider: accepts 6, each released to the applier
+agent: proposes pull request 22, while a person stops the applier
+decider: accepts 8, each released to the applier
 gh: GET repos/example/widgets/pulls/15
 gh: GET repos/example/widgets
 applier: apply: pr 15: GitHub's read of the pull request gave HTTP 404: once it gives the pull request, pipe this release again
@@ -113,7 +115,13 @@ gh: GET repos/example/widgets/pulls/17
 gh: PUT repos/example/widgets/pulls/17/merge
 gh: GET repos/example/widgets/pulls/17
 gh: POST repos/example/widgets/issues/17/comments
-applier: apply: pr 17 merged, and its record was not posted: post its comment and status by hand from the kept delivery
+applier: apply: pr 17 merged, and neither its comment nor its status was posted: post both by hand from the kept delivery, the comment first
+gh: GET repos/example/widgets/pulls/23
+gh: PUT repos/example/widgets/pulls/23/merge
+gh: GET repos/example/widgets/pulls/23
+gh: POST repos/example/widgets/issues/23/comments
+gh: POST repos/example/widgets/statuses/<commit>
+applier: apply: pr 23 merged and its comment was posted, but its status was not: post the status by hand from the kept delivery, its target_url https://github.com/example/widgets/pull/23#issuecomment-1003
 gh: GET repos/example/widgets/pulls/18
 gh: PUT repos/example/widgets/pulls/18/merge
 gh: GET repos/example/widgets/pulls/18
@@ -126,6 +134,10 @@ gh: GET repos/example/widgets/pulls/20
 gh: PUT repos/example/widgets/pulls/20/merge
 gh: GET repos/example/widgets/pulls/20
 applier: apply: pr 20: GitHub answered the merge call, and the pull request read again is not merged: see to it by hand
+pattern: TERM sent to the applier while GitHub reads pull request 22
+gh: GET repos/example/widgets/pulls/22
+applier: apply: interrupted at pr 22
+pattern: the applier exited 1
 pattern: pull request 15, piped again from the kept delivery once the repository reads
 gh: GET repos/example/widgets/pulls/15
 gh: PUT repos/example/widgets/pulls/15/merge
@@ -143,6 +155,13 @@ applier: applied pr 16
 pattern: pull request 17's comment and status, posted by hand from the kept delivery
 gh: statuses on pull request 17's merge commit: 1
 gh: pull request 18 merged into next, with 0 statuses
+pattern: pull request 22, piped again from the kept delivery, since nothing of it was done
+gh: GET repos/example/widgets/pulls/22
+gh: PUT repos/example/widgets/pulls/22/merge
+gh: GET repos/example/widgets/pulls/22
+gh: POST repos/example/widgets/issues/22/comments
+gh: POST repos/example/widgets/statuses/<commit>
+applier: applied pr 22
 
 == 8. a repository spelled otherwise than GitHub spells it
 agent: proposes pull request 21 of Example/Widgets
@@ -157,7 +176,7 @@ auditor: 1 refused: its receipt is not a release that role decider accepted
 auditor: 1 refused: its comment's delivery is not of its receipt, or names another merge
 auditor: 30 refused: it links no comment on pull request 7
 auditor: status 33, newest first, is this merge's record
-verify: valid: 69 receipts signed
+verify: valid: 75 receipts signed
 verify: terms: not checked: the declarations are sealed; with every member's opening, --open checks them
 verify: <the receipt> witnessed: signed by key <the decider's key>, which principal <the principal> bound to role decider
 verify: body: the part of receipt <the receipt> is the one it names
