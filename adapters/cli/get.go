@@ -203,7 +203,11 @@ func (g *getting) run(wait int) int {
 		}
 		d, kept, code, err := s.fetch(w, g.keep)
 		if err != nil {
-			// The window handed d over and its record failed: the body goes to the user first.
+			// The window handed d over and its record failed: the body goes to the user first,
+			// under the lock if it can be taken, since a body not written is kept.
+			if !g.locked && s.c.Lock() == nil {
+				g.locked = true
+			}
 			if code := g.write(d, kept, false); code != ExitOK {
 				return code
 			}
