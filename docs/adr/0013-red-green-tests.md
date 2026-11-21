@@ -1,6 +1,6 @@
 # 0013. Tests are shown red against main and green at the head, however the branch was built
 
-Status: accepted. Date: 2026-11-16. Amended 2026-11-16: the job runs on pull requests and on pushes to `main`, not on every push.
+Status: accepted. Date: 2026-11-16. Amended 2026-11-16: the job runs on pull requests and on pushes to `main`, not on every push. Amended 2026-11-21: the same program checks a second rule, `outside-commits-signed-off`, on the change's own commits (below).
 
 ## Context
 
@@ -45,3 +45,25 @@ The property wanted is about the change as a whole: every test the change adds o
 - Branches need no prefix: the job runs on every pull request, forks and drafts included, with a read-only token, and on every push to `main`. A branch with no pull request is not checked by GitHub; a builder who wants GitHub's run early opens a draft. One push to a branch with a pull request runs each job once, not once for the push and again for the pull request.
 - Writing tests first stays the habit, and a branch's history may still show it, but the proof no longer depends on it.
 - A test that only passes because of the change's code is the proof; a test that merely compiles against new code is the reviewer's to judge, from the report.
+
+## Amendment of 2026-11-21: outside commits are signed off
+
+### Context
+
+Anyone may open a pull request once the repository is public. Each commit an outside contributor sends must carry their own `Signed-off-by`, their statement under the Developer Certificate of Origin, and nothing checked it. The project's own commits carry no sign-off, and an agent never adds one, yet an agent did add one in a bot's name, and a review round was spent finding it. A machine can see a sign-off in a bot's name. It cannot see an agent adding a person's sign-off for them: that stays the contributor's duty and the reviewer's eye.
+
+### Decision
+
+- **A rule of its own, `outside-commits-signed-off`, in the same program and the same job.** `tools/redgreen` judges it after `red-green-tests`, on the same base and head, and prints its lines after that verdict. The job exits 1 if either rule refuses, and 3 if either could not judge.
+- **The change's own commits only.** It reads the commits reachable from the head and not from the base, never the older history, so the bot sign-offs already on `main` are not judged again.
+- **A bot's sign-off is refused on every run**, except on Dependabot's pull requests. A sign-off is a bot's when its name, or the local part of its email, ends in `[bot]`.
+- **On a pull request from outside the project,** every commit that is not a merge needs a `Signed-off-by` whose email equals its author's email, ignoring case; the name is not compared. A merge commit needs none, since a branch may be updated from `main`, but a bot's sign-off on it is still refused.
+- **The project is a named list of pull request openers:** the Apps `orillo-swarm[bot]` and `orillo-loom[bot]`, and the maintainer's account, `jlindenger`. Their pull requests need no sign-off. `dependabot[bot]`'s are exempt from the whole rule, since Dependabot signs off its own commits in its own bot's name. An opener is matched in full, so a person's account named `orillo-swarm` is not the project.
+- **The opener is the pull request's author,** as GitHub gives it, never the run's actor and never a commit's author name, which anyone can set. The workflow passes it in the environment variable `PLACKET_PR_OPENER`, not a flag, because the program refuses a flag it does not know and is built from `main`'s copy: the workflow line and the program can then land in either order. An unset or empty value is no opener: a push to `main`, or `make red-green-tests` from a checkout. With no opener, the rule refuses only a bot's sign-off and prints nothing otherwise. With an opener, a pass prints one `ok` line.
+- **The tests it runs never see the opener.** Every process the program starts (`go test`, `sh`, `git`) gets the program's environment without `PLACKET_PR_OPENER`, so a test cannot pass or fail by who opened the pull request.
+
+### What it still cannot see
+
+- **A person's sign-off added by an agent** looks the same as one the person added. The contributor answers for it, and the reviewer reads it.
+- **Content in a merge commit.** On an outside pull request, a merge commit needs no sign-off, so whatever a merge adds beyond its parents carries none. The reviewer reads a merge that does more than update from `main`.
+- **Who the email is.** A sign-off matches by its email alone, and anyone can set a commit's author email. The sign-off is a statement, not proof of identity.
