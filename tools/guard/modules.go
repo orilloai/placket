@@ -49,10 +49,14 @@ var (
 	blockEndRE = regexp.MustCompile(`^[ \t]*[)]`)
 	verbRE     = regexp.MustCompile(`^[ \t]*[a-z]+[ \t]+`)
 	arrowRE    = regexp.MustCompile(`.*=>[ \t]*`)
+	// tagRE is a release version, the version of a tag core/vX.Y.Z: no pre-release, no build and no
+	// pseudo-version.
+	tagRE = regexp.MustCompile(`^v(0|[1-9][0-9]*)[.](0|[1-9][0-9]*)[.](0|[1-9][0-9]*)$`)
 )
 
 // root-module: no go.work or go.work.sum outside testdata/; and a root go.mod, when it exists, is the
-// module github.com/orilloai/placket, requires the core module and replaces it with ./core.
+// module github.com/orilloai/placket and requires the core module in one of two states: at v0.0.0,
+// replaced with ./core, until the core is first tagged; or at a tagged version, with no replace.
 func rootModule(t *tree) []finding {
 	var fs []finding
 	for _, e := range t.walk(".", func(_, name string) bool { return name == ".git" || name == "testdata" }) {
@@ -64,7 +68,13 @@ func rootModule(t *tree) []finding {
 		return fs
 	}
 	b, _ := t.read("go.mod")
-	mod, req, rep := false, false, false
+	mod, req := false, false
+	reqLine, reqVer := 0, ""
+	type replaced struct {
+		line int
+		to   string
+	}
+	var reps []replaced
 	blk := ""
 	for i, raw := range splitLines(string(b)) {
 		n := i + 1
@@ -101,13 +111,12 @@ func rootModule(t *tree) []finding {
 		}
 		switch kind {
 		case "require":
-			req = true
-		case "replace":
-			rep = true
-			to := strings.TrimRight(arrowRE.ReplaceAllString(line, ""), " \t")
-			if to != "./core" && to != "./core/" {
-				fs = append(fs, finding{file: "go.mod", line: n, text: coreModule + " is replaced with " + to + ", not ./core"})
+			req, reqLine, reqVer = true, n, ""
+			if len(args) > 1 {
+				reqVer = args[1]
 			}
+		case "replace":
+			reps = append(reps, replaced{line: n, to: strings.TrimRight(arrowRE.ReplaceAllString(line, ""), " \t")})
 		}
 	}
 	if !mod {
@@ -116,8 +125,26 @@ func rootModule(t *tree) []finding {
 	if !req {
 		fs = append(fs, finding{file: "go.mod", text: "no require of " + coreModule})
 	}
-	if !rep {
-		fs = append(fs, finding{file: "go.mod", text: "no replace of " + coreModule + " with ./core"})
+	switch {
+	case req && reqVer != "v0.0.0" && tagRE.MatchString(reqVer):
+		// The tagged state: the core comes from its tag, and nothing points it back at a tree.
+		for _, r := range reps {
+			fs = append(fs, finding{file: "go.mod", line: r.line, text: coreModule + " is replaced with " + r.to +
+				" beside its tagged require " + reqVer + "; a tagged core takes no replace"})
+		}
+	case req && reqVer != "v0.0.0":
+		fs = append(fs, finding{file: "go.mod", line: reqLine, text: coreModule + " is required at " + reqVer +
+			", neither v0.0.0 replaced with ./core nor a tagged version"})
+	default:
+		// The untagged state: the core comes from ./core.
+		for _, r := range reps {
+			if r.to != "./core" && r.to != "./core/" {
+				fs = append(fs, finding{file: "go.mod", line: r.line, text: coreModule + " is replaced with " + r.to + ", not ./core"})
+			}
+		}
+		if len(reps) == 0 {
+			fs = append(fs, finding{file: "go.mod", text: "no replace of " + coreModule + " with ./core"})
+		}
 	}
 	return fs
 }

@@ -20,11 +20,11 @@ Checked by: `make ci`, step `core-no-deps`.
 
 ## `root-module`
 
-`adapters/` and `cmd/` live in one root module, `github.com/orilloai/placket`, which requires the core module and points that requirement at `./core` with a `replace` until the core is first tagged. Nobody commits a `go.work` file.
+`adapters/` and `cmd/` live in one root module, `github.com/orilloai/placket`, which requires the core module. Until the core is first tagged, it requires `v0.0.0` and replaces it with `./core`. Once the core is tagged, it requires a tagged version, with no `replace`. Nobody commits a `go.work` file.
 
-Why: one module for everything that touches the world, and a build that works the same from a fresh clone.
+Why: one module for everything that touches the world, and a build that works the same from a fresh clone; once the core is tagged, the root builds against what a Go user outside placket gets.
 
-Checked by: `make ci`, step `root-module`. The root module comes with its own decision record.
+Checked by: `make ci`, step `root-module`, which takes either state and refuses a `replace` beside a tagged require, and a require at any other version, such as a pseudo-version. A return from a tagged require to `v0.0.0` with its `replace` passes the check, so the reviewer reads it. The root module comes with its own decision record.
 
 ## `recipes-core-only`
 
