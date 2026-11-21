@@ -10,6 +10,8 @@ import (
 	"log"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 	"testing"
@@ -276,4 +278,59 @@ func TestReadReply(t *testing.T) {
 			`"criteria":{"block":"The content does not meet the instruction.","pass":"The content meets the instruction."}}}}`)) {
 		t.Fatal("the request body escapes the body's text")
 	}
+}
+
+// TestTheDocsNameTheFixedWords reads each place the docs say what a judge's request carries, and
+// finds in it the adapter's fixed words beside the kind, the body and the instruction: the path, the
+// one question and its type, and the two criteria's keys and sentences, as requestBody writes them.
+func TestTheDocsNameTheFixedWords(t *testing.T) {
+	t.Parallel()
+	words := []string{"`" + path + "`", "`" + question + "`", "`choice`", "`pass`", "`block`", criterionPass, criterionBlock}
+	places := []struct{ file, start string }{
+		{"SECURITY.md", "- A judge's request "},
+		{"SECURITY.md", "## What a judge sends"},
+		{"README.md", "## Judges"},
+		{"docs/security/threat-model.md", "- **P21."},
+		{"docs/security/threat-model.md", "## The Jev data flow"},
+		{"docs/adr/0023-judges.md", "### The key, and what leaves the machine"},
+	}
+	for _, p := range places {
+		b, err := os.ReadFile(filepath.Join("..", "..", "..", p.file))
+		if err != nil {
+			t.Fatal(err)
+		}
+		text, ok := docPlace(string(b), p.start)
+		if !ok {
+			t.Fatalf("%s: no %q", p.file, p.start)
+		}
+		for _, w := range words {
+			if !strings.Contains(text, w) {
+				t.Errorf("%s, %q: does not name %s", p.file, p.start, w)
+			}
+		}
+	}
+}
+
+// docPlace returns the place of a Markdown doc that starts with the line start: a heading's section,
+// to the next heading of its level or above, or else the one line.
+func docPlace(doc, start string) (string, bool) {
+	lines := strings.Split(doc, "\n")
+	for i, l := range lines {
+		if !strings.HasPrefix(l, start) {
+			continue
+		}
+		level := strings.Index(l, "# ") + 1
+		if !strings.HasPrefix(l, "#") {
+			return l, true
+		}
+		end := len(lines)
+		for j := i + 1; j < len(lines); j++ {
+			if h := strings.Index(lines[j], "# "); strings.HasPrefix(lines[j], "#") && h+1 <= level {
+				end = j
+				break
+			}
+		}
+		return strings.Join(lines[i:end], "\n"), true
+	}
+	return "", false
 }

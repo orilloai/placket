@@ -1,7 +1,7 @@
 #!/bin/sh
 # The first hour of each of placket's three entry points, from a clean HOME, as a person would spend
 # it (docs/adr/0027-placket-init.md): a, approve before apply; b, an out-gate on a merge; c, handoffs
-# between agents across two mediators.
+# between agents across two windows, whose journals one mediator key signs.
 #
 # Usage: sh tests/test_first_hour.sh [a|b|c]. With no argument, as make ci runs it, it runs the three
 # side by side; with one, that entry alone.
@@ -121,6 +121,7 @@ if [ "${1:-}" = --entry ]; then
 			grep -qx 'conforms: every decision is one this Accord let its decider make' verify.err ||
 				die "verify $label printed no conforms line: $(cat verify.err)"
 			say "verify $label: $(sed -n 's/^\(valid: [0-9]* receipts\) .*/\1/p' verify.err), conforms"
+			sed -n 's/^valid: [0-9]* receipts signed by mediator //p' verify.err >>mediators
 			i=$((i + 1))
 		done
 	}
@@ -178,6 +179,10 @@ if [ "${1:-}" = --entry ]; then
 		done
 		say "the planner hands its plan to the coder, and the coder its work to the reviewer, each fetched with its receipt"
 		verify
+		# init handoff writes one mediator key for both Accords: both valid lines name it.
+		[ "$(wc -l <mediators | tr -d ' ')" = 2 ] && [ "$(sort -u mediators | wc -l | tr -d ' ')" = 1 ] ||
+			die "the two journals are not signed by one mediator key: $(cat mediators)"
+		say "both journals are signed by one mediator key"
 		;;
 	esac
 	exit 0

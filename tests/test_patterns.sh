@@ -5,7 +5,8 @@
 # job, with its README.md, pattern.sh and expected.txt; the job's README has the four sections in
 # order; its pattern.sh, and its apply.sh where it holds one, mark the lines a caller changes; and the
 # README's list names every job once, with the Placket version it was last checked against, and no
-# job that is not there.
+# job that is not there; each version is a release tag, or main@<short hash>, and with the history
+# each is an ancestor of HEAD.
 #
 # Then each pattern runs, one at a time, on the binary this tree builds and nothing else of the tree:
 # from a fresh copy of its own directory, with the binary's directory first on PATH and a fresh TMPDIR
@@ -89,6 +90,34 @@ done
 for job in $jobs; do
 	printf '%s\n' "$listed" | grep -Fqx "$job" || fail "patterns/README.md: does not list $job"
 done
+# Each version checked against is a release tag, or main@<short hash> of a commit on main: with the
+# history, an ancestor of HEAD. With no history, or a shallow one, the ancestry is not checked, and
+# the test says so.
+history=yes
+if ! git -C "$root" rev-parse -q --verify HEAD >/dev/null 2>&1; then
+	history="no git history"
+elif [ "$(git -C "$root" rev-parse --is-shallow-repository 2>/dev/null)" != false ]; then
+	history="a shallow history"
+fi
+sed -n 's/^- `\([^`]*\)`: .*\. Checked against placket \([^ ]*\)\.$/\1 \2/p' "$tmp/list" >"$tmp/versions"
+while read -r job v; do
+	case $v in
+	v[0-9]*.[0-9]*.[0-9]*)
+		expr "$v" : 'v[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*\(-[a-z][a-z]*\(\.[0-9][0-9]*\)\{0,1\}\)\{0,1\}$' >/dev/null ||
+			fail "patterns/README.md: $job is checked against $v, which is no release tag"
+		[ "$history" != yes ] || git -C "$root" merge-base --is-ancestor "refs/tags/$v" HEAD 2>/dev/null ||
+			fail "patterns/README.md: $job is checked against $v, which is no tag on HEAD's history"
+		;;
+	main@*)
+		h=${v#main@}
+		expr "$h" : '[0-9a-f]\{7,40\}$' >/dev/null || fail "patterns/README.md: $job is checked against $v, whose hash is not one"
+		[ "$history" != yes ] || git -C "$root" merge-base --is-ancestor "$h" HEAD 2>/dev/null ||
+			fail "patterns/README.md: $job is checked against $v, which is not a commit on main, an ancestor of HEAD"
+		;;
+	*) fail "patterns/README.md: $job is checked against $v, which is neither a release tag nor main@<short hash>" ;;
+	esac
+done <"$tmp/versions"
+[ "$history" = yes ] || echo "ok   patterns/README.md: the ancestry check of the versions is skipped: $history"
 if [ "$failed" -ne 0 ]; then
 	exit 1
 fi

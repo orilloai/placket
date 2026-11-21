@@ -113,10 +113,10 @@ chmod 755 "$signers/cosign" "$signers/gh"
 
 # install <name> <path> [<args>...]: runs install.sh, read from standard input, with the PATH <path>
 # and the arguments, in a clean HOME, or the last run's when keep is set. PLACKET_RELEASE_BASE is the
-# release, or empty when nobase is set; PLACKET_INSTALL_DIR is dest; the stand-in gh's GH_AUTH_EXIT
+# release, or empty when nobase is set, or relbase when that is set; PLACKET_INSTALL_DIR is dest; the stand-in gh's GH_AUTH_EXIT
 # and GH_EXIT are gh_auth and gh_attest. Its output, standard output and standard error together,
 # goes to $out, and its exit status to $rc.
-n=0 keep= nobase= dest= gh_auth=0 gh_attest=0
+n=0 keep= nobase= relbase= dest= gh_auth=0 gh_attest=0
 install() {
 	current=$1 path=$2
 	shift 2
@@ -127,6 +127,7 @@ install() {
 	fi
 	base=file://$rel
 	[ -z "$nobase" ] || base=
+	[ -z "$relbase" ] || base=$relbase
 	rm -f "$tmp/calls" "$tmp/curl.log"
 	(cd "$home" && env HOME="$home" PATH="$path" PLACKET_RELEASE_BASE="$base" PLACKET_INSTALL_DIR="$dest" \
 		GH_AUTH_EXIT="$gh_auth" GH_EXIT="$gh_attest" "$shell" -s -- "$@" <"$root/install.sh") >"$out" 2>&1
@@ -253,7 +254,10 @@ else
 fi
 
 # U2: one byte of the host's archive changed.
-printf 'x' | dd of="$rel/$archive" bs=1 seek=20 conv=notrunc 2>/dev/null
+# The byte written is never the one there: x, or y where x was.
+flip=x
+[ "$(od -An -tx1 -j20 -N1 "$rel/$archive" | tr -d ' \n')" != 78 ] || flip=y
+printf '%s' "$flip" | dd of="$rel/$archive" bs=1 seek=20 conv=notrunc 2>/dev/null
 install "an archive changed by one byte installs nothing" "$signers:$tools"
 refused 1 "install: refused: $archive: its SHA-256 is not its line in checksums.txt" && ok
 reset
@@ -339,5 +343,90 @@ done
 # A --version that is not a release tag.
 install "a --version that is not vX.Y.Z is refused" "$tools" --version 0.1
 refused 2 "install: usage: install.sh [--version vX.Y.Z]" && ok
+
+# A file:// release is downloaded over file:// alone: every curl call of the first install's kind
+# carries --proto =file.
+install "a file:// PLACKET_RELEASE_BASE limits each download to file://" "$tools"
+if [ "$rc" -ne 0 ] || [ ! -s "$tmp/curl.log" ]; then
+	fail "want exit 0 and a download, got exit $rc"
+elif grep -v -e '--proto =file --proto-redir =file ' "$tmp/curl.log" >"$tmp/loose"; then
+	fail "a download is not limited to file://"
+	sed 's/^/    > /' "$tmp/loose"
+else
+	ok
+fi
+
+# Any other PLACKET_RELEASE_BASE is refused before any download.
+for b in http://example.invalid/r ftp://example.invalid/r /tmp/release; do
+	relbase=$b
+	install "PLACKET_RELEASE_BASE=$b is refused, and nothing is downloaded" "$tools"
+	relbase=
+	if [ "$rc" -ne 1 ] || ! tail -n 1 "$out" | grep -q '^install: refused: PLACKET_RELEASE_BASE: '; then
+		fail "want exit 1 and a last line starting 'install: refused: PLACKET_RELEASE_BASE: ', got exit $rc"
+	elif [ -s "$tmp/curl.log" ]; then
+		fail "it downloaded"
+	elif [ -e "$home/.local/bin/placket" ]; then
+		fail "it installed placket"
+	else
+		ok
+	fi
+done
+
+# The file installed is written first under a name mktemp makes in the install directory, so the
+# rename stays on one file system and no name comes from the process id: a stand-in mktemp, first on
+# PATH, logs each call, and a file already named .placket.install.<the install's pid> is left as it
+# was. The shell that plants it then runs install.sh in its own process, by exec.
+mkdir "$tmp/mk" "$tmp/mkdest"
+cat >"$tmp/mk/mktemp" <<EOF
+#!/bin/sh
+echo "mktemp \$*" >>"$tmp/mktemp.log"
+exec "$(command -v mktemp)" "\$@"
+EOF
+chmod 755 "$tmp/mk/mktemp"
+current="the file installed is first written under a name mktemp makes in the install directory"
+(cd "$tmp" && env HOME="$tmp/mkdest" PATH="$tmp/mk:$tools" PLACKET_RELEASE_BASE="file://$rel" PLACKET_INSTALL_DIR="$tmp/mkdest" \
+	"$shell" -c 'echo planted >"$PLACKET_INSTALL_DIR/.placket.install.$$" && exec "$0" -s' "$shell" <"$root/install.sh") >"$out" 2>&1
+rc=$?
+planted=$(cd "$tmp/mkdest" && ls -A | grep '^\.placket\.install\.')
+if [ "$rc" -ne 0 ] || ! cmp -s "$tmp/mkdest/placket" "$tmp/files/placket"; then
+	fail "want exit 0 and the tree's placket in the install directory, got exit $rc"
+elif ! grep -q "^mktemp $tmp/mkdest/[^ /]*XXXXXX\$" "$tmp/mktemp.log"; then
+	fail "mktemp made no file in the install directory"
+	sed 's/^/    > /' "$tmp/mktemp.log"
+elif [ "$(echo "$planted" | wc -l | tr -d ' ')" != 1 ] || [ "$(cat "$tmp/mkdest/$planted")" != planted ]; then
+	fail "the file named for the install's process id was not left as it was"
+	ls -A "$tmp/mkdest" | sed 's/^/    > /'
+elif [ "$(cd "$tmp/mkdest" && ls -A | grep -vx placket | grep -vx "$planted")" != "" ]; then
+	fail "it left a file beside placket"
+	ls -A "$tmp/mkdest" | sed 's/^/    > /'
+else
+	ok
+fi
+
+# install.sh cut short, after any of its lines but the last, runs nothing: curl is never called and
+# nothing is installed, as when a `curl | sh` download stops part way.
+current="install.sh cut after any line but its last runs nothing"
+lines=$(wc -l <"$root/install.sh" | tr -d ' ')
+mkdir "$tmp/cutdest"
+ran=
+i=1
+while [ "$i" -lt "$lines" ]; do
+	rm -f "$tmp/curl.log"
+	head -n "$i" "$root/install.sh" | (cd "$tmp" && env HOME="$tmp/cutdest" PATH="$tools" PLACKET_RELEASE_BASE="file://$rel" \
+		PLACKET_INSTALL_DIR="$tmp/cutdest" "$shell" -s) >/dev/null 2>&1
+	if [ -s "$tmp/curl.log" ] || [ -n "$(ls -A "$tmp/cutdest")" ]; then
+		ran="$ran $i"
+		rm -rf "$tmp/cutdest" && mkdir "$tmp/cutdest"
+	fi
+	i=$((i + 1))
+done
+: >"$out"
+if [ "$lines" -lt 2 ]; then
+	fail "install.sh has $lines lines"
+elif [ -n "$ran" ]; then
+	fail "cut after line$ran, it downloaded or installed"
+else
+	ok
+fi
 
 exit $failed
