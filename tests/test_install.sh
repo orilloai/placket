@@ -252,8 +252,11 @@ else
 	ok
 fi
 
-# U2: one byte of the host's archive changed.
-printf 'x' | dd of="$rel/$archive" bs=1 seek=20 conv=notrunc 2>/dev/null
+# U2: one byte of the host's archive changed: byte 20 with its lowest bit flipped, so it differs
+# whatever the archive held there.
+b=$(dd if="$rel/$archive" bs=1 skip=20 count=1 2>/dev/null | od -An -tu1 | tr -d ' ')
+# shellcheck disable=SC2059 # the format is the octal escape of the flipped byte
+printf "\\$(printf '%03o' $((b ^ 1)))" | dd of="$rel/$archive" bs=1 seek=20 conv=notrunc 2>/dev/null
 install "an archive changed by one byte installs nothing" "$signers:$tools"
 refused 1 "install: refused: $archive: its SHA-256 is not its line in checksums.txt" && ok
 reset
