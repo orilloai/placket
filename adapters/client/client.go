@@ -801,9 +801,10 @@ func (c *Client) Cancel(ctx context.Context, question string) (local.Reply, erro
 // anything is signed (Asked). A question the window shows that is not the part its ask's receipt
 // names is CodeAsked: nothing is signed for a part that does not check. A question the window does
 // not show, on any page of its questions, is closed or not this key's to answer, so the call goes on
-// to the window, whose refusal says which (maybe-6, maybe-7). It returns a reply to stop on, a
-// refusal or, on a closed Accord, the rejection closed, which the window would give right after
-// membership (close-3); or nil.
+// to the window, whose refusal says which (maybe-6, maybe-7). A page that says there are more but
+// gives no cursor, or the cursor it was asked after, leaves pages unread, so it is CodeReply and
+// nothing is signed. It returns a reply to stop on, a refusal or, on a closed Accord, the rejection
+// closed, which the window would give right after membership (close-3); or nil.
 func (c *Client) shown(ctx context.Context, question string) (*local.Reply, error) {
 	after := ""
 	for {
@@ -827,8 +828,11 @@ func (c *Client) shown(ctx context.Context, question string) (*local.Reply, erro
 				return nil, fail(CodeAsked)
 			}
 		}
-		if !s.More || s.Cursor == "" || s.Cursor == after {
+		if !s.More {
 			return nil, nil
+		}
+		if s.Cursor == "" || s.Cursor == after {
+			return nil, fail(CodeReply)
 		}
 		after = s.Cursor
 	}
