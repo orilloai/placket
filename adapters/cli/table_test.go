@@ -89,6 +89,9 @@ func checkRow(t *testing.T, name string, row cli.Row, rows map[string]cli.Row) {
 		if f.Own && !f.Required {
 			t.Errorf("%s: --%s is checked by the command itself and not required", name, f.Name)
 		}
+		if f.DefaultArg && (len(row.Args) == 0 || f.Default != "" || f.Kind != cli.KindText) {
+			t.Errorf("%s: --%s takes its default from an argument, and its row has none, or gives a default too", name, f.Name)
+		}
 		if (f.Value == "") != (f.Kind == cli.KindSwitch) {
 			t.Errorf("%s: --%s: a switch takes no value, and only it: %q", name, f.Name, f.Value)
 		}
@@ -100,8 +103,12 @@ func checkRow(t *testing.T, name string, row cli.Row, rows map[string]cli.Row) {
 			t.Errorf("%s reads --%s, which its row does not list", name, n)
 			continue
 		}
-		if rf.Kind != f.Kind || rf.Default != defaultOf(f) {
-			t.Errorf("%s: --%s is read as %v with the default %q, and its row gives %v and %q", name, n, rf.Kind, rf.Default, f.Kind, defaultOf(f))
+		want := defaultOf(f)
+		if f.DefaultArg {
+			want = words[len(words)-1]
+		}
+		if rf.Kind != f.Kind || rf.Default != want {
+			t.Errorf("%s: --%s is read as %v with the default %q, and its row gives %v and %q", name, n, rf.Kind, rf.Default, f.Kind, want)
 		}
 	}
 	for n := range listed {

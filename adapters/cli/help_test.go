@@ -157,3 +157,35 @@ func TestHelpOfPlacket(t *testing.T) {
 		t.Fatalf("give --text --help: %v", r)
 	}
 }
+
+// TestInitHelpGivesTheExampleAsTheLabel: init <example> --help names the example as --label's
+// default, the label init takes without --label, in its line and, with --json, as the flag's
+// default; init --help, before any example, gives none.
+func TestInitHelpGivesTheExampleAsTheLabel(t *testing.T) {
+	t.Parallel()
+	labelOf := func(r result) *string {
+		var o helpObject
+		if err := json.Unmarshal([]byte(r.stdout), &o); err != nil {
+			t.Fatalf("%v: %v", r, err)
+		}
+		for _, f := range o.Flags {
+			if f.Name == "label" {
+				return f.Default
+			}
+		}
+		return nil
+	}
+	for _, x := range []string{"approve", "merge", "handoff"} {
+		if d := labelOf(run(t, env(), "init", x, "--help", "--json")); d == nil || *d != x {
+			t.Errorf("init %s --help --json gives --label the default %v, want %q", x, d, x)
+		}
+		r := run(t, env(), "init", x, "--help")
+		i := strings.Index(r.stdout, "\n--label <label>  ")
+		if i < 0 || !strings.HasSuffix(strings.SplitN(r.stdout[i+1:], "\n", 2)[0], " (default "+x+")") {
+			t.Errorf("init %s --help does not give --label the default %s: %v", x, x, r)
+		}
+	}
+	if d := labelOf(run(t, env(), "init", "--help", "--json")); d == nil || *d != "" {
+		t.Errorf("init --help --json gives --label the default %v, want none", d)
+	}
+}

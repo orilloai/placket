@@ -4,7 +4,7 @@
 
 Every command of `placket`: what it does, its usage, its arguments and flags, what its `--json` object follows, and the exit codes it ends with. A command prints prose for a person on standard error, and JSON or a body on standard output. A command that is refused or fails ends standard error with one line: `rejected <code>` when the window refused the call, `rejected founding <code>` when it refused an acceptance, `door <code>` when the window's door refused it, and `error <code>` for any other, with any detail after the code. [Errors](#errors) gives each code's cause and fix.
 
-With `--json`, every command but `mcp` prints its result as one JSON object on standard output instead; its exit code and standard error stay the same. Each command's object holds the members [section 11 of the protocol](../../spec/protocol.md#11-what-the-command-line-prints-for-a-script) gives it, under the requirement ids each command below cites.
+With `--json`, every command but `mcp` and `watch` prints its result as one JSON object and a line feed on standard output instead; its exit code and standard error stay the same. `watch`, which runs until it is stopped, prints one object per question, each on a line of its own as the question opens, and then its own object. `mcp`, whose standard output carries the MCP protocol, takes no `--json`. Each command's object holds the members [section 11 of the protocol](../../spec/protocol.md#11-what-the-command-line-prints-for-a-script) gives it, under the requirement ids each command below cites.
 
 In a usage, `<socket flags>` stands for `--key <file> --socket <path> --accord <id>`, or `--label <label>` in their place, and then `[--state <dir>]`: the flags of every command that calls a window. A flag in square brackets is optional, `|` separates flags of which one is given, and `...` after a flag means it may be given more than once.
 
@@ -68,7 +68,7 @@ Usage: `placket init <example> [--dir <dir>] [--label <label>]`
 | Flag | Required | Default | What it is |
 |---|---|---|---|
 | `--dir <dir>` | no |  | The directory to write the example in, empty or new; by default `<placket config dir>/<label>/`. |
-| `--label <label>` | no |  | The label the example's entries of the labels config start with; by default the example's name. |
+| `--label <label>` | no | `<example>` | The label the example's entries of the labels config start with; by default the example's name. |
 | `--json` | no |  | Print the result as one JSON object on standard output. |
 
 Its `--json` object follows [commands-1](../../spec/protocol.md#commands-1-one-object-on-standard-output).
@@ -353,7 +353,7 @@ Usage: `placket watch --label <label>... [--count <n>]`
 |---|---|---|---|
 | `--label <label>` | yes |  | A mediator of the labels config to watch, given once per mediator; at least one is needed. |
 | `--count <n>` | no |  | Exit once this many questions are printed; without it, run until interrupted. |
-| `--json` | no |  | Print the result as one JSON object on standard output. |
+| `--json` | no |  | Print one JSON object per question on standard output, each on a line of its own as the question opens, and then the result as one object. |
 
 Its `--json` object follows [commands-1](../../spec/protocol.md#commands-1-one-object-on-standard-output).
 

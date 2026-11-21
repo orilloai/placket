@@ -183,13 +183,8 @@ func initCommand(r *run, args []string) int {
 	if !r.parse(set, args[1:]) {
 		return r.tool(codeUsage)
 	}
-	// The label is the example's name unless --label is given, even given empty.
-	label := args[0]
-	set.Visit(func(f *flag.Flag) {
-		if f.Name == "label" {
-			label = *labelFlag
-		}
-	})
+	// The label is the example's name, the flag's default, unless --label is given, even given empty.
+	label := *labelFlag
 	if !client.Label(label) || x.longest(label) > 63 {
 		fmt.Fprintln(r.stderr, "usage: placket init: --label is 1 to 63 of a-z, 0-9 and -, and with its parties' names no longer than 63")
 		return r.tool(codeUsage)

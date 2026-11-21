@@ -27,7 +27,7 @@ The object holds `delivery`, the next part queued for the key, with its receipt,
    A release with no answer call, one the terms passed with nobody asked, is not a person's yes. An applier of an action that cannot be undone refuses it.
 3. **The world.** Check that what the release names still holds when the applier acts: a merge applier checks that the pull request is open, unmerged and at the released head.
 
-Refuse a release for a fault of its own, once, with its reason. Stop, exit non-zero and leave the queue as it is, for a fault of the world's: a network that does not answer, a credential refused. A release refused is never tried again; one left queued is.
+Refuse a release for a fault of its own, once, with its reason. A release refused is never tried again. For a fault of the world's, such as a network that does not answer or a credential refused, stop and exit non-zero before fetching the next release. The releases after it stay queued for the next run, but the one it stopped on does not: `get` handed it out once, and only `--keep`'s copy in `kept.jsonl` holds it. Nothing tries it again by itself. Once the world answers, take its delivery from `kept.jsonl` and give it to the applier again, as [`github-merge` does when it stops partway](../../patterns/github-merge/README.md#when-it-stops-partway).
 
 ## Act once
 

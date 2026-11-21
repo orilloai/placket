@@ -99,7 +99,7 @@ func render(spec map[string]string) ([]byte, error) {
 
 Every command of ` + "`placket`" + `: what it does, its usage, its arguments and flags, what its ` + "`--json`" + ` object follows, and the exit codes it ends with. A command prints prose for a person on standard error, and JSON or a body on standard output. A command that is refused or fails ends standard error with one line: ` + "`rejected <code>`" + ` when the window refused the call, ` + "`rejected founding <code>`" + ` when it refused an acceptance, ` + "`door <code>`" + ` when the window's door refused it, and ` + "`error <code>`" + ` for any other, with any detail after the code. [Errors](#errors) gives each code's cause and fix.
 
-With ` + "`--json`" + `, every command but ` + "`mcp`" + ` prints its result as one JSON object on standard output instead; its exit code and standard error stay the same. Each command's object holds the members [section 11 of the protocol](` + sec11 + `) gives it, under the requirement ids each command below cites.
+With ` + "`--json`" + `, every command but ` + "`mcp`" + ` and ` + "`watch`" + ` prints its result as one JSON object and a line feed on standard output instead; its exit code and standard error stay the same. ` + "`watch`" + `, which runs until it is stopped, prints one object per question, each on a line of its own as the question opens, and then its own object. ` + "`mcp`" + `, whose standard output carries the MCP protocol, takes no ` + "`--json`" + `. Each command's object holds the members [section 11 of the protocol](` + sec11 + `) gives it, under the requirement ids each command below cites.
 
 In a usage, ` + "`<socket flags>`" + ` stands for ` + "`--key <file> --socket <path> --accord <id>`" + `, or ` + "`--label <label>`" + ` in their place, and then ` + "`[--state <dir>]`" + `: the flags of every command that calls a window. A flag in square brackets is optional, ` + "`|`" + ` separates flags of which one is given, and ` + "`...`" + ` after a flag means it may be given more than once.
 
@@ -200,7 +200,10 @@ func command(b *bytes.Buffer, r cli.Row, names map[string]bool, link func(string
 				req = "unless `--label`"
 			}
 			def := ""
-			if f.Default != "" {
+			switch {
+			case f.DefaultArg && len(r.Args) > 0:
+				def = code("<" + r.Args[0].Name + ">")
+			case f.Default != "":
 				def = code(f.Default)
 			}
 			fmt.Fprintf(b, "| `%s` | %s | %s | %s |\n", f, req, def, cell(f.Sentence))

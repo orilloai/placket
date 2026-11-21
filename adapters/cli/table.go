@@ -79,6 +79,9 @@ type Flag struct {
 	// Default is the value the flag holds when it is not given, as the flag package prints it; empty
 	// for its kind's zero value.
 	Default string
+	// DefaultArg is set on a flag whose default is the value given to the row's first argument, such
+	// as init's --label, whose default is the example's name. Default is then empty.
+	DefaultArg bool
 	// Required is a flag the command needs, and refuses its run without as error usage. A socket
 	// command's --key, --socket and --accord are not: --label may take their place.
 	Required bool
@@ -152,7 +155,7 @@ var table = []Row{
 		Args:  []Arg{{Name: "example", Values: exampleNames, Sentence: "The entry point to set up: approve before apply, the out-gate of a merge, or an agent handoff."}},
 		Flags: withJSON(
 			Flag{Name: "dir", Value: "<dir>", Sentence: "The directory to write the example in, empty or new; by default `<placket config dir>/<label>/`."},
-			Flag{Name: "label", Value: "<label>", Sentence: "The label the example's entries of the labels config start with; by default the example's name."}),
+			Flag{Name: "label", Value: "<label>", DefaultArg: true, Sentence: "The label the example's entries of the labels config start with; by default the example's name."}),
 		JSON: []string{"commands-1"}, Exits: []int{ExitOK, ExitTool}},
 	{Words: []string{"key"}, Summary: "Make a key file, or print a key file's actor reference.",
 		Usage: "<subcommand>",
@@ -254,9 +257,10 @@ var table = []Row{
 		JSON:  []string{"commands-1"}, Exits: []int{ExitOK, ExitRejected, ExitTool}},
 	{Words: []string{"watch"}, Summary: "Wait on the questions of one or more mediators and print each new question once, as it opens, with the lines that answer it; it never answers.",
 		Usage: "--label <label>... [--count <n>]",
-		Flags: withJSON(
-			Flag{Name: "label", Kind: KindList, Value: "<label>", Required: true, Own: true, Sentence: "A mediator of the labels config to watch, given once per mediator; at least one is needed."},
-			Flag{Name: "count", Kind: KindNumber, Value: "<n>", Sentence: "Exit once this many questions are printed; without it, run until interrupted."}),
+		Flags: []Flag{
+			{Name: "label", Kind: KindList, Value: "<label>", Required: true, Own: true, Sentence: "A mediator of the labels config to watch, given once per mediator; at least one is needed."},
+			{Name: "count", Kind: KindNumber, Value: "<n>", Sentence: "Exit once this many questions are printed; without it, run until interrupted."},
+			{Name: flagJSON, Kind: KindSwitch, Sentence: "Print one JSON object per question on standard output, each on a line of its own as the question opens, and then the result as one object."}},
 		JSON: []string{"commands-1"}, Exits: []int{ExitOK, ExitRejected, ExitTool}},
 	{Words: []string{"answer"}, Summary: "Accept a question, asking for release unless `--no-release`, and print the answer's outcome, then the release's.",
 		Usage: "<socket flags> --question <id> [--text <text>] [--no-release] [--keep]",
@@ -380,6 +384,9 @@ func rowOf(name string) *Row {
 type flagSet struct {
 	*flag.FlagSet
 	row *Row
+	// arg is the value of the row's first argument the name holds, such as approve in init approve;
+	// empty when the name is the row's own.
+	arg string
 }
 
 // newFlags makes the flag set of the command name, which prints nothing of its own, with --json when
@@ -390,6 +397,9 @@ func newFlags(name string) *flagSet { return newFlagsNamed(name, name) }
 // init approve for the row init, whose argument is not a command of its own.
 func newFlagsNamed(name, row string) *flagSet {
 	fs := &flagSet{FlagSet: flag.NewFlagSet(name, flag.ContinueOnError), row: rowOf(row)}
+	if name != row {
+		fs.arg = strings.TrimPrefix(name, row+" ")
+	}
 	fs.SetOutput(io.Discard)
 	if _, ok := fs.rowFlag(flagJSON); ok {
 		fs.switchFlag(flagJSON)
@@ -409,10 +419,15 @@ func (fs *flagSet) rowFlag(name string) (Flag, bool) {
 	return Flag{Name: name}, false
 }
 
-// text reads a flag that holds one value.
+// text reads a flag that holds one value, by default its row's default, or the argument's value
+// for a flag whose default is the argument's.
 func (fs *flagSet) text(name string) *string {
 	f, _ := fs.rowFlag(name)
-	return fs.String(name, f.Default, f.Sentence)
+	def := f.Default
+	if f.DefaultArg {
+		def = fs.arg
+	}
+	return fs.String(name, def, f.Sentence)
 }
 
 // number reads a flag that holds one whole number.
