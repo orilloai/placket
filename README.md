@@ -10,21 +10,24 @@ The first job is ask and log: one system proposes, another applies, and a named 
 
 Placket is one binary, for Linux and macOS on amd64 and arm64. Any one of these lines installs it:
 
-- **The install script**, which checks what it downloads, as [`docs/release.md`, "Install in one line"](docs/release.md#install-in-one-line) says, and puts `placket` in `~/.local/bin`:
+- **The install script**, which checks the signature on the release's `checksums.txt` with `cosign`, the archive's SHA-256 against its line there, and the archive's provenance with `gh` when `gh` is installed and signed in, as [`docs/release.md`, "Install in one line"](docs/release.md#install-in-one-line) says, and puts `placket` in `~/.local/bin`:
 
   ```sh
   curl -fsSL https://github.com/orilloai/placket/releases/latest/download/install.sh | sh
   ```
 
-  `curl | sh` runs the script before anything checks it. To check the script itself first, against the release's signed `checksums.txt`:
+  Without `cosign` on `PATH` it installs nothing, unless `PLACKET_INSTALL_UNSIGNED=1` tells it to go on without the signature; then, unless `gh` verified the archive's provenance, it ends by saying the binary's origin was not checked.
+
+  `curl | sh` runs the script before anything checks it. To check the script itself first, against the release's signed `checksums.txt`, in a new directory, stopping at the first step that fails:
 
   ```sh
-  base=https://github.com/orilloai/placket/releases/latest/download
-  curl -fsSLO "$base/install.sh" -O "$base/checksums.txt" -O "$base/checksums.txt.sigstore.json"
+  dir=$(mktemp -d) && cd "$dir" &&
+  base=https://github.com/orilloai/placket/releases/latest/download &&
+  curl -fsSLO "$base/install.sh" -O "$base/checksums.txt" -O "$base/checksums.txt.sigstore.json" &&
   cosign verify-blob --bundle checksums.txt.sigstore.json \
     --certificate-identity https://github.com/orilloai/placket/.github/workflows/release.yml@refs/heads/main \
-    --certificate-oidc-issuer https://token.actions.githubusercontent.com checksums.txt
-  grep ' install.sh$' checksums.txt | shasum -a 256 -c
+    --certificate-oidc-issuer https://token.actions.githubusercontent.com checksums.txt &&
+  grep ' install.sh$' checksums.txt | shasum -a 256 -c &&
   sh install.sh
   ```
 
@@ -74,17 +77,17 @@ A receipt also does not show that the mediator is honest, or that its clock is t
 
 `make demo` runs the worked example, `scripts/demo.sh`, with Go 1.27 on Linux or macOS: it builds the `placket` binary, makes the keys of a mediator, an operator, a principal and three parties (a proposer, an applier and a decider), signs their terms and bindings, seals each party's terms, founds the Accord from the seals, and starts a window, to which each party consents by accepting its own view. Then the proposer asks three proposals and waits on each; the decider accepts the first, changes the second with a comment, and declines the third with a comment, each from its own commands; the applier fetches what was released. The proposer leaves a fourth proposal open and is refused when it tries to answer it itself, and gives a part of a kind no term names, which is blocked. The window is killed and started again: the open proposal is closed as undeliverable, and the applier fetches the changed version it had not fetched yet. Last, a third party verifies the journal with the terms sealed, the operator verifies it again with every opening, each party checks its own receipts against the view it accepted, a third party reconciles each party's records with it and exports the log, four rows; then changes one character of a receipt's signature, and verification fails. `sh scripts/demo.sh DIR` keeps everything it made in `DIR`.
 
-The journal of one run is committed under `scripts/demo/`, with the founding set, its `acceptances.json`, the mediator's public reference and, for the demo only, every party's opening, and no key. Anyone can verify it:
+The journal of one run is committed under `scripts/demo/`, with the founding set, its `acceptances.json`, the mediator's public reference and, for the demo only, every party's opening, and no key. Anyone can verify it, against the id of the Accord the demo founded, written out below; the id you verify a journal of your own against comes from your own record of its founding, such as the `accord <id>` line `placket founding` printed, never from the journal you are checking:
 
 ```
 go build -o placket ./cmd/placket
-./placket verify --accord "$(sed -n 's/^{"accord":"\(sha256:[0-9a-f]*\)".*/\1/p' scripts/demo/journal/accord)" --receipts scripts/demo/journal --founding scripts/demo/founding.json
+./placket verify --accord sha256:05c9d0e43cb807a278205425bf283145e28419f380c7fbacc9d74f674fcd4312 --receipts scripts/demo/journal --founding scripts/demo/founding.json
 ```
 
 Given only the Accord's id, its founding set and the acceptances beside it, it checks what every party signed: that every receipt is the mediator's and names this Accord, its card and its members, and that every member accepted its view. The terms behind each seal stay sealed, so it prints `valid: 13 receipts signed by mediator ...` and `terms: not checked: the declarations are sealed; with every member's opening, --open checks them`, and the journal's `answers.jsonl` shows each answer witnessed by the key that signed it. With every opening, as in a dispute, it checks each seal, each view and every decision:
 
 ```
-./placket verify --accord "$(sed -n 's/^{"accord":"\(sha256:[0-9a-f]*\)".*/\1/p' scripts/demo/journal/accord)" --receipts scripts/demo/journal --founding scripts/demo/founding.json $(for o in scripts/demo/openings/*; do printf ' --open %s' "$o"; done)
+./placket verify --accord sha256:05c9d0e43cb807a278205425bf283145e28419f380c7fbacc9d74f674fcd4312 --receipts scripts/demo/journal --founding scripts/demo/founding.json $(for o in scripts/demo/openings/*; do printf ' --open %s' "$o"; done)
 ```
 
 It prints `terms: checked: every seal opens, and every view is the one its member accepted` and `conforms: every decision is one this Accord let its decider make`.
