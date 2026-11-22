@@ -15,8 +15,22 @@ on:
   pull_request:
 permissions:
   contents: read
+# A push to a pull request ends the run of the commit it replaces: only the head's result is read,
+# and the old run would hold a runner the new one waits for. A push to main is never cancelled: each
+# commit of main keeps its own run.
+concurrency:
+  group: loom-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 env:
   GO_VERSION: "1.27.4"
+  # Go's module and build caches, which hold the standard library built plain and for the race
+  # detector, each module's packages, and the pinned tools make ci runs with `go run`. Every job
+  # restores the newest that main saved; only the ci job of a push to main saves one, under its
+  # commit, so a pull request reads main's cache and can never write what main or another pull
+  # request reads. Test results never come from it: make ci and redgreen run go test with -count=1.
+  GO_CACHE_PATHS: |
+    ~/.cache/go-build
+    ~/go/pkg/mod
 jobs:
   red-green-tests:
     runs-on: ubuntu-24.04
@@ -29,10 +43,14 @@ jobs:
       - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
         with:
           go-version: ${{ env.GO_VERSION }}
-          # Go's module and build caches, keyed on every module's go.sum (there is none at the root).
-          # Test results never come from it: redgreen runs go test with -count=1.
-          cache: true
-          cache-dependency-path: "**/go.sum"
+          # Its own cache is keyed on go.sum alone, so it is saved once and never again; the step
+          # below restores main's (GO_CACHE_PATHS).
+          cache: false
+      - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ env.GO_CACHE_PATHS }}
+          key: go-${{ runner.os }}-${{ env.GO_VERSION }}-${{ github.sha }}
+          restore-keys: go-${{ runner.os }}-${{ env.GO_VERSION }}-
       - name: Tests are red at the merge base with main and green at the head
         shell: bash
         run: |
@@ -59,8 +77,17 @@ jobs:
       - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
         with:
           go-version: ${{ env.GO_VERSION }}
-          # Go's module and build caches, keyed on every module's go.sum (there is none at the root).
-          # Test results never come from it: make ci runs go test with -count=1.
-          cache: true
-          cache-dependency-path: "**/go.sum"
+          # Its own cache is keyed on go.sum alone, so it is saved once and never again; the step
+          # below restores main's (GO_CACHE_PATHS).
+          cache: false
+      - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ env.GO_CACHE_PATHS }}
+          key: go-${{ runner.os }}-${{ env.GO_VERSION }}-${{ github.sha }}
+          restore-keys: go-${{ runner.os }}-${{ env.GO_VERSION }}-
       - run: make ci
+      - if: github.event_name == 'push' && !cancelled()
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ env.GO_CACHE_PATHS }}
+          key: go-${{ runner.os }}-${{ env.GO_VERSION }}-${{ github.sha }}
