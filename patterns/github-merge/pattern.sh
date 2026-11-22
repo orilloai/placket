@@ -364,9 +364,10 @@ jq -c --slurpfile g pr7.json.give '{state: "success", context: "placket", descri
 say pattern "32 more statuses named placket on pull request 7's merge commit"
 
 # CHANGE: the Accord, the founding set, its acceptances and the journal the operator handed you, the
-# deciding role, and the merge commit you audit.
+# deciding role, the applier's key reference, and the merge commit you audit.
 accord=$(cat asked/accord) founding=asked/founding.json acceptances=asked/acceptances.json journal=asked/journal
 role=decider
+applier=$(ref applier)
 commit=$c7
 # Step 1: the pull request the commit merged, as GitHub lists it.
 gh api "repos/$repo/commits/$commit/pulls" |
@@ -388,19 +389,30 @@ audit() {
 	jq -e --slurpfile s status.json --slurpfile p merged.json '.receiptId == $s[0].description and (.data as $b | $p[0]
 		| .base.repo.full_name == $b.repo and .number == $b.pr and .base.ref == $b.base and .head.sha == $b.head)' \
 		comment.json >/dev/null 2>&1 || { echo "its comment's delivery is not of its receipt, or names another merge"; return; }
-	# Step 4: verify, on the comment's delivery and its answer call.
+	# Step 4: verify, on the comment's delivery and its answer call, over a copy of the journal's
+	# receipts without its answer calls: the comment's call is the only call verify reads.
 	jq -c '.answer' comment.json >answer.json
+	copy=$(mktemp -d "${TMPDIR:-/tmp}/plk.XXXXXX")
+	cp "$journal/receipts.jsonl" "$copy/receipts.jsonl"
 	rc=0
-	placket verify --json --accord "$accord" --founding "$founding" --acceptances "$acceptances" --receipts "$journal" \
+	placket verify --json --accord "$accord" --founding "$founding" --acceptances "$acceptances" --receipts "$copy" \
 		--delivery comment.json --answers answer.json >verify.json 2>verify.err || rc=$?
+	rm -rf "$copy"
 	[ "$rc" -eq 0 ] || { echo "verify exits $rc"; return; }
-	# Step 5: the receipt is a release the deciding role's key accepted: verify witnessed its answer,
-	# signed by that key, and the call verify matched to it is an accept.
-	jq -e --slurpfile c comment.json --slurpfile k deciders.json --arg role "$role" '$c[0] as $d
+	# Step 5: the receipt is a release of a merge to the applier, which the deciding role's key
+	# accepted. Verify witnessed the comment's own call, signed by that key, and the call is an accept.
+	# The receipt's predicate, among those verify returns, is a crossing to the applier that passed,
+	# decided by an answer, and its subject is of kind merge. The comment's receipt is the one its
+	# receiptId names, which verify's body line, step 6, says.
+	jq -e --slurpfile c comment.json --slurpfile k deciders.json --arg role "$role" --arg applier "$applier" '. as $v
+		| $c[0] as $d | ($d.receipt.payload | @base64d | fromjson) as $s
 		| [.decisions[] | select(.receiptId == $d.receiptId) | .line
 			| capture("^(?<id>[^ ]+) witnessed: signed by key (?<key>[^ ]+), which principal [^ ]+ bound to role (?<roles>[^ ]+)$")]
 		| length == 1 and (.[0].key as $key | $k[0] | index($key)) != null and (.[0].roles | split(",") | index($role)) != null
-		and $d.answer.action == "accepted" and $d.answer.from == .[0].key' verify.json >/dev/null 2>&1 ||
+		and $d.answer.action == "accepted" and $d.answer.from == .[0].key
+		and $s.subject[0].name == "merge" and ($s.predicate | IN($v.predicates[]))
+		and ($s.predicate | .kind == "crossing" and .verdict == "pass" and .reason == "ok" and .to == $applier
+			and (.by | type) == "object" and (.by.answer | type) == "string")' verify.json >/dev/null 2>&1 ||
 		{ echo "its receipt is not a release that role $role accepted"; return; }
 	jq -e --slurpfile c comment.json '.body == "body: the part of receipt \($c[0].receiptId) is the one it names"' verify.json >/dev/null ||
 		{ echo "verify does not say its delivery is its receipt's part"; return; }
@@ -423,3 +435,54 @@ jq -r --slurpfile c comment.json --arg d "$(ref decider)" --arg p "$(ref princip
 jq -r --slurpfile c comment.json '.body | sub($c[0].receiptId; "<the receipt>") | "verify: \(.)"' verify.json
 say auditor "the body names this merge's repository, pull request, base and head: $(yes_no jq -e --slurpfile p merged.json '.data as $b
 	| $p[0] | .base.repo.full_name == $b.repo and .number == $b.pr and .base.ref == $b.base and .head.sha == $b.head' comment.json)"
+
+step "10. statuses naming a receipt of this merge's body, which is not its release"
+# Three more statuses named placket, each linking a comment on pull request 7 whose delivery names a
+# receipt of the journal and holds pull request 7's merge, with its salt: the applied release, its
+# answer the decider's accept of pull request 14; the decline of the same merge, proposed again, its
+# answer the decider's accept of pull request 7; and a note of the same body, which the decider
+# accepted and the applier fetched, as the applier fetched it.
+# forge FILE: posts a comment on pull request 7 holding the delivery FILE, then a status on its merge
+# commit naming the delivery's receipt and linking that comment, as anyone who may write both can.
+forge() {
+	jq -c '{body: ("    " + tojson)}' "$1" | gh api -X POST "repos/$repo/issues/7/comments" --input - >forged.comment
+	jq -c --slurpfile d "$1" '{state: "success", context: "placket", description: $d[0].receiptId, target_url: .html_url}' \
+		forged.comment | gh api -X POST "repos/$repo/statuses/$c7" --input - >/dev/null
+}
+kept pr14.json >pr14.kept
+jq -c --slurpfile o pr14.kept '.delivery | .answer = $o[0].delivery.answer' pr7.kept >call.json
+forge call.json
+cp pr7.json declined.json
+propose "pull request 7 again, which the decider declines" declined.json
+tail -n 1 "agent.key.state/$(cut -c8- asked/accord)/kept.jsonl" >declined.kept
+# shellcheck disable=SC2046 # as prints flags
+placket decline $(as decider) --json --question "$(cat asked.list)" --comment "merged already" >declined.out 2>/dev/null
+: >asked.list
+say decider "declines it"
+jq -c --slurpfile o declined.out --slurpfile k pr7.kept '.message | @base64d | fromjson | {receiptId: $o[0].outcome.receiptId,
+	kind: "merge", messageId, data: .parts[0].data, salt: .parts[0].metadata["https://placket.tech/crossing/0.1"].salt,
+	receipt: $o[0].outcome.receipt, answer: $k[0].delivery.answer}' declined.kept >declined.delivery
+forge declined.delivery
+cp pr7.json note.json
+propose "a note of pull request 7's merge body" note.json --kind note
+decide
+# shellcheck disable=SC2046 # as prints flags
+placket get $(as applier) --json --all 2>/dev/null |
+	jq -c --slurpfile b pr7.json '.deliveries[] | select(.kind == "note" and .data == $b[0])' >note.delivery
+forge note.delivery
+say pattern "3 more statuses named placket on pull request 7's merge commit"
+gh api --paginate "repos/$repo/commits/$commit/statuses" | jq -c -s 'add | map(select(.context == "placket"))' >statuses.json
+say auditor "statuses named placket on the commit: $(jq length statuses.json)"
+i=0
+for what in "the note's release" "the decline" "the applied release, its answer pull request 14's accept"; do
+	why=$(audit "$i")
+	say auditor "status $((i + 1)), $what: ${why:-passes steps 3 to 6}"
+	i=$((i + 1))
+done
+# The applier's own status, the oldest, audited by one who names another key as the applier's.
+i=$(($(jq length statuses.json) - 1))
+why=$(
+	applier=$(ref decider)
+	audit "$i"
+)
+say auditor "status $((i + 1)), the applier's own, audited as though the decider's key were the applier's: ${why:-passes steps 3 to 6}"

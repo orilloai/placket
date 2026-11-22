@@ -181,3 +181,15 @@ verify: terms: not checked: the declarations are sealed; with every member's ope
 verify: <the receipt> witnessed: signed by key <the decider's key>, which principal <the principal> bound to role decider
 verify: body: the part of receipt <the receipt> is the one it names
 auditor: the body names this merge's repository, pull request, base and head: yes
+
+== 10. statuses naming a receipt of this merge's body, which is not its release
+agent: proposes pull request 7 again, which the decider declines
+decider: declines it
+agent: proposes a note of pull request 7's merge body
+decider: accepts 1, each released to the applier
+pattern: 3 more statuses named placket on pull request 7's merge commit
+auditor: statuses named placket on the commit: 36
+auditor: status 1, the note's release: its receipt is not a release that role decider accepted
+auditor: status 2, the decline: its receipt is not a release that role decider accepted
+auditor: status 3, the applied release, its answer pull request 14's accept: its receipt is not a release that role decider accepted
+auditor: status 36, the applier's own, audited as though the decider's key were the applier's: its receipt is not a release that role decider accepted
