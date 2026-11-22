@@ -266,13 +266,17 @@ fi
 unsigned=1
 install "with PLACKET_INSTALL_UNSIGNED=1 and a gh that verifies the provenance, the origin was checked" "$tmp/gh:$tools"
 unsigned=
-if [ "$rc" -ne 0 ] || [ "$(sed -n 4p "$out")" != "install: provenance: ok, gh verified $archive as built by placket's release workflow on main" ]; then
-	fail "want exit 0 and the provenance verified, got exit $rc"
-elif grep -q '^install: origin: ' "$out"; then
-	fail "it said the origin was not checked, with the provenance verified"
-else
-	ok
-fi
+bin=$home/.local/bin
+{
+	echo "install: placket for $host, from file://$rel"
+	echo "install: signature: skipped, cosign is not on PATH and PLACKET_INSTALL_UNSIGNED=1 is set"
+	echo "install: checksum: ok, $archive"
+	echo "install: provenance: ok, gh verified $archive as built by placket's release workflow on main"
+	echo "install: installed $bin/placket"
+	echo "install: $bin is not on PATH; add it, as in: export PATH=\"$bin:\$PATH\""
+	cat "$tmp/version"
+} >"$tmp/want"
+expect 0 "$tmp/want" && ok
 
 # A cosign that runs and does not verify refuses, PLACKET_INSTALL_UNSIGNED=1 or not.
 digest "$rel/install.sh" >"$rel/checksums.txt.sigstore.json"
@@ -372,12 +376,23 @@ done
 relbase=file://$tmp/r010
 install "--version v0.1.0 from a PLACKET_RELEASE_BASE of v0.1.0 installs v0.1.0" "$signers:$tools" --version v0.1.0
 relbase=
-if [ "$rc" -ne 0 ] || ! cmp -s "$home/.local/bin/placket" "$tmp/r010.files/placket"; then
-	fail "want exit 0 and the v0.1.0 placket in ~/.local/bin, got exit $rc"
-elif [ "$(sed -n 3p "$out")" != "install: checksum: ok, placket_0.1.0_$host.tar.gz" ] || [ "$(grep -c '^version v0.1.0$' "$out")" != 1 ]; then
-	fail "it did not install placket_0.1.0_$host.tar.gz and print its version"
-else
-	ok
+bin=$home/.local/bin
+{
+	echo "install: placket for $host, from file://$tmp/r010"
+	echo "install: signature: ok, cosign verified checksums.txt as signed by placket's release workflow on main"
+	echo "install: checksum: ok, placket_0.1.0_$host.tar.gz"
+	echo "install: provenance: ok, gh verified placket_0.1.0_$host.tar.gz as built by placket's release workflow on main"
+	echo "install: installed $bin/placket"
+	echo "install: $bin is not on PATH; add it, as in: export PATH=\"$bin:\$PATH\""
+	echo "version v0.1.0"
+	echo "commit 0123456789abcdef0123456789abcdef01234567"
+} >"$tmp/want"
+if expect 0 "$tmp/want"; then
+	if ! cmp -s "$bin/placket" "$tmp/r010.files/placket"; then
+		fail "$bin/placket is not the v0.1.0 placket"
+	else
+		ok
+	fi
 fi
 
 # An archive named for 0.1.0 whose placket says another version is refused before the rename,
