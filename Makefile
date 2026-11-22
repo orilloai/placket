@@ -38,18 +38,27 @@ ci: export PLACKET_IN_CI = 1
 # No step of make ci reaches a judge's host: every step sees the judges' key empty, which every reader
 # of it takes for no key (docs/adr/0023-judges.md).
 ci: export PLACKET_JEV_KEY =
+# CI_JOBS is how much runs side by side: by default the host's processor count, and at least 2.
+CI_JOBS ?= $(shell n=$$(getconf _NPROCESSORS_ONLN 2>/dev/null || echo 2); [ "$$n" -ge 2 ] 2>/dev/null || n=2; echo $$n)
 ifneq ($(filter ci,$(or $(MAKECMDGOALS),ci)),)
 ifneq ($(PLACKET_IN_CI),)
 $(info ci-stays-fast: refused: make ci inside make ci)
 $(error PLACKET_IN_CI is set, so a make ci is already running above this one (docs/rules/changes.md#ci-stays-fast))
 endif
-# ci-stays-fast, the jobs: make ci runs its steps side by side, CI_JOBS at a time (by default the
-# host's processor count, and at least 2), each step's output held back and printed whole when the
-# step ends, so that its lines and its time line stay together. Every step still runs once, and a
-# step that reads another's output names it as a prerequisite. `make ci CI_JOBS=1` runs them one by one.
-CI_JOBS ?= $(shell n=$$(getconf _NPROCESSORS_ONLN 2>/dev/null || echo 2); [ "$$n" -ge 2 ] 2>/dev/null || n=2; echo $$n)
+# ci-stays-fast, the jobs: make ci runs its steps side by side, CI_JOBS at a time, each step's
+# output held back and printed whole when the step ends, so that its lines and its time line stay
+# together. Every step still runs once, and a step that reads another's output names it as a
+# prerequisite. `make ci CI_JOBS=1` runs them one by one.
 MAKEFLAGS += -j$(CI_JOBS) --output-sync=target
 endif
+
+# TURNS opens, on descriptor 9, a queue of $$turns turns in the directory given: a job of a step
+# takes one before it starts (TAKE) and gives it back when it ends (GIVE), so that a step runs no
+# more of its jobs at a time than it has turns, on a host of any size. What a job runs does not
+# inherit the descriptor.
+TURNS = mkfifo "$(1)/turns"; exec 9<>"$(1)/turns"; n=0; while [ "$$n" -lt "$$turns" ]; do echo >&9; n=$$((n + 1)); done
+TAKE = read -r _ <&9
+GIVE = echo >&9
 
 # Every step's recipe is one shell line that starts with $(START) and ends with $(END), its body in
 # between, in a subshell, so that its time is printed after its output whatever its status.
@@ -147,7 +156,8 @@ secrets: build
 
 # tests: one test run per module with packages, with the race detector and coverage, which also runs
 # every fuzz test on its seed corpus (the f.Add seeds and testdata/fuzz/), as go test does without
-# -fuzz. The modules' runs go side by side, and their lines are printed in the modules' order once
+# -fuzz. The modules' runs go side by side, half of CI_JOBS at a time and at least two, since each run
+# uses every processor itself, and their lines are printed in the modules' order once
 # every run has ended. -count=1 keeps a cached result from standing in for a run. Its output, coverage
 # profile and status go to $(WORK)/tests/, for race, fuzz-seeds and coverage-reported to read; each of them runs
 # it first, so run alone, each makes the run itself, and in ci it runs once. It prints one line per
@@ -160,10 +170,11 @@ tests: build
 			[ -n "$$pkgs" ] || continue; \
 			echo "$$m $$(printf '%s' "$$m" | tr -c 'A-Za-z0-9\n' _)" >>"$(TESTS)/run"; \
 		done; \
-		while read -r m k; do \
-			{ rc=0; (cd "$$m" && go test -race -count=1 -v -coverprofile="$(TESTS)/$$k.cover" ./...) >"$(TESTS)/$$k.out" 2>&1 || rc=$$?; \
-				echo "$$rc" >"$(TESTS)/$$k.rc"; } & \
-		done <"$(TESTS)/run"; wait; \
+		turns=$$((($(CI_JOBS) + 1) / 2)); [ "$(CI_JOBS)" -lt 2 ] || [ "$$turns" -ge 2 ] || turns=2; $(call TURNS,$(TESTS)); \
+		while read -r m k; do $(TAKE); \
+			{ rc=0; (cd "$$m" && go test -race -count=1 -v -coverprofile="$(TESTS)/$$k.cover" ./...) >"$(TESTS)/$$k.out" 2>&1 9<&- || rc=$$?; \
+				echo "$$rc" >"$(TESTS)/$$k.rc"; $(GIVE); } & \
+		done <"$(TESTS)/run"; wait; exec 9<&-; \
 		while read -r m k; do \
 			rc=$$(cat "$(TESTS)/$$k.rc"); echo "$$m $$k $$rc" >>"$(TESTS)/modules"; \
 			if [ "$$rc" -eq 0 ]; then echo "$@: $$m: passed"; else echo "$@: $$m: failed"; fi; \
@@ -217,15 +228,16 @@ runner-no-silent-pass: build
 			grep '^$@: ' "$$out"; echo "$@: ok"; exit 0; fi; \
 		cat "$$out"; echo "$@: refused: a green run means every vector ran and passed (docs/rules/tests.md#$@)"; exit 1 $(END)
 
-# The repository's own shell tests, side by side. Each one's output is printed whole, in the tests'
-# order, under "== <test>", once every test has ended; the step fails when any test failed, naming
-# each one that did.
+# The repository's own shell tests, side by side, CI_JOBS at a time. Each one's output is printed
+# whole, in the tests' order, under "== <test>", once every test has ended; the step fails when any
+# test failed, naming each one that did.
 SCRIPTS = $(WORK)/scripts
 scripts: build
 	@$(START) set -e; $(OWN_WORK); rm -rf "$(SCRIPTS)"; mkdir "$(SCRIPTS)"; i=0; \
-		for t in tests/test_*.sh; do [ -e "$$t" ] || continue; i=$$((i + 1)); \
-			{ rc=0; sh "$$t" >"$(SCRIPTS)/$$i.out" 2>&1 || rc=$$?; echo "$$rc" >"$(SCRIPTS)/$$i.rc"; } & \
-		done; wait; i=0; failed=; \
+		turns=$(CI_JOBS); $(call TURNS,$(SCRIPTS)); \
+		for t in tests/test_*.sh; do [ -e "$$t" ] || continue; i=$$((i + 1)); $(TAKE); \
+			{ rc=0; sh "$$t" >"$(SCRIPTS)/$$i.out" 2>&1 9<&- || rc=$$?; echo "$$rc" >"$(SCRIPTS)/$$i.rc"; $(GIVE); } & \
+		done; wait; exec 9<&-; i=0; failed=; \
 		for t in tests/test_*.sh; do [ -e "$$t" ] || continue; i=$$((i + 1)); \
 			echo "== $$t"; cat "$(SCRIPTS)/$$i.out"; [ "$$(cat "$(SCRIPTS)/$$i.rc")" -eq 0 ] || failed="$$failed $$t"; \
 		done; if [ -n "$$failed" ]; then echo "$@: failed:$$failed"; exit 1; fi $(END)
