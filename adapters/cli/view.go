@@ -102,7 +102,7 @@ func viewLines(view []byte) []string {
 // per question it answers, in the product's words, then the view's typed hash. Its --json object
 // holds view, the view, hash and lines.
 func viewCommand(r *run, args []string) int {
-	fs := flags("view")
+	fs := newFlags("view")
 	so := socketFlags(fs)
 	if !r.parseSocket(fs, args, so) {
 		return r.tool(codeUsage)
@@ -141,7 +141,7 @@ func viewCommand(r *run, args []string) int {
 // kept it is tool error view, and a window that refuses the acceptance names its founding code. Its
 // --json object holds acceptance and founded.
 func acceptCommand(r *run, args []string) int {
-	fs := flags("accept")
+	fs := newFlags("accept")
 	so := socketFlags(fs)
 	if !r.parseSocket(fs, args, so) {
 		return r.tool(codeUsage)

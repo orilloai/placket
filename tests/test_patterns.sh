@@ -17,7 +17,10 @@ set -u
 
 root=$(cd "$(dirname "$0")/.." && pwd)
 patterns=$root/patterns
-LIMIT=60
+# A pattern runs its window, applier and stand-in steps in turn; on a GitHub runner the whole of
+# github-merge takes longer than a minute, while its processes are still running at the limit, so
+# the limit is four minutes. A pattern still running past it is killed, and its processes named.
+LIMIT=240
 tmp=$(mktemp -d)
 # A unix socket's path is short on some systems: each pattern's TMPDIR lives under a short directory.
 short=$(mktemp -d /tmp/plkp.XXXXXX)
@@ -137,7 +140,9 @@ for job in $jobs; do
 		PATH=$tmp/bin:$PATH TMPDIR=$short/$job exec env -u PLACKET_JEV_KEY perl -e "$LEADER" sh pattern.sh
 	) >"$out" 2>&1 </dev/null &
 	group=$!
-	(exec perl -e "$LEADER" sh -c "sleep $LIMIT; kill -KILL -$group") >/dev/null 2>&1 &
+	# Before the kill, the watchdog records the processes still running, so a timeout names what it
+	# was waiting on.
+	(exec perl -e "$LEADER" sh -c "sleep $LIMIT; ps -axo pid,ppid,pgid,stat,etime,command >$tmp/ps.$job 2>&1; kill -KILL -$group") >/dev/null 2>&1 &
 	watchdog=$!
 	wait "$group"
 	rc=$?
@@ -153,6 +158,10 @@ for job in $jobs; do
 	if [ "$rc" -ne 0 ]; then
 		if [ "$rc" -eq 137 ]; then fail "$job: killed, or did not end within ${LIMIT}s"; else fail "$job: exit $rc"; fi
 		sed 's/^/    | /' "$out"
+		if [ -s "$tmp/ps.$job" ]; then
+			echo "    processes still running at ${LIMIT}s:"
+			sed 's/^/    ps | /' "$tmp/ps.$job"
+		fi
 	elif ! cmp -s "$run/expected.txt" "$out"; then
 		fail "$job: printed what expected.txt does not say"
 		diff -u "$run/expected.txt" "$out" | sed 's/^/    | /'

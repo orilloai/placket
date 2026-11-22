@@ -83,8 +83,8 @@ section() {
 cd "$root" || exit 1
 
 # R1: a window's start names every flag windowCommand requires.
-required=$(awk '/^func windowCommand/ { f = 1 } f && /r\.parse\(fs, args,/ { print; exit }' adapters/cli/window.go |
-	sed 's/^.*r\.parse(fs, args, *//; s/).*$//' | grep -oE '"[a-z-]+"' | tr -d '"')
+required=$(awk '/Words: \[\]string\{"window"\}/ { f = 1 } f && /JSON:/ { exit } f' adapters/cli/table.go |
+	grep 'Required: true' | grep -v 'Own: true' | sed 's/^.*Name: "\([a-z-]*\)".*$/\1/')
 if [ -z "$required" ]; then
 	fail "the flags windowCommand requires could not be read from adapters/cli/window.go"
 else

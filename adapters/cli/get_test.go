@@ -131,11 +131,6 @@ func TestGetHandsOverABodyItCannotRecord(t *testing.T) {
 	}
 }
 
-// TestAResultHandsOverWhatItCannotRecord asks a question that the decider accepts, with and without a
-// part of kind answer given to the proposer first, and runs result when the proposer's state
-// directory cannot take delivered.jsonl, made read-only before the file is. The first delivery result
-// fetches is no longer queued, so it is printed on standard output, the answer as result prints it or
-// the other part as get prints it, and then error state delivered.jsonl, exit 3; with --json the
 // object holds it, as answer or under deliveries, and the error.
 func TestAResultHandsOverWhatItCannotRecord(t *testing.T) {
 	t.Parallel()

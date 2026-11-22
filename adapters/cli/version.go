@@ -15,7 +15,7 @@ func init() {
 // versionCommand is `version`: it prints which build the binary is, on standard output, since that is
 // its result (spec/protocol.md, section 11, commands-1; docs/release.md).
 func versionCommand(r *run, args []string) int {
-	fs := flags(LabelVersion)
+	fs := newFlags(LabelVersion)
 	if !r.parse(fs, args) {
 		return r.tool(codeUsage)
 	}

@@ -28,9 +28,9 @@ func readTerms(b []byte) (json.RawMessage, bool) {
 // declareCommand is `declare --key F --terms T.json`: it signs the actor's declaration of the terms
 // and prints it. Founding checks the terms themselves.
 func declareCommand(r *run, args []string) int {
-	fs := flags("declare")
-	keyPath, termsPath := fs.String("key", "", "key file"), fs.String("terms", "", "terms file")
-	if !r.parse(fs, args, "key", "terms") {
+	fs := newFlags("declare")
+	keyPath, termsPath := fs.text("key"), fs.text("terms")
+	if !r.parse(fs, args) {
 		return r.tool(codeUsage)
 	}
 	k, err := keyfile.Read(*keyPath)

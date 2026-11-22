@@ -71,9 +71,9 @@ func oneAccord(list []receipts.Verified) (string, int) {
 		a, c := accordOf(v)
 		switch {
 		case a != a0:
-			return codeAccord, i
+			return detailAccord, i
 		case c != c0:
-			return codeCard, i
+			return detailCard, i
 		}
 	}
 	return "", -1
@@ -137,16 +137,16 @@ func firstAt(list [][]byte) string {
 // with every line; and --view beside the viewer's own --open is a usage error, since the opening
 // checks the viewer's terms themselves.
 func verifyCommand(r *run, args []string) int {
-	fs := flags("verify")
-	med, dir, setPath := fs.String("mediator", "", "the mediator"), fs.String("receipts", "", "journal directory"), fs.String("founding", "", "the founding set")
-	accordFlag, answersFile := fs.String("accord", "", "the Accord id"), fs.String("answers", "", "a file of answer calls, one a line")
-	subset, deliveryFile := fs.Bool("subset", false, "the receipts are a subset"), fs.String("delivery", "", "a delivery, as get --json saved it")
-	successor := fs.String("superseded-by", "", "the founding set of the Accord that supersedes this one")
-	accFile := fs.String("acceptances", "", "the founding set's acceptances, acceptances.json beside it when not given")
+	fs := newFlags("verify")
+	med, dir, setPath := fs.text("mediator"), fs.text("receipts"), fs.text("founding")
+	accordFlag, answersFile := fs.text("accord"), fs.text("answers")
+	subset, deliveryFile := fs.switchFlag("subset"), fs.text("delivery")
+	successor := fs.text("superseded-by")
+	accFile := fs.text("acceptances")
 	var opens many
-	fs.Var(&opens, flagOpen, "a member's opening, once per opening, for a dispute")
-	viewFile := fs.String(flagView, "", "a member's own view, as it kept it, to check its receipts against")
-	if !r.parse(fs, args, "receipts") || (*med == "") == (*accordFlag == "") || (*accordFlag != "" && *setPath == "") ||
+	fs.list(&opens, flagOpen)
+	viewFile := fs.text(flagView)
+	if !r.parse(fs, args) || (*med == "") == (*accordFlag == "") || (*accordFlag != "" && *setPath == "") ||
 		(*successor != "" && *accordFlag == "") || ((*accFile != "" || len(opens) > 0 || *viewFile != "") && *setPath == "") {
 		return r.tool(codeUsage)
 	}

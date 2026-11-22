@@ -30,6 +30,9 @@ ran=$tmp/ran
 # default. A build given <name> is a release, as downloaded, so <dir> holds install.sh too; a
 # snapshot's install.sh is the checkout's, as GoReleaser leaves it.
 build() {
+	# A prefix such as COSIGN_EXIT=1 on a function call stays set after it in this shell, so each
+	# case starts with the stubs' statuses unset.
+	unset COSIGN_EXIT GH_EXIT
 	rm -rf "$1" "$tmp/files" "$ran"
 	mkdir -p "$1" "$tmp/files"
 	printf '#!/bin/sh\n: >"%s"\n[ "$1" = version ] || exit 3\nprintf "version %%s\\ngo go1.27.4\\n" "%s"\n' "$ran" "$2" >"$tmp/files/placket"

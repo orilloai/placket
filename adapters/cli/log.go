@@ -22,13 +22,13 @@ func init() {
 // CSV they are printed on standard error. On a terminal the cells' control characters are escaped.
 // A journal that does not verify prints no row and exits 3.
 func logCommand(r *run, args []string) int {
-	fs := flags("log")
-	med, dir, format := fs.String("mediator", "", "mediator"), fs.String("receipts", "", "journal directory"), fs.String("format", "json", "json or csv")
-	withWords, noWords := fs.Bool("words", false, "add the texts"), fs.Bool("no-words", false, "empty the comments")
-	all := fs.Bool("all", false, "a row for every crossing")
+	fs := newFlags("log")
+	med, dir, format := fs.text("mediator"), fs.text("receipts"), fs.text("format")
+	withWords, noWords := fs.switchFlag("words"), fs.switchFlag("no-words")
+	all := fs.switchFlag("all")
 	var kept many
-	fs.Var(&kept, "kept", "a state directory")
-	if !r.parse(fs, args, "mediator", "receipts") {
+	fs.list(&kept, "kept")
+	if !r.parse(fs, args) {
 		return r.tool(codeUsage)
 	}
 	if (*format != "json" && *format != "csv") || (*withWords && *noWords) || (r.asJSON && *format == "csv") {

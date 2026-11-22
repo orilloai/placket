@@ -9,49 +9,47 @@ import (
 
 func init() {
 	commands["key"] = keyCommand
+	subcommands["key new"] = keyNewCommand
+	subcommands["key ref"] = keyRefCommand
 }
 
-// keyCommand is `key new --out F`, which writes a new key file and prints its reference, and
-// `key ref --key F`, which prints the reference of a key file. Neither prints a seed. `key --help`
-// names both.
+// keyCommand is key with no subcommand, or one it does not have: error usage. `key --help` names
+// both subcommands. Neither subcommand prints a seed.
 func keyCommand(r *run, args []string) int {
-	if len(args) == 0 {
-		return r.usage()
-	}
-	if strings.HasPrefix(args[0], "-") {
-		r.subs = []string{"key new", "key ref"}
-		if !r.parse(flags("key"), args) {
-			return r.tool(codeUsage)
-		}
-		return r.usage()
-	}
-	switch args[0] {
-	case "new":
-		fs := flags("key new")
-		out := fs.String("out", "", "the key file to write")
-		if !r.parse(fs, args[1:], "out") {
-			return r.tool(codeUsage)
-		}
-		k, err := keyfile.New(*out, r.env.Rand)
-		if err != nil {
-			return r.failed(err)
-		}
-		fmt.Fprintln(r.stdout, k.Reference())
-		r.put("actor", k.Reference())
-		return ExitOK
-	case "ref":
-		fs := flags("key ref")
-		path := fs.String("key", "", "the key file")
-		if !r.parse(fs, args[1:], "key") {
-			return r.tool(codeUsage)
-		}
-		ref, err := keyfile.Reference(*path)
-		if err != nil {
-			return r.failed(err)
-		}
-		fmt.Fprintln(r.stdout, ref)
-		r.put("actor", ref)
-		return ExitOK
+	if len(args) > 0 && strings.HasPrefix(args[0], "-") && !r.parse(newFlags("key"), args) {
+		return r.tool(codeUsage)
 	}
 	return r.usage()
+}
+
+// keyNewCommand is `key new --out F`, which writes a new key file and prints its reference.
+func keyNewCommand(r *run, args []string) int {
+	fs := newFlags("key new")
+	out := fs.text("out")
+	if !r.parse(fs, args) {
+		return r.tool(codeUsage)
+	}
+	k, err := keyfile.New(*out, r.env.Rand)
+	if err != nil {
+		return r.failed(err)
+	}
+	fmt.Fprintln(r.stdout, k.Reference())
+	r.put("actor", k.Reference())
+	return ExitOK
+}
+
+// keyRefCommand is `key ref --key F`, which prints the reference of a key file.
+func keyRefCommand(r *run, args []string) int {
+	fs := newFlags("key ref")
+	path := fs.text("key")
+	if !r.parse(fs, args) {
+		return r.tool(codeUsage)
+	}
+	ref, err := keyfile.Reference(*path)
+	if err != nil {
+		return r.failed(err)
+	}
+	fmt.Fprintln(r.stdout, ref)
+	r.put("actor", ref)
+	return ExitOK
 }

@@ -21,6 +21,7 @@ import (
 
 func init() {
 	commands["window"] = windowCommand
+	subcommands["window close"] = closeCommand
 }
 
 // windowCommand is `window --key F --founding S --openings O [--acceptances A] [--socket P]
@@ -52,17 +53,13 @@ func init() {
 // window prints, for each judge the card lists, which kinds may go to which host and model, or that
 // it sends nothing.
 func windowCommand(r *run, args []string) int {
-	if len(args) > 0 && args[0] == "close" {
-		return closeCommand(r, args[1:])
-	}
-	r.subs = []string{"window close"}
-	fs := flags("window")
-	keyPath, founding := fs.String("key", "", "the mediator's key file"), fs.String("founding", "", "the founding set")
-	socket, dir := fs.String("socket", "", "socket"), fs.String("journal", "", "journal directory")
-	openingsDir, accPath := fs.String("openings", "", "the directory of every member's opening"), fs.String("acceptances", "", "acceptances.json")
+	fs := newFlags("window")
+	keyPath, founding := fs.text("key"), fs.text("founding")
+	socket, dir := fs.text("socket"), fs.text("journal")
+	openingsDir, accPath := fs.text("openings"), fs.text("acceptances")
 	var judges many
-	fs.Var(&judges, "judge", "a judge's config, once per judge the card lists")
-	if !r.parse(fs, args, "key", "founding", "openings") {
+	fs.list(&judges, "judge")
+	if !r.parse(fs, args) {
 		return r.tool(codeUsage)
 	}
 	loaded, code := r.judgeConfigs(judges)
@@ -192,12 +189,12 @@ func (r *run) windowError(err error) int {
 // interrupted, as `window` does; without it, it exits 0. Its --json object, written at exit, holds
 // accord, close (closeObject) and closings, in both modes.
 func closeCommand(r *run, args []string) int {
-	fs := flags("window close")
-	keyPath, founding := fs.String("key", "", "the mediator's key file"), fs.String("founding", "", "the founding set")
-	socket, dir := fs.String("socket", "", "socket"), fs.String("journal", "", "journal directory")
-	accord := fs.String("accord", "", "the Accord id, the founding set's")
-	openingsDir, accPath := fs.String("openings", "", "the directory of every member's opening"), fs.String("acceptances", "", "acceptances.json")
-	if !r.parse(fs, args, "key", "founding", "journal", "accord") || !accordID(*accord) {
+	fs := newFlags("window close")
+	keyPath, founding := fs.text("key"), fs.text("founding")
+	socket, dir := fs.text("socket"), fs.text("journal")
+	accord := fs.text("accord")
+	openingsDir, accPath := fs.text("openings"), fs.text("acceptances")
+	if !r.parse(fs, args) || !accordID(*accord) {
 		return r.tool(codeUsage)
 	}
 	k, err := keyfile.Read(*keyPath)

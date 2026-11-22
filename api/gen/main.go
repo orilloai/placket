@@ -250,6 +250,10 @@ A call of ` + "`questions`" + `, ` + "`get`" + ` or ` + "`result`" + ` may carry
 	b.WriteString("\nThe client checks, in this order, after the schema (`bad-config`): no two entries have one label (`label-taken`); no two of different Accords use one socket, given or default; no two use one state directory; and no two of one Accord are both unlabelled (`mediator-collision`). The first that fails is reported, naming its two entries by their index, the first pair by the first index and then the second.\n\n")
 	b.WriteString("## Errors\n\nEvery code `placket mcp` can return, by where it comes from: a code in a door reply by its member, `door`, `rejection` or `error`; any other by the package that declares it. A tool error's text is the code, a colon and its sentence.\n\n| From | Code | Cause and fix |\n|---|---|---|\n")
 	for _, r := range errtext.Rows() {
+		// The command line's own codes, and the journal's, are the CLI reference's.
+		if r.From == errtext.FromCLI || r.From == errtext.FromJournal {
+			continue
+		}
 		fmt.Fprintf(&b, "| `%s` | `%s` | %s |\n", r.From, r.Code, cell(r.Sentence))
 	}
 	return b.Bytes()

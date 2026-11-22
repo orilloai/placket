@@ -46,15 +46,15 @@ func init() {
 // verified, the claim line and the scope line: the receipt was read, not verified, and verify does
 // that. With no match it prints that no release matches and exits 1.
 func releasedCommand(r *run, args []string) int {
-	fs := flags(WordReleased)
-	file, dir := fs.String("file", "", "the file"), fs.String("state", "", "state directory")
-	at, valueFile := fs.String("at", "", "a JSON pointer into the body"), fs.String("value-file", "", "the value's bytes")
-	valueText := fs.String("value", "", "the value, as text")
-	re, from := fs.String("re", "", "the part's re"), fs.String("from", "", "the receipt's sender")
-	every := fs.Bool("every", false, "every match")
+	fs := newFlags(WordReleased)
+	file, dir := fs.text("file"), fs.text("state")
+	at, valueFile := fs.text("at"), fs.text("value-file")
+	valueText := fs.text("value")
+	re, from := fs.text("re"), fs.text("from")
+	every := fs.switchFlag("every")
 	var kinds many
-	fs.Var(&kinds, "kind", "a kind the part may have")
-	if !r.parse(fs, args, "state") {
+	fs.list(&kinds, "kind")
+	if !r.parse(fs, args) {
 		return r.tool(codeUsage)
 	}
 	set := map[string]bool{}

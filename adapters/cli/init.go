@@ -32,7 +32,7 @@ func init() {
 }
 
 // codeDirNotEmpty: init's --dir holds something already, and init writes nothing.
-const codeDirNotEmpty = "dir-not-empty"
+const codeDirNotEmpty code = "dir-not-empty"
 
 // The files init writes in each Accord's directory, beside the keys and openings in its own.
 const (
@@ -123,12 +123,6 @@ var examples = map[string]example{
 	},
 }
 
-// initFlags are init's flags, in a set of the name given, with the label by default label.
-func initFlags(name, label string) (set *flag.FlagSet, dir, labelFlag *string) {
-	set = flags(name)
-	return set, set.String("dir", "", "the directory to write in, empty or new"), set.String("label", label, "the label")
-}
-
 // exampleNames are the examples init takes, in the order they are offered.
 var exampleNames = []string{"approve", "merge", "handoff"}
 
@@ -170,10 +164,9 @@ func (x example) longest(l string) int {
 // `init --help` names the examples, and `init <example> --help` prints the example's flags.
 func initCommand(r *run, args []string) int {
 	if len(args) == 0 || strings.HasPrefix(args[0], "-") {
-		set, _, _ := initFlags("init", "")
-		for _, n := range exampleNames {
-			r.subs = append(r.subs, "init "+n)
-		}
+		set := newFlags("init")
+		set.text("dir")
+		set.text("label")
 		if len(args) > 0 && errors.Is(set.Parse(args), flag.ErrHelp) && r.help(set) {
 			return ExitOK
 		}
@@ -185,10 +178,12 @@ func initCommand(r *run, args []string) int {
 		fmt.Fprintln(r.stderr, "usage: placket init: the examples are "+strings.Join(exampleNames, ", "))
 		return r.tool(codeUsage)
 	}
-	set, dirFlag, labelFlag := initFlags("init "+args[0], args[0])
+	set := newFlagsNamed("init "+args[0], "init")
+	dirFlag, labelFlag := set.text("dir"), set.text("label")
 	if !r.parse(set, args[1:]) {
 		return r.tool(codeUsage)
 	}
+	// The label is the example's name, the flag's default, unless --label is given, even given empty.
 	label := *labelFlag
 	if !client.Label(label) || x.longest(label) > 63 {
 		fmt.Fprintln(r.stderr, "usage: placket init: --label is 1 to 63 of a-z, 0-9 and -, and with its parties' names no longer than 63")

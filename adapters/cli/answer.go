@@ -81,14 +81,14 @@ func (s *session) comment(rep *local.Reply, question, text string) int {
 // the state lock, which the command keeps until it returns (state-lock): a version it keeps and a
 // comment it gives are written under it, after any line a stop left unterminated is removed.
 func answerFlags(r *run, name string, args []string, more func(fs *flagSet)) (*session, string, int) {
-	fs := flags(name)
+	fs := newFlags(name)
 	so := socketFlags(fs)
-	question := fs.String("question", "", "the question's id")
+	question := fs.text("question")
 	if more != nil {
 		more(fs)
 	}
 	// A question id that is not UTF-8 is refused, never repaired (parse-strict).
-	if !r.parseSocket(fs, args, so, "question") || !allUTF8(*question) {
+	if !r.parseSocket(fs, args, so) || !allUTF8(*question) {
 		return nil, "", r.tool(codeUsage)
 	}
 	s, code := r.open(so)
@@ -108,8 +108,8 @@ func answerCommand(r *run, args []string) int {
 	var text *string
 	var noRelease, keep *bool
 	s, question, code := answerFlags(r, "answer", args, func(fs *flagSet) {
-		text = fs.String("text", WordAccepted, "the answer")
-		noRelease, keep = fs.Bool("no-release", false, "ask for no release"), fs.Bool("keep", false, "keep the signed call")
+		text = fs.text("text")
+		noRelease, keep = fs.switchFlag("no-release"), fs.switchFlag("keep")
 	})
 	if s == nil {
 		return code

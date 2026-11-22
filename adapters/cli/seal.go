@@ -22,7 +22,7 @@ func init() {
 
 // codeSeal is seal's own error: the declaration is not one the key signed, or its opening could not
 // be written.
-const codeSeal = "seal"
+const codeSeal code = "seal"
 
 // OpeningSuffix ends the name of an opening's file: <the hex of the actor reference>.opening.json
 // (setup-contract-13).
@@ -43,10 +43,10 @@ func OpeningName(actor string) string {
 // the key's, signed by it, is tool error seal; an opening that cannot be written is tool error file
 // opening. On standard error it prints the opening's path, never its bytes.
 func sealCommand(r *run, args []string) int {
-	fs := flags("seal")
-	keyPath, declPath := fs.String("key", "", "key file"), fs.String("declaration", "", "the signed declaration")
-	out := fs.String("out", ".", "the directory the opening is written to")
-	if !r.parse(fs, args, "key", "declaration") {
+	fs := newFlags("seal")
+	keyPath, declPath := fs.text("key"), fs.text("declaration")
+	out := fs.text("out")
+	if !r.parse(fs, args) {
 		return r.tool(codeUsage)
 	}
 	k, err := keyfile.Read(*keyPath)

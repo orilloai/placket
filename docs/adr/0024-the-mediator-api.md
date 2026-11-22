@@ -1,6 +1,6 @@
 # 0024. The mediator API, the client, and placket mcp
 
-Status: accepted. Date: 2026-11-18. Amends records 0001, 0009 and 0010.
+Status: accepted. Date: 2026-11-18. Amends records 0001, 0009 and 0010. Amended 2026-11-21: `adapters/errtext` holds the command line's codes too, and `adapters/cli/gen` writes the CLI reference from the command line's command table.
 
 ## Context
 
@@ -55,7 +55,7 @@ It serves only the labels it is started with, each with its own key, and reads n
 
 ### One sentence per code
 
-Every code `placket mcp` can return has one sentence of cause and fix in `adapters/errtext`, which imports nothing of placket. A row is keyed by where its code comes from: a code in a door reply by its member (`door`, `rejection`, `error`); every other by the package that declares its `Code` type (`adapters/client`, `adapters/mcp`, `adapters/state`, `adapters/keyfile`, `adapters/local`). The same spelling under two keys has two sentences. A tool error's text is `<code>: <sentence>`; the command line keeps its own error text. `adapters/mcp`'s codes are `answering-key`, `founding`, `bad-arguments` (arguments that fail the tool's input schema or the 60-second cap) and `internal`, a failure no other code names; malformed JSON-RPC is answered with JSON-RPC's own codes.
+Every code `placket mcp` can return has one sentence of cause and fix in `adapters/errtext`, which imports nothing of placket. A row is keyed by where its code comes from: a code in a door reply by its member (`door`, `rejection`, `error`); every other by the package that declares its `Code` type (`adapters/client`, `adapters/mcp`, `adapters/state`, `adapters/keyfile`, `adapters/local`). The same spelling under two keys has two sentences. A tool error's text is `<code>: <sentence>`. The command line's own codes, of its type `code`, have rows under `adapters/cli`, and the journal's under `adapters/journal`; a code the command line prints from another package's `Code` type keeps that package's one row, and one only spelled like a code of `placket mcp`, such as `founding`, has a row of its own. The command line still prints only the code: the sentences are in `docs/reference/cli.md`, whose Errors section `adapters/cli/gen` writes from these rows, as the mediator API's Errors section lists every row but those two keys'. Two kinds of code that follow another have no row: the verifier's code after `error verify`, which the protocol defines (verify-1), and a judge config's code after `error judge` (record 0023). `adapters/mcp`'s codes are `answering-key`, `founding`, `bad-arguments` (arguments that fail the tool's input schema or the 60-second cap) and `internal`, a failure no other code names; malformed JSON-RPC is answered with JSON-RPC's own codes.
 
 ### The layout and the package map
 
@@ -68,9 +68,10 @@ Record 0001's directory table gains `api/` (the mediator API's schemas, their Go
 | `api/internal/gen` | The worked calls' generator: the standard library alone. |
 | `adapters/client` | The mediator API's client and the labels config. |
 | `adapters/mcp` | `placket mcp`. |
-| `adapters/errtext` | The sentence of every code `placket mcp` returns. |
+| `adapters/errtext` | The sentence of every code `placket mcp` returns and the command line prints. |
+| `adapters/cli/gen` | The CLI reference's generator: `adapters/cli` and `adapters/errtext`. |
 
-The import edges: `adapters/cli` imports `adapters/client` and `adapters/mcp`; `adapters/mcp` imports `adapters/client`, `api`, `adapters/errtext` and `adapters/export` (for a closing's word); `adapters/client` imports `adapters/local`, `adapters/state`, `adapters/keyfile`, `adapters/internal/strict` and core packages, and no adapter it imports imports it back. `api`, `api/gen` and `api/internal/gen` are the packages outside `cmd`, `adapters` and `core`; `api`'s external test package imports `adapters/local`, `adapters/client`, `adapters/mcp` and core packages. `docs/rules/modules.md` names the edges `adapters/mcp` → `api`, `api/gen` → `api`, `api/gen` → `adapters/errtext` and the test's.
+The import edges: `adapters/cli` imports `adapters/client` and `adapters/mcp`; `adapters/mcp` imports `adapters/client`, `api`, `adapters/errtext` and `adapters/export` (for a closing's word); `adapters/client` imports `adapters/local`, `adapters/state`, `adapters/keyfile`, `adapters/internal/strict` and core packages, and no adapter it imports imports it back. `api`, `api/gen` and `api/internal/gen` are the packages outside `cmd`, `adapters` and `core`; `api`'s external test package imports `adapters/local`, `adapters/client`, `adapters/mcp` and core packages. `docs/rules/modules.md` names the edges `adapters/mcp` → `api`, `api/gen` → `api`, `api/gen` → `adapters/errtext` and the test's. `adapters/cli/gen` imports `adapters/cli`, for its command table, and `adapters/errtext`; `adapters/cli` keeps one declarative table of its commands and subcommands, each command reads its flags from its row, and `adapters/cli`'s tests fail when `docs/reference/cli.md` differs from a fresh `go run ./adapters/cli/gen`.
 
 ## Consequences
 

@@ -146,12 +146,12 @@ const changeMessage = "change:"
 // asked closed, as give --wait says it. With --wait the door holds the call, at most N seconds and
 // with no lock held, while the question is open.
 func resultCommand(r *run, args []string) int {
-	fs := flags("result")
+	fs := newFlags("result")
 	so := socketFlags(fs)
-	question := fs.String("question", "", "the question's id")
-	wait := fs.Int("wait", 0, "seconds to wait for the closing, at most 60")
+	question := fs.text("question")
+	wait := fs.number("wait")
 	// A question id that is not UTF-8 is refused, never repaired (parse-strict).
-	if !r.parseSocket(fs, args, so, "question") || !allUTF8(*question) || *wait < 0 || *wait > local.MaxWait {
+	if !r.parseSocket(fs, args, so) || !allUTF8(*question) || *wait < 0 || *wait > local.MaxWait {
 		return r.tool(codeUsage)
 	}
 	s, code := r.open(so)

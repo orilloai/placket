@@ -26,9 +26,9 @@ func changeCommand(r *run, args []string) int {
 	var text, file, comment *string
 	var keep, noRelease *bool
 	s, question, code := answerFlags(r, "change", args, func(fs *flagSet) {
-		text, file = fs.String("text", "", "the version"), fs.String("file", "", "a file holding the version")
-		comment, keep = fs.String("comment", "", "a comment"), fs.Bool("keep", false, "keep the version")
-		noRelease = fs.Bool("no-release", false, "ask for no release")
+		text, file = fs.text("text"), fs.text("file")
+		comment, keep = fs.text("comment"), fs.switchFlag("keep")
+		noRelease = fs.switchFlag("no-release")
 	})
 	if s == nil {
 		return code

@@ -216,9 +216,7 @@ func TestTheAnswerCallTravelsWithTheAnswer(t *testing.T) {
 // the ask's receipt's digest: answer, change and decline are tool error asked and send no resolve
 // call, their last call the questions they read; questions prints nothing of the misstated part and
 // is tool error asked (U12). A question the window does not show is answered, and the window's
-// refusal printed: rejected no-open-question, exit 2, the last call the resolve. A reply to questions
-// that is a plain ok and no questions is tool error reply, for questions and for each answer, and
-// the last call is still the questions.
+// refusal printed: rejected no-open-question, exit 2, the last call the resolve.
 func TestAnswerSignsOnlyWhatItChecked(t *testing.T) {
 	t.Parallel()
 	a := newAccord(t, "proposer", "applier", "decider")

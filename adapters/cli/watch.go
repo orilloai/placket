@@ -42,10 +42,11 @@ type sighting struct {
 // deadline, form, the part as questions shows it, and commands, the three lines; the command's
 // object follows when it exits.
 func watchCommand(r *run, args []string) int {
-	fs := flags("watch")
+	fs := newFlags("watch")
 	var labels many
-	fs.Var(&labels, "label", "a mediator of the labels config to watch, once per mediator")
-	count := fs.Int("count", 0, "exit once this many questions are printed")
+	fs.list(&labels, "label")
+	count := fs.number("count")
+	// --label is required, and checked here: a watch with none prints only error usage.
 	if !r.parse(fs, args) || len(labels) == 0 || *count < 0 {
 		return r.tool(codeUsage)
 	}

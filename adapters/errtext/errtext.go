@@ -1,10 +1,15 @@
-// Package errtext holds one sentence of cause and fix for every code placket mcp can return, in one
-// table, so the MCP tools' error text and the mediator API's reference say the same. A row is keyed
-// by where its code comes from: a code in a door reply by its member, door, rejection or error; every
-// other code by the package whose Code type declares it. The same spelling under two keys has two
-// rows, each saying what it means there. The command line keeps its own error text.
+// Package errtext holds one sentence of cause and fix for every code placket mcp can return and every
+// code the command line prints, in one table, so the MCP tools' error text, the mediator API's
+// reference and the CLI reference say the same. A row is keyed by where its code comes from: a code
+// in a door reply by its member, door, rejection or error; every other code by the package whose
+// Code type declares it, the command line's own codes under adapters/cli. The same spelling under two
+// keys has two rows, each saying what it means there. The command line prints only the code; its
+// sentence is in the CLI reference. A detail word that follows a code is named in that code's
+// sentence. Two kinds of code have no row, since another text says what they mean: the verifier's
+// code after error verify (spec/protocol.md, verify-1), and a judge config's code after error judge
+// (docs/adr/0023-judges.md).
 //
-// It imports nothing of placket, so the reference's generator reads it without the adapters.
+// It imports nothing of placket, so the references' generators read it without the adapters.
 package errtext
 
 import "sort"
@@ -23,6 +28,8 @@ const (
 	FromState   = "adapters/state"
 	FromKeyfile = "adapters/keyfile"
 	FromLocal   = "adapters/local"
+	FromCLI     = "adapters/cli"
+	FromJournal = "adapters/journal"
 )
 
 // A Row is one code's sentence: where the code comes from, the code, and the sentence.
@@ -107,6 +114,31 @@ var table = map[key]string{
 	{FromLocal, "socket-path"}: "The socket path is longer than the system takes; use a shorter one.",
 	{FromLocal, "judge"}:       "The window's judge configs are not the ones its card lists; start it with the card's judges.",
 	{FromLocal, "cursor"}:      "The window could not draw its cursors' key; start it again.",
+
+	// The command line's own codes (adapters/cli's type code).
+	{FromCLI, "usage"}:         "The command, an argument or a flag is not one it takes, a flag's value is not of its form, or a flag it needs is missing, as the line before says; run it as its usage in the CLI reference says.",
+	{FromCLI, "body"}:          "A give names no body or two; give exactly one of --text and --file.",
+	{FromCLI, "text"}:          "A text given on the command line, or a file read as text, is not UTF-8; give UTF-8, or give the file with --as raw.",
+	{FromCLI, "data"}:          "A file given with --as data is not one JSON value in a form the canonical form takes; fix the file, or give it with --as raw.",
+	{FromCLI, "terms"}:         "The terms are not one JSON object a declaration can carry, or could not be signed; fix the terms file.",
+	{FromCLI, "file"}:          "A file or directory the command reads or writes could not be read or written, or is not a regular file, and the detail names which, or kept when a fetched body could not be written and was kept in kept.jsonl instead; check the path, and take a kept body from kept.jsonl.",
+	{FromCLI, "until"}:         "The binding's --until is not a timestamp in whole seconds; write it as 2099-01-01T00:00:00Z is written.",
+	{FromCLI, "comment"}:       "A decline has no comment, or a comment is not UTF-8; give a comment in UTF-8.",
+	{FromCLI, "changed"}:       "A change has no version, an empty one, or a file that is not UTF-8; give the version with --text or --file.",
+	{FromCLI, "format"}:        "The log's --format is neither json nor csv, --words and --no-words were both given, or --json was given with --format csv; give one format, and --json only with json.",
+	{FromCLI, "founding"}:      "The founding set, an opening or the acceptances do not found the Accord, and the detail names the founding code, kernel for a card of another module than this build's, or judge for judge configs that are not the card's; fix the file the detail names, or run the build the card names.",
+	{FromCLI, "verify"}:        "The receipts do not verify, and the detail names the verifier's code with the file and the line, accord or card for a journal of more than one Accord or card, or superseded for a successor that does not pin this log's close; restore the journal, or give the successor that supersedes this Accord.",
+	{FromCLI, "delivery"}:      "The --delivery file is not a delivery, or its receipt is none of the receipts; give a delivery of this journal, as get --json saved it.",
+	{FromCLI, "card"}:          "The card could not be built with the judges given; check each --judge file.",
+	{FromCLI, "path"}:          "The --at path is not a JSON Pointer; write it empty, or with a slash before each token.",
+	{FromCLI, "internal"}:      "The command failed in a way no other code names; run it again, and report it if it persists.",
+	{FromCLI, "judge"}:         "A --judge file is not a judge's config, and the detail names its code; fix the config as docs/adr/0023-judges.md says.",
+	{FromCLI, "seal"}:          "The declaration is not one object signed by the key whose actor it names, or its opening could not be made; seal a declaration this key signed.",
+	{FromCLI, "dir-not-empty"}: "The directory init would write in holds something already, and init wrote nothing; give --dir an empty or new directory.",
+
+	// adapters/journal.Code.
+	{FromJournal, "journal"}:        "A file of the journal is not what a window wrote, or could not be read or written, and the detail names the file, its line and the core's code; restore the journal, or finish a cut close with placket window close.",
+	{FromJournal, "journal-locked"}: "Another window holds the journal; stop that window, or give this one another journal.",
 }
 
 // Sentence is the sentence of the code from where it comes from, and whether it has one.

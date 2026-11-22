@@ -21,13 +21,13 @@ func init() {
 // cannot read, or that the canonical form refuses, is tool error file with the detail policy, and no
 // binding is printed. Whether the policy lets P grant the roles is founding's to judge, not bind's.
 func bindCommand(r *run, args []string) int {
-	fs := flags("bind")
-	keyPath, actor := fs.String("key", "", "the principal's key file"), fs.String("actor", "", "the actor")
-	med, until := fs.String("mediator", "", "the mediator"), fs.String("until", "", "until")
-	policyPath := fs.String("policy", "", "the founding set's policy")
+	fs := newFlags("bind")
+	keyPath, actor := fs.text("key"), fs.text("actor")
+	med, until := fs.text("mediator"), fs.text("until")
+	policyPath := fs.text("policy")
 	var roles many
-	fs.Var(&roles, "role", "a role label")
-	if !r.parse(fs, args, "key", "actor", "mediator", "until", "role", "policy") {
+	fs.list(&roles, "role")
+	if !r.parse(fs, args) {
 		return r.tool(codeUsage)
 	}
 	// A flag that is not UTF-8 is refused, never repaired into another value (parse-strict).

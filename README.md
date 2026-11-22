@@ -188,6 +188,7 @@ The repository's layout and rules come first:
 - `CONTRIBUTING.md`: how a change is made and reviewed.
 - `spec/`: the protocol placket runs, operation by operation, and the formats it signs. `spec/README.md` says where to start.
 - `vectors/`: the conformance vectors and their coverage list. `vectors/README.md` says how a vector is written and checked.
+- `docs/README.md`: the docs, in order: quickstarts, concepts, guides, the references to the command line, the mediator API and the protocol, and how to verify a journal.
 - `docs/adr/`: the decisions behind the layout, the core, the door, the journal and the conformance runner.
 - `core/`: the Go core, which touches nothing of the world; `adapters/` and `cmd/placket/`: the door, the journal, the files each party keeps, the log and the command line.
 

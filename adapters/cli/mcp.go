@@ -1,8 +1,6 @@
 package cli
 
 import (
-	"flag"
-	"io"
 	"runtime/debug"
 
 	"github.com/orilloai/placket/adapters/client"
@@ -20,11 +18,10 @@ func init() {
 // refuses, on standard error. A label the config does not name is client error unknown-mediator, and
 // a config that is refused is its client error, before anything is served.
 func mcpCommand(r *run, args []string) int {
-	fs := flag.NewFlagSet("mcp", flag.ContinueOnError)
-	fs.SetOutput(io.Discard)
+	fs := newFlags("mcp")
 	var labels many
-	fs.Var(&labels, "label", "a mediator of the labels config to serve, once per mediator")
-	allow := fs.Bool("allow-answering", false, "serve a label whose key answers questions too")
+	fs.list(&labels, "label")
+	allow := fs.switchFlag("allow-answering")
 	if !r.parse(fs, args) {
 		return r.tool(codeUsage)
 	}

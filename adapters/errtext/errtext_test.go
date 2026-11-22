@@ -30,11 +30,14 @@ var sources = []source{
 	{"adapters/mcp", map[string]string{"Code": errtext.FromMCP}},
 	{"adapters/state", map[string]string{"Code": errtext.FromState}},
 	{"adapters/keyfile", map[string]string{"Code": errtext.FromKeyfile}},
+	// The command line's own codes are of its type code, which the CLI reference reads besides.
+	{"adapters/cli", map[string]string{"code": errtext.FromCLI}},
+	{"adapters/journal", map[string]string{"Code": errtext.FromJournal}},
 }
 
 // imports maps the packages a constant's value may name, by their import path's last element, to
 // their directories.
-var imports = map[string]string{"answer": "core/answer"}
+var imports = map[string]string{"answer": "core/answer", "export": "adapters/export"}
 
 // consts reads every constant of a package's non-test files: its type's name, or "" when it is
 // untyped, and the expression that gives its value.
@@ -115,9 +118,11 @@ func value(t *testing.T, dir string, e ast.Expr) string {
 	return ""
 }
 
-// TestEveryCodeHasItsSentence reads, with go/parser, every constant of each Code type placket mcp can
-// return a code of, keyed by where it comes from: each has a row, and every row is one such
-// constant's. A constant converted from another package's is read through that package's constant.
+// TestEveryCodeHasItsSentence reads, with go/parser, every constant of each Code type placket mcp or
+// the command line can print a code of, keyed by where it comes from: each has a row, and every row
+// is one such constant's. A constant converted from another package's is read through that package's
+// constant. The command line's founding and placket mcp's are two codes spelled the same, with two
+// sentences.
 func TestEveryCodeHasItsSentence(t *testing.T) {
 	t.Parallel()
 	want := map[[2]string]bool{}
@@ -132,6 +137,16 @@ func TestEveryCodeHasItsSentence(t *testing.T) {
 	}
 	if !want[[2]string{errtext.FromRejection, "answer-call"}] {
 		t.Fatal("core/mediator.AnswerCall was not read through core/answer's constant")
+	}
+	for _, k := range [][2]string{{errtext.FromCLI, "usage"}, {errtext.FromCLI, "founding"}, {errtext.FromCLI, "internal"}, {errtext.FromCLI, "card"}, {errtext.FromJournal, "journal-locked"}} {
+		if !want[k] {
+			t.Fatalf("%s %s was not read", k[0], k[1])
+		}
+	}
+	cli, _ := errtext.Sentence(errtext.FromCLI, "founding")
+	mcp, _ := errtext.Sentence(errtext.FromMCP, "founding")
+	if cli == "" || cli == mcp {
+		t.Errorf("founding: the command line's %q and placket mcp's %q are one sentence", cli, mcp)
 	}
 	var missing []string
 	for k := range want {

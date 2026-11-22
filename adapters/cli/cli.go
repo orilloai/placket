@@ -17,7 +17,8 @@
 // Every socket command takes --key, --socket and --accord, or --label, naming an entry of the labels
 // config (client.ReadConfig) in their place, and --state for the actor's state directory, by default
 // <key file>.state/<the Accord id's hex>/. Each calls the mediator through adapters/client. The words
-// a person reads are in words.go.
+// a person reads are in words.go. Each command reads its flags from its row of the command table
+// (table.go), from which docs/reference/cli.md is generated.
 package cli
 
 import (
@@ -53,31 +54,40 @@ const (
 	ExitOpen     = 4
 )
 
+// code is the type of the command line's own tool errors, whose sentences adapters/errtext holds
+// under its key adapters/cli. It is an alias, so a code passes as the string its error line prints.
+// A detail word that follows a code is untyped, and so is a code another package declares.
+type code = string
+
 // The tool errors a command prints, besides the codes of the packages it calls.
 const (
-	codeUsage   = "usage"
-	codeBody    = "body"
-	codeText    = "text"
-	codeData    = "data"
-	codeTerms   = "terms"
-	codeFile    = "file"
-	codeUntil   = "until"
-	codeComment = "comment"
-	codeChanged = "changed"
-	codeFormat  = "format"
-	codeFound   = "founding"
-	codeVerify  = "verify"
-	// codeClosed is a close of a journal already closed (close-3); detailSuperseded, under verify, a
-	// successor whose supersedes does not pin this log's close (close-4).
+	codeUsage   code = "usage"
+	codeBody    code = "body"
+	codeText    code = "text"
+	codeData    code = "data"
+	codeTerms   code = "terms"
+	codeFile    code = "file"
+	codeUntil   code = "until"
+	codeComment code = "comment"
+	codeChanged code = "changed"
+	codeFormat  code = "format"
+	codeFound   code = "founding"
+	codeVerify  code = "verify"
+	// codeClosed is a close of a journal already closed (close-3), the mediator's code;
+	// detailSuperseded, under verify, a successor whose supersedes does not pin this log's close
+	// (close-4).
 	codeClosed       = string(mediator.CodeClosed)
 	detailSuperseded = "superseded"
 	// codeDelivery: verify's --delivery is not a delivery, or its receipt is none of the receipts.
-	codeDelivery = "delivery"
-	codeAccord   = string(export.CodeAccord)
-	codeCard     = string(export.CodeCard)
-	codePath     = "path"
+	codeDelivery code = "delivery"
+	// detailAccord and detailCard follow error verify for a journal of more than one Accord or card.
+	detailAccord = string(export.CodeAccord)
+	detailCard   = string(export.CodeCard)
+	// codeCard: card could not build a card with the judges given.
+	codeCard code = string(export.CodeCard)
+	codePath code = "path"
 	// codeInternal: a failure no other code names.
-	codeInternal = "internal"
+	codeInternal code = "internal"
 	// detailKept follows error file when a fetched body could not be written and was kept instead.
 	detailKept = "kept"
 	// detailKernel follows error founding when a window's card names another module than this
@@ -87,8 +97,8 @@ const (
 	detailLimit = "limit"
 	// codeJudge: a --judge file is not a judge's config, with ReadConfig's code after it; and,
 	// following error founding, the window's judge configs are not the ones its card lists.
-	codeJudge   = "judge"
-	detailJudge = codeJudge
+	codeJudge   code = "judge"
+	detailJudge      = string(codeJudge)
 )
 
 // Env is what a command takes from the world.
@@ -126,9 +136,7 @@ type run struct {
 	rep     *report
 	// fs is the flag set the command read, so that what a command takes can be listed.
 	fs *flag.FlagSet
-	// subs are the subcommands, or init's examples, the command's --help names; helped is set once
-	// --help printed the usage it asked for (help.go).
-	subs   []string
+	// helped is set once --help printed the usage it asked for (help.go).
 	helped bool
 	// printed is set once the object is printed, by Run, or by a command that must know whether it
 	// was written, as get does.
@@ -139,6 +147,10 @@ type command func(r *run, args []string) int
 
 // commands are the commands by name; each command's file adds its own.
 var commands = map[string]command{}
+
+// subcommands are the subcommands by name, the command's word and the subcommand's, such as key new;
+// each command's file adds its own.
+var subcommands = map[string]command{}
 
 // Run runs the command args name, with its flags, and returns its exit code.
 func Run(env Env, args []string, stdin io.Reader, stdout, stderr io.Writer) int {
@@ -170,6 +182,11 @@ func (r *run) dispatch(args []string) int {
 	c, ok := commands[args[0]]
 	if !ok {
 		return r.usage()
+	}
+	if len(args) > 1 {
+		if sub, ok := subcommands[args[0]+" "+args[1]]; ok {
+			return sub(r, args[2:])
+		}
 	}
 	return c(r, args[1:])
 }
@@ -267,8 +284,6 @@ func (r *run) refusal(rep local.Reply) (int, bool) {
 	return 0, false
 }
 
-type flagSet = flag.FlagSet
-
 // many is a flag that may be given more than once.
 type many []string
 
@@ -278,19 +293,18 @@ func (m *many) Set(v string) error { *m = append(*m, v); return nil }
 // flagJSON is the flag every command takes to print its result as one JSON object.
 const flagJSON = "json"
 
-// flags makes a flag set that prints nothing of its own, with --json.
-func flags(name string) *flag.FlagSet {
-	fs := flag.NewFlagSet(name, flag.ContinueOnError)
-	fs.SetOutput(io.Discard)
-	fs.Bool(flagJSON, false, "print the result as one JSON object")
-	return fs
+// parse parses the flags; a flag that is wrong, or a flag its row requires and missing, is a usage
+// error. --json, once read, decides whether the result is printed as JSON. --help, -help or -h, as a
+// flag and not a flag's value, prints the command's usage from its row instead (help) and checks no
+// flag required.
+func (r *run) parse(fs *flagSet, args []string) bool {
+	return r.parseFlags(fs, args) && r.required(fs, fs.required()...)
 }
 
-// parse parses the flags; a flag that is wrong, or a flag required and missing, is a usage error.
-// --json, once read, decides whether the result is printed as JSON. --help, -help or -h, as a flag
-// and not a flag's value, prints the command's usage instead (help) and checks no flag required.
-func (r *run) parse(fs *flag.FlagSet, args []string, required ...string) bool {
-	r.fs = fs
+// parseFlags parses the flags as parse does, without looking for the flags required. After --help
+// it prints the usage and returns false, and the command's usage error then prints nothing (tool).
+func (r *run) parseFlags(fs *flagSet, args []string) bool {
+	r.fs = fs.FlagSet
 	err := fs.Parse(args)
 	if errors.Is(err, flag.ErrHelp) && r.help(fs) {
 		return false
@@ -302,11 +316,11 @@ func (r *run) parse(fs *flag.FlagSet, args []string, required ...string) bool {
 		fmt.Fprintln(r.stderr, "usage: placket "+fs.Name()+": bad flags")
 		return false
 	}
-	return r.required(fs, required...)
+	return true
 }
 
 // required reports whether every flag required was given, and prints the first that was not.
-func (r *run) required(fs *flag.FlagSet, required ...string) bool {
+func (r *run) required(fs *flagSet, required ...string) bool {
 	for _, n := range required {
 		if f := fs.Lookup(n); f == nil || f.Value.String() == "" {
 			fmt.Fprintln(r.stderr, "usage: placket "+fs.Name()+": --"+n+" is required")
@@ -376,18 +390,19 @@ type session struct {
 type socketOpts struct{ key, socket, accord, state, label *string }
 
 // socketFlags adds the flags every socket command takes.
-func socketFlags(fs *flag.FlagSet) *socketOpts {
-	return &socketOpts{key: fs.String("key", "", "key file"), socket: fs.String("socket", "", "the window's socket"),
-		accord: fs.String("accord", "", "the Accord id"), state: fs.String("state", "", "state directory"),
-		label: fs.String("label", "", "a mediator of the labels config, by its label or Accord id")}
+func socketFlags(fs *flagSet) *socketOpts {
+	return &socketOpts{key: fs.text("key"), socket: fs.text("socket"), accord: fs.text("accord"),
+		state: fs.text("state"), label: fs.text("label")}
 }
 
 // parseSocket parses a socket command's flags, as parse does: without --label, --key, --socket and
-// --accord are required, ahead of the others required; with it, none of the three may be given.
-func (r *run) parseSocket(fs *flag.FlagSet, args []string, so *socketOpts, required ...string) bool {
-	if !r.parse(fs, args) {
+// --accord are required, ahead of the others its row requires; with it, none of the three may be
+// given.
+func (r *run) parseSocket(fs *flagSet, args []string, so *socketOpts) bool {
+	if !r.parseFlags(fs, args) {
 		return false
 	}
+	required := fs.required()
 	if *so.label == "" {
 		return r.required(fs, append([]string{"key", "socket", "accord"}, required...)...)
 	}

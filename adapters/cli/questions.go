@@ -22,9 +22,9 @@ func init() {
 // leaves it the same JSON. It reads no seq and writes nothing, so it holds no lock (state-lock); with
 // --wait the door holds the call, at most N seconds, until there is a question to show.
 func questionsCommand(r *run, args []string) int {
-	fs := flags("questions")
+	fs := newFlags("questions")
 	so := socketFlags(fs)
-	wait := fs.Int("wait", 0, "seconds to wait for a question, at most 60")
+	wait := fs.number("wait")
 	if !r.parseSocket(fs, args, so) || *wait < 0 || *wait > local.MaxWait {
 		return r.tool(codeUsage)
 	}

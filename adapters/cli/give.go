@@ -83,14 +83,14 @@ func (s *session) send(m client.Message, keep bool) (*mediator.Outcome, int) {
 // [--topic T] [--keep] [--wait]`, with the socket flags. With --wait it waits on the door, holding
 // no lock, until the question closes.
 func giveCommand(r *run, args []string) int {
-	fs := flags("give")
+	fs := newFlags("give")
 	so := socketFlags(fs)
-	to, kind := fs.String("to", "", "receiver"), fs.String("kind", "", "kind")
-	text, file, as := fs.String("text", "", "text"), fs.String("file", "", "file"), fs.String("as", "text", "text, raw or data")
-	re, topic := fs.String("re", "", "re"), fs.String("topic", "", "topic")
-	keep, wait := fs.Bool("keep", false, "keep the part"), fs.Bool("wait", false, "wait for the answer")
+	to, kind := fs.text("to"), fs.text("kind")
+	text, file, as := fs.text("text"), fs.text("file"), fs.text("as")
+	re, topic := fs.text("re"), fs.text("topic")
+	keep, wait := fs.switchFlag("keep"), fs.switchFlag("wait")
 	// A receiver, kind, re or topic that is not UTF-8 is refused, never repaired (parse-strict).
-	if !r.parseSocket(fs, args, so, "to", "kind") || !allUTF8(*to, *kind, *re, *topic) {
+	if !r.parseSocket(fs, args, so) || !allUTF8(*to, *kind, *re, *topic) {
 		return r.tool(codeUsage)
 	}
 	textSet := false
