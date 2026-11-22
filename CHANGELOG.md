@@ -32,6 +32,7 @@ The first release. Placket mediates the parts that cross between parties under t
 - `placket key new` writes a key file atomically, mode 0600, and never over a file; a key file that another user can read or write, or owns, is refused with `key-mode`.
 - A window with no `--socket` or `--journal` takes its Accord's default socket and journal, and a window given its default socket makes the socket's directory. An `XDG_` variable, `HOME` or `TMPDIR` that is not an absolute path counts as unset for the default socket, the labels config and the default journal alike.
 - A window started proposed, with no acceptances, refuses to start without every member's opening, `opening-missing`, before it listens.
+- `placket window` and `placket window close` read an opening as a key file is read: one that others may read or write, that another user owns, or that is over 1 MiB is `error file opening`, before the window listens.
 
 ### Ask, answer and release
 
@@ -44,7 +45,7 @@ The first release. Placket mediates the parts that cross between parties under t
 
 ### Run agents, and several mediators
 
-- `placket mcp` is an MCP server on standard input and output, with the tools `give`, `get`, `questions`, `result`, `cancel` and `mediators`, across the mediators its `--label`s name, each with its own key. It never answers a question. It refuses a label that has accepted no view, and one whose key answers questions unless started with `--allow-answering`.
+- `placket mcp` is an MCP server on standard input and output, with the tools `give`, `get`, `questions`, `result`, `cancel` and `mediators`, across the mediators its `--label`s name, each with its own key. It never answers a question. It refuses a label that has accepted no view, or whose kept acceptance is not signed by its key for that Accord, and one whose key answers questions unless started with `--allow-answering`.
 - The labels config, `mediators.json` in placket's config directory, names each mediator a user reaches; `placket mediators` lists it, and every socket command takes `--label` in place of `--key`, `--socket` and `--accord`.
 - `placket watch` prints each new question once, as it opens, with the lines that answer it. `questions`, `get` and `result` take `--wait N`, up to 60 seconds, and a call that waits holds no lock.
 - The mediator API: the door's calls and replies, written as JSON Schemas under `api/`, with worked calls, recorded replies and a reference generated from them, `docs/reference/mediator-api.md`. `adapters/client` is the client the command line and `placket mcp` share.

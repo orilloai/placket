@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strconv"
 	"syscall"
 	"testing"
 
@@ -83,5 +84,48 @@ func TestReadTakesOnlyARegularFile(t *testing.T) {
 	}
 	if _, ok, err := lines.ReadAll(file, 2); err != nil || ok {
 		t.Fatalf("ReadAll past the cap: got %v, %v", ok, err)
+	}
+}
+
+// TestPrivateIsOnlyTheOwnersRegularFile checks the rule a key file and an opening are read under: a
+// regular file of mode 0600 or tighter is private to the user that owns it; one that others may read
+// or write, one another user owns (the uid swapped), and a directory are not.
+func TestPrivateIsOnlyTheOwnersRegularFile(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	uid := os.Getuid()
+	for _, c := range []struct {
+		mode os.FileMode
+		uid  int
+		want bool
+	}{
+		{0o600, uid, true},
+		{0o400, uid, true},
+		{0o604, uid, false},
+		{0o620, uid, false},
+		{0o640, uid, false},
+		{0o601, uid, false},
+		{0o600, uid + 1, false},
+	} {
+		path := filepath.Join(dir, c.mode.String()+"-"+strconv.Itoa(c.uid))
+		if err := os.WriteFile(path, []byte("x"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.Chmod(path, c.mode); err != nil {
+			t.Fatal(err)
+		}
+		fi, err := os.Stat(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got := lines.Private(fi, c.uid); got != c.want {
+			t.Errorf("mode %v, uid %d: Private = %v, want %v", c.mode, c.uid-uid, got, c.want)
+		}
+	}
+	if err := os.Chmod(dir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if fi, err := os.Stat(dir); err != nil || lines.Private(fi, uid) {
+		t.Errorf("a directory of mode 0700: Private = true, %v", err)
 	}
 }

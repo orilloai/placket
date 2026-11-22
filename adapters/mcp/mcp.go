@@ -12,8 +12,11 @@
 // setup-contract-15): a view with an answers row, or an asked crossing whose to names one of the
 // key's roles, answers questions, and is refused (CodeAnsweringKey) unless the server allows
 // answering keys. A label whose founding set cannot be read, or does not found, or that has accepted
-// no view of its Accord, is refused too (CodeFounding). The mediator API's view and accept are no
-// tools: a member consents to an Accord itself. A label it is not started with has none of its files opened.
+// no view of its Accord, is refused too (CodeFounding), and so is one whose kept acceptance is not
+// signed by its key for this Accord: founding's rows 19 and 20 are run on it, as any party runs them
+// with no opening (setup-contract-16), and its from must be the label's key. The mediator API's view
+// and accept are no tools: a member consents to an Accord itself. A label it is not started with has
+// none of its files opened.
 //
 // Each tool's input schema is its request schema under api/request/, with mediator, the served
 // label, or the Accord id of an entry with none. A tool error is MCP error text: the code and its one
@@ -22,22 +25,26 @@ package mcp
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"io"
 	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/orilloai/placket/adapters/client"
 	"github.com/orilloai/placket/adapters/errtext"
+	"github.com/orilloai/placket/adapters/internal/lines"
 	"github.com/orilloai/placket/adapters/keyfile"
 	"github.com/orilloai/placket/adapters/local"
 	"github.com/orilloai/placket/adapters/state"
 	"github.com/orilloai/placket/api"
 	"github.com/orilloai/placket/core/canonical"
+	"github.com/orilloai/placket/core/founding"
 	"github.com/orilloai/placket/core/setup"
 )
 
@@ -134,7 +141,7 @@ func (s *Server) serve() ([]*served, error) {
 			dir = state.DefaultPath(m.Key, m.Accord)
 		}
 		view, ok, err := state.Accepted(dir)
-		if err != nil || !ok {
+		if err != nil || !ok || !acceptedBy(a, dir, view, k.Reference()) {
 			v.from, v.code = errtext.FromMCP, string(CodeFounding)
 			continue
 		}
@@ -156,6 +163,27 @@ func (s *Server) serve() ([]*served, error) {
 		v.accepted = true
 	}
 	return list, nil
+}
+
+// acceptedBy reports whether the acceptance the state directory at dir keeps is the actor's
+// consent to the view: founding's rows 19 and 20 pass it, as any party checks an acceptance with no
+// opening (setup-contract-15, setup-contract-16), its from is the actor, and its view is the typed
+// hash of view, so a file swapped after state.Accepted read it is refused too.
+func acceptedBy(a *setup.Accord, dir string, view []byte, actor string) bool {
+	b, ok, err := lines.ReadAll(filepath.Join(dir, state.FileAcceptance), local.MaxCall)
+	if err != nil || !ok {
+		return false
+	}
+	b = bytes.TrimSuffix(b, []byte{'\n'})
+	from, err := founding.Accepted(a, b)
+	if err != nil || from != actor {
+		return false
+	}
+	var acc struct {
+		View string `json:"view"`
+	}
+	h, err := canonical.TypedHash(view)
+	return err == nil && json.Unmarshal(b, &acc) == nil && acc.View == h
 }
 
 // answers reports whether the actor's accepted view says it answers questions under the Accord

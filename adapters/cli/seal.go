@@ -12,6 +12,7 @@ import (
 
 	"github.com/orilloai/placket/adapters/internal/lines"
 	"github.com/orilloai/placket/adapters/keyfile"
+	"github.com/orilloai/placket/adapters/local"
 	"github.com/orilloai/placket/core/setup"
 	"github.com/orilloai/placket/core/signing"
 )
@@ -96,31 +97,56 @@ func writeNew(path string, b []byte) error {
 	return nil
 }
 
+// errOpening is an opening the window does not read: one that others may read or write, that
+// another user owns, or that is over local.MaxCall.
+var errOpening = errors.New("cli: opening")
+
 // readOpenings reads, for each actor, the opening dir holds for it, DIR/<hex>.opening.json, its one
 // trailing line feed removed. An actor that is not an actor reference names no file inside dir, so
 // it is left out, as is a file that is missing, and founding refuses the set (row 4 or
-// opening-missing); a file that is not regular, or cannot be read, is tool error file opening.
+// opening-missing). An opening is private to its actor (setup-contract-13), so it is read as a key
+// file is: a file that is not regular, that others may read or write, or that another user owns, is
+// tool error file opening, and so is one over local.MaxCall, read no further than one byte past it.
 func readOpenings(dir string, actors []string) (map[string][]byte, error) {
 	out := map[string][]byte{}
 	for _, a := range actors {
 		if _, ok := signing.ParseReference(a); !ok {
 			continue
 		}
-		f, err := lines.Open(filepath.Join(dir, OpeningName(a)))
+		b, err := readOpening(filepath.Join(dir, OpeningName(a)))
 		if errors.Is(err, fs.ErrNotExist) {
 			continue
 		}
 		if err != nil {
 			return nil, err
 		}
-		b, err := io.ReadAll(f)
-		_ = f.Close()
-		if err != nil {
-			return nil, err
-		}
 		out[a] = trimLF(b)
 	}
 	return out, nil
+}
+
+// readOpening reads the opening at path, as readOpenings checks it.
+func readOpening(path string) ([]byte, error) {
+	f, err := lines.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = f.Close() }()
+	fi, err := f.Stat()
+	if err != nil {
+		return nil, err
+	}
+	if !lines.Private(fi, os.Getuid()) {
+		return nil, errOpening
+	}
+	b, err := io.ReadAll(io.LimitReader(f, local.MaxCall+1))
+	if err != nil {
+		return nil, err
+	}
+	if len(b) > local.MaxCall {
+		return nil, errOpening
+	}
+	return b, nil
 }
 
 // trimLF removes one trailing line feed, as the commands write one after each JSON value.

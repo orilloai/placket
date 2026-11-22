@@ -25,6 +25,7 @@ import (
 	"github.com/orilloai/placket/adapters/state"
 	"github.com/orilloai/placket/core/answer"
 	"github.com/orilloai/placket/core/canonical"
+	"github.com/orilloai/placket/core/founding"
 	"github.com/orilloai/placket/core/receipts"
 	"github.com/orilloai/placket/core/signing"
 )
@@ -597,5 +598,98 @@ func TestAResultThatCannotRecordStillHandsOver(t *testing.T) {
 	}
 	if err := json.Unmarshal([]byte(content[1].(map[string]any)["text"].(string)), &got); err != nil || got.Closing.Word != "accepted" || got.Answer.Text != "Yes." {
 		t.Fatalf("result handed over %v (%v)", content[1], err)
+	}
+}
+
+// TestALabelWhoseAcceptanceDoesNotCheckIsRefused serves five labels of the proposer's key on one
+// Accord, each with a state directory of its own that keeps the proposer's accepted view and an
+// acceptance naming that view's typed hash, so the state directory takes each as accepted. The
+// acceptance is, in turn: another member's, signed by that member's key; the proposer's, carrying
+// another member's signature (row 19); the proposer's, signed by its key but of another Accord (row
+// 20); the proposer's with one hex digit of its sig changed; and the proposer's own. placket mcp
+// refuses the first four with founding and serves the last (setup-contract-15, setup-contract-16).
+func TestALabelWhoseAcceptanceDoesNotCheckIsRefused(t *testing.T) {
+	t.Parallel()
+	w := newWorld(t)
+	keyOf := func(name string) signing.Key {
+		t.Helper()
+		k, err := keyfile.Read(w.key(name))
+		if err != nil {
+			t.Fatal(err)
+		}
+		return k
+	}
+	proposer, applier := keyOf("proposer"), keyOf("applier")
+	view, err := os.ReadFile(filepath.Join(state.DefaultPath(w.key("proposer"), w.accords[0]), state.FileView))
+	if err != nil {
+		t.Fatal(err)
+	}
+	view = bytes.TrimSuffix(view, []byte{'\n'})
+	accept := func(accord string, k signing.Key) []byte {
+		t.Helper()
+		b, err := founding.Accept(accord, view, k)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return b
+	}
+	sigOf := func(b []byte) string {
+		t.Helper()
+		var a struct{ Sig string }
+		if err := json.Unmarshal(b, &a); err != nil || a.Sig == "" {
+			t.Fatalf("the acceptance's sig: %s, %v", b, err)
+		}
+		return a.Sig
+	}
+	own := accept(w.accords[0], proposer)
+	others := accept(w.accords[0], applier)
+	sig := sigOf(own)
+	flipped := "1" + sig[1:]
+	if sig[0] == '1' {
+		flipped = "0" + sig[1:]
+	}
+	cases := []struct {
+		label      string
+		acceptance []byte
+	}{
+		{"another-member", others},
+		{"another-signature", bytes.Replace(own, []byte(sig), []byte(sigOf(others)), 1)},
+		{"another-accord", accept(w.accords[1], proposer)},
+		{"changed-sig", bytes.Replace(own, []byte(sig), []byte(flipped), 1)},
+		{"own", own},
+	}
+	cfg := client.Config{}
+	var labels []string
+	for _, c := range cases {
+		dir := filepath.Join(w.dir, "state-"+c.label)
+		if err := os.Mkdir(dir, 0o700); err != nil {
+			t.Fatal(err)
+		}
+		for name, b := range map[string][]byte{state.FileView: view, state.FileAcceptance: c.acceptance} {
+			if err := os.WriteFile(filepath.Join(dir, name), append(append([]byte(nil), b...), '\n'), 0o600); err != nil {
+				t.Fatal(err)
+			}
+		}
+		m := w.entry(c.label, "proposer", 0)
+		m.State = dir
+		cfg.Mediators = append(cfg.Mediators, m)
+		labels = append(labels, c.label)
+	}
+	s := serve(t, &mcp.Server{Config: cfg, Labels: labels})
+	o, e := s.call(t, "mediators", map[string]any{})
+	list, _ := o["mediators"].([]any)
+	if e != "" || len(list) != len(cases) {
+		t.Fatalf("mediators: %v %s", o, e)
+	}
+	refused := errtext.Text(errtext.FromMCP, string(mcp.CodeFounding))
+	for i, c := range cases {
+		got := list[i].(map[string]any)
+		if c.label == "own" {
+			if got["served"] != true {
+				t.Errorf("%s: %v, want served", c.label, got)
+			}
+		} else if got["refused"] != refused {
+			t.Errorf("%s: %v, want refused %q", c.label, got, refused)
+		}
 	}
 }

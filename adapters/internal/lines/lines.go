@@ -1,14 +1,16 @@
 // Package lines reads the files placket is handed rather than writes itself: a journal being
 // verified, logged or reconciled, and a state directory's files; keyfile opens a key file through it
-// too. Such a file is read only when it is
+// too, and the window its openings. Such a file is read only when it is
 // a regular file, so a FIFO or a device never holds a command, and each of its lines is read with a
-// cap. The file as a whole has none, since a journal grows for as long as its Accord runs.
+// cap. The file as a whole has none, since a journal grows for as long as its Accord runs. Private is
+// the rule a key file and an opening are both held to (keys-on-disk, setup-contract-13).
 package lines
 
 import (
 	"bufio"
 	"errors"
 	"io"
+	"io/fs"
 	"os"
 	"syscall"
 )
@@ -77,6 +79,14 @@ func ReadAll(path string, max int) (b []byte, ok bool, err error) {
 		return nil, false, err
 	}
 	return b, len(b) <= max, nil
+}
+
+// Private reports whether fi is a regular file that only its owner may read or write, and that the
+// user uid owns: none of mode 0077 is set. A key file and an opening are read only when it holds
+// (keys-on-disk, setup-contract-13).
+func Private(fi fs.FileInfo, uid int) bool {
+	st, ok := fi.Sys().(*syscall.Stat_t)
+	return ok && fi.Mode().IsRegular() && fi.Mode().Perm()&0o077 == 0 && int64(st.Uid) == int64(uid)
 }
 
 // openFile is os.OpenFile, a variable so a test can swap the file between the check and the open.

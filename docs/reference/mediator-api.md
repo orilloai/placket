@@ -404,7 +404,7 @@ Every code `placket mcp` can return, by where it comes from: a code in a door re
 | `adapters/local` | `socket-path` | The socket path is longer than the system takes; use a shorter one. |
 | `adapters/mcp` | `answering-key` | The label's key answers questions under its Accord, and placket mcp holds proposing keys only; serve a proposing key, or start it with --allow-answering. |
 | `adapters/mcp` | `bad-arguments` | The tool's arguments do not fit its input schema, or wait is above 60; send them as the schema says. |
-| `adapters/mcp` | `founding` | The label's founding set cannot be read or does not found; fix the founding path in the labels config. |
+| `adapters/mcp` | `founding` | The label's founding set cannot be read or does not found, or its kept acceptance is not signed by its key for this Accord; fix the founding path in the labels config, or run placket view and placket accept with its key. |
 | `adapters/mcp` | `internal` | The call failed in a way no other code names; call again, and report it if it persists. |
 | `adapters/state` | `state` | A file of the state directory could not be read or written, or is not in its format; check the directory and its files. |
 | `adapters/state` | `state-actor` | The state directory belongs to another key; give each key its own state directory. |
