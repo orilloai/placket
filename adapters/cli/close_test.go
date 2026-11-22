@@ -398,10 +398,26 @@ func TestWindowCloseServes(t *testing.T) {
 	}
 }
 
-// successor makes the founding set of a new Accord of the same parties, whose policy supersedes the
-// given Accord and close, and returns its path; with accord empty, it supersedes nothing.
-func successor(t *testing.T, a *accord, accord, close string) string {
+// A next is a successor Accord: its founding set's path, the path of its acceptances and its id,
+// the one a reader keeps from its own acceptance.
+type next struct{ set, acceptances, id string }
+
+// successor makes, in a directory of its own, the founding set of a new Accord of the same parties,
+// whose policy supersedes the given Accord and close, with every party's acceptance; with accord
+// empty, it supersedes nothing. Its bindings run until 2099.
+func successor(t *testing.T, a *accord, accord, close string) next {
 	t.Helper()
+	return successorUntil(t, a, accord, close, "2099-01-01T00:00:00Z", "2026-11-18T09:00:00Z")
+}
+
+// successorUntil makes a successor as successor does, whose bindings run until until, each party
+// accepting its view of the set as founded at at.
+func successorUntil(t *testing.T, a *accord, accord, close, until, at string) next {
+	t.Helper()
+	dir, err := os.MkdirTemp(a.dir, "next")
+	if err != nil {
+		t.Fatal(err)
+	}
 	b, err := os.ReadFile(filepath.Join(a.dir, "policy.json"))
 	if err != nil {
 		t.Fatal(err)
@@ -414,29 +430,51 @@ func successor(t *testing.T, a *accord, accord, close string) string {
 		policy["supersedes"] = map[string]any{"accord": accord, "close": close}
 	}
 	pb, _ := json.Marshal(policy)
-	name := strings.TrimPrefix(accord+close, "sha256:")
-	if len(name) > 12 {
-		name = name[len(name)-12:]
-	}
-	pp := filepath.Join(a.dir, "policy-"+name+".json")
+	pp := filepath.Join(dir, "policy.json")
 	if err := os.WriteFile(pp, pb, 0o600); err != nil {
 		t.Fatal(err)
 	}
 	args := []string{"founding", "--policy", pp, "--mediator", filepath.Join(a.dir, "mediator.json"), "--card", filepath.Join(a.dir, "card.json")}
-	for _, p := range []string{"p1", "p2"} {
+	for _, p := range a.parties {
 		bind := must(t, "bind", "--key", a.key("principal"), "--actor", a.refs[p], "--role", "peer", "--mediator", a.refs["mediator"],
-			"--until", "2099-01-01T00:00:00Z", "--policy", pp).stdout
-		bp := filepath.Join(a.dir, p+"-"+name+".binding")
+			"--until", until, "--policy", pp).stdout
+		bp := filepath.Join(dir, p+".binding")
 		if err := os.WriteFile(bp, []byte(bind), 0o600); err != nil {
 			t.Fatal(err)
 		}
 		args = append(args, "--seal", filepath.Join(a.dir, p+".seal"), "--binding", bp)
 	}
-	set := filepath.Join(a.dir, "founding-"+name+".json")
-	if err := os.WriteFile(set, []byte(must(t, args...).stdout), 0o600); err != nil {
+	set := filepath.Join(dir, "founding.json")
+	sb := must(t, args...).stdout
+	if err := os.WriteFile(set, []byte(sb), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	return set
+	id, err := canonical.TypedHash(bytes.TrimSuffix([]byte(sb), []byte("\n")))
+	if err != nil {
+		t.Fatal(err)
+	}
+	acc := a.acceptWithAt(t, set, filepath.Join(dir, "acceptances.json"), at, func(p string) string { return p })
+	return next{set: set, acceptances: acc, id: id}
+}
+
+// verifyNext runs verify --accord over the Accord's journal with its founding set and every
+// member's opening, checked against the successor n under the clock of e, and extra flags.
+func verifyNext(t *testing.T, e cli.Env, a *accord, n next, extra ...string) result {
+	t.Helper()
+	args := append([]string{"verify", "--receipts", a.journal(), "--accord", a.id, "--founding", a.founding()}, a.opens()...)
+	args = append(args, "--superseded-by", n.set, "--successor-accord", n.id, "--successor-acceptances", n.acceptances)
+	return run(t, e, append(args, extra...)...)
+}
+
+// closeAt is the time of the close receipt that ends the Accord's journal.
+func (a *accord) closeAt(t *testing.T) string {
+	t.Helper()
+	lines := a.journalLines(t)
+	c, err := receipts.DecodeClose(lines[len(lines)-1])
+	if err != nil {
+		t.Fatal(err)
+	}
+	return c.At
 }
 
 // notedAccord plays two notes from p1 to p2, one back and a third from p1, stops the window and
@@ -491,35 +529,135 @@ func TestVerifyCompleteLine(t *testing.T) {
 }
 
 // TestVerifySupersededBy is U13 (close-4): with the founding set of a successor whose supersedes
-// pins this Accord and this log's close, verify exits 0 with the pinned complete line; a successor
-// that names another close or another Accord, one that supersedes nothing, and a log with no close,
-// are tool error verify superseded; and --superseded-by needs --accord.
+// pins this Accord and this log's close, its id and its acceptances, verify exits 0 with the pinned
+// complete line; a successor that names another close or another Accord, one that supersedes
+// nothing, and a log with no close, each with its own id and acceptances, are tool error verify
+// superseded; and --superseded-by needs --accord.
 func TestVerifySupersededBy(t *testing.T) {
 	t.Parallel()
 	a := notedAccord(t)
 	open := successor(t, a, a.id, "sha256:"+strings.Repeat("cd", 32))
-	if r := verifyAccord(t, a, a.journal(), "--superseded-by", open); r.code != cli.ExitTool || !slices.Equal(r.lines(), []string{"error verify superseded"}) {
+	if r := verifyNext(t, env(), a, open); r.code != cli.ExitTool || !slices.Equal(r.lines(), []string{"error verify superseded"}) {
 		t.Fatalf("a log with no close: %v", r)
 	}
 	id := a.closeNow(t)
-	next := successor(t, a, a.id, id)
-	nb, _ := os.ReadFile(next)
-	nextID, _ := canonical.TypedHash(bytes.TrimSuffix(nb, []byte("\n")))
-	r := verifyAccord(t, a, a.journal(), "--superseded-by", next)
-	if r.code != 0 || !slices.Contains(r.lines(), fmt.Sprintf(cli.LinePinnedComplete, id, nextID)) {
+	n := successor(t, a, a.id, id)
+	r := verifyNext(t, env(), a, n)
+	if r.code != 0 || !slices.Contains(r.lines(), fmt.Sprintf(cli.LinePinnedComplete, id, n.id)) {
 		t.Fatalf("a pinned close: %v", r)
 	}
-	for name, set := range map[string]string{
+	for name, other := range map[string]next{
 		"another close":  open,
 		"another Accord": successor(t, a, "sha256:"+strings.Repeat("ab", 32), id),
 		"no supersedes":  successor(t, a, "", ""),
 	} {
-		if r := verifyAccord(t, a, a.journal(), "--superseded-by", set); r.code != cli.ExitTool || !slices.Equal(r.lines(), []string{"error verify superseded"}) {
+		if r := verifyNext(t, env(), a, other); r.code != cli.ExitTool || !slices.Equal(r.lines(), []string{"error verify superseded"}) {
 			t.Fatalf("%s: %v", name, r)
 		}
 	}
-	if r := run(t, env(), "verify", "--receipts", a.journal(), "--mediator", a.refs["mediator"], "--superseded-by", next); r.code != cli.ExitTool || !slices.Equal(r.lines(), []string{"error usage"}) {
+	if r := run(t, env(), "verify", "--receipts", a.journal(), "--mediator", a.refs["mediator"], "--superseded-by", n.set,
+		"--successor-accord", n.id, "--successor-acceptances", n.acceptances); r.code != cli.ExitTool || !slices.Equal(r.lines(), []string{"error usage"}) {
 		t.Fatalf("--superseded-by without --accord: %v", r)
+	}
+}
+
+// TestVerifySuccessorNeedsItsIDAndAcceptances is V1 (close-4, commands-4): --superseded-by without
+// --successor-accord, without --successor-acceptances or without both, and either of those without
+// --superseded-by, print the usage line and error usage, exit 3, and check nothing.
+func TestVerifySuccessorNeedsItsIDAndAcceptances(t *testing.T) {
+	t.Parallel()
+	a := notedAccord(t)
+	id := a.closeNow(t)
+	n := successor(t, a, a.id, id)
+	for name, flags := range map[string][]string{
+		"no --successor-accord":         {"--superseded-by", n.set, "--successor-acceptances", n.acceptances},
+		"no --successor-acceptances":    {"--superseded-by", n.set, "--successor-accord", n.id},
+		"--superseded-by alone":         {"--superseded-by", n.set},
+		"--successor-accord alone":      {"--successor-accord", n.id},
+		"--successor-acceptances alone": {"--successor-acceptances", n.acceptances},
+		"both without --superseded-by":  {"--successor-accord", n.id, "--successor-acceptances", n.acceptances},
+	} {
+		r := verifyAccord(t, a, a.journal(), flags...)
+		if r.code != cli.ExitTool || r.stdout != "" || r.stderr != cli.LineSuccessorFlags+"\nerror usage\n" {
+			t.Fatalf("%s: %v", name, r)
+		}
+	}
+}
+
+// TestVerifySuccessorIsTheOneNamed is V2 (close-4): a successor whose supersedes pins the close,
+// with its acceptances, checked under an id that is not its set's typed hash, the old Accord's, any
+// other hash or no hash at all, is tool error verify superseded, with no other line.
+func TestVerifySuccessorIsTheOneNamed(t *testing.T) {
+	t.Parallel()
+	a := notedAccord(t)
+	id := a.closeNow(t)
+	n := successor(t, a, a.id, id)
+	for _, other := range []string{a.id, "sha256:" + strings.Repeat("ef", 32), "founding.json"} {
+		named := n
+		named.id = other
+		if r := verifyNext(t, env(), a, named); r.code != cli.ExitTool || r.stdout != "" || r.stderr != "error verify superseded\n" {
+			t.Fatalf("the id %s: %v", other, r)
+		}
+	}
+}
+
+// TestVerifySuccessorIsAccepted is V3 (close-4): a successor whose supersedes pins the close, under
+// its own id, with an acceptance list that lacks one member's, or with the old Accord's acceptances,
+// signed for another Accord, is tool error founding, with no other line.
+func TestVerifySuccessorIsAccepted(t *testing.T) {
+	t.Parallel()
+	a := notedAccord(t)
+	id := a.closeNow(t)
+	n := successor(t, a, a.id, id)
+	b, err := os.ReadFile(n.acceptances)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var list []json.RawMessage
+	if err := json.Unmarshal(b, &list); err != nil || len(list) != 2 {
+		t.Fatalf("the acceptances %s: %v", b, err)
+	}
+	lacking := n
+	lacking.acceptances = writeFile(t, filepath.Dir(n.set), "lacking.json", []byte("["+string(list[1])+"]\n"))
+	other := n
+	other.acceptances = a.acceptances()
+	for name, c := range map[string]struct {
+		n    next
+		want string
+	}{
+		"one member's lacking": {lacking, "error founding acceptance-missing\n"},
+		"another Accord's":     {other, "error founding acceptance-accord\n"},
+	} {
+		if r := verifyNext(t, env(), a, c.n); r.code != cli.ExitTool || r.stdout != "" || r.stderr != c.want {
+			t.Fatalf("%s: %v", name, r)
+		}
+	}
+}
+
+// TestVerifySuccessorFoundedAtTheClose is V4 (close-4): the successor is founded at the at of the
+// close it pins, so a successor whose bindings run until an hour after the close prints the pinned
+// line, and one whose bindings end at the close's at is tool error founding binding-expired, on
+// today's clock and on a clock a year later alike.
+func TestVerifySuccessorFoundedAtTheClose(t *testing.T) {
+	t.Parallel()
+	a := notedAccord(t)
+	id := a.closeNow(t)
+	at, err := time.Parse(time.RFC3339, a.closeAt(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	stamp := func(d time.Duration) string { return at.Add(d).UTC().Format("2006-01-02T15:04:05Z") }
+	live := successorUntil(t, a, a.id, id, stamp(time.Hour), stamp(-time.Hour))
+	ended := successorUntil(t, a, a.id, id, stamp(0), stamp(-time.Hour))
+	later := env()
+	later.Now = func() time.Time { return time.Now().AddDate(1, 0, 0) }
+	for name, e := range map[string]cli.Env{"today": env(), "a year later": later} {
+		if r := verifyNext(t, e, a, live); r.code != 0 || !slices.Contains(r.lines(), fmt.Sprintf(cli.LinePinnedComplete, id, live.id)) {
+			t.Fatalf("%s, bindings until after the close: %v", name, r)
+		}
+		if r := verifyNext(t, e, a, ended); r.code != cli.ExitTool || r.stdout != "" || r.stderr != "error founding binding-expired\n" {
+			t.Fatalf("%s, bindings until the close: %v", name, r)
+		}
 	}
 }
 

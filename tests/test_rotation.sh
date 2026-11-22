@@ -1,9 +1,14 @@
 #!/bin/sh
 # The rotation guide's test: it founds a fresh Accord as the worked example does, runs its window
 # for one give and stops it, and then runs every sh block of docs/guides/rotation.md, in order, in
-# one shell, with the binary this tree builds as placket. It checks that the old journal ends in its
-# close, that the successor's founding set supersedes it, and that verify --superseded-by prints the
-# pinned complete line.
+# one shell, with the binary this tree builds as placket: the close, the successor's founding set,
+# the successor's window until every member has accepted, the check of the old journal against the
+# accepted successor, and the old key's removal. It checks that the guide holds no unlabelled fence
+# and no inline command it does not run, that the old journal ends in its close, that the
+# successor's acceptances are written in its own directory and the old Accord's are untouched, and
+# that verify --superseded-by prints the pinned complete line. Then it checks that verify refuses
+# a successor under another id, the successor flags given apart, and the old Accord's acceptances
+# for the successor.
 set -u
 
 root=$(cd "$(dirname "$0")/.." && pwd)
@@ -83,20 +88,60 @@ kill "$window_pid"
 wait "$window_pid" 2>/dev/null
 window_pid=
 
+# No fence of the guide is unlabelled, so no command of it goes unrun.
+awk '/^```/ { if (!on && $0 == "```") { print FILENAME ":" FNR; bad = 1 } on = !on } END { exit bad }' "$guide" >"$tmp/out" ||
+	fail "the guide has an unlabelled fence"
 # Every sh block of the guide, in order, in one shell.
 awk '/^```sh$/ { on = 1; next } /^```$/ { on = 0; next } on' "$guide" >guide.sh
 [ -s guide.sh ] || fail "the guide has no sh block"
+# A command the prose names with its flags is one the guide runs, so none is one placket refuses.
+awk '/^```/ { on = !on; next } !on' "$guide" | grep -o '`placket [^`]*--[^`]*`' | tr -d '`' >inline.txt
+while IFS= read -r c; do
+	grep -qF -- "$c" guide.sh || { echo "$c" >"$tmp/out"; fail "the guide's prose names a command it does not run"; }
+done <inline.txt
 # The close's guard is the operator's own record of the founding, never the journal it closes.
 grep -q 'journal/accord' guide.sh && fail "the guide reads the close's --accord from the journal it closes"
-if ! sh -eu guide.sh >"$tmp/out" 2>&1; then
+old=$(cksum <acceptances.json)
+# A window the guide leaves running, on a failure, is stopped with the guide's shell.
+{ echo 'trap '"'"'kill $(jobs -p) 2>/dev/null'"'"' EXIT'; cat guide.sh; } >run.sh
+if ! sh -eu run.sh >"$tmp/out" 2>&1; then
 	fail "the guide's commands did not run to their end"
 fi
 
+accord=$id
 close=$(sed -n 's/^close //p' close.out)
 last=$(tail -n 1 journal/receipts.jsonl | jq -r .payload | base64 -d | jq -r .predicateType)
 [ "$last" = "https://placket.tech/close/0.1" ] || fail "the old journal does not end in its close"
 grep -q "^closed block closed sha256:[0-9a-f]*$" close.out || fail "the open question was not closed as closed"
-new=sha256:$(tr -d '\n' <founding2.json | openssl dgst -sha256 -binary | od -An -v -tx1 | tr -d ' \n')
+[ -f successor/acceptances.json ] || fail "the successor's window wrote no acceptances.json in the successor's directory"
+[ "$(cksum <acceptances.json)" = "$old" ] || fail "the old Accord's acceptances.json changed"
+[ ! -e mediator.key ] || fail "the old key was not removed"
+new=sha256:$(tr -d '\n' <successor/founding.json | openssl dgst -sha256 -binary | od -An -v -tx1 | tr -d ' \n')
+[ "$new" = "$(sed -n 's/^accord //p' successor/founding.out)" ] || fail "the successor's id is not its set's typed hash"
 want="complete: against close receipt $close, which successor accord $new pins; not claimed: that the mediator signed no other log for this Accord"
 grep -qxF "$want" "$tmp/out" || fail "verify --superseded-by printed no pinned complete line: $want"
-echo "ok   the rotation guide closes, founds a successor, and verify --superseded-by prints the pinned complete line"
+echo "ok   the rotation guide closes, founds a successor, runs its window until every member accepts, and verify --superseded-by prints the pinned complete line"
+
+# refused CODE WANT ARGS...: verify with ARGS exits CODE and prints exactly WANT on standard error,
+# and nothing on standard output.
+refused() {
+	code=$1 want=$2
+	shift 2
+	placket verify --receipts journal --accord "$accord" --founding founding.json "$@" >"$tmp/stdout" 2>"$tmp/out"
+	got=$?
+	[ "$got" -eq "$code" ] || fail "verify $* exited $got, not $code"
+	[ ! -s "$tmp/stdout" ] || fail "verify $* printed on standard output"
+	[ "$(cat "$tmp/out")" = "$want" ] || fail "verify $* did not print: $want"
+}
+refused 3 "error verify superseded" --superseded-by successor/founding.json --successor-accord "$accord" \
+	--successor-acceptances successor/acceptances.json
+echo "ok   verify refuses a successor under an id that is not its set's"
+usage="usage: placket verify: --superseded-by, --successor-accord and --successor-acceptances are given together
+error usage"
+refused 3 "$usage" --superseded-by successor/founding.json --successor-accord "$new"
+refused 3 "$usage" --superseded-by successor/founding.json --successor-acceptances successor/acceptances.json
+refused 3 "$usage" --successor-accord "$new" --successor-acceptances successor/acceptances.json
+echo "ok   verify takes --superseded-by, --successor-accord and --successor-acceptances only together"
+refused 3 "error founding acceptance-accord" --superseded-by successor/founding.json --successor-accord "$new" \
+	--successor-acceptances acceptances.json
+echo "ok   verify refuses the old Accord's acceptances for the successor"
