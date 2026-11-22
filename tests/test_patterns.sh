@@ -17,7 +17,10 @@ set -u
 
 root=$(cd "$(dirname "$0")/.." && pwd)
 patterns=$root/patterns
-LIMIT=60
+# A pattern runs its window, applier and stand-in steps in turn; on a GitHub runner the whole of
+# github-merge takes longer than a minute, while its processes are still running at the limit, so
+# the limit is four minutes. A pattern still running past it is killed, and its processes named.
+LIMIT=240
 tmp=$(mktemp -d)
 # A unix socket's path is short on some systems: each pattern's TMPDIR lives under a short directory.
 short=$(mktemp -d /tmp/plkp.XXXXXX)
