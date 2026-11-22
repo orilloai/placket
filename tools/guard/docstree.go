@@ -13,15 +13,56 @@ const (
 	cliReference = "docs/reference/cli.md"
 )
 
-// docsSections are the tree's sections, in order.
-var docsSections = []string{"Quickstarts", "Concepts", "Guides", "Reference", "Verify", "Security"}
+// A docsSection is a section of the tree and the pages it holds: those under a directory, written
+// with its closing slash, or one page. A page a section holds is listed under that section, and each
+// Markdown page under docs/ that a section holds is listed. A page no section holds, such as
+// docs/review.md, is not asked for, and may be listed under any.
+type docsSection struct {
+	name  string
+	holds []string
+}
 
-// docsListed are the directories whose Markdown pages the tree lists, every one, and the one page it
-// lists outside them.
-var (
-	docsListed     = []string{"docs/concepts", "docs/quickstarts", "docs/guides", "docs/reference", "docs/security"}
-	docsListedPage = "docs/verify.md"
-)
+// docsSections are the tree's sections, in order.
+var docsSections = []docsSection{
+	{"Quickstarts", []string{"docs/quickstarts/"}},
+	{"Concepts", []string{"docs/concepts/"}},
+	{"Guides", []string{"docs/guides/"}},
+	{"Reference", []string{"docs/reference/", "spec/", "vectors/"}},
+	{"Verify", []string{"docs/verify.md"}},
+	{"Security", []string{"docs/security/"}},
+}
+
+// docsSectionNames are the sections' names, in order, as a finding gives them.
+func docsSectionNames() string {
+	var names []string
+	for _, s := range docsSections {
+		names = append(names, s.name)
+	}
+	return strings.Join(names, ", ")
+}
+
+// docsSectionNamed reports whether a heading names a section of the tree.
+func docsSectionNamed(heading string) bool {
+	for _, s := range docsSections {
+		if s.name == heading {
+			return true
+		}
+	}
+	return false
+}
+
+// docsSectionOf is the section that holds a page, and the path by which it holds it, or "" for
+// both when no section does.
+func docsSectionOf(rel string) (name, by string) {
+	for _, s := range docsSections {
+		for _, h := range s.holds {
+			if rel == h || strings.HasSuffix(h, "/") && strings.HasPrefix(rel, h) {
+				return s.name, h
+			}
+		}
+	}
+	return "", ""
+}
 
 var (
 	// treeEntryRE is a page of the tree: "- [<title>](<path>)".
@@ -50,7 +91,8 @@ type cliCommand struct {
 
 // docs-tree-holds: docs/README.md, the docs tree, has the sections docsSections, in order, each a list
 // of links to pages, every link relative, naming a file that exists, under docs/, spec/ or vectors/;
-// every Markdown page under docsListed, and docsListedPage, is listed; every relative link on a listed
+// a page a section holds is listed under that section, and every Markdown page under docs/ that a
+// section holds is listed; every relative link on a listed
 // page names a file or directory that exists, and an anchor on a Markdown file is one of its headings;
 // and every line of a fenced block on a listed page that starts "placket " names a command, its flags
 // and its arguments' values as docs/reference/cli.md, the generated CLI reference, holds them.
@@ -67,8 +109,8 @@ func docsTreeHolds(t *tree) []finding {
 		at := finding{file: docsTreeFile, line: i + 1}
 		if m := headingRE.FindStringSubmatch(l); m != nil && strings.HasPrefix(l, "## ") {
 			sections = append(sections, m[1])
-			if n := len(sections); n > len(docsSections) || docsSections[n-1] != m[1] {
-				at.text = "the section " + strconv.Quote(m[1]) + " is not the tree's next; its sections are " + strings.Join(docsSections, ", ") + ", in order"
+			if n := len(sections); n > len(docsSections) || docsSections[n-1].name != m[1] {
+				at.text = "the section " + strconv.Quote(m[1]) + " is not the tree's next; its sections are " + docsSectionNames() + ", in order"
 				fs = append(fs, at)
 			}
 			continue
@@ -98,25 +140,38 @@ func docsTreeHolds(t *tree) []finding {
 			fs = append(fs, at)
 			continue
 		}
+		// A heading that names no section is refused above; its entries are not refused again.
+		under := sections[len(sections)-1]
+		if name, by := docsSectionOf(rel); name != "" && name != under && docsSectionNamed(under) {
+			fs = append(fs, finding{file: docsTreeFile, line: i + 1, text: m[2] + ": listed under " + under + "; a page of " + by + " is listed under " + name})
+		}
 		if !listed[rel] {
 			listed[rel] = true
 			pages = append(pages, rel)
 		}
 	}
 	if len(sections) < len(docsSections) {
-		fs = append(fs, finding{file: docsTreeFile, text: "lacks the sections after " + strconv.Itoa(len(sections)) + ": its sections are " + strings.Join(docsSections, ", ") + ", in order"})
+		fs = append(fs, finding{file: docsTreeFile, text: "lacks the sections after " + strconv.Itoa(len(sections)) + ": its sections are " + docsSectionNames() + ", in order"})
 	}
 
 	// Every page the site shows is in the tree.
-	for _, d := range docsListed {
-		for _, rel := range t.files(d, []string{"testdata"}, func(rel string) bool { return strings.HasSuffix(rel, ".md") }) {
-			if !listed[rel] {
-				fs = append(fs, finding{file: rel, text: "not in the docs tree, " + docsTreeFile})
+	for _, s := range docsSections {
+		for _, h := range s.holds {
+			if !strings.HasPrefix(h, "docs/") {
+				continue
+			}
+			var rels []string
+			if d, ok := strings.CutSuffix(h, "/"); ok {
+				rels = t.files(d, []string{"testdata"}, func(rel string) bool { return strings.HasSuffix(rel, ".md") })
+			} else if t.isFile(h) {
+				rels = []string{h}
+			}
+			for _, rel := range rels {
+				if !listed[rel] {
+					fs = append(fs, finding{file: rel, text: "not in the docs tree, " + docsTreeFile})
+				}
 			}
 		}
-	}
-	if t.isFile(docsListedPage) && !listed[docsListedPage] {
-		fs = append(fs, finding{file: docsListedPage, text: "not in the docs tree, " + docsTreeFile})
 	}
 
 	// The links and the command lines of every page listed.

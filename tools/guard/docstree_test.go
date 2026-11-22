@@ -6,9 +6,19 @@ import (
 	"testing"
 )
 
-// The planted faults of docs-tree-holds. The tree of the live copy gains entries at its end, in its
-// last section, and the fixture docs-tree-faults gains a page the tree lists and one it does not.
+// The planted faults of docs-tree-holds. The tree of the live copy gains entries at the end of its
+// Guides, and the fixture docs-tree-faults gains a page the tree lists and one it does not.
 const docsTree = "docs/README.md"
+
+// lastGuide is the live tree's last entry under Guides, after which the faults case adds its own.
+const lastGuide = "- [Rotating a mediator's key](guides/rotation.md)"
+
+// Two entries of the live tree, which the move case takes out of their sections and lists under
+// Security.
+const (
+	accordEntry   = "- [The Accord](concepts/accord.md)"
+	protocolEntry = "- [The protocol](../spec/protocol.md)"
+)
 
 // treeFaults are the entries the faults case adds to the tree: a page listed, then one fault of each
 // kind a tree entry can hold.
@@ -22,12 +32,13 @@ const treeFaults = `- [Faults](guides/faults.md)
 
 func docsTreeCases(t *testing.T) []tcase {
 	n := len(liveLines(t, docsTree))
-	tree := func(i int, text string) string { return docsTree + ":" + strconv.Itoa(n+i) + ": " + text }
+	guides := lineOf(t, docsTree, lastGuide)
+	tree := func(i int, text string) string { return docsTree + ":" + strconv.Itoa(guides+i) + ": " + text }
 	concepts := lineOf(t, docsTree, "## Concepts")
 	page := "docs/guides/faults.md"
 	return []tcase{
 		{name: "docs-tree-faults", fixture: "docs-tree-faults", setup: func(t *testing.T, dir string) {
-			edit(t, dir, docsTree, func(s string) string { return s + treeFaults })
+			edit(t, dir, docsTree, func(s string) string { return strings.Replace(s, lastGuide+"\n", lastGuide+"\n"+treeFaults, 1) })
 		}, refuse: []string{"docs-tree-holds"}, lines: []string{
 			tree(2, "guides/missing.md: no such page"),
 			tree(3, "../patterns/README.md: a tree link leaves docs/ only for spec/ and vectors/"),
@@ -42,6 +53,19 @@ func docsTreeCases(t *testing.T) []tcase {
 			page + ":11: `placket verify --receipts journal --accord ID --founding founding.json --no-such-flag`: --no-such-flag is no flag of placket verify in docs/reference/cli.md",
 			page + ":15: nofile2.md: no such file",
 			"docs/guides/unlisted.md: not in the docs tree, docs/README.md",
+		}},
+		// A page listed under a section that does not hold it: a concept, and a page of spec/, moved to
+		// Security, the tree's last section.
+		{name: "docs-tree-moved", setup: func(t *testing.T, dir string) {
+			edit(t, dir, docsTree, func(s string) string {
+				for _, e := range []string{accordEntry, protocolEntry} {
+					s = strings.Replace(s, e+"\n", "", 1)
+				}
+				return strings.TrimSuffix(s, "\n") + "\n" + accordEntry + "\n" + protocolEntry + "\n"
+			})
+		}, refuse: []string{"docs-tree-holds"}, lines: []string{
+			docsTree + ":" + strconv.Itoa(n-1) + ": concepts/accord.md: listed under Security; a page of docs/concepts/ is listed under Concepts",
+			docsTree + ":" + strconv.Itoa(n) + ": ../spec/protocol.md: listed under Security; a page of spec/ is listed under Reference",
 		}},
 		// A section out of its place, and the tree with none.
 		{name: "docs-tree-sections", setup: func(t *testing.T, dir string) {
