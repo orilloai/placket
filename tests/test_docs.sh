@@ -391,7 +391,7 @@ terms decided 7
 valid: 13 receipts signed by mediator <mediator>
 conforms: every receipt names this Accord, its card and its members, and every answer call given fits; decisions checked against the terms only where the seals they read are opened
 complete: not claimed: this Accord has no close receipt
-claim: each receipt is this mediator's signed decision about one part under this Accord's terms.
+claim: each receipt and close is signed by this mediator.
 not claimed: what any party did with a part after it crossed; anything that did not go through this mediator; reworded or derived content; who was at a key.
 EOF
 if ! grep -q "^\"$tmp/bin/placket\" verify " "$tmp/verify.run"; then

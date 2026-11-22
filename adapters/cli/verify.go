@@ -12,7 +12,6 @@ import (
 
 	"github.com/orilloai/placket/adapters/internal/strict"
 	"github.com/orilloai/placket/adapters/journal"
-	"github.com/orilloai/placket/adapters/local"
 	"github.com/orilloai/placket/core/answer"
 	"github.com/orilloai/placket/core/canonical"
 	"github.com/orilloai/placket/core/composition"
