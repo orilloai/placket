@@ -149,6 +149,16 @@ func main() {
 		changed["text"] = "The proposal proposal-1!"
 		e.delivery = changed
 		add(e.vector("a-body-changed", "verify-2 row 5: the released proposal's delivery with its text changed is body, at its receipt's index", fails("body", 3)))
+		// Row 5 reads the delivery's format first: a member missing, or one it does not list, is no
+		// delivery, at index -1, though its body is the part.
+		missing := kit.Copy(s.Delivered(kit.Applier)[1]).(kit.Obj)
+		delete(missing, "messageId")
+		e.delivery = missing
+		add(e.vector("a-delivery-missing-a-member", "verify-1 row 5: the released proposal's delivery with no messageId is no delivery, body at index -1, though its body is the part", fails("body", -1)))
+		unknown := kit.Copy(s.Delivered(kit.Applier)[1]).(kit.Obj)
+		unknown["topic"] = "merges"
+		e.delivery = unknown
+		add(e.vector("a-delivery-with-an-unknown-member", "verify-1 row 5: the released proposal's delivery with a member topic is no delivery, body at index -1, though its body is the part", fails("body", -1)))
 	}
 	{
 		// Row 1 before row 2: a receipt of another Accord from a stranger.

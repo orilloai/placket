@@ -467,5 +467,24 @@ func main() {
 		s.Get(kit.Applier)
 		add("a-part-with-a-media-type", "crossing-2, crossing-3: a part with mediaType application/json passes and its delivery carries it; Application/JSON, json, a type with a parameter, and a number are each one-body", s, askAndLog)
 	}
+	{
+		// The digest names bytes, not form (crossing-3): a text, a raw and a data body of the same
+		// bytes, under one salt, name one digest.
+		s := scene(askAndLog)
+		same := kit.Salt("crossing same-bytes", 32)
+		body := `{"total":1250}`
+		for i, p := range []kit.Obj{
+			kit.TextPart("note", same, body),
+			kit.RawPart("note", same, []byte(body)),
+			kit.DataPart("note", same, kit.Obj{"total": int64(1250)}),
+		} {
+			m := kit.Message("same-"+string(rune('a'+i)), kit.HashOf(askAndLog), kit.Applier, p)
+			s.Give(at(i), kit.Proposer, int64(1+i), m, kit.Applier, "pass", "ok")
+		}
+		s.Get(kit.Applier)
+		s.Get(kit.Applier)
+		s.Get(kit.Applier)
+		add("the-same-bytes-in-three-forms", "crossing-3: a text, a raw and a data body of the same bytes under one salt each pass, their receipts name one digest, and each delivery carries its body in the form it crossed", s, askAndLog)
+	}
 	kit.Main("crossing", vs)
 }
