@@ -55,11 +55,12 @@ func TestShowRefusesAPayloadNotInCanonicalForm(t *testing.T) {
 	}
 	p := writeFile(t, a.dir, "spaced.receipt", r)
 
-	if got := run(t, env(), "show", "--receipt", p); got.code != cli.ExitTool || got.stdout != "" || got.stderr != "error verify not-canonical receipts.jsonl line 1\n" {
+	const refused = "error verify not-canonical receipts.jsonl line 1\n"
+	if got := run(t, env(), "show", "--receipt", p); got.code != cli.ExitTool || got.stdout != "" || got.stderr != refused {
 		t.Fatalf("show: %v", got)
 	}
 	got := run(t, env(), "show", "--receipt", p, "--json")
-	if got.code != cli.ExitTool || got.stderr != "" {
+	if got.code != cli.ExitTool || got.stderr != refused {
 		t.Fatalf("show --json: %v", got)
 	}
 	o := object(t, got)

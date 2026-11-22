@@ -79,6 +79,7 @@ The first release. Placket mediates the parts that cross between parties under t
 - `placket verify --delivery` reads the file as a delivery first: one with a member missing or a member a delivery never holds is `error delivery`, exit 3. The `body` line says the body's bytes are the receipt's part, not their form or that the part passed.
 - `placket verify` on a journal with no receipt checks no binding's `until`, whatever the clock says, as the core does; it used to found at the wall clock.
 - The requirement text says a part's digest names its body's bytes, not the form they crossed in, and that a part may hold `mediaType` beside its body and `metadata` (crossing-2, crossing-3); decision record 0031 says why.
+- A receipt verifies only when its payload is exactly the canonical bytes of its statement: a payload with added whitespace, members in another order or a number spelled another way, even signed by the mediator, is `error verify not-canonical` in `verify`, `log` and `show`, and `show` prints no receipt id for it. The envelope around the payload may be written in any spelling the canonical form accepts (receipt-1; `docs/adr/0030-a-receipts-payload-is-its-canonical-bytes.md`).
 - `--json` turns on the object in every spelling of true, such as `--json=1`, even when a flag cannot be read; `give --wait --json` and `result --json` always hold `deliveries` beside `fetched`, `[]` when the wait fetched no other delivery.
 
 ### Close and rotate

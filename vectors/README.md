@@ -116,6 +116,8 @@ A change to a frozen format, the vector format included, carries a note here and
 
 - 0.1, before release: a member's view check (`spec/frozen-formats.md`, decision record 0026). A `conform` vector may give `view`, one member's view as a JSON value, with its founding set; it then expects `viewed`, the number of receipts read against the view, when the receipts conform, and may expect the codes `acceptance-view`, at index -1, and `view-conformance`. A new group, `conform-view`, holds those vectors and tests `core/conform`, filed under section 8; each gives the sealed set with no opening, and its generator states by hand every row of a view its vectors read. No landed vector changes.
 
+- 0.1, before release: a receipt's payload is its canonical bytes (`spec/frozen-formats.md`, decision record 0030). A receipt whose payload the canonical form accepts but would write otherwise fails `verify` with `not-canonical` at section 8's row 1. New `verify` vectors: `receipts/a-payload-with-a-space-added`, `a-payload-with-its-members-reordered` and `a-payload-with-seq-written-1-0`, and `close/a-close-payload-with-a-space-added`, each signed by the mediator over the rewritten bytes and expecting `not-canonical`; and `receipts/an-envelope-written-another-way`, a receipt given as `receiptText` with its envelope's members in another order and with spaces, which verifies. No landed vector changes.
+
 The vector format is at version 0.1 as written. The coverage list is this directory's own record, not a frozen format; its `tests` and `rest` members were added with the first vectors.
 
 ## Known limits

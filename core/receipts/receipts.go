@@ -12,6 +12,7 @@
 package receipts
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
@@ -291,7 +292,15 @@ func typedHash(canonicalBytes []byte) string {
 	return canonical.HashPrefix + hex.EncodeToString(sum[:])
 }
 
-// open reads one receipt through rows 1 to 3 of section 8 under the mediator's reference.
+// isCanonical reports whether b is its own canonical form: bytes the canonical form accepts and
+// would write back unchanged, as a receipt's payload must be (receipt-1).
+func isCanonical(b []byte) bool {
+	c, err := canonical.Form(b)
+	return err == nil && bytes.Equal(c, b)
+}
+
+// open reads one receipt through rows 1 to 3 of section 8 under the mediator's reference. The
+// receipt's own bytes need only be accepted by the canonical form; its payload must be canonical.
 func open(receipt []byte, mediator string) ([]byte, Code) {
 	v, _, err := shape.Decode(receipt)
 	if err != nil {
@@ -301,7 +310,7 @@ func open(receipt []byte, mediator string) ([]byte, Code) {
 	var payload []byte
 	if s, ok := o["payload"].(string); ok {
 		if b, ok := shape.Base64(s); ok {
-			if _, err := canonical.Form(b); err != nil {
+			if !isCanonical(b) {
 				return nil, CodeNotCanonical
 			}
 			payload = b

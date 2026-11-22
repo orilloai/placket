@@ -180,6 +180,10 @@ func main() {
 			return r
 		}()), failsAt("after-close", 5)),
 		verify("a-second-close", "close-4, section 8 row 9: a close after the close fails after-close at its index", append(append([]kit.Obj{}, all...), closed), failsAt("after-close", 5)),
+		verify("a-close-payload-with-a-space-added", "receipt-1, close-2, section 8 row 1: a close whose payload has one space after the opening brace, signed by the mediator over those bytes, is not-canonical at its index", with(func() kit.Obj {
+			r, _ := kit.Receipt(append([]byte("{ "), kit.StatementOf(closed)[1:]...), kit.Mediator)
+			return r
+		}()), failsAt("not-canonical", 4)),
 		verify("a-seq-that-is-not-its-chains-last", "close-4, section 8 row 8: a close whose chain from the proposer to the applier names seq 2, the ask, not the note at seq 3, fails close at its index", with(closeOf(at(30), finals(func(f []any) []any {
 			for i, x := range f {
 				if x.(kit.Obj)["from"] == asker && x.(kit.Obj)["to"] == receiver {
