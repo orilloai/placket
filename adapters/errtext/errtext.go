@@ -93,7 +93,7 @@ var table = map[key]string{
 
 	// adapters/mcp.Code.
 	{FromMCP, "answering-key"}: "The label's key answers questions under its Accord, and placket mcp holds proposing keys only; serve a proposing key, or start it with --allow-answering.",
-	{FromMCP, "founding"}:      "The label's founding set cannot be read or does not found; fix the founding path in the labels config.",
+	{FromMCP, "founding"}:      "The label's founding set cannot be read or does not found, or its kept acceptance is not signed by its key for this Accord; fix the founding path in the labels config, or run placket view and placket accept with its key.",
 	{FromMCP, "bad-arguments"}: "The tool's arguments do not fit its input schema, or wait is above 60; send them as the schema says.",
 	{FromMCP, "internal"}:      "The call failed in a way no other code names; call again, and report it if it persists.",
 

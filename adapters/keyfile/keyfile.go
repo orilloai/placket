@@ -13,7 +13,6 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
-	"syscall"
 
 	"github.com/orilloai/placket/adapters/internal/lines"
 	"github.com/orilloai/placket/core/signing"
@@ -100,14 +99,13 @@ func Read(path string) (signing.Key, error) {
 	return Parse(b)
 }
 
-// private refuses a file that is not regular (CodeRead), that others may read or write, or that
-// another user owns (CodeMode).
+// private refuses a file that is not regular (CodeRead), or that lines.Private refuses: one that
+// others may read or write, or that another user owns (CodeMode).
 func private(fi fs.FileInfo) error {
 	if !fi.Mode().IsRegular() {
 		return &Error{Code: CodeRead}
 	}
-	st, ok := fi.Sys().(*syscall.Stat_t)
-	if fi.Mode().Perm()&0o077 != 0 || !ok || int64(st.Uid) != int64(getuid()) {
+	if !lines.Private(fi, getuid()) {
 		return &Error{Code: CodeMode}
 	}
 	return nil

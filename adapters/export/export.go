@@ -19,8 +19,12 @@
 //	comment        the text of a comment the answerer gave the asker about the question, from the
 //	               giver's kept message, since only an envelope covers its re
 //	answer_signed  yes when an answer call whose typed hash the closing's by names reads, from the
-//	               journal's answers.jsonl, a kept answer line or a kept delivery (receipt-11)
-//	answerer       the closing receipt's from
+//	               journal's answers.jsonl, a kept answer line or a kept delivery (receipt-11), and
+//	               fits the closing. For a decline it shows a signed call bound to the closing, not
+//	               who signed it: a decline's signer is not compared, and the mediator refused a
+//	               decline from any member that is not an answerer when it took the call (maybe-6)
+//	answerer       the closing receipt's from; for a decline, the question's first answerer, who
+//	               may not be the one that declined
 //	receipts       the ids of every receipt the row rests on
 //	text           with words: the asked part's text
 //	changed_text   with words: the changed version's text, from any kept part its digest covers

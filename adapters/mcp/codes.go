@@ -8,7 +8,8 @@ const (
 	// CodeAnsweringKey: the label's key holds a role a maybe term's resolve.to names, so it answers
 	// questions under its Accord, and placket mcp serves proposing keys only.
 	CodeAnsweringKey Code = "answering-key"
-	// CodeFounding: the label's founding set cannot be read or does not found.
+	// CodeFounding: the label's founding set cannot be read or does not found, or its key has accepted
+	// no view of its Accord, or its kept acceptance is not signed by its key for this Accord.
 	CodeFounding Code = "founding"
 	// CodeBadArguments: the tool's arguments fail its input schema, or the wait cap.
 	CodeBadArguments Code = "bad-arguments"
