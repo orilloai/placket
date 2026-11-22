@@ -410,8 +410,8 @@ func successor(t *testing.T, a *accord, accord, close string) next {
 	return successorUntil(t, a, accord, close, "2099-01-01T00:00:00Z", "2026-11-18T09:00:00Z")
 }
 
-// successorUntil makes a successor as successor does, whose bindings run until until, each party
-// accepting its view of the set as founded at at.
+// successorUntil makes a successor as successor does, whose bindings run until until, founded at at,
+// when each party accepts its view of it.
 func successorUntil(t *testing.T, a *accord, accord, close, until, at string) next {
 	t.Helper()
 	dir, err := os.MkdirTemp(a.dir, "next")
@@ -444,8 +444,18 @@ func successorUntil(t *testing.T, a *accord, accord, close, until, at string) ne
 		}
 		args = append(args, "--seal", filepath.Join(a.dir, p+".seal"), "--binding", bp)
 	}
+	clock, err := time.Parse(time.RFC3339, at)
+	if err != nil {
+		t.Fatal(err)
+	}
+	e := env()
+	e.Now = func() time.Time { return clock }
+	r := run(t, e, args...)
+	if r.code != 0 {
+		t.Fatalf("the successor's founding: %v", r)
+	}
 	set := filepath.Join(dir, "founding.json")
-	sb := must(t, args...).stdout
+	sb := r.stdout
 	if err := os.WriteFile(set, []byte(sb), 0o600); err != nil {
 		t.Fatal(err)
 	}

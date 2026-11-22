@@ -103,7 +103,7 @@ done <inline.txt
 grep -q 'journal/accord' guide.sh && fail "the guide reads the close's --accord from the journal it closes"
 old=$(cksum <acceptances.json)
 # A window the guide leaves running, on a failure, is stopped with the guide's shell.
-{ echo 'trap '"'"'kill $(jobs -p) 2>/dev/null'"'"' EXIT'; cat guide.sh; } >run.sh
+{ echo 'trap '"'"'kill $(jobs -p) 2>/dev/null || :'"'"' EXIT'; cat guide.sh; } >run.sh
 if ! sh -eu run.sh >"$tmp/out" 2>&1; then
 	fail "the guide's commands did not run to their end"
 fi
