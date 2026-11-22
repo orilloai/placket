@@ -568,8 +568,10 @@ func showBy(b By) string {
 // signature, which mediator it names, its place in its chain or its place among questions
 // (receipt-8). It does hold every member to its form, as the verifier's rows 4 to 6 read it alone: a
 // mediator that is not an actor reference is refused with mediator, and a seq or prev of the wrong
-// form with chain, so nothing of an unverified receipt reaches its reader unread. Whatever presents
-// what it returns must say that the receipt was not verified.
+// form with chain, so nothing of an unverified receipt reaches its reader unread. A payload that is
+// not its own canonical form is refused with not-canonical, as row 1 refuses it, so Decode yields no
+// id for a receipt the verifier refuses there (receipt-1). Whatever presents what it returns must
+// say that the receipt was not verified.
 //
 // A close receipt holds no receipt's statement: Decode refuses it with statement-type, and
 // DecodeClose reads it (close-2).
