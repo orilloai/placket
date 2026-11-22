@@ -3,10 +3,12 @@
 # the vector tests.
 #
 # For each group of the table "Groups and the packages they test" in vectors/README.md, each core
-# package its row names, and each of that package's faults in the list below, it copies the
-# repository without .git, plants the fault in the copy, runs the group's generator there, and checks
-# that no byte of the group's vectors changed and that the conformance runner fails on a vector of
-# the group. A group's generator is the
+# package its row names, and each of that package's faults in the list below, it plants the fault in
+# a copy of the repository without .git, runs the group's generator there, and checks that no byte
+# of the group's vectors changed and that the conformance runner fails on a vector of the group. The
+# repository is copied once: each fault is planted in that copy and taken out again, and the runner
+# runs once for each fault, its output read for every group that fault is planted for, since the
+# tree it runs on is the same for each. A group's generator is the
 # Go command in vectors/<group>/, run from vectors/ as `go run ./<group>`. Before any fault, the
 # generators run on a clean copy must write exactly the vectors committed. It fails when the table
 # lists no group, when a group has no generator, when a package of a row has no fault here, and when
@@ -76,48 +78,60 @@ done
 [ "$failed" -eq 0 ] || exit 1
 
 # The generators reproduce the committed vectors.
-copy "$tmp/clean"
+copy "$tmp/tree"
 for g in $groups; do
-	if ! generate "$tmp/clean" "$g"; then
+	if ! generate "$tmp/tree" "$g"; then
 		bad "$g: the generator failed"
 		sed 's/^/    /' "$tmp/gen.out"
-	elif ! diff -r "$root/vectors/$g" "$tmp/clean/vectors/$g" >"$tmp/diff"; then
+	elif ! diff -r "$root/vectors/$g" "$tmp/tree/vectors/$g" >"$tmp/diff"; then
 		bad "$g: the generator does not write the committed vectors"
 		head -n 20 "$tmp/diff" | sed 's/^/    /'
 	fi
 done
 [ "$failed" -eq 0 ] || exit 1
 
-# plant <group> <package> <file> <old> <new> <label>: plant one fault and judge the group under it.
+# plant <group> <package> <file> <old> <new> <label>: plant one fault in the copy, judge the group
+# under it, and take the fault out again.
 plant() {
 	_g=$1 _p=$2 _file=$3 _old=$4 _new=$5 _l=$6
-	copy "$tmp/fault"
+	planted "$@"
+	cp "$root/$_file" "$tmp/tree/$_file"
+}
+
+# planted: plant's work, with the fault left in the copy.
+planted() {
 	if ! awk -v old="$_old" -v new="$_new" '
 		{ i = index($0, old); if (i) { $0 = substr($0, 1, i - 1) new substr($0, i + length(old)); n++ } print }
-		END { if (n != 1) exit 3 }' "$root/$_file" >"$tmp/fault/$_file"; then
+		END { if (n != 1) exit 3 }' "$root/$_file" >"$tmp/tree/$_file"; then
 		bad "$_g, $_l: the fault's text is not in $_file exactly once"
 		echo fail >>"$tmp/failed"
 		return
 	fi
-	if ! generate "$tmp/fault" "$_g"; then
+	if ! generate "$tmp/tree" "$_g"; then
 		bad "$_g, $_l: the generator failed with the fault planted"
 		sed 's/^/    /' "$tmp/gen.out"
 		echo fail >>"$tmp/failed"
 		return
 	fi
-	if ! diff -r "$root/vectors/$_g" "$tmp/fault/vectors/$_g" >"$tmp/diff"; then
+	if ! diff -r "$root/vectors/$_g" "$tmp/tree/vectors/$_g" >"$tmp/diff"; then
 		bad "$_g, $_l: a vector byte changed with a fault in $_p"
 		head -n 20 "$tmp/diff" | sed 's/^/    /'
 		echo fail >>"$tmp/failed"
+		# The copy's vectors are the committed ones again for the faults that follow.
+		rm -rf "$tmp/tree/vectors/$_g"
+		cp -R "$root/vectors/$_g" "$tmp/tree/vectors/$_g"
 		return
 	fi
-	(cd "$tmp/fault/core/conformance" && go test -count=1 -run '^TestVectors$' .) >"$tmp/run" 2>&1 </dev/null
-	if grep -q "^runner-no-silent-pass: fail: vectors/$_g/" "$tmp/run"; then
-		say "ok   $_g, $_l: no vector byte changed, and the runner fails on $(grep -c "^runner-no-silent-pass: fail: vectors/$_g/" "$tmp/run") of the group's vectors"
+	# The runner's output under this fault, run once: with no vector byte changed, the tree it runs
+	# on is the same whichever group the fault is planted for.
+	_run=$tmp/run.$(printf '%s\t%s' "$_file" "$_old" | cksum | cut -d' ' -f1)
+	[ -f "$_run" ] || (cd "$tmp/tree/core/conformance" && go test -count=1 -run '^TestVectors$' .) >"$_run" 2>&1 </dev/null
+	if grep -q "^runner-no-silent-pass: fail: vectors/$_g/" "$_run"; then
+		say "ok   $_g, $_l: no vector byte changed, and the runner fails on $(grep -c "^runner-no-silent-pass: fail: vectors/$_g/" "$_run") of the group's vectors"
 		echo ok >>"$tmp/checked"
 	else
 		bad "$_g, $_l: the runner fails on no vector of the group with a fault in $_p"
-		grep -m 5 'fail\|FAIL' "$tmp/run" | sed 's/^/    /'
+		grep -m 5 'fail\|FAIL' "$_run" | sed 's/^/    /'
 		echo fail >>"$tmp/failed"
 	fi
 }
