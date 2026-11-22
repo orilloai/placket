@@ -596,7 +596,7 @@ func TestJSONAShownReceiptAndAVerifiedJournal(t *testing.T) {
 		"operator": quote(a.refs["operator"]), "runs": `"process"`, "members": "[" + ann + "," + bob + "]",
 		"module": `{"hash":"` + composition.KernelHash() + `","version":"` + composition.KernelVersion + `"}`, "judges": "[]",
 		"counts": `{"ask":0,"block":0,"pass":1}`, "questionsClosed": "0", "questionsOpen": "0", "releases": "0", "blockedReleases": "0",
-		"predicates": "[" + strings.TrimSuffix(plain.stdout, "\n") + "]", "claim": quote(cli.ClaimVerified), "notClaimed": quote(cli.Scope),
+		"predicates": "[" + strings.TrimSuffix(plain.stdout, "\n") + "]", "claim": quote(cli.ClaimSigned), "notClaimed": quote(cli.Scope),
 	} {
 		is(t, o, name, want)
 	}

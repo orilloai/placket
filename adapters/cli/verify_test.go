@@ -9,11 +9,14 @@ import (
 	"slices"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/orilloai/placket/adapters/cli"
 	"github.com/orilloai/placket/adapters/keyfile"
 	"github.com/orilloai/placket/core/answer"
 	"github.com/orilloai/placket/core/canonical"
+	"github.com/orilloai/placket/core/composition"
+	"github.com/orilloai/placket/core/conform"
 	"github.com/orilloai/placket/core/receipts"
 )
 
@@ -69,9 +72,9 @@ func founded(t *testing.T, r result) []string {
 }
 
 // verifyOutput is every line verify prints of the Accord's journal: head, the founding set as
-// founded reads it, then the lines after the terms line, then the claim and the scope line.
-func verifyOutput(head []string, after ...string) []string {
-	return append(append(slices.Clone(head), after...), cli.ClaimVerified, cli.Scope)
+// founded reads it, then the lines after the terms line, then the claim line given and the scope line.
+func verifyOutput(head []string, claim string, after ...string) []string {
+	return append(append(slices.Clone(head), after...), claim, cli.Scope)
 }
 
 // TestVerifyByTheAccordID verifies a journal given the Accord id and its founding set alone: it exits
@@ -273,8 +276,9 @@ func TestVerifyCustody(t *testing.T) {
 // TestVerifyANonconformingLog verifies the accept journal with one more receipt the mediator's key
 // signed, whose decision breaks the terms, a pass of a kind no term names: it exits 1, prints the
 // valid line and does not conform: decision at its line, and still prints every line of the log:
-// the accept and its release witnessed, the count of the terms' decisions, the complete, claim and
-// scope lines, and in --json the same decisions (verify-2, commands-8, U28).
+// the accept and its release witnessed, the count of the terms' decisions, the complete line, the
+// narrower claim that each receipt is signed by the mediator, and the scope line, and in --json the
+// same decisions (verify-2, commands-8, U28).
 func TestVerifyANonconformingLog(t *testing.T) {
 	t.Parallel()
 	a, _ := accepted(t)
@@ -306,7 +310,7 @@ func TestVerifyANonconformingLog(t *testing.T) {
 	l := r.lines()
 	n := len(l)
 	if r.code != 1 || l[n-5] != fmt.Sprintf(cli.LineValid, 4, a.refs["mediator"]) || l[n-4] != fmt.Sprintf(cli.LineNotConform, "decision", 4) ||
-		l[n-3] != cli.LineNotComplete || l[n-2] != cli.ClaimVerified || l[n-1] != cli.Scope ||
+		l[n-3] != cli.LineNotComplete || l[n-2] != cli.ClaimSigned || l[n-1] != cli.Scope ||
 		!slices.Contains(l, witnessed(ids[1])) || !slices.Contains(l, witnessed(ids[2])) || !slices.Contains(l, fmt.Sprintf(cli.LineTermsDecided, 2)) {
 		t.Fatalf("verify of a nonconforming log: %v", r)
 	}
@@ -690,7 +694,7 @@ func TestVerifyContradictedCalls(t *testing.T) {
 		ids := journalIDs(t, a, dir)
 		r := verifyAccord(t, a, dir, "--answers", calls)
 		after := append([]string{"pass 2 block 0 ask 1", "questions closed 1 open 0", "releases 1 blocked releases 0"}, c.lines(ids)...)
-		want := verifyOutput(head, append(after, fmt.Sprintf(cli.LineTermsDecided, 1), fmt.Sprintf(cli.LineValid, 3, a.refs["mediator"]),
+		want := verifyOutput(head, cli.ClaimSigned, append(after, fmt.Sprintf(cli.LineTermsDecided, 1), fmt.Sprintf(cli.LineValid, 3, a.refs["mediator"]),
 			fmt.Sprintf(cli.LineNotConform, "witness", c.failedLine), cli.LineNotComplete)...)
 		if r.code != 1 || !slices.Equal(r.lines(), want) {
 			t.Fatalf("%s: %v\nwant:\n%s", name, r, strings.Join(want, "\n"))
@@ -726,7 +730,7 @@ func TestVerifyAViewWithNoReceiptOfItsOwn(t *testing.T) {
 		return fmt.Sprintf(cli.LineWitnessed, id, a.refs["decider"], a.refs["principal"], "decider")
 	}
 	ids := journalIDs(t, a, a.journal())
-	lines := verifyOutput(head, "pass 2 block 0 ask 1", "questions closed 1 open 0", "releases 1 blocked releases 0",
+	lines := verifyOutput(head, cli.ClaimSigned, "pass 2 block 0 ask 1", "questions closed 1 open 0", "releases 1 blocked releases 0",
 		witnessed(ids[1]), witnessed(ids[2]), fmt.Sprintf(cli.LineTermsDecided, 1), fmt.Sprintf(cli.LineValid, 3, a.refs["mediator"]),
 		cli.LineConformSealed, want, cli.LineNotComplete)
 	if r := run(t, env(), args...); r.code != 0 || !slices.Equal(r.lines(), lines) {
@@ -770,7 +774,7 @@ func TestVerifyReadsTheViewBeforeValidity(t *testing.T) {
 // TestVerifyABodyOfALogThatDoesNotConform checks the applier's delivery of the released proposal
 // against the accepted journal with one more receipt whose decision breaks the terms: the log does
 // not conform with decision at that line, and the body line still says the part is its receipt's,
-// exit 1; with one byte of the body changed the body line says so, and the conforms line keeps the
+// with the narrower claim line, exit 1; with one byte of the body changed the body line says so, and the conforms line keeps the
 // decision code (verify-1 row 5, commands-8).
 func TestVerifyABodyOfALogThatDoesNotConform(t *testing.T) {
 	t.Parallel()
@@ -806,7 +810,7 @@ func TestVerifyABodyOfALogThatDoesNotConform(t *testing.T) {
 	}
 	head := founded(t, verifyAccord(t, a, a.journal()))
 	output := func(body string) []string {
-		return verifyOutput(head, "pass 3 block 0 ask 1", "questions closed 1 open 0", "releases 1 blocked releases 0",
+		return verifyOutput(head, cli.ClaimSigned, "pass 3 block 0 ask 1", "questions closed 1 open 0", "releases 1 blocked releases 0",
 			witnessed(ids[1]), witnessed(ids[2]), fmt.Sprintf(cli.LineTermsDecided, 2), fmt.Sprintf(cli.LineValid, 4, a.refs["mediator"]),
 			fmt.Sprintf(cli.LineNotConform, "decision", 4), cli.LineNotComplete, body)
 	}
@@ -865,10 +869,130 @@ func TestVerifyUnwitnessedNamesTheBindingsRoles(t *testing.T) {
 	}
 	ids := journalIDs(t, a, bare)
 	head := founded(t, run(t, env(), "verify", "--receipts", a.journal(), "--accord", a.id, "--founding", a.founding()))
-	want := verifyOutput(head, "pass 2 block 0 ask 1", "questions closed 1 open 0", "releases 1 blocked releases 0",
+	want := verifyOutput(head, cli.ClaimSigned, "pass 2 block 0 ask 1", "questions closed 1 open 0", "releases 1 blocked releases 0",
 		fmt.Sprintf(cli.LineUnwitnessed, ids[1], "decider,reviewer"), fmt.Sprintf(cli.LineUnwitnessed, ids[2], "decider,reviewer"),
 		fmt.Sprintf(cli.LineTermsDecided, 1), fmt.Sprintf(cli.LineValid, 3, a.refs["mediator"]), cli.LineConformSealed, cli.LineNotComplete)
 	if r := run(t, env(), "verify", "--receipts", bare, "--accord", a.id, "--founding", a.founding()); r.code != 0 || !slices.Equal(r.lines(), want) {
 		t.Fatalf("an unwitnessed answer of two roles: %v\nwant:\n%s", r, strings.Join(want, "\n"))
+	}
+}
+
+// TestVerifyReadsADeliveryAsOneFirst checks the applier's delivery of the released proposal, as get
+// --json saved it, with the answer call inside it as maybe-12 lets it: its body line says the part is
+// its receipt's. The same delivery with messageId removed, and separately with a member topic added,
+// is no delivery: error delivery, exit 3, and nothing else printed (verify-1 row 5, commands-8).
+func TestVerifyReadsADeliveryAsOneFirst(t *testing.T) {
+	t.Parallel()
+	a, _ := accepted(t)
+	got := must(t, a.as("applier", "get", "--json")...)
+	ids := journalIDs(t, a, a.journal())
+	saved := filepath.Join(a.dir, "delivery.json")
+	write := func(b []byte) {
+		t.Helper()
+		if err := os.WriteFile(saved, b, 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	write([]byte(got.stdout))
+	if r := verifyAccord(t, a, a.journal(), "--delivery", saved); r.code != 0 || !slices.Contains(r.lines(), fmt.Sprintf(cli.LineBody, ids[2])) {
+		t.Fatalf("the delivery: %v", r)
+	}
+	var o struct {
+		Delivery map[string]json.RawMessage `json:"delivery"`
+	}
+	if err := json.Unmarshal([]byte(got.stdout), &o); err != nil {
+		t.Fatal(err)
+	}
+	if _, has := o.Delivery["answer"]; !has {
+		t.Fatal("the released proposal's delivery holds no answer call")
+	}
+	for name, change := range map[string]func(map[string]json.RawMessage){
+		"messageId removed": func(d map[string]json.RawMessage) { delete(d, "messageId") },
+		"topic added":       func(d map[string]json.RawMessage) { d["topic"] = json.RawMessage(`"merges"`) },
+	} {
+		d := map[string]json.RawMessage{}
+		for k, v := range o.Delivery {
+			d[k] = v
+		}
+		change(d)
+		b, err := json.Marshal(map[string]any{"delivery": d, "exit": 0})
+		if err != nil {
+			t.Fatal(err)
+		}
+		write(append(b, '\n'))
+		if r := verifyAccord(t, a, a.journal(), "--delivery", saved); r.code != cli.ExitTool || r.stdout != "" || r.stderr != "error delivery\n" {
+			t.Fatalf("%s: %v", name, r)
+		}
+	}
+}
+
+// TestVerifyAnEmptyJournalChecksNoUntil verifies a journal with no receipt against a founding set
+// whose bindings' until, 2099-01-01, passed a year before the clock, and with the clock a year
+// earlier and a year later: there is no time to found at, so no until is checked, as conform.Check
+// says for the same evidence; each run founds and prints the same lines (verify-1 row 0).
+func TestVerifyAnEmptyJournalChecksNoUntil(t *testing.T) {
+	t.Parallel()
+	a := newAccord(t, "p1", "p2")
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "receipts.jsonl"), nil, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	set, err := os.ReadFile(a.founding())
+	if err != nil {
+		t.Fatal(err)
+	}
+	acc, err := os.ReadFile(a.acceptances())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := conform.Check(conform.Evidence{Accord: a.id, Founding: bytes.TrimSuffix(set, []byte("\n")),
+		Acceptances: bytes.TrimSuffix(acc, []byte("\n")), Kernel: composition.KernelHash()}); err != nil {
+		t.Fatalf("conform.Check: %v", err)
+	}
+	var first result
+	for i, now := range []string{"2100-01-01T00:00:00Z", "2099-01-01T00:00:00Z", "2101-01-01T00:00:00Z"} {
+		at, err := time.Parse(time.RFC3339, now)
+		if err != nil {
+			t.Fatal(err)
+		}
+		e := env()
+		e.Now = func() time.Time { return at }
+		r := run(t, e, "verify", "--receipts", dir, "--accord", a.id, "--founding", a.founding(), "--acceptances", a.acceptances())
+		if r.code != 0 || !slices.Contains(r.lines(), fmt.Sprintf(cli.LineValid, 0, a.refs["mediator"])) || !slices.Contains(r.lines(), cli.LineConformSealed) {
+			t.Fatalf("at %s: %v", now, r)
+		}
+		if i == 0 {
+			first = r
+		} else if r != first {
+			t.Fatalf("at %s: %v\nwant the run of %s:\n%v", now, r, "2100-01-01T00:00:00Z", first)
+		}
+	}
+}
+
+// TestVerifyClaimsWhatItChecked verifies the accepted journal with every member's opening, with
+// --mediator alone and with no opening: the first prints the claim that each receipt is the
+// mediator's signed decision under the Accord's terms, the others the narrower claim that each is
+// signed by the mediator, and each --json object's claim is the line it printed (commands-8).
+func TestVerifyClaimsWhatItChecked(t *testing.T) {
+	t.Parallel()
+	a, _ := accepted(t)
+	every := append([]string{"verify", "--receipts", a.journal(), "--accord", a.id, "--founding", a.founding()}, a.opens()...)
+	for name, c := range map[string]struct {
+		args  []string
+		claim string
+	}{
+		"every opening":   {every, cli.ClaimVerified},
+		"--mediator only": {[]string{"verify", "--receipts", a.journal(), "--mediator", a.refs["mediator"]}, cli.ClaimSigned},
+		"no opening":      {[]string{"verify", "--receipts", a.journal(), "--accord", a.id, "--founding", a.founding()}, cli.ClaimSigned},
+	} {
+		r := run(t, env(), c.args...)
+		l := r.lines()
+		if n := len(l); r.code != 0 || n < 2 || l[n-2] != c.claim || l[n-1] != cli.Scope {
+			t.Fatalf("%s: %v\nwant the claim %q", name, r, c.claim)
+		}
+		var claim string
+		if o := object(t, run(t, env(), append(c.args, "--json")...)); json.Unmarshal(o["claim"], &claim) != nil || claim != c.claim {
+			t.Fatalf("%s --json: claim %s, want %q", name, o["claim"], c.claim)
+		}
 	}
 }

@@ -124,6 +124,24 @@ func (e *Error) Error() string {
 // earliest is the founding time of a set whose list has no receipt to found it at.
 const earliest = "0001-01-01T00:00:00Z"
 
+// FoundedAt is the time a founding set is founded at for the list (verify-1 row 0,
+// setup-contract-16): the first receipt's at, a close's when the close is the first, read without
+// verifying. With no receipt, or a first that reads as neither, there is no time to found at, and it
+// is the earliest time, 0001-01-01T00:00:00Z, so that no binding's until is checked, whenever the
+// verifier runs.
+func FoundedAt(list [][]byte) string {
+	if len(list) == 0 {
+		return earliest
+	}
+	if s, err := receipts.Decode(list[0]); err == nil {
+		return s.Predicate.At
+	}
+	if c, err := receipts.DecodeClose(list[0]); err == nil {
+		return c.At
+	}
+	return earliest
+}
+
 // A question is what the decision and witness rows read of a question of the list.
 type question struct {
 	index     int
@@ -169,16 +187,8 @@ func Check(e Evidence) (Report, error) {
 		return r, nil
 	}
 	// Row 0: the founding set is the Accord's, founded at the first receipt's time, a close's when the
-	// close is the first (close-4).
-	at := earliest
-	if len(e.Receipts) > 0 {
-		if s, err := receipts.Decode(e.Receipts[0]); err == nil {
-			at = s.Predicate.At
-		} else if c, err := receipts.DecodeClose(e.Receipts[0]); err == nil {
-			at = c.At
-		}
-	}
-	a, err := founding.Found(founding.Inputs{Set: e.Founding, Openings: e.Openings, Acceptances: e.Acceptances}, at)
+	// close is the first (close-4), or with no receipt at none.
+	a, err := founding.Found(founding.Inputs{Set: e.Founding, Openings: e.Openings, Acceptances: e.Acceptances}, FoundedAt(e.Receipts))
 	if id, herr := canonical.TypedHash(e.Founding); err != nil || herr != nil || id != e.Accord ||
 		(e.Mediator != "" && e.Mediator != a.Mediator()) {
 		return Report{}, &Error{Code: CodeFounding, Index: -1}
@@ -525,16 +535,22 @@ func contains(l []string, s string) bool {
 	return false
 }
 
-// Body is row 5 of verify-2, and the only place it runs: the delivery's receipt is one of the
-// report's, by its id, and the salted digest of the delivery's body under its salt is that receipt's
-// subject digest, of its kind (crossing-3). It reads only the delivery and the receipt the report
-// verified. A delivery whose receipt is not in the report fails body at index -1, an empty or absent
-// receiptId included, since a close is no receipt a delivery names; one whose body or salt does not
-// make the digest fails at its receipt's index.
+// Body is row 5 of verify-1, and the only place it runs: the delivery is one by its format, then its
+// receipt is one of the report's, by its id, and the salted digest of the delivery's body bytes under
+// its salt is that receipt's subject digest, of its kind (crossing-3). It reads only the delivery and
+// the receipt the report verified. A delivery that does not have exactly a delivery's members fails
+// body at index -1, and so does one whose receipt is not in the report, an empty receiptId included,
+// since a close is no receipt a delivery names; one whose body or salt does not make the digest fails
+// at its receipt's index. A pass says the bytes are the part the receipt names, not their form, nor
+// that the receipt let the part cross.
 func Body(r Report, delivery []byte) error {
 	v, _, err := shape.Decode(delivery)
 	o, ok := v.(shape.Object)
 	if err != nil || !ok {
+		return &Error{Code: CodeBody, Index: -1}
+	}
+	form, ok := crossing.Shaped(o)
+	if !ok {
 		return &Error{Code: CodeBody, Index: -1}
 	}
 	id, _ := o["receiptId"].(string)
@@ -560,14 +576,8 @@ func Body(r Report, delivery []byte) error {
 	if !ok || o["kind"] != any(st.Subject.Name) {
 		return fail
 	}
-	form, bodies := "", 0
-	for _, f := range crossing.Forms {
-		if _, has := o[f]; has {
-			form, bodies = f, bodies+1
-		}
-	}
 	body, ok := crossing.Body(form, o[form])
-	if bodies != 1 || !ok || receipts.Digest(salt, body) != st.Subject.Digest {
+	if !ok || receipts.Digest(salt, body) != st.Subject.Digest {
 		return fail
 	}
 	return nil

@@ -65,7 +65,8 @@ Each receipt states one decision about one part, under one Accord: the part's sa
 - An answer or a changed version that was refused: `claim: a key holding the answering role answered. The part named here was refused for the reason shown.`
 - A decline or a cancel: `claim: the question closed without a yes. The receipt names the first holder of the answering role.`
 - A timeout or an undeliverable question: `claim: nobody answered. The question closed for the reason shown.`
-- A verified journal: `claim: each receipt is this mediator's signed decision about one part under this Accord's terms.`
+- A verified journal whose every decision was checked against the terms: `claim: each receipt is this mediator's signed decision about one part under this Accord's terms.`
+- A verified journal whose decisions were not all checked against the terms, or that does not conform: `claim: each receipt and close is signed by this mediator.`
 
 Every claim line is followed by the scope line, which says what no receipt claims:
 

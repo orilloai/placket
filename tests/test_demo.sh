@@ -98,7 +98,7 @@ want='^== 1\.
 ^verifier: valid: 13 receipts signed by mediator ed25519:[0-9a-f]{64}$
 ^verifier: conforms: every receipt names this Accord, its card and its members
 ^verifier: complete: not claimed: this Accord has no close receipt$
-^verifier: claim: each receipt is this mediator.s signed decision about one part under this Accord.s terms\.$
+^verifier: claim: each receipt and close is signed by this mediator\.$
 ^verifier: not claimed: what any party did with a part after it crossed; 
 ^operator: seal ed25519:[0-9a-f]{64}: opens: the declaration it seals is its actor.s own$
 ^operator: view ed25519:[0-9a-f]{64}: matches its acceptance$

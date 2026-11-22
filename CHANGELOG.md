@@ -75,6 +75,10 @@ The first release. Placket mediates the parts that cross between parties under t
 - `placket verify --delivery` prints the `body` line also when the log does not conform, and a delivery with an empty or absent `receiptId` is `error delivery`.
 - A closing with reason `closed` at another time than the first such closing fails `close` at its own line; the requirement text now says so (close-4).
 - `placket reconcile` refuses one party's kept records given twice: `error verify kept --kept N actor`.
+- `placket verify` prints `claim: each receipt is this mediator's signed decision about one part under this Accord's terms.` only when it checked every decision against the terms and the log conforms; otherwise, with `--mediator` alone, another module, sealed terms or a failure, it prints `claim: each receipt and close is signed by this mediator.`, and `--json`'s `claim` holds the line printed.
+- `placket verify --delivery` reads the file as a delivery first: one with a member missing or a member a delivery never holds is `error delivery`, exit 3. The `body` line says the body's bytes are the receipt's part, not their form or that the part passed.
+- `placket verify` on a journal with no receipt checks no binding's `until`, whatever the clock says, as the core does; it used to found at the wall clock.
+- The requirement text says a part's digest names its body's bytes, not the form they crossed in, and that a part may hold `mediaType` beside its body and `metadata` (crossing-2, crossing-3); decision record 0031 says why.
 - `--json` turns on the object in every spelling of true, such as `--json=1`, even when a flag cannot be read; `give --wait --json` and `result --json` always hold `deliveries` beside `fetched`, `[]` when the wait fetched no other delivery.
 
 ### Close and rotate
@@ -85,6 +89,7 @@ The first release. Placket mediates the parts that cross between parties under t
 ### Go API
 
 - The core's packages, one per protocol capability: `canonical`, `signing`, `setup`, `founding`, `composition`, `mediator`, `answer`, `receipts`, `conform` and the conformance runner. `mediator.SaltBytes` is 32, the length of every salt.
+- `conform.FoundedAt` gives the time a founding set is founded at for a list of receipts: the first receipt's, or with none the earliest, so no binding's `until` is checked.
 - Removed before v0.1.0, each deprecated first, so no release carries them: `mediator.MinSaltBytes`, which was equal to `mediator.SaltBytes`; `mediator.Action` and its constants `Accepted`, `Changed`, `Declined` and `Cancelled`, use `answer.Action` and its constants; `mediator.CodeSalt`, `CodeAnswer` and `CodeAction`, which nothing returned; `setup.CheckUnknown`, `setup.Check` and `setup.Term.Checks`, which founding never returned, built or set; `local.Window.Rand`, which the window never read; `local.Reply.Salt` and `local.Reply.AnswerCall`, never set, since the answer call is inside the delivery; and `local.Call.Action`, never set, since the action is inside the signed call.
 
 ### The repository

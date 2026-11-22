@@ -79,6 +79,23 @@ func Deliver(part map[string]any, receipt []byte, id string) []byte {
 	return shape.Encode(o)
 }
 
+// Shaped reports whether o has exactly a delivery's members (crossing-3, verify-1 row 5): receiptId,
+// receipt, messageId, kind and salt, exactly one body, text, raw or data, and no member but those,
+// re, mediaType and answer. It returns the body's member. It reads no member's value.
+func Shaped(o shape.Object) (string, bool) {
+	bodyName, bodies := "", 0
+	for _, n := range Forms {
+		if _, has := o[n]; has {
+			bodyName = n
+			bodies++
+		}
+	}
+	if bodies != 1 || !shape.Only(o, "receiptId", "receipt", "messageId", "kind", "salt", bodyName, "", "re", "mediaType", "answer") {
+		return "", false
+	}
+	return bodyName, true
+}
+
 // Held reads a delivery for the party to, given back to the mediator after a restart, and returns
 // the index in st of the receipt that queued it: a delivery in canonical form with exactly a
 // delivery's members (crossing-3), whose receipt is one of the list, a pass addressed to to,
@@ -95,14 +112,8 @@ func Held(st []receipts.Statement, list [][]byte, byID map[string]int, to string
 	if !ok {
 		return -1, false
 	}
-	bodyName, bodies := "", 0
-	for _, n := range Forms {
-		if _, has := o[n]; has {
-			bodyName = n
-			bodies++
-		}
-	}
-	if bodies != 1 || !shape.Only(o, "receiptId", "receipt", "messageId", "kind", "salt", bodyName, "", "re", "mediaType", "answer") {
+	bodyName, ok := Shaped(o)
+	if !ok {
 		return -1, false
 	}
 	id, _ := o["receiptId"].(string)

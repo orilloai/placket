@@ -27,10 +27,10 @@ From `spec/protocol.md`:
 
 ## What it claims
 
-The pattern claims nothing a receipt does not. The auditor leans on the claim line `verify` prints, and on the scope line that follows every claim line:
+The pattern claims nothing a receipt does not. The auditor holds no opening, so `verify` checks the signatures, the founding set's clear parts and the answer calls, not the sealed terms. The auditor leans on the claim line it prints for that, and on the scope line that follows every claim line:
 
 ```
-claim: each receipt is this mediator's signed decision about one part under this Accord's terms.
+claim: each receipt and close is signed by this mediator.
 not claimed: what any party did with a part after it crossed; anything that did not go through this mediator; reworded or derived content; who was at a key.
 ```
 
