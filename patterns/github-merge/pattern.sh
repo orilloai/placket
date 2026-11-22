@@ -423,3 +423,54 @@ jq -r --slurpfile c comment.json --arg d "$(ref decider)" --arg p "$(ref princip
 jq -r --slurpfile c comment.json '.body | sub($c[0].receiptId; "<the receipt>") | "verify: \(.)"' verify.json
 say auditor "the body names this merge's repository, pull request, base and head: $(yes_no jq -e --slurpfile p merged.json '.data as $b
 	| $p[0] | .base.repo.full_name == $b.repo and .number == $b.pr and .base.ref == $b.base and .head.sha == $b.head' comment.json)"
+
+step "10. statuses naming a receipt of this merge's body, which is not its release"
+# Three more statuses named placket, each linking a comment on pull request 7 whose delivery names a
+# receipt of the journal and holds pull request 7's merge, with its salt: the applied release, its
+# answer the decider's accept of pull request 14; the decline of the same merge, proposed again, its
+# answer the decider's accept of pull request 7; and a note of the same body, which the decider
+# accepted and the applier fetched, as the applier fetched it.
+# forge FILE: posts a comment on pull request 7 holding the delivery FILE, then a status on its merge
+# commit naming the delivery's receipt and linking that comment, as anyone who may write both can.
+forge() {
+	jq -c '{body: ("    " + tojson)}' "$1" | gh api -X POST "repos/$repo/issues/7/comments" --input - >forged.comment
+	jq -c --slurpfile d "$1" '{state: "success", context: "placket", description: $d[0].receiptId, target_url: .html_url}' \
+		forged.comment | gh api -X POST "repos/$repo/statuses/$c7" --input - >/dev/null
+}
+kept pr14.json >pr14.kept
+jq -c --slurpfile o pr14.kept '.delivery | .answer = $o[0].delivery.answer' pr7.kept >call.json
+forge call.json
+cp pr7.json declined.json
+propose "pull request 7 again, which the decider declines" declined.json
+tail -n 1 "agent.key.state/$(cut -c8- asked/accord)/kept.jsonl" >declined.kept
+# shellcheck disable=SC2046 # as prints flags
+placket decline $(as decider) --json --question "$(cat asked.list)" --comment "merged already" >declined.out 2>/dev/null
+: >asked.list
+say decider "declines it"
+jq -c --slurpfile o declined.out --slurpfile k pr7.kept '.message | @base64d | fromjson | {receiptId: $o[0].outcome.receiptId,
+	kind: "merge", messageId, data: .parts[0].data, salt: .parts[0].metadata["https://placket.tech/crossing/0.1"].salt,
+	receipt: $o[0].outcome.receipt, answer: $k[0].delivery.answer}' declined.kept >declined.delivery
+forge declined.delivery
+cp pr7.json note.json
+propose "a note of pull request 7's merge body" note.json --kind note
+decide
+# shellcheck disable=SC2046 # as prints flags
+placket get $(as applier) --json --all 2>/dev/null |
+	jq -c --slurpfile b pr7.json '.deliveries[] | select(.kind == "note" and .data == $b[0])' >note.delivery
+forge note.delivery
+say pattern "3 more statuses named placket on pull request 7's merge commit"
+gh api --paginate "repos/$repo/commits/$commit/statuses" | jq -c -s 'add | map(select(.context == "placket"))' >statuses.json
+say auditor "statuses named placket on the commit: $(jq length statuses.json)"
+i=0
+for what in "the note's release" "the decline" "the applied release, its answer pull request 14's accept"; do
+	why=$(audit "$i")
+	say auditor "status $((i + 1)), $what: ${why:-passes steps 3 to 6}"
+	i=$((i + 1))
+done
+# The applier's own status, the oldest, audited by one who names another key as the applier's.
+i=$(($(jq length statuses.json) - 1))
+why=$(
+	applier=$(ref decider)
+	audit "$i"
+)
+say auditor "status $((i + 1)), the applier's own, audited as though the decider's key were the applier's: ${why:-passes steps 3 to 6}"
