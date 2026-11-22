@@ -44,10 +44,16 @@ With `--at` and `--every` (step 6):
 claim: for each receipt shown, these bytes are the value at this path inside a part this key kept, the part that receipt let cross to this key.
 ```
 
-The log and `verify` print:
+The log prints:
 
 ```
 claim: each receipt is this mediator's signed decision about one part under this Accord's terms.
+```
+
+`verify`, which the pattern runs with the founding set and no opening, so the sealed terms are not checked, prints:
+
+```
+claim: each receipt and close is signed by this mediator.
 ```
 
 `released` reads the receipts as the receiver's state directory holds them; it says `not verified`. `verify` on the journal is what shows the receipts are the mediator's. Nothing here says what the receiver did with a value after it crossed, or that the value the guard checked is the one the export step then wrote: the guard and the export must read the same bytes.

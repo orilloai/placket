@@ -72,14 +72,8 @@ func founded(t *testing.T, r result) []string {
 }
 
 // verifyOutput is every line verify prints of the Accord's journal: head, the founding set as
-// founded reads it, then the lines after the terms line, then the claim of a run that checked every
-// decision against the terms and the scope line.
-func verifyOutput(head []string, after ...string) []string {
-	return verifyOutputClaiming(head, cli.ClaimVerified, after...)
-}
-
-// verifyOutputClaiming is verifyOutput with the claim line given.
-func verifyOutputClaiming(head []string, claim string, after ...string) []string {
+// founded reads it, then the lines after the terms line, then the claim line given and the scope line.
+func verifyOutput(head []string, claim string, after ...string) []string {
 	return append(append(slices.Clone(head), after...), claim, cli.Scope)
 }
 
@@ -700,7 +694,7 @@ func TestVerifyContradictedCalls(t *testing.T) {
 		ids := journalIDs(t, a, dir)
 		r := verifyAccord(t, a, dir, "--answers", calls)
 		after := append([]string{"pass 2 block 0 ask 1", "questions closed 1 open 0", "releases 1 blocked releases 0"}, c.lines(ids)...)
-		want := verifyOutput(head, append(after, fmt.Sprintf(cli.LineTermsDecided, 1), fmt.Sprintf(cli.LineValid, 3, a.refs["mediator"]),
+		want := verifyOutput(head, cli.ClaimSigned, append(after, fmt.Sprintf(cli.LineTermsDecided, 1), fmt.Sprintf(cli.LineValid, 3, a.refs["mediator"]),
 			fmt.Sprintf(cli.LineNotConform, "witness", c.failedLine), cli.LineNotComplete)...)
 		if r.code != 1 || !slices.Equal(r.lines(), want) {
 			t.Fatalf("%s: %v\nwant:\n%s", name, r, strings.Join(want, "\n"))
@@ -736,7 +730,7 @@ func TestVerifyAViewWithNoReceiptOfItsOwn(t *testing.T) {
 		return fmt.Sprintf(cli.LineWitnessed, id, a.refs["decider"], a.refs["principal"], "decider")
 	}
 	ids := journalIDs(t, a, a.journal())
-	lines := verifyOutput(head, "pass 2 block 0 ask 1", "questions closed 1 open 0", "releases 1 blocked releases 0",
+	lines := verifyOutput(head, cli.ClaimSigned, "pass 2 block 0 ask 1", "questions closed 1 open 0", "releases 1 blocked releases 0",
 		witnessed(ids[1]), witnessed(ids[2]), fmt.Sprintf(cli.LineTermsDecided, 1), fmt.Sprintf(cli.LineValid, 3, a.refs["mediator"]),
 		cli.LineConformSealed, want, cli.LineNotComplete)
 	if r := run(t, env(), args...); r.code != 0 || !slices.Equal(r.lines(), lines) {
@@ -816,7 +810,7 @@ func TestVerifyABodyOfALogThatDoesNotConform(t *testing.T) {
 	}
 	head := founded(t, verifyAccord(t, a, a.journal()))
 	output := func(body string) []string {
-		return verifyOutputClaiming(head, cli.ClaimSigned, "pass 3 block 0 ask 1", "questions closed 1 open 0", "releases 1 blocked releases 0",
+		return verifyOutput(head, cli.ClaimSigned, "pass 3 block 0 ask 1", "questions closed 1 open 0", "releases 1 blocked releases 0",
 			witnessed(ids[1]), witnessed(ids[2]), fmt.Sprintf(cli.LineTermsDecided, 2), fmt.Sprintf(cli.LineValid, 4, a.refs["mediator"]),
 			fmt.Sprintf(cli.LineNotConform, "decision", 4), cli.LineNotComplete, body)
 	}
@@ -875,7 +869,7 @@ func TestVerifyUnwitnessedNamesTheBindingsRoles(t *testing.T) {
 	}
 	ids := journalIDs(t, a, bare)
 	head := founded(t, run(t, env(), "verify", "--receipts", a.journal(), "--accord", a.id, "--founding", a.founding()))
-	want := verifyOutput(head, "pass 2 block 0 ask 1", "questions closed 1 open 0", "releases 1 blocked releases 0",
+	want := verifyOutput(head, cli.ClaimSigned, "pass 2 block 0 ask 1", "questions closed 1 open 0", "releases 1 blocked releases 0",
 		fmt.Sprintf(cli.LineUnwitnessed, ids[1], "decider,reviewer"), fmt.Sprintf(cli.LineUnwitnessed, ids[2], "decider,reviewer"),
 		fmt.Sprintf(cli.LineTermsDecided, 1), fmt.Sprintf(cli.LineValid, 3, a.refs["mediator"]), cli.LineConformSealed, cli.LineNotComplete)
 	if r := run(t, env(), "verify", "--receipts", bare, "--accord", a.id, "--founding", a.founding()); r.code != 0 || !slices.Equal(r.lines(), want) {

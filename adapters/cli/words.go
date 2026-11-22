@@ -179,6 +179,9 @@ const (
 	ClaimNobody        = "claim: nobody answered. The question closed for the reason shown."
 	ClaimClose         = "claim: the mediator closed this Accord. Each chain named here ends at the receipt named; each delivery named was not yet fetched."
 	ClaimVerified      = "claim: each receipt is this mediator's signed decision about one part under this Accord's terms."
+	// ClaimSigned is verify's claim when it did not check every decision against the terms, or a
+	// receipt or a body does not conform (commands-8).
+	ClaimSigned        = "claim: each receipt and close is signed by this mediator."
 	ClaimReleased      = "claim: these bytes, under the salt they were fetched with, are the part this receipt let cross to this key."
 	ClaimReleasedValue = "claim: these bytes are the value at this path inside the part this receipt let cross to this key."
 	// ClaimReleasedKept and ClaimReleasedKeptValue are released's claims without --file (commands-7).

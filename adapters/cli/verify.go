@@ -89,21 +89,6 @@ func closeOf(list []receipts.Verified) (string, string) {
 	return c.ID, c.At
 }
 
-// firstAt is the time of a list's first receipt, a close's when it is the first, read without
-// verifying, or the empty string.
-func firstAt(list [][]byte) string {
-	if len(list) == 0 {
-		return ""
-	}
-	if s, err := receipts.Decode(list[0]); err == nil {
-		return s.Predicate.At
-	}
-	if c, err := receipts.DecodeClose(list[0]); err == nil {
-		return c.At
-	}
-	return ""
-}
-
 // verifyCommand is `verify --receipts DIR (--mediator M | --accord A --founding F) [--founding F]
 // [--answers FILE] [--subset] [--delivery FILE] [--superseded-by NEW --successor-accord ID
 // --successor-acceptances FILE] [--view V] [--json]` (commands-4,
@@ -121,8 +106,10 @@ func firstAt(list [][]byte) string {
 // policy supersedes, and without one the line that says they are not shown; the counts of verdicts,
 // questions and releases; each chain a subset starts late; one line per receipt the terms did not
 // decide, with a founding set; the count of the others and of the calls matching no receipt; and the
-// valid, conforms and complete lines, the body line, the claim and the scope line. A validity failure
-// prints its code and line and none of these. A log that does not conform, and a body that is not the
+// valid, conforms and complete lines, the body line, the claim and the scope line. The claim is
+// ClaimVerified only when the conforms line is LineConforms, and ClaimSigned otherwise. A validity
+// failure prints its code and line and none of these, and so does a delivery that is not one by its
+// format, read before its body, tool error delivery. A log that does not conform, and a body that is not the
 // part its receipt names, exit 1 with every line, the body line printed whether the log conforms or
 // not.
 //
@@ -234,12 +221,10 @@ func verifyCommand(r *run, args []string) int {
 				return r.tool(codeUsage)
 			}
 		}
-		at := local.Stamp(r.env.Now())
-		if t := firstAt(list); t != "" {
-			at = t
-		}
+		// The set founds at the first receipt's time, or with no receipt at none, so that no binding's
+		// until is checked (verify-1 row 0): the core's rule, whatever the clock says.
 		id, herr := canonical.TypedHash(set)
-		a, err = founding.Found(founding.Inputs{Set: set, Openings: openings, Acceptances: acceptances}, at)
+		a, err = founding.Found(founding.Inputs{Set: set, Openings: openings, Acceptances: acceptances}, conform.FoundedAt(list))
 		var se *setup.Error
 		if errors.As(err, &se) {
 			return r.tool(codeFound, string(se.Code))
@@ -461,13 +446,19 @@ func verifyCommand(r *run, args []string) int {
 		fmt.Fprintln(r.stderr, bodyLine)
 		r.put("body", bodyLine)
 	}
-	fmt.Fprintln(r.stderr, ClaimVerified)
+	// The claim says what this run checked: every decision against the terms, or the signatures alone
+	// (commands-8).
+	claim := ClaimSigned
+	if conforms == LineConforms {
+		claim = ClaimVerified
+	}
+	fmt.Fprintln(r.stderr, claim)
 	fmt.Fprintln(r.stderr, Scope)
 	for name, v := range map[string]any{
 		"receiptCount": len(st), "mediator": *med, memberAccord: accord, memberCard: card,
 		"counts":          map[string]int{WordPass: n[string(composition.Pass)], WordBlock: n[string(composition.Block)], WordAsk: n[string(composition.Escalate)]},
 		"questionsClosed": closed, "questionsOpen": n[string(composition.Escalate)] - closed, "releases": released, "blockedReleases": blocked,
-		"predicates": predicates, memberClaim: ClaimVerified, memberNotClaimed: Scope,
+		"predicates": predicates, memberClaim: claim, memberNotClaimed: Scope,
 		"valid": valid, "conforms": conforms, "complete": complete, "decisions": decisions, "starts": starts, "unmatched": report.Unmatched,
 	} {
 		r.put(name, v)

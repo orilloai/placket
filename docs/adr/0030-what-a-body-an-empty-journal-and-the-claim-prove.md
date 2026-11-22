@@ -53,7 +53,7 @@ No other exported name changes.
 
 ### The formats
 
-No frozen format changes: no new code, reason, verdict or type URI, and no member emitted that was absent. The new vectors use the existing operations and expectations: a `crossing` scenario of three gives, and two `conform` vectors whose delivery is not one, which expect `body` at index -1.
+No frozen format changes: no new code, reason, verdict or type URI, and no member emitted that was absent. The one new vector, a `crossing` scenario of three gives, uses the existing operations and expectations. No vector carries a file that is not a delivery: the vector format holds a delivery only in `delivery.json`'s shape, so Go tests of `conform` and of the command pin that refusal.
 
 ## Consequences
 
