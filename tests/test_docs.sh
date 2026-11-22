@@ -24,6 +24,9 @@
 # - the threat model's L22, decision record 0022 and the rotation guide say that one member can keep
 #   the close from being written, by giving parts to a receiver that never fetches, and that a
 #   successor pinned by supersedes waits with it;
+# - the README's verify of the committed demo journal names the demo's Accord id written out, never
+#   read from the journal it verifies, says where a reader's own id comes from, and its first block,
+#   run as printed, prints each receipt's statement and exactly the report the README describes;
 # - no Markdown file names a hosted placket service or a roadmap for one, and a line planted in a copy
 #   of the tree is refused.
 set -u
@@ -326,6 +329,100 @@ elif ! grep -q 'threat model L22' docs/guides/rotation.md; then
 	fail "docs/guides/rotation.md does not point to the threat model's L22"
 else
 	ok "docs/guides/rotation.md: nothing waits for a fetch unless the close would pass MaxReply (L22)"
+fi
+
+# The README's verify of the committed demo journal takes the Accord's id written out, the one the
+# demo founded, and no command of the README reads it from scripts/demo/journal/accord, the journal it
+# verifies; the sentence before the first says where a reader's own id comes from. The first block,
+# run as printed with its placket built in a directory of the test's, verifies all 13 receipts.
+demo_accord=$(sed -n 's/^{"accord":"\(sha256:[0-9a-f]*\)".*/\1/p' scripts/demo/journal/accord)
+commands README.md | grep -F 'journal/accord' >"$tmp/reads"
+if [ -s "$tmp/reads" ]; then
+	fail "README.md: a command reads the Accord's id from the journal it verifies" "$(cat "$tmp/reads")"
+else
+	ok "README.md: no command reads the Accord's id from the journal it verifies"
+fi
+commands README.md | grep -E 'placket verify .*--receipts scripts/demo/journal( |$)' >"$tmp/verifies"
+if [ ! -s "$tmp/verifies" ]; then
+	fail "README.md: no command verifies scripts/demo/journal"
+elif grep -vF -- "--accord $demo_accord " "$tmp/verifies" >"$tmp/other"; then
+	fail "README.md: a verify of scripts/demo/journal does not name the demo's Accord, $demo_accord, written out" "$(cat "$tmp/other")"
+else
+	ok "README.md: each verify of scripts/demo/journal names the demo's Accord written out"
+fi
+# The first code block that verifies the demo journal, and the last line of text above it.
+awk '
+	/^```/ { if (fence && index(b, "--receipts scripts/demo/journal ")) { printf "%s", b; exit } fence = !fence; b = ""; next }
+	fence { b = b $0 "\n" }
+' README.md >"$tmp/verify.sh"
+before=$(awk -v n="$(grep -n -F -- "--receipts scripts/demo/journal " README.md | head -n 1 | cut -d: -f1)" '
+	NR >= n { exit } /^```/ { fence = !fence; next } !fence && NF { last = $0 } END { print last }' README.md)
+case $before in
+*"never from the journal"*) ok "README.md: the sentence before the first verify says the Accord's id never comes from the journal" ;;
+*) fail "README.md: the sentence before the first verify does not say the Accord's id never comes from the journal" "$before" ;;
+esac
+# Run as printed, the block exits 0, prints on its standard output each receipt's signed statement
+# as the journal holds it, in order, and its report is exactly the one below, where <accord> is the
+# demo's Accord, <mediator> the key scripts/demo/mediator.ref names, and every other id is numbered
+# by its first appearance, so the same id keeps the same number.
+mkdir "$tmp/bin"
+sed -e "s|-o placket |-o \"$tmp/bin/placket\" |" -e "s|^\./placket \(.*\)\$|\"$tmp/bin/placket\" \1 2>\"$tmp/verify.report\"|" \
+	"$tmp/verify.sh" >"$tmp/verify.run"
+jq -c '.payload | @base64d | fromjson | .predicate' scripts/demo/journal/receipts.jsonl >"$tmp/verify.want"
+cat >"$tmp/verify.report.want" <<'EOF'
+mediator <mediator> accord <accord> card <sha256 1>
+operator <ed25519 1> runs process
+module 0.2.0 <sha256 2>
+member <ed25519 2> roles applier principal <ed25519 3>
+member <ed25519 4> roles proposer principal <ed25519 3>
+member <ed25519 5> roles decider principal <ed25519 3>
+custody: operator <ed25519 1> is principal of 0 of 3 members
+terms: not checked: the declarations are sealed; with every member's opening, --open checks them
+pass 6 block 3 ask 4
+questions closed 4 open 0
+releases 2 blocked releases 0
+<sha256 3> witnessed: signed by key <ed25519 5>, which principal <ed25519 3> bound to role decider
+<sha256 4> witnessed: signed by key <ed25519 5>, which principal <ed25519 3> bound to role decider
+<sha256 5> witnessed: signed by key <ed25519 5>, which principal <ed25519 3> bound to role decider
+<sha256 6> witnessed: signed by key <ed25519 5>, which principal <ed25519 3> bound to role decider
+<sha256 7> witnessed: signed by key <ed25519 5>, which principal <ed25519 3> bound to role decider
+<sha256 8> mediator: nobody could be reached to answer
+terms decided 7
+valid: 13 receipts signed by mediator <mediator>
+conforms: every receipt names this Accord, its card and its members, and every answer call given fits; decisions checked against the terms only where the seals they read are opened
+complete: not claimed: this Accord has no close receipt
+claim: each receipt is this mediator's signed decision about one part under this Accord's terms.
+not claimed: what any party did with a part after it crossed; anything that did not go through this mediator; reworded or derived content; who was at a key.
+EOF
+if ! grep -q "^\"$tmp/bin/placket\" verify " "$tmp/verify.run"; then
+	fail "README.md: the first verify block does not build placket and run ./placket verify" "$(cat "$tmp/verify.sh")"
+else
+	sh "$tmp/verify.run" >"$tmp/verify.out" 2>"$tmp/verify.build"
+	code=$?
+	awk -v accord="$demo_accord" -v mediator="$(cat scripts/demo/mediator.ref)" '{
+		out = ""
+		while (match($0, /(sha256|ed25519):[0-9a-f][0-9a-f]*/)) {
+			v = substr($0, RSTART, RLENGTH)
+			if (v == accord) name = "accord"
+			else if (v == mediator) name = "mediator"
+			else {
+				if (!(v in id)) { k = substr(v, 1, index(v, ":") - 1); id[v] = k " " ++n[k] }
+				name = id[v]
+			}
+			out = out substr($0, 1, RSTART - 1) "<" name ">"
+			$0 = substr($0, RSTART + RLENGTH)
+		}
+		print out $0
+	}' "$tmp/verify.report" >"$tmp/verify.report.got"
+	if [ "$code" -ne 0 ]; then
+		fail "README.md: the first verify block, run as printed, exits $code, not 0" "$(cat "$tmp/verify.build" "$tmp/verify.report")"
+	elif ! cmp -s "$tmp/verify.out" "$tmp/verify.want"; then
+		fail "README.md: the first verify block, run as printed, does not print each receipt's statement as the journal holds it" "$(diff "$tmp/verify.want" "$tmp/verify.out")"
+	elif ! cmp -s "$tmp/verify.report.got" "$tmp/verify.report.want"; then
+		fail "README.md: the first verify block, run as printed, does not print the report the README describes" "$(diff "$tmp/verify.report.want" "$tmp/verify.report.got")"
+	else
+		ok "README.md: the first verify block, run as printed, exits 0, prints each receipt's statement and the report: valid: 13 receipts, terms not checked"
+	fi
 fi
 
 # R24: no Markdown file names a hosted placket service or a roadmap. hosted <dir> prints each line

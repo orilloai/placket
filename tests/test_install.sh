@@ -1,9 +1,13 @@
 #!/bin/sh
 # install.sh installs the placket of a release for this machine, as docs/release.md says: it takes
-# checksums.txt and its signature, then this platform's archive, checks the archive against its line,
-# checks the signature with cosign and the provenance with gh when each is there to run, and says which
-# it ran and which it skipped; a check that runs and fails installs nothing; it refuses a platform the
-# release has no build for, by name, before it downloads anything.
+# checksums.txt and its signature, then this platform's archive, checks the signature with cosign,
+# the archive against its line, and the provenance with gh when gh is there and signed in, and says
+# which it ran and which it skipped; with no cosign it installs nothing unless
+# PLACKET_INSTALL_UNSIGNED=1 says to, and then says the origin was not checked; a check that runs and
+# fails installs nothing; the archive and the binary in it are the version --version names, and the
+# binary's own version is the archive's before it replaces the installed one; it refuses a platform
+# the release has no build for, by name, before it downloads anything. The README's and
+# docs/release.md's block that checks install.sh before it runs it stops at the first step that fails.
 #
 # The release is a directory built at run time from the tree, served as file:// through
 # PLACKET_RELEASE_BASE: this host's archive holds the tree's placket, built as .goreleaser.yaml builds
@@ -110,13 +114,17 @@ esac
 exit 9
 EOF
 chmod 755 "$signers/cosign" "$signers/gh"
+# gh alone, with no cosign beside it.
+mkdir "$tmp/gh"
+ln -s "$signers/gh" "$tmp/gh/gh"
 
 # install <name> <path> [<args>...]: runs install.sh, read from standard input, with the PATH <path>
 # and the arguments, in a clean HOME, or the last run's when keep is set. PLACKET_RELEASE_BASE is the
-# release, or empty when nobase is set, or relbase when that is set; PLACKET_INSTALL_DIR is dest; the stand-in gh's GH_AUTH_EXIT
-# and GH_EXIT are gh_auth and gh_attest. Its output, standard output and standard error together,
-# goes to $out, and its exit status to $rc.
-n=0 keep= nobase= relbase= dest= gh_auth=0 gh_attest=0
+# release, or empty when nobase is set, or relbase when that is set; PLACKET_INSTALL_DIR is dest;
+# PLACKET_INSTALL_UNSIGNED is unsigned; the stand-in gh's GH_AUTH_EXIT and GH_EXIT are gh_auth and
+# gh_attest. Its output, standard output and standard error together, goes to $out, and its exit
+# status to $rc.
+n=0 keep= nobase= relbase= dest= unsigned= gh_auth=0 gh_attest=0
 install() {
 	current=$1 path=$2
 	shift 2
@@ -130,7 +138,8 @@ install() {
 	[ -z "$relbase" ] || base=$relbase
 	rm -f "$tmp/calls" "$tmp/curl.log"
 	(cd "$home" && env HOME="$home" PATH="$path" PLACKET_RELEASE_BASE="$base" PLACKET_INSTALL_DIR="$dest" \
-		GH_AUTH_EXIT="$gh_auth" GH_EXIT="$gh_attest" "$shell" -s -- "$@" <"$root/install.sh") >"$out" 2>&1
+		PLACKET_INSTALL_UNSIGNED="$unsigned" GH_AUTH_EXIT="$gh_auth" GH_EXIT="$gh_attest" \
+		"$shell" -s -- "$@" <"$root/install.sh") >"$out" 2>&1
 	rc=$?
 }
 
@@ -181,17 +190,66 @@ calls() {
 
 ok() { echo "ok   $current"; }
 
-# U1: the host's archive, with no cosign and no gh, into ~/.local/bin, which is not on PATH.
-install "a release installs into ~/.local/bin, saying it skipped the signature and the provenance" "$tools"
+# plant: a clean HOME whose ~/.local/bin holds an earlier placket, which the next install, with keep
+# set, runs in.
+plant() {
+	n=$((n + 1))
+	home=$tmp/home$n
+	mkdir -p "$home/.local/bin"
+	printf 'old\n' >"$home/.local/bin/placket"
+	keep=1
+}
+
+# untouched: ~/.local/bin holds the earlier placket as it was, and nothing beside it.
+untouched() {
+	if [ "$(cat "$home/.local/bin/placket")" != old ]; then
+		fail "it replaced the installed placket"
+		return 1
+	elif [ "$(cd "$home/.local/bin" && ls -A)" != placket ]; then
+		fail "it left a file beside the installed placket"
+		ls -A "$home/.local/bin" | sed 's/^/    > /'
+		return 1
+	fi
+	return 0
+}
+
+# With no cosign, and nothing that says to go on without it, it installs nothing, before any
+# download, and names cosign and the one variable that goes on without the check.
+plant
+install "with no cosign, it installs nothing and names PLACKET_INSTALL_UNSIGNED" "$tools"
+keep=
+if [ "$rc" -ne 1 ] || [ "$(tail -n 1 "$out")" != "install: refused: cosign: not on PATH, so the signature on checksums.txt cannot be checked, and nothing is installed; install cosign, or set PLACKET_INSTALL_UNSIGNED=1 to install without that check" ]; then
+	fail "want exit 1 and the refusal that names cosign and PLACKET_INSTALL_UNSIGNED=1, got exit $rc"
+elif untouched; then
+	if [ -s "$tmp/curl.log" ]; then
+		fail "it downloaded"
+	else
+		ok
+	fi
+fi
+
+# A PLACKET_INSTALL_UNSIGNED of another value than 1 does not go on.
+unsigned=yes
+install "PLACKET_INSTALL_UNSIGNED=yes is not PLACKET_INSTALL_UNSIGNED=1, and installs nothing" "$tools"
+unsigned=
+refused 1 "install: refused: cosign: not on PATH, so the signature on checksums.txt cannot be checked, and nothing is installed; install cosign, or set PLACKET_INSTALL_UNSIGNED=1 to install without that check" && ok
+
+# With PLACKET_INSTALL_UNSIGNED=1, the host's archive, with no cosign and no gh, into ~/.local/bin,
+# which is not on PATH: it says it skipped the signature and the provenance, and ends saying the
+# binary's origin was not checked.
+unsigned=1
+install "with PLACKET_INSTALL_UNSIGNED=1 and no cosign, it installs and says the origin was not checked" "$tools"
+unsigned=
 bin=$home/.local/bin
 {
 	echo "install: placket for $host, from file://$rel"
-	echo "install: signature: skipped, cosign is not on PATH"
+	echo "install: signature: skipped, cosign is not on PATH and PLACKET_INSTALL_UNSIGNED=1 is set"
 	echo "install: checksum: ok, $archive"
 	echo "install: provenance: skipped, gh is not on PATH"
 	echo "install: installed $bin/placket"
 	echo "install: $bin is not on PATH; add it, as in: export PATH=\"$bin:\$PATH\""
 	cat "$tmp/version"
+	echo "install: origin: not checked, so nothing shows that $bin/placket came from placket's release workflow; install cosign and run install.sh again to check it"
 } >"$tmp/want"
 if expect 0 "$tmp/want"; then
 	if ! cmp -s "$bin/placket" "$tmp/files/placket"; then
@@ -203,11 +261,43 @@ if expect 0 "$tmp/want"; then
 	fi
 fi
 
-# U1, with cosign and a signed-in gh, a pinned version and an install directory on PATH: both checks
-# run, as placket's release workflow on main signed, and PLACKET_RELEASE_BASE replaces the tag's URL.
+# With PLACKET_INSTALL_UNSIGNED=1, no cosign and a signed-in gh, the provenance ties the archive to
+# placket's release workflow, so it does not say the origin was not checked.
+unsigned=1
+install "with PLACKET_INSTALL_UNSIGNED=1 and a gh that verifies the provenance, the origin was checked" "$tmp/gh:$tools"
+unsigned=
+bin=$home/.local/bin
+{
+	echo "install: placket for $host, from file://$rel"
+	echo "install: signature: skipped, cosign is not on PATH and PLACKET_INSTALL_UNSIGNED=1 is set"
+	echo "install: checksum: ok, $archive"
+	echo "install: provenance: ok, gh verified $archive as built by placket's release workflow on main"
+	echo "install: installed $bin/placket"
+	echo "install: $bin is not on PATH; add it, as in: export PATH=\"$bin:\$PATH\""
+	cat "$tmp/version"
+} >"$tmp/want"
+expect 0 "$tmp/want" && ok
+
+# A cosign that runs and does not verify refuses, PLACKET_INSTALL_UNSIGNED=1 or not.
+digest "$rel/install.sh" >"$rel/checksums.txt.sigstore.json"
+for u in '' 1; do
+	unsigned=$u
+	plant
+	install "a signature that does not verify installs nothing, with PLACKET_INSTALL_UNSIGNED='$u'" "$signers:$tools"
+	keep= unsigned=
+	if [ "$rc" -ne 1 ] || [ "$(tail -n 1 "$out")" != "install: refused: checksums.txt.sigstore.json: cosign did not verify the signature" ]; then
+		fail "want exit 1 and the refusal of the signature, got exit $rc"
+	else
+		untouched && ok
+	fi
+done
+reset
+
+# With cosign and a signed-in gh and an install directory on PATH: both checks run, as placket's
+# release workflow on main signed.
 mkdir "$tmp/dest"
 dest=$tmp/dest
-install "a release with cosign and gh checks the signature, then the provenance" "$signers:$tmp/dest:$tools" --version v0.1.0
+install "a release with cosign and gh checks the signature, then the provenance" "$signers:$tmp/dest:$tools"
 dest=
 {
 	echo "install: placket for $host, from file://$rel"
@@ -238,12 +328,8 @@ if expect 0 "$tmp/want" && calls "$tmp/want-calls"; then
 fi
 
 # A second install over an earlier one replaces it.
-n=$((n + 1))
-home=$tmp/home$n
-mkdir -p "$home/.local/bin"
-printf 'old\n' >"$home/.local/bin/placket"
-keep=1
-install "an install over an earlier one replaces it" "$tools"
+plant
+install "an install over an earlier one replaces it" "$signers:$tools"
 keep=
 if [ "$rc" -ne 0 ] || ! cmp -s "$home/.local/bin/placket" "$tmp/files/placket"; then
 	fail "want exit 0 and the tree's placket in ~/.local/bin, got exit $rc"
@@ -251,6 +337,89 @@ elif [ "$(cd "$home/.local/bin" && ls -A)" != placket ]; then
 	fail "it left a file beside placket"
 else
 	ok
+fi
+
+# The version: a release of stand-ins, each archive named for <name> and its placket printing
+# `version <printed>`, signed as the tree's release is. mkrel <dir> <name> <printed>.
+mkrel() {
+	mkdir "$1" "$1.files"
+	printf '#!/bin/sh\necho "version %s"\necho "commit 0123456789abcdef0123456789abcdef01234567"\n' "$3" >"$1.files/placket"
+	chmod 755 "$1.files/placket"
+	for p in linux_amd64 linux_arm64 darwin_amd64 darwin_arm64; do
+		(cd "$1.files" && tar -czf "$1/placket_${2}_$p.tar.gz" placket)
+	done
+	(cd "$1" && sha256sum ./*.tar.gz 2>/dev/null || shasum -a 256 ./*.tar.gz) | sed 's| \./| |' >"$1/checksums.txt"
+	digest "$1/checksums.txt" >"$1/checksums.txt.sigstore.json"
+}
+mkrel "$tmp/r999" 9.9.9 v9.9.9
+mkrel "$tmp/r010" 0.1.0 v0.1.0
+mkrel "$tmp/r010x" 0.1.0 v0.2.0
+
+# --version v0.1.0, with PLACKET_RELEASE_BASE a release of another version: the tree's, and 9.9.9.
+for r in "$rel" "$tmp/r999"; do
+	relbase=file://$r
+	plant
+	install "--version v0.1.0 from a PLACKET_RELEASE_BASE of ${r##*/}, which holds no v0.1.0, installs nothing" "$signers:$tools" --version v0.1.0
+	keep= relbase=
+	if [ "$rc" -ne 1 ] || [ "$(tail -n 1 "$out")" != "install: refused: checksums.txt: 0 lines for placket_0.1.0_$host.tar.gz, not 1" ]; then
+		fail "want exit 1 and the refusal that names placket_0.1.0_$host.tar.gz, got exit $rc"
+	elif untouched; then
+		if grep -q '\.tar\.gz$' "$tmp/curl.log"; then
+			fail "it downloaded an archive"
+		else
+			ok
+		fi
+	fi
+done
+
+# --version v0.1.0 from a release of v0.1.0 installs it, and says which version it is.
+relbase=file://$tmp/r010
+install "--version v0.1.0 from a PLACKET_RELEASE_BASE of v0.1.0 installs v0.1.0" "$signers:$tools" --version v0.1.0
+relbase=
+bin=$home/.local/bin
+{
+	echo "install: placket for $host, from file://$tmp/r010"
+	echo "install: signature: ok, cosign verified checksums.txt as signed by placket's release workflow on main"
+	echo "install: checksum: ok, placket_0.1.0_$host.tar.gz"
+	echo "install: provenance: ok, gh verified placket_0.1.0_$host.tar.gz as built by placket's release workflow on main"
+	echo "install: installed $bin/placket"
+	echo "install: $bin is not on PATH; add it, as in: export PATH=\"$bin:\$PATH\""
+	echo "version v0.1.0"
+	echo "commit 0123456789abcdef0123456789abcdef01234567"
+} >"$tmp/want"
+if expect 0 "$tmp/want"; then
+	if ! cmp -s "$bin/placket" "$tmp/r010.files/placket"; then
+		fail "$bin/placket is not the v0.1.0 placket"
+	else
+		ok
+	fi
+fi
+
+# An archive named for 0.1.0 whose placket says another version is refused before the rename,
+# pinned or not, and the installed placket is left as it was.
+for v in v0.1.0 ''; do
+	set --
+	[ -z "$v" ] || set -- --version "$v"
+	relbase=file://$tmp/r010x
+	plant
+	install "an archive named for 0.1.0 whose placket says v0.2.0 installs nothing${v:+, with --version $v}" "$signers:$tools" "$@"
+	keep= relbase=
+	if [ "$rc" -ne 1 ] || [ "$(tail -n 1 "$out")" != "install: refused: placket_0.1.0_$host.tar.gz: its placket says it is version v0.2.0, not v0.1.0" ]; then
+		fail "want exit 1 and the refusal of the version, got exit $rc"
+	else
+		untouched && ok
+	fi
+done
+set --
+
+# An empty --version is refused, not taken for the latest.
+install "an empty --version is refused" "$signers:$tools" --version ''
+if refused 2 "install: usage: install.sh [--version vX.Y.Z]"; then
+	if [ -s "$tmp/curl.log" ]; then
+		fail "it downloaded"
+	else
+		ok
+	fi
 fi
 
 # U2: one byte of the host's archive changed: byte 20 with its lowest bit flipped, so it differs
@@ -293,10 +462,13 @@ install "provenance that does not verify installs nothing" "$signers:$tools"
 gh_attest=0
 refused 1 "install: refused: $archive: gh did not verify its provenance" && ok
 
-# A checksums.txt with no line for this platform.
+# A checksums.txt with no line for this platform, which no signature covers, so the stand-in cosign
+# would refuse it first.
 grep -v "_$host.tar.gz\$" "$rel/checksums.txt" >"$tmp/sums"
 mv "$tmp/sums" "$rel/checksums.txt"
+unsigned=1
 install "a checksums.txt with no line for this platform installs nothing" "$tools"
+unsigned=
 refused 1 "install: refused: checksums.txt: 0 lines for $host, not 1" && ok
 reset
 
@@ -327,7 +499,7 @@ for v in latest v0.1.0; do
 		url=https://github.com/orilloai/placket/releases/download/$v
 	fi
 	nobase=1
-	install "with no PLACKET_RELEASE_BASE, the $v release is taken from GitHub over https" "$tools" "$@"
+	install "with no PLACKET_RELEASE_BASE, the $v release is taken from GitHub over https" "$signers:$tools" "$@"
 	nobase=
 	if refused 1 "install: refused: checksums.txt: could not download it from $url"; then
 		case $(cat "$tmp/curl.log") in
@@ -346,7 +518,7 @@ refused 2 "install: usage: install.sh [--version vX.Y.Z]" && ok
 
 # A file:// release is downloaded over file:// alone: every curl call of the first install's kind
 # carries --proto =file.
-install "a file:// PLACKET_RELEASE_BASE limits each download to file://" "$tools"
+install "a file:// PLACKET_RELEASE_BASE limits each download to file://" "$signers:$tools"
 if [ "$rc" -ne 0 ] || [ ! -s "$tmp/curl.log" ]; then
 	fail "want exit 0 and a download, got exit $rc"
 elif grep -v -e '--proto =file --proto-redir =file ' "$tmp/curl.log" >"$tmp/loose"; then
@@ -384,7 +556,7 @@ exec "$(command -v mktemp)" "\$@"
 EOF
 chmod 755 "$tmp/mk/mktemp"
 current="the file installed is first written under a name mktemp makes in the install directory"
-(cd "$tmp" && env HOME="$tmp/mkdest" PATH="$tmp/mk:$tools" PLACKET_RELEASE_BASE="file://$rel" PLACKET_INSTALL_DIR="$tmp/mkdest" \
+(cd "$tmp" && env HOME="$tmp/mkdest" PATH="$tmp/mk:$signers:$tools" PLACKET_RELEASE_BASE="file://$rel" PLACKET_INSTALL_DIR="$tmp/mkdest" \
 	"$shell" -c 'echo planted >"$PLACKET_INSTALL_DIR/.placket.install.$$" && exec "$0" -s' "$shell" <"$root/install.sh") >"$out" 2>&1
 rc=$?
 planted=$(cd "$tmp/mkdest" && ls -A | grep '^\.placket\.install\.')
@@ -416,7 +588,7 @@ mkdir "$tmp/cutdest"
 ran=
 run_cut() { # run_cut LABEL: pipes $tmp/cut.sh, a cut of install.sh, to sh
 	rm -f "$tmp/curl.log"
-	(cd "$tmp" && env HOME="$tmp/cutdest" PATH="$tools" PLACKET_RELEASE_BASE="file://$rel" \
+	(cd "$tmp" && env HOME="$tmp/cutdest" PATH="$signers:$tools" PLACKET_RELEASE_BASE="file://$rel" \
 		PLACKET_INSTALL_DIR="$tmp/cutdest" "$shell" -s) <"$tmp/cut.sh" >/dev/null 2>&1
 	if [ -s "$tmp/curl.log" ] || [ -n "$(ls -A "$tmp/cutdest")" ]; then
 		ran="$ran $1"
@@ -442,5 +614,75 @@ elif [ -n "$ran" ]; then
 else
 	ok
 fi
+
+# The block of README.md and docs/release.md that checks install.sh before it runs it stops at the
+# first step that fails, in a directory of its own: it is run as printed, with stand-ins of curl,
+# cosign and shasum first on PATH. curl copies each release file a URL names from a directory of
+# fixtures, cosign exits COSIGN_EXIT, and shasum checks as the host's does; the install.sh it takes
+# only notes that it ran. It runs with cosign failing, with no cosign, and with a checksums.txt whose
+# line for install.sh does not match; then with every step passing.
+# block <file>: the one code block of <file> that holds both cosign verify-blob and the line
+# `sh install.sh`, with its fence's indent taken off each line.
+block() {
+	awk '
+		!fence && match($0, /^ *```/) { ind = RLENGTH - 3; fence = 1; b = ""; next }
+		fence && /^ *```$/ { fence = 0; if (index(b, "cosign verify-blob") && index("\n" b, "\nsh install.sh\n")) { n++; got = b }; next }
+		fence { b = b substr($0, ind + 1) "\n" }
+		END { if (n != 1) exit 1; printf "%s", got }
+	' "$1"
+}
+bk=$tmp/block
+mkdir "$bk" "$bk/files" "$bk/tools" "$bk/cosign"
+printf 'echo "install.sh ran in $(pwd)" >>"%s"\n' "$bk/ran" >"$bk/files/install.sh"
+echo bundle >"$bk/files/checksums.txt.sigstore.json"
+cat >"$bk/tools/curl" <<EOF
+#!/bin/sh
+for a; do
+	case \$a in https://*) cp "$bk/files/\${a##*/}" "./\${a##*/}" || exit 22 ;; esac
+done
+EOF
+printf '#!/bin/sh\nexit "${COSIGN_EXIT:-0}"\n' >"$bk/cosign/cosign"
+if command -v shasum >/dev/null; then
+	printf '#!/bin/sh\nexec "%s" "$@"\n' "$(command -v shasum)" >"$bk/tools/shasum"
+else
+	printf '#!/bin/sh\n[ "$1 $2" = "-a 256" ] && shift 2\nexec "%s" "$@"\n' "$(command -v sha256sum)" >"$bk/tools/shasum"
+fi
+chmod 755 "$bk/tools/curl" "$bk/tools/shasum" "$bk/cosign/cosign"
+for u in sh mkdir mktemp grep cat cp pwd; do
+	c=$(command -v "$u") || continue
+	[ -e "$bk/tools/$u" ] || ln -s "$c" "$bk/tools/$u"
+done
+good="$(digest "$bk/files/install.sh")  install.sh"
+bad="$(printf '%064d' 0)  install.sh"
+for f in README.md docs/release.md; do
+	if ! block "$root/$f" >"$bk/block.sh"; then
+		current="$f has one block that checks install.sh before it runs it"
+		: >"$out"
+		fail "it has none, or more than one"
+		continue
+	fi
+	for c in "cosign-fails:1:$good" "no-cosign:0:$good" "checksum-differs:0:$bad" "all-pass:0:$good"; do
+		what=${c%%:*} rest=${c#*:}
+		cexit=${rest%%:*} sums=${rest#*:}
+		path=$bk/cosign:$bk/tools
+		[ "$what" != no-cosign ] || path=$bk/tools
+		printf '%s\n' "$sums" >"$bk/files/checksums.txt"
+		rm -rf "${bk:?}/ran" "${bk:?}/cwd" "${bk:?}/tmp"
+		mkdir "$bk/cwd" "$bk/tmp"
+		(cd "$bk/cwd" && env PATH="$path" TMPDIR="$bk/tmp" HOME="$bk/cwd" COSIGN_EXIT="$cexit" "$shell" "$bk/block.sh") >"$out" 2>&1
+		rc=$?
+		current="$f: the block that checks install.sh first, $what"
+		if [ "$what" = all-pass ] && { [ "$rc" -ne 0 ] || [ ! -s "$bk/ran" ]; }; then
+			fail "want exit 0 and install.sh run, got exit $rc"
+		elif [ "$what" != all-pass ] && { [ "$rc" -eq 0 ] || [ -e "$bk/ran" ]; }; then
+			fail "want a non-zero exit and install.sh not run, got exit $rc"
+			[ ! -e "$bk/ran" ] || sed 's/^/    > /' "$bk/ran"
+		elif [ -n "$(ls -A "$bk/cwd")" ]; then
+			fail "it wrote into the directory it was run in, not one of its own"
+		else
+			ok
+		fi
+	done
+done
 
 exit $failed

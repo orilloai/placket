@@ -19,11 +19,13 @@ If there is no `placket` on `PATH`, offer the install and run it only with the p
 curl -fsSL https://github.com/orilloai/placket/releases/latest/download/install.sh | sh
 ```
 
-It downloads the signed release for this machine, checks the archive against `checksums.txt`, checks the signature with `cosign` and the provenance with `gh` when each is installed, says which checks it ran and which it skipped, and puts `placket` in `~/.local/bin` without `sudo`. To pin a release, add `-s -- --version vX.Y.Z` after `sh`. A person who wants to read the script first, or to check it against the release's signed `checksums.txt` before it runs, follows the README's Install section. With Homebrew, on macOS or Linux, instead:
+It downloads the signed release for this machine, checks the signature on `checksums.txt` with `cosign`, the archive against its line there, and the provenance with `gh` when `gh` is installed and signed in, says which checks it ran and which it skipped, checks that the binary is the version it asked for, and puts `placket` in `~/.local/bin` without `sudo`. To pin a release, add `-s -- --version vX.Y.Z` after `sh`. A person who wants to read the script first, or to check it against the release's signed `checksums.txt` before it runs, follows the README's Install section. With Homebrew, on macOS or Linux, instead:
 
 ```sh
 brew install --cask orilloai/tap/placket
 ```
+
+When the install ends `install: refused: cosign: ...`, there is no `cosign` to check the signature, and it installed nothing. Tell the person so, and offer either to install `cosign` (for example `brew install cosign`, or the package or release its own project gives for their system) and run the install line again, or to install with Homebrew instead. Do not go past the refusal yourself: run the line with `PLACKET_INSTALL_UNSIGNED=1`, as `curl -fsSL https://github.com/orilloai/placket/releases/latest/download/install.sh | PLACKET_INSTALL_UNSIGNED=1 sh`, only when the person says to install without the signature check, and then show them the lines that say what it did not check. Any other `install: refused:` line means a check ran and failed: show it to the person, and do not try another way around it.
 
 When the install says its directory is not on `PATH`, say so, and use the full path, `~/.local/bin/placket`, for the rest of this skill.
 
@@ -73,7 +75,7 @@ Ask, in plain words, and wait for the answers:
 
 ### Draft the terms
 
-Write, for the person to read, one sentence per term in placket's own words, and then the terms as placket reads them. Each party has its own terms. Each term has a stance, `need`, `want`, `maybe` or `no`; a direction, `give` or `get`; the role it is with; and the kinds of part it selects. A `maybe` term asks the roles its `resolve.to` names, and closes as undeliverable after `timeout` seconds. For the common case, an agent whose `proposal` to an applier a person decides:
+Write, for the person to read, one sentence per term in placket's own words, and then the terms as placket reads them. Each party has its own terms. Each term has a stance, `need`, `want`, `maybe` or `no`; a direction, `give` or `get`; the role it is with; and the kinds of part it selects. A `maybe` term asks the roles its `resolve.to` names; a question nobody answers closes as `timeout` at its deadline, `timeout` seconds after it was asked. For the common case, an agent whose `proposal` to an applier a person decides:
 
 - The agent's terms: it gives `proposal` to the applier, and that part is asked of the role `decider`; it gets the decider's `answer`, `changed-version` and `comment`.
 - The applier's terms: it gets `proposal` from the agent, and `changed-version` from the decider.

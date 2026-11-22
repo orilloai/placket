@@ -32,27 +32,30 @@ The version is the one Go stamps from the git state of the build: the tag for a 
 curl -fsSL https://github.com/orilloai/placket/releases/latest/download/install.sh | sh
 ```
 
-`install.sh` is a POSIX shell script. It finds this machine's platform among the four the release builds, and refuses any other by name. It downloads `checksums.txt` and its bundle first, then the one archive whose line in `checksums.txt` ends `_<os>_<arch>.tar.gz`, and checks the archive's SHA-256 against that line. Two checks run only with a tool already installed, since the script installs neither:
+`install.sh` is a POSIX shell script. It finds this machine's platform among the four the release builds, and refuses any other by name. It installs no tool of its own, and checks:
 
-- with `cosign` on `PATH`, it verifies the bundle on `checksums.txt` before it reads a line of it, with the identity and issuer below;
-- with `gh` on `PATH` and signed in, as `gh auth status` says, it verifies the archive's provenance.
+- the signature on `checksums.txt`, with `cosign`, before it reads a line of it, with the identity and issuer below. This check is required: with no `cosign` on `PATH` it downloads nothing, installs nothing, and ends with `install: refused: cosign: ...`, which names `PLACKET_INSTALL_UNSIGNED=1`. That variable, and only that value, goes on without the signature: `curl -fsSL https://github.com/orilloai/placket/releases/latest/download/install.sh | PLACKET_INSTALL_UNSIGNED=1 sh`. It then says the signature was skipped, and its last line, `install: origin: not checked, ...`, says that nothing showed where the binary came from, unless `gh` verified the provenance;
+- the archive's SHA-256: it downloads the one archive whose line in `checksums.txt` ends `_<os>_<arch>.tar.gz`, or with `--version vX.Y.Z` is `placket_X.Y.Z_<os>_<arch>.tar.gz`, and checks it against that line;
+- the archive's provenance, with `gh` on `PATH` and signed in, as `gh auth status` says. Without either, it says the provenance was skipped and why, and goes on: the signature on `checksums.txt` and the archive's line in it already tie the archive to the release workflow;
+- the version: it runs the binary it is about to install, and its `placket version` must print the version the archive is named for before it replaces any `placket` installed.
 
-It prints each check it ran, and each it skipped and why. A check that runs and fails, the checksum included, ends it with `install: refused: <file>: <reason>`, and it writes nothing. Then it installs `placket` in `$PLACKET_INSTALL_DIR`, else `~/.local/bin`, never with `sudo`: it writes a file `mktemp` makes in that directory and renames it over any `placket` there, so the rename stays on one file system. It says so when that directory is not on `PATH`, and runs `placket version`.
+It prints each check it ran, and each it skipped and why. A check that runs and fails, the checksum included, ends it with `install: refused: <file>: <reason>`, and it writes nothing; any `placket` installed before is left as it was. Then it installs `placket` in `$PLACKET_INSTALL_DIR`, else `~/.local/bin`, never with `sudo`: it writes a file `mktemp` makes in that directory, runs its `version` there, and renames it over any `placket` there, so the rename stays on one file system. It says so when that directory is not on `PATH`, and prints what `placket version` printed.
 
-`curl | sh` runs the script before anything has checked it. To check it first, take it from the release with `checksums.txt` and its bundle, verify them, then run it:
+`curl | sh` runs the script before anything has checked it. To check it first, take it from the release with `checksums.txt` and its bundle, into a new directory, verify them, then run it. Each step runs only when the one before it passed, pasted into a shell or run as a script:
 
 ```sh
-base=https://github.com/orilloai/placket/releases/latest/download
-curl -fsSLO "$base/install.sh" -O "$base/checksums.txt" -O "$base/checksums.txt.sigstore.json"
+dir=$(mktemp -d) && cd "$dir" &&
+base=https://github.com/orilloai/placket/releases/latest/download &&
+curl -fsSLO "$base/install.sh" -O "$base/checksums.txt" -O "$base/checksums.txt.sigstore.json" &&
 cosign verify-blob --bundle checksums.txt.sigstore.json \
   --certificate-identity https://github.com/orilloai/placket/.github/workflows/release.yml@refs/heads/main \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com \
-  checksums.txt
-grep ' install.sh$' checksums.txt | shasum -a 256 -c
+  checksums.txt &&
+grep ' install.sh$' checksums.txt | shasum -a 256 -c &&
 sh install.sh
 ```
 
-`--version vX.Y.Z` installs that release in place of the latest: `sh install.sh --version v0.1.0`, or `| sh -s -- --version v0.1.0`. `PLACKET_RELEASE_BASE`, when set, is the URL of a directory holding a release's files, which replaces either: an `https://` URL or a `file://` directory, and every download is held to that scheme; any other is refused before anything is downloaded. `tests/test_install.sh` points it at a `file://` directory. The whole script is one function, called in braces on its last line, so a download cut short anywhere, within that line too, runs nothing.
+`--version vX.Y.Z` installs that release in place of the latest: `sh install.sh --version v0.1.0`, or `| sh -s -- --version v0.1.0`; an empty `--version` is refused. `PLACKET_RELEASE_BASE`, when set, is the URL of a directory holding a release's files, which replaces either: an `https://` URL or a `file://` directory, and every download is held to that scheme; any other is refused before anything is downloaded. A base is checked as the release is, signature first, and `--version` still names the one archive taken from it. `tests/test_install.sh` points it at a `file://` directory. The whole script is one function, called in braces on its last line, so a download cut short anywhere, within that line too, runs nothing.
 
 ### Homebrew
 

@@ -14,7 +14,7 @@ The founding set names the mediator: its key, which signs every receipt; its ope
 placket window --key mediator.key --founding founding.json --openings openings --journal journal
 ```
 
-With no `--socket` it listens on the Accord's own socket under the runtime directory, and with no `--journal` it writes to the Accord's own directory under placket's state directory ([the command line](../reference/cli.md#window)). A window restarted on its journal checks every receipt again, and closes each question left open as `undeliverable`; the asker gives again. A delivery not yet fetched stays on disk until it is fetched.
+With no `--socket` it listens on the Accord's own socket under the runtime directory, and with no `--journal` it writes to the Accord's own directory under placket's state directory ([the command line](../reference/cli.md#window)). A window restarted on its journal checks every receipt again, and closes each question left open as `timeout` when its deadline passed while the window was down, else as `undeliverable`; the asker gives again. A delivery not yet fetched stays on disk until it is fetched.
 
 In this version the window is one process on one machine, run by one party to the Accord. Its user holds the mediator's key and every party's opening, so it reads every party's terms and can stop, edit or shorten the journal. Placket does not defend the other parties against that user; it gives them their own kept records to check the journal with, with `placket reconcile` ([the threat model](../security/threat-model.md)).
 

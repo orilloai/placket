@@ -4,16 +4,21 @@
 #   curl -fsSL https://github.com/orilloai/placket/releases/latest/download/install.sh | sh
 #   sh install.sh [--version vX.Y.Z]
 #
-# It takes checksums.txt and its signature from the release first, then the one archive for this
-# machine, and checks the archive's SHA-256 against its line in checksums.txt. It checks the signature
-# with cosign, and the archive's provenance with gh, when each is there to run: it installs neither,
-# and says which checks it ran and which it skipped, and why. Any check that runs and fails stops it,
-# and it writes nothing. Then it puts placket in $PLACKET_INSTALL_DIR, else ~/.local/bin, without
-# sudo, and runs `placket version`.
+# It takes checksums.txt and its signature from the release first, checks the signature with cosign,
+# then takes the one archive for this machine and checks its SHA-256 against its line in
+# checksums.txt, and its provenance with gh when gh is there and signed in. It installs neither tool.
+# With no cosign it installs nothing, unless PLACKET_INSTALL_UNSIGNED=1 says to go on without the
+# signature, and then, unless gh verified the provenance, its last line says the binary's origin was
+# not checked. It says which checks it ran and which it skipped, and why. Any check that runs and
+# fails stops it, and it writes nothing.
+# The archive is the version --version names, and the binary's own `placket version` must be the
+# archive's before it replaces any placket installed. It puts placket in $PLACKET_INSTALL_DIR, else
+# ~/.local/bin, without sudo, and prints what `placket version` printed.
 #
 # The release is the latest, or the tag --version names. PLACKET_RELEASE_BASE, when set, is the URL
 # of a directory that holds the release's files in place of either: an https:// URL, or a file://
-# directory, and every download is held to its scheme.
+# directory, and every download is held to its scheme. It is checked as the release is, and
+# --version still names the archive it takes.
 #
 # Everything it does is in main, called on its last line, so a download cut short runs nothing.
 set -u
@@ -35,18 +40,18 @@ usage() {
 
 # main: the install, with the arguments install.sh was given.
 main() {
-	tag=
+	tag= pinned=
 	while [ $# -gt 0 ]; do
 		case $1 in
 		--version)
 			[ $# -ge 2 ] || usage
-			tag=$2
+			tag=$2 pinned=1
 			shift 2
 			;;
 		*) usage ;;
 		esac
 	done
-	if [ -n "$tag" ]; then
+	if [ -n "$pinned" ]; then
 		expr "$tag" : 'v[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*$' >/dev/null || usage
 	fi
 
@@ -88,6 +93,14 @@ main() {
 	else
 		refuse sha256sum "not installed, nor shasum; install.sh checks the archive with one of them"
 	fi
+	# The signature is the one check that ties checksums.txt to placket's release workflow: with no
+	# cosign to check it, nothing is downloaded unless PLACKET_INSTALL_UNSIGNED=1 says to go on.
+	unsigned=
+	if ! command -v cosign >/dev/null; then
+		[ "${PLACKET_INSTALL_UNSIGNED:-}" = 1 ] ||
+			refuse cosign "not on PATH, so the signature on checksums.txt cannot be checked, and nothing is installed; install cosign, or set PLACKET_INSTALL_UNSIGNED=1 to install without that check"
+		unsigned=1
+	fi
 
 	tmp=$(mktemp -d) || refuse mktemp "no temporary directory"
 	part=
@@ -106,20 +119,28 @@ main() {
 	fetch checksums.txt.sigstore.json
 
 	# The signature on checksums.txt, before anything trusts it.
-	if command -v cosign >/dev/null; then
+	if [ -z "$unsigned" ]; then
 		cosign verify-blob --bundle "$tmp/checksums.txt.sigstore.json" \
 			--certificate-identity "$identity" --certificate-oidc-issuer "$issuer" \
 			"$tmp/checksums.txt" >"$tmp/log" 2>&1 || refuse checksums.txt.sigstore.json "cosign did not verify the signature"
 		: >"$tmp/log"
 		say "signature: ok, cosign verified checksums.txt as signed by placket's release workflow on main"
 	else
-		say "signature: skipped, cosign is not on PATH"
+		say "signature: skipped, cosign is not on PATH and PLACKET_INSTALL_UNSIGNED=1 is set"
 	fi
 
-	# The archive: the one line of checksums.txt for this platform.
-	lines=$(grep -c "_${os}_$arch\.tar\.gz\$" "$tmp/checksums.txt")
-	[ "$lines" = 1 ] || refuse checksums.txt "$lines lines for ${os}_$arch, not 1"
-	line=$(grep "_${os}_$arch\.tar\.gz\$" "$tmp/checksums.txt")
+	# The archive: the one line of checksums.txt for this platform, and with --version, for that
+	# version's archive alone, whatever the base.
+	if [ -n "$pinned" ]; then
+		named=placket_${tag#v}_${os}_$arch.tar.gz
+		pattern="[ *]$(printf '%s' "$named" | sed 's/\./\\./g')"
+	else
+		named=${os}_$arch
+		pattern="_${os}_$arch\.tar\.gz"
+	fi
+	lines=$(grep -c "$pattern\$" "$tmp/checksums.txt")
+	[ "$lines" = 1 ] || refuse checksums.txt "$lines lines for $named, not 1"
+	line=$(grep "$pattern\$" "$tmp/checksums.txt")
 	want=${line%% *}
 	archive=${line#* }
 	archive=${archive# }
@@ -127,11 +148,14 @@ main() {
 	expr "$want" : '[0-9a-f]\{64\}$' >/dev/null || refuse checksums.txt "no SHA-256 on the line for ${os}_$arch"
 	expr "$archive" : "placket_[A-Za-z0-9.+-]*_${os}_$arch\\.tar\\.gz\$" >/dev/null ||
 		refuse checksums.txt "the line for ${os}_$arch names no placket archive"
+	version=${archive#placket_}
+	version=v${version%_"${os}_$arch".tar.gz}
 	fetch "$archive"
 	[ "$(sha256 "$tmp/$archive")" = "$want" ] || refuse "$archive" "its SHA-256 is not its line in checksums.txt"
 	say "checksum: ok, $archive"
 
 	# The archive's provenance.
+	provenance=
 	if ! command -v gh >/dev/null; then
 		say "provenance: skipped, gh is not on PATH"
 	elif ! gh auth status >/dev/null 2>&1; then
@@ -142,6 +166,7 @@ main() {
 			--source-ref refs/heads/main --deny-self-hosted-runners >"$tmp/log" 2>&1 ||
 			refuse "$archive" "gh did not verify its provenance"
 		: >"$tmp/log"
+		provenance=ok
 		say "provenance: ok, gh verified $archive as built by placket's release workflow on main"
 	fi
 
@@ -163,15 +188,24 @@ main() {
 		part=
 		refuse "$dir" "could not write placket there"
 	}
-	cp "$tmp/x/placket" "$part" 2>"$tmp/log" && chmod 755 "$part" && mv -f "$part" "$dir/placket" 2>"$tmp/log" ||
-		refuse "$dir" "could not write placket there"
+	cp "$tmp/x/placket" "$part" 2>"$tmp/log" && chmod 755 "$part" || refuse "$dir" "could not write placket there"
+	# The staged binary must say it is the archive's version before it replaces any placket. It runs
+	# from the install directory, which can run what it holds where the temporary directory may not.
+	"$part" version >"$tmp/version" 2>"$tmp/log" || refuse "$archive" "its placket did not run version"
+	: >"$tmp/log"
+	said=$(sed -n '1s/^version //p' "$tmp/version")
+	[ "$said" = "$version" ] || refuse "$archive" "its placket says it is version ${said:-none}, not $version"
+	mv -f "$part" "$dir/placket" 2>"$tmp/log" || refuse "$dir" "could not write placket there"
 	part=
 	say "installed $dir/placket"
 	case :${PATH:-}: in
 	*:"$dir":*) ;;
 	*) say "$dir is not on PATH; add it, as in: export PATH=\"$dir:\$PATH\"" ;;
 	esac
-	"$dir/placket" version
+	cat "$tmp/version"
+	if [ -n "$unsigned" ] && [ -z "$provenance" ]; then
+		say "origin: not checked, so nothing shows that $dir/placket came from placket's release workflow; install cosign and run install.sh again to check it"
+	fi
 }
 
 # The call sits in braces, so a download cut anywhere before the closing brace leaves sh a group it
