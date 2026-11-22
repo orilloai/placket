@@ -334,3 +334,20 @@ func mustPayload(t *testing.T, receipt []byte) []byte {
 	}
 	return b
 }
+
+// TestReconcileRefusesAPartyGivenTwice gives one party's kept records twice: the second fails kept
+// at its index in kept, naming no party, before row 1, so a presented list that fails chain is not
+// read (section 9, receipt-7, check-order).
+func TestReconcileRefusesAPartyGivenTwice(t *testing.T) {
+	t.Parallel()
+	med := ptesting.Key(t, "mediator")
+	list, _ := chain(t, med, 2)
+	applier := ptesting.Key(t, "applier").Reference()
+	for name, presented := range map[string][][]byte{"a list that verifies": list, "a list that fails chain": list[1:]} {
+		_, err := receipts.Reconcile(med.Reference(), accord, card, presented, []receipts.Kept{{Actor: applier}, {Actor: applier}})
+		var re *receipts.Error
+		if !errors.As(err, &re) || *re != (receipts.Error{Code: receipts.CodeKept, Index: 1}) {
+			t.Errorf("%s: got %v, want kept at index 1 with no party", name, err)
+		}
+	}
+}

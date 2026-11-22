@@ -306,9 +306,9 @@ func (c *checker) release(q *viewQuestion, s receipts.Statement) (bool, *Viewed)
 }
 
 // formed reads a part the mediator formed, as composition-5 decides it, against the row of the
-// formed crossing when the viewer is one of its sides: crosses is a pass ok; blocked, and no row, a
-// block, no-match or maybe; and asked a block maybe. When the viewer is no side of it, its verdict is
-// not read, and it matches.
+// formed crossing when the viewer is one of its sides, as a give is read: crosses is a pass ok;
+// blocked a block, no-match or maybe; no row a block no-match (composition-2); and asked a block
+// maybe. When the viewer is no side of it, its verdict is not read, and it matches.
 func (c *checker) formed(s receipts.Statement) (bool, *Viewed) {
 	p := s.Predicate
 	seen, r, side := c.view.row(p.From, p.To, s.Subject.Name)
@@ -321,8 +321,10 @@ func (c *checker) formed(s receipts.Statement) (bool, *Viewed) {
 		seen.Matches = p.Verdict == string(composition.Pass) && p.Reason == composition.ReasonOK
 	case founding.Asked:
 		seen.Matches = block && p.Reason == composition.ReasonMaybe
-	default:
+	case founding.Blocked:
 		seen.Matches = block && (p.Reason == composition.ReasonNoMatch || p.Reason == composition.ReasonMaybe)
+	default:
+		seen.Matches = block && p.Reason == composition.ReasonNoMatch
 	}
 	return seen.Matches, &seen
 }

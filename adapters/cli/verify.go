@@ -121,7 +121,8 @@ func firstAt(list [][]byte) string {
 // decide, with a founding set; the count of the others and of the calls matching no receipt; and the
 // valid, conforms and complete lines, the body line, the claim and the scope line. A validity failure
 // prints its code and line and none of these. A log that does not conform, and a body that is not the
-// part its receipt names, exit 1 with every line.
+// part its receipt names, exit 1 with every line, the body line printed whether the log conforms or
+// not.
 //
 // The complete line claims completeness only for a whole list that ends in its close (close-4). With
 // --superseded-by, the founding set of a successor Accord, founded as founding founds a set, it also
@@ -133,9 +134,10 @@ func firstAt(list [][]byte) string {
 // With --view, one member's own view as it kept it, which needs --founding, it also checks that
 // member's receipts against the view it signed (verify-1 rows 0a and 4a, verify-2): after the
 // conforms line, one line per receipt of the viewer's and the view line. A view that is not the one
-// its viewer accepted is tool error founding acceptance-view; a receipt that does not match exits 1
-// with every line; and --view beside the viewer's own --open is a usage error, since the opening
-// checks the viewer's terms themselves.
+// its viewer accepted is tool error founding acceptance-view, read before validity; a receipt that
+// does not match exits 1 with every line; --view beside the viewer's own --open is a usage error,
+// since the opening checks the viewer's terms themselves; and so is --view with --subset, since a
+// subset may leave out receipts of the viewer's that the view line would claim.
 func verifyCommand(r *run, args []string) int {
 	fs := newFlags("verify")
 	med, dir, setPath := fs.text("mediator"), fs.text("receipts"), fs.text("founding")
@@ -147,7 +149,8 @@ func verifyCommand(r *run, args []string) int {
 	fs.list(&opens, flagOpen)
 	viewFile := fs.text(flagView)
 	if !r.parse(fs, args) || (*med == "") == (*accordFlag == "") || (*accordFlag != "" && *setPath == "") ||
-		(*successor != "" && *accordFlag == "") || ((*accFile != "" || len(opens) > 0 || *viewFile != "") && *setPath == "") {
+		(*successor != "" && *accordFlag == "") || ((*accFile != "" || len(opens) > 0 || *viewFile != "") && *setPath == "") ||
+		(*viewFile != "" && *subset) {
 		return r.tool(codeUsage)
 	}
 	var viewBytes []byte
@@ -249,6 +252,21 @@ func verifyCommand(r *run, args []string) int {
 		}
 	}
 
+	// Conformance (verify-2) is checked by conform alone, which reads row 0a, the view, before
+	// validity: a view that is not the one its viewer accepted is a founding fact, whatever the
+	// receipts hold (verify-1). Its other results are printed after validity's own lines.
+	checked := *accordFlag
+	if a != nil {
+		checked = a.ID()
+	}
+	e := conform.Evidence{Accord: checked, Mediator: *med, Founding: set, Acceptances: acceptances, Openings: openings,
+		Receipts: list, Answers: answers, Subset: *subset, Kernel: composition.KernelHash(), View: viewBytes}
+	report, cerr := conform.Check(e)
+	var conformErr *conform.Error
+	if errors.As(cerr, &conformErr) && conformErr.Code == conform.CodeAcceptanceView {
+		return r.tool(codeFound, string(conformErr.Code))
+	}
+
 	// Validity (section 8): the verifier's rows, then one Accord and card.
 	sub, err := validity(*med, list, *subset)
 	if err != nil {
@@ -292,21 +310,14 @@ func verifyCommand(r *run, args []string) int {
 		pinned = next.ID()
 	}
 
-	// Conformance (verify-2): rows 1 to 4, then the body, row 5.
-	e := conform.Evidence{Accord: accord, Mediator: *med, Founding: set, Acceptances: acceptances, Openings: openings,
-		Receipts: list, Answers: answers, Subset: *subset, Kernel: composition.KernelHash(), View: viewBytes}
-	report, cerr := conform.Check(e)
-	var conformErr *conform.Error
-	if cerr != nil && !errors.As(cerr, &conformErr) {
+	// Conformance (verify-2): rows 1 to 4, then the body, row 5, which reads only the delivery and
+	// its receipt, and so runs whether the log conforms or not.
+	if cerr != nil && conformErr == nil {
 		return r.notVerified(cerr)
-	}
-	if conformErr != nil && conformErr.Code == conform.CodeAcceptanceView {
-		// Row 0a: the view is not the one its viewer accepted, a founding fact (verify-1).
-		return r.tool(codeFound, string(conformErr.Code))
 	}
 	bodyLine := ""
 	failed := conformErr != nil
-	if deliveryBytes != nil && conformErr == nil {
+	if deliveryBytes != nil {
 		if err := conform.Body(report, deliveryBytes); err != nil {
 			var be *conform.Error
 			errors.As(err, &be)
@@ -315,7 +326,8 @@ func verifyCommand(r *run, args []string) int {
 				return r.tool(codeDelivery)
 			}
 			bodyLine = fmt.Sprintf(LineBodyNot, be.Index+1)
-			if a != nil {
+			// The conforms line keeps the first failure's code: a log's before the body's.
+			if a != nil && conformErr == nil {
 				conformErr = be
 			}
 			failed = true
@@ -455,7 +467,7 @@ func verifyCommand(r *run, args []string) int {
 	fmt.Fprintln(r.stderr, ClaimVerified)
 	fmt.Fprintln(r.stderr, Scope)
 	for name, v := range map[string]any{
-		"verified": len(st), "mediator": *med, memberAccord: accord, memberCard: card,
+		"receiptCount": len(st), "mediator": *med, memberAccord: accord, memberCard: card,
 		"counts":          map[string]int{WordPass: n[string(composition.Pass)], WordBlock: n[string(composition.Block)], WordAsk: n[string(composition.Escalate)]},
 		"questionsClosed": closed, "questionsOpen": n[string(composition.Escalate)] - closed, "releases": released, "blockedReleases": blocked,
 		"predicates": predicates, memberClaim: ClaimVerified, memberNotClaimed: Scope,
@@ -486,10 +498,11 @@ func validity(mediatorRef string, list [][]byte, subset bool) (receipts.Subset, 
 }
 
 // decisionLine is the line verify prints for a receipt the terms did not decide (commands-8): an
-// answer witnessed, by the key that signed its call and who bound it to which roles, or unwitnessed;
-// a judge of the card; or the mediator, by its event. An unwitnessed answer names the roles of the
-// answerer, the from of the question's closing, as its binding gives them. A call is read only in
-// its canonical bytes, as conform matches it.
+// answer witnessed, by the key that signed its call and who bound it to which roles, contradicted by
+// the call given for it, or unwitnessed; a judge of the card; or the mediator, by its event. An
+// unwitnessed answer names the roles the answerer's binding gives it, the answerer being the from
+// of the question's closing, since the question's rule is not known when the terms are sealed. A
+// call is read only in its canonical bytes, as conform matches it.
 func decisionLine(a *setup.Accord, s receipts.Statement, d conform.Decision, answers [][]byte, answerer string) string {
 	switch d.By.Decider {
 	case receipts.ByJudge:
@@ -502,6 +515,9 @@ func decisionLine(a *setup.Accord, s receipts.Statement, d conform.Decision, ans
 			return fmt.Sprintf(LineByClose, s.ID)
 		}
 		return fmt.Sprintf(LineByUndeliverable, s.ID)
+	}
+	if d.Witness == conform.Contradicted {
+		return fmt.Sprintf(LineContradicted, s.ID)
 	}
 	if d.Witness == conform.Witnessed {
 		for _, b := range answers {
@@ -637,7 +653,10 @@ func (r *run) viewLines(report conform.Report, st []receipts.Statement) {
 		lines = append(lines, map[string]any{memberReceiptID: st[v.Index].ID, "line": l})
 	}
 	check := fmt.Sprintf(LineViewAll, viewer, len(report.Viewed))
-	if first >= 0 {
+	switch {
+	case len(report.Viewed) == 0:
+		check = fmt.Sprintf(LineViewNone, viewer)
+	case first >= 0:
 		check = fmt.Sprintf(LineViewNotAll, viewer, first+1)
 	}
 	fmt.Fprintln(r.stderr, check)

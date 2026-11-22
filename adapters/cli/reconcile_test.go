@@ -108,3 +108,17 @@ func TestReconcileVerifyAndCancel(t *testing.T) {
 		t.Fatalf("verify with another Accord's founding set: %v", r)
 	}
 }
+
+// TestReconcileOneActorTwice gives reconcile the applier's state directory and a copy of it, two
+// --kept whose actor files name one actor: the second is error verify kept --kept 2 actor, exit 3,
+// and no list is printed (section 9, receipt-7).
+func TestReconcileOneActorTwice(t *testing.T) {
+	t.Parallel()
+	a, _ := accepted(t)
+	twin := copyDir(t, a.state("applier"))
+	r := run(t, env(), "reconcile", "--mediator", a.refs["mediator"], "--accord", a.id, "--card", a.card, "--receipts", a.journal(),
+		"--kept", a.state("applier"), "--kept", twin)
+	if r.code != cli.ExitTool || r.stdout != "" || r.stderr != "error verify kept --kept 2 actor\n" {
+		t.Fatalf("one actor twice: %v", r)
+	}
+}

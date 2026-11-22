@@ -78,10 +78,19 @@ func formed() kit.Set {
 	return s
 }
 
+// unselected is pair in which A gets only D's changed versions, so no term of A's selects D's
+// answers. A's view, by the text: from D, changed-version crosses, and no row for answer.
+func unselected() kit.Set {
+	s := pair()
+	s.Parties[0].Terms[4] = kit.Term("want", "get", roles("decider"), roles("changed-version"))
+	return s
+}
+
 var (
-	pairSet   = pair().Build()
-	formedSet = formed().Build()
-	otherSet  = kit.Compose().Build()
+	pairSet       = pair().Build()
+	formedSet     = formed().Build()
+	unselectedSet = unselected().Build()
+	otherSet      = kit.Compose().Build()
 )
 
 func at(n int) string { return "2026-11-12T09:0" + string(rune('0'+n)) + ":00Z" }
@@ -184,6 +193,9 @@ func main() {
 	has(formedSet, a, d, "get", "answer", "asked", 60)
 	has(formedSet, a, d, "get", "changed-version", "asked", 60)
 	has(formedSet, a, b, "give", "answer", "asked", 60)
+	has(unselectedSet, a, b, "give", "proposal", "asked", 3600)
+	has(unselectedSet, a, d, "get", "changed-version", "crosses", 0)
+	hasNo(unselectedSet, a, d, "get", "answer")
 
 	var vs []kit.Vector
 	add := func(v kit.Vector) { vs = append(vs, v) }
@@ -367,6 +379,22 @@ func main() {
 		s = scene(formedSet)
 		s.Give(at(0), a, 1, message(formedSet, "answer-1", "answer", b), b, "block", "maybe")
 		add(of(formedSet, s, a).vector("a-members-own-answer-blocked", "verify-2: A's own give of kind answer to B, which A's view shows asked, blocked maybe as a formed part would be, is view-conformance", fails("view-conformance", 0)))
+	}
+
+	// A part the mediator formed from an answer, read by A, whose view has no row for answers from
+	// D: as for a give with no row, only a block, no-match, conforms.
+	for _, c := range []struct {
+		name, tests string
+		verdict     kit.Verdict
+		expect      kit.Obj
+	}{
+		{"a-formed-answer-with-no-row-blocked-maybe", "verify-2, composition-2: D's accept, whose answer to A no term of A's selects, blocked maybe, is view-conformance at the closing: a formed part with no row matches only as a block no-match, as a give with no row does", kit.Verdict{Verdict: "block", Reason: "maybe"}, fails("view-conformance", 1)},
+		{"a-formed-answer-with-no-row-blocked-no-match", "verify-2, composition-2: D's accept, whose answer to A no term of A's selects, blocked no-match, conforms", kit.Verdict{Verdict: "block", Reason: "no-match"}, conforms(1, 2)},
+	} {
+		s := scene(unselectedSet)
+		q := asked(s, unselectedSet)
+		s.Resolve(kit.Answer{At: at(1), Question: q, Action: "accepted", Text: "Rename total.", Salt: salt(c.name), By: d, Verdict: c.verdict})
+		add(of(unselectedSet, s, a).vector(c.name, c.tests, c.expect))
 	}
 
 	// A view that is not the one accepted, before any receipt and before validity.

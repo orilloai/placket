@@ -148,6 +148,11 @@ const (
 	// LineViewOwnOpening is the usage line of --view beside the viewer's own --open.
 	LineViewOwnOpening = "usage: placket verify: --view with the viewer's own --open: the opening checks its terms themselves"
 	LineBodyNot        = "body: does not conform at receipts.jsonl line %d"
+	// LineContradicted is the decision line of a receipt whose call given does not fit it, which
+	// fails row 4 (verify-3); such a receipt is never witnessed or unwitnessed.
+	LineContradicted = "%s contradicted: the call given for it does not fit"
+	// LineViewNone is the view line when no receipt of the viewer's is in the list.
+	LineViewNone = "view of %s: no receipt of its own is in this list, so none was checked against the view it accepted"
 )
 
 // The labels of the lines version prints, each also its member under --json (docs/release.md).
