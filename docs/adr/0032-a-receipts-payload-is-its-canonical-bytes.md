@@ -1,4 +1,4 @@
-# 0030. A receipt's payload is its canonical bytes; its envelope is read loose
+# 0032. A receipt's payload is its canonical bytes; its envelope is read loose
 
 Status: accepted. Date: 2026-11-22.
 
