@@ -55,7 +55,7 @@ func init() {
 		{name: "claims-stop-at-crossing", doc: "adapters.md", why: "nothing placket prints speaks of what a receiver does with content after receipt", check: claimsStopAtCrossing},
 		{name: "main-is-thin", doc: "adapters.md", why: "cmd/placket/main.go stays under 40 lines", check: mainIsThin},
 		{name: "recipes-core-only", doc: "modules.md", why: "nothing under recipes/ imports adapters/ or cmd/, and no import path there is written with an escape", check: recipesCoreOnly},
-		{name: "root-module", doc: "modules.md", why: "the root module requires the core and replaces it with ./core, and no go.work is committed", check: rootModule},
+		{name: "root-module", doc: "modules.md", why: "the root module requires the core, at v0.0.0 replaced with ./core or at a tagged version with no replace, and no go.work is committed", check: rootModule},
 		{name: "machine-rules-in-ci", doc: "changes.md", why: "every tool make ci fetches with go run or go install is pinned to an exact version, every action a workflow uses is pinned to a commit, and make ci runs every check and step", check: machineRulesInCI},
 		{name: "ci-stays-fast", doc: "changes.md", why: "no test or script clears PLACKET_IN_CI, the marker that stops a make ci inside make ci", check: ciStaysFast},
 		{name: "no-hidden-text", doc: "changes.md", why: "no tracked file outside testdata/ holds a bidi control character, an invisible one or a NUL byte, or is a symbolic link", check: noHiddenText},

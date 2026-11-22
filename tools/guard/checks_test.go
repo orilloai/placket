@@ -84,9 +84,10 @@ var checksCases = []tcase{
 	}},
 	{name: "recipes-ok", fixture: "recipes-ok"},
 
-	// root-module: a root go.mod requires the core and replaces it with ./core, and is the root
-	// module; no go.work or go.work.sum is committed, one under testdata/ aside. With no root go.mod
-	// the check passes (the clean tree).
+	// root-module: a root go.mod is the root module and requires the core in one of two states: at
+	// v0.0.0 replaced with ./core, until the core is first tagged, or at a tagged version with no
+	// replace (the tagged state's cases are rootTaggedCases). No go.work or go.work.sum is committed,
+	// one under testdata/ aside. With no root go.mod the check passes (the clean tree).
 	{name: "root-no-replace", fixture: "root-no-replace", refuse: []string{"root-module"}, lines: []string{
 		"go.mod: no replace of github.com/orilloai/placket/core with ./core",
 	}},
@@ -130,6 +131,21 @@ var checksCases = []tcase{
 }
 
 func TestChecks(t *testing.T) { runCases(t, checksCases) }
+
+// The root-module cases of a core required at a tag: with no replace it passes; a replace that comes
+// back beside it is refused, naming the replace's line; and a require at a pseudo-version, which no
+// tag names, is refused.
+var rootTaggedCases = []tcase{
+	{name: "root-replace-back", fixture: "root-replace-back", refuse: []string{"root-module"}, lines: []string{
+		"go.mod:7: github.com/orilloai/placket/core is replaced with ./core beside its tagged require v0.1.0; a tagged core takes no replace",
+	}},
+	{name: "root-pseudo", fixture: "root-pseudo", refuse: []string{"root-module"}, lines: []string{
+		"go.mod:5: github.com/orilloai/placket/core is required at v0.1.1-0.20261121120000-0123456789ab, neither v0.0.0 replaced with ./core nor a tagged version",
+	}},
+	{name: "root-tagged", fixture: "root-tagged"},
+}
+
+func TestRootModuleTakesATaggedCore(t *testing.T) { runCases(t, rootTaggedCases) }
 
 // liveLines returns the lines of a live file.
 func liveLines(t *testing.T, rel string) []string {
