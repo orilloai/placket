@@ -26,7 +26,7 @@
 #   successor pinned by supersedes waits with it;
 # - the README's verify of the committed demo journal names the demo's Accord id written out, never
 #   read from the journal it verifies, says where a reader's own id comes from, and its first block,
-#   run as printed, verifies 13 receipts;
+#   run as printed, prints each receipt's statement and exactly the report the README describes;
 # - no Markdown file names a hosted placket service or a roadmap for one, and a line planted in a copy
 #   of the tree is refused.
 set -u
@@ -361,14 +361,68 @@ case $before in
 *"never from the journal"*) ok "README.md: the sentence before the first verify says the Accord's id never comes from the journal" ;;
 *) fail "README.md: the sentence before the first verify does not say the Accord's id never comes from the journal" "$before" ;;
 esac
+# Run as printed, the block exits 0, prints on its standard output each receipt's signed statement
+# as the journal holds it, in order, and its report is exactly the one below, where <accord> is the
+# demo's Accord, <mediator> the key scripts/demo/mediator.ref names, and every other id is numbered
+# by its first appearance, so the same id keeps the same number.
 mkdir "$tmp/bin"
-sed -e "s|-o placket |-o \"$tmp/bin/placket\" |" -e "s|^\./placket |\"$tmp/bin/placket\" |" "$tmp/verify.sh" >"$tmp/verify.run"
+sed -e "s|-o placket |-o \"$tmp/bin/placket\" |" -e "s|^\./placket \(.*\)\$|\"$tmp/bin/placket\" \1 2>\"$tmp/verify.report\"|" \
+	"$tmp/verify.sh" >"$tmp/verify.run"
+jq -c '.payload | @base64d | fromjson | .predicate' scripts/demo/journal/receipts.jsonl >"$tmp/verify.want"
+cat >"$tmp/verify.report.want" <<'EOF'
+mediator <mediator> accord <accord> card <sha256 1>
+operator <ed25519 1> runs process
+module 0.2.0 <sha256 2>
+member <ed25519 2> roles applier principal <ed25519 3>
+member <ed25519 4> roles proposer principal <ed25519 3>
+member <ed25519 5> roles decider principal <ed25519 3>
+custody: operator <ed25519 1> is principal of 0 of 3 members
+terms: not checked: the declarations are sealed; with every member's opening, --open checks them
+pass 6 block 3 ask 4
+questions closed 4 open 0
+releases 2 blocked releases 0
+<sha256 3> witnessed: signed by key <ed25519 5>, which principal <ed25519 3> bound to role decider
+<sha256 4> witnessed: signed by key <ed25519 5>, which principal <ed25519 3> bound to role decider
+<sha256 5> witnessed: signed by key <ed25519 5>, which principal <ed25519 3> bound to role decider
+<sha256 6> witnessed: signed by key <ed25519 5>, which principal <ed25519 3> bound to role decider
+<sha256 7> witnessed: signed by key <ed25519 5>, which principal <ed25519 3> bound to role decider
+<sha256 8> mediator: nobody could be reached to answer
+terms decided 7
+valid: 13 receipts signed by mediator <mediator>
+conforms: every receipt names this Accord, its card and its members, and every answer call given fits; decisions checked against the terms only where the seals they read are opened
+complete: not claimed: this Accord has no close receipt
+claim: each receipt is this mediator's signed decision about one part under this Accord's terms.
+not claimed: what any party did with a part after it crossed; anything that did not go through this mediator; reworded or derived content; who was at a key.
+EOF
 if ! grep -q "^\"$tmp/bin/placket\" verify " "$tmp/verify.run"; then
 	fail "README.md: the first verify block does not build placket and run ./placket verify" "$(cat "$tmp/verify.sh")"
-elif sh "$tmp/verify.run" >"$tmp/verify.out" 2>&1 && grep -qE '^valid: 13 receipts signed by mediator ed25519:[0-9a-f]{64}$' "$tmp/verify.out"; then
-	ok "README.md: the first verify block, run as printed, prints valid: 13 receipts"
 else
-	fail "README.md: the first verify block, run as printed, does not print valid: 13 receipts" "$(cat "$tmp/verify.out")"
+	sh "$tmp/verify.run" >"$tmp/verify.out" 2>"$tmp/verify.build"
+	code=$?
+	awk -v accord="$demo_accord" -v mediator="$(cat scripts/demo/mediator.ref)" '{
+		out = ""
+		while (match($0, /(sha256|ed25519):[0-9a-f][0-9a-f]*/)) {
+			v = substr($0, RSTART, RLENGTH)
+			if (v == accord) name = "accord"
+			else if (v == mediator) name = "mediator"
+			else {
+				if (!(v in id)) { k = substr(v, 1, index(v, ":") - 1); id[v] = k " " ++n[k] }
+				name = id[v]
+			}
+			out = out substr($0, 1, RSTART - 1) "<" name ">"
+			$0 = substr($0, RSTART + RLENGTH)
+		}
+		print out $0
+	}' "$tmp/verify.report" >"$tmp/verify.report.got"
+	if [ "$code" -ne 0 ]; then
+		fail "README.md: the first verify block, run as printed, exits $code, not 0" "$(cat "$tmp/verify.build" "$tmp/verify.report")"
+	elif ! cmp -s "$tmp/verify.out" "$tmp/verify.want"; then
+		fail "README.md: the first verify block, run as printed, does not print each receipt's statement as the journal holds it" "$(diff "$tmp/verify.want" "$tmp/verify.out")"
+	elif ! cmp -s "$tmp/verify.report.got" "$tmp/verify.report.want"; then
+		fail "README.md: the first verify block, run as printed, does not print the report the README describes" "$(diff "$tmp/verify.report.want" "$tmp/verify.report.got")"
+	else
+		ok "README.md: the first verify block, run as printed, exits 0, prints each receipt's statement and the report: valid: 13 receipts, terms not checked"
+	fi
 fi
 
 # R24: no Markdown file names a hosted placket service or a roadmap. hosted <dir> prints each line
