@@ -227,7 +227,8 @@ func DecodeClose(receipt []byte) (Close, error) {
 }
 
 // payloadOf reads a receipt's payload, as Decode and DecodeClose do, without verifying anything: the
-// receipt's canonical bytes, and its payload in standard base64 in its one encoding, canonical.
+// receipt's bytes, accepted by the canonical form, and its payload in standard base64 in its one
+// encoding, exactly its own canonical form, as the verifier's row 1 reads them (receipt-1).
 func payloadOf(receipt []byte) ([]byte, error) {
 	v, _, err := shape.Decode(receipt)
 	if err != nil {
@@ -239,7 +240,7 @@ func payloadOf(receipt []byte) ([]byte, error) {
 	if !ok {
 		return nil, &Error{Code: CodeSignature, Index: 0}
 	}
-	if _, err := canonical.Form(payload); err != nil {
+	if !isCanonical(payload) {
 		return nil, &Error{Code: CodeNotCanonical, Index: 0}
 	}
 	return payload, nil

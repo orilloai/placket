@@ -10,7 +10,7 @@ A requirement id is permanent. It is never reused and never renumbered, and an i
 
 These rules hold in every section.
 
-- **Bytes are read in their canonical form.** Everything hashed, signed or judged is read from the canonical bytes of canonical-1. Where an operation receives bytes, the first check that reads them as JSON returns `not-canonical` when the canonical form refuses them, with one exception: a give's envelope is read by the door's signature row, so envelope bytes the canonical form refuses, a repeated `seq` included, are `envelope-signature` (crossing-6). `not-canonical` means nothing else anywhere: bytes the canonical form refuses.
+- **Bytes are read in their canonical form.** Everything hashed, signed or judged is read from the canonical bytes of canonical-1. Where an operation receives bytes, the first check that reads them as JSON returns `not-canonical` when the canonical form refuses them, with one exception: a give's envelope is read by the door's signature row, so envelope bytes the canonical form refuses, a repeated `seq` included, are `envelope-signature` (crossing-6). `not-canonical` means one of two things anywhere: bytes the canonical form refuses, and a receipt's payload the canonical form accepts that is not its own canonical form (receipt-1).
 - **The check that reads a member owns its defects.** A member that is missing, of the wrong JSON type, out of range, of the wrong form or not listed fails with the code of the check that reads it. An operation may open with one whole-shape check of its own; after it, a member belongs to the later check that reads it. No other rule decides a code for input off its format.
 - **Every format is closed.** An object holds exactly the members its format lists. A member has a meaning or is absent: no member is `null`, and a member that would carry nothing is left out. A member kept for a later version is reserved with a fixed shape, read for shape only, and changes no result in this version.
 - **One timestamp rule.** Every time in every format is written `YYYY-MM-DDTHH:MM:SSZ`: a date the Gregorian calendar has, a time of day from `00:00:00` to `23:59:59` in whole seconds, UTC, and no leap second (`timestamp.json`).
@@ -1324,13 +1324,25 @@ A receipt is the mediator's signed statement of one decision. Writing one refuse
 
 ### receipt-1 The receipt
 
-A receipt is a DSSE 1.0 envelope (`receipt.json`) with exactly `payloadType`, `application/vnd.in-toto+json`; `payload`, the standard base64 of the canonical bytes of the receipt's statement; and `signatures`, a list of exactly one entry with exactly `keyid`, the mediator's reference, and `sig`, the standard base64 of the mediator's Ed25519 signature over the DSSE pre-authentication encoding of the payload type and the payload's bytes (signing-2). The statement is an in-toto Statement v1 (`statement.json`): `_type` `https://in-toto.io/Statement/v1`, `subject`, `predicateType` `https://placket.tech/receipt/0.1`, and `predicate`. A receipt's id is the typed hash of the canonical bytes of its statement. The mediator writes the payload in canonical form, so putting it in canonical form again changes nothing. A close receipt is an envelope of this form whose statement is the close's own (close-2); its id is taken the same way.
+A receipt is a DSSE 1.0 envelope (`receipt.json`) with exactly `payloadType`, `application/vnd.in-toto+json`; `payload`, the standard base64 of the canonical bytes of the receipt's statement; and `signatures`, a list of exactly one entry with exactly `keyid`, the mediator's reference, and `sig`, the standard base64 of the mediator's Ed25519 signature over the DSSE pre-authentication encoding of the payload type and the payload's bytes (signing-2). The statement is an in-toto Statement v1 (`statement.json`): `_type` `https://in-toto.io/Statement/v1`, `subject`, `predicateType` `https://placket.tech/receipt/0.1`, and `predicate`. A receipt's id is the typed hash of the canonical bytes of its statement. The mediator writes the payload in canonical form, so putting it in canonical form again changes nothing. A receipt verifies only when its payload is exactly the canonical bytes of its statement: a payload the canonical form accepts but would write otherwise, with whitespace, members in another order, or a number or a string spelled another way, is `not-canonical` at section 8's row 1, even under the mediator's signature, so each receipt id has one signed payload. A reader that decodes a receipt without verifying it holds the payload to the same rule (receipt-8). The envelope around the payload is not held to it: its own bytes are read in any spelling the canonical form accepts, its members in any order and with any whitespace, because a delivery carries the receipt as a JSON value and need not keep its bytes. Its `payload` is the same string whichever way the envelope is written, and the id is taken from the payload alone. A close receipt is an envelope of this form whose statement is the close's own (close-2); its id is taken the same way.
 
 #### Scenario: the anatomy of a receipt
 
 - Given any receipt a mediator wrote
 - When its payload is decoded from base64
 - Then the bytes are the canonical form of a statement whose `_type` and `predicateType` are those above, the signature verifies under the mediator's key over the pre-authentication encoding of `application/vnd.in-toto+json` and those bytes, and the receipt's id is their typed hash
+
+#### Scenario: a payload the canonical form would rewrite
+
+- Given a receipt whose payload decodes to its statement with one space added after the opening `{`, signed by the mediator over those bytes
+- When it is verified, or decoded without verifying
+- Then it fails with `not-canonical` at its index, and no id is taken from it; so does the same statement with two members in another order, or with its `seq` written `1.0`
+
+#### Scenario: an envelope written another way
+
+- Given a receipt that verifies, written again with its envelope's members in another order and a space added, its `payload` string untouched
+- When it is verified
+- Then it verifies, and its id is unchanged
 
 ### receipt-2 The subject
 
@@ -1480,7 +1492,7 @@ A verifier needs only the mediator's reference and a list of receipts in the ord
 | # | Check | Reads | Code |
 |---|---|---|---|
 | 0 | Mediator | The reference the verifier is given, before any receipt (signing-1) | `reference` |
-| 1 | Bytes | The receipt's bytes, and the bytes `payload` decodes to when it is a string of standard base64 in its one encoding (canonical-1) | `not-canonical` |
+| 1 | Bytes | The receipt's bytes, and the bytes `payload` decodes to when it is a string of standard base64 in its one encoding: the canonical form accepts both (canonical-1), and the payload's bytes are their own canonical form (receipt-1) | `not-canonical` |
 | 2 | Payload type | `payloadType`: present, exactly `application/vnd.in-toto+json` | `payload-type` |
 | 3 | Signature | `payload` as standard base64 in its one encoding; `signatures`, exactly one entry with exactly `keyid`, the given mediator's reference, and `sig`, standard base64 of 64 bytes; the signature, over the pre-authentication encoding of the payload type and the payload's bytes, under the given mediator's key; and no member of the receipt but these three | `signature` |
 | 4 | Statement | The statement: exactly `_type`, `subject`, `predicateType` and `predicate`, with the values receipt-1 and receipt-2 give; the predicate's members as receipt-3, receipt-4, receipt-9, receipt-10 and receipt-11 give, but `mediator`, `seq` and `prev`, its `by` fitting its kind, verdict and reason; and in a crossing receipt, the envelope's `sender` equal to its `from` (receipt-3) | `statement-type` |
@@ -1566,7 +1578,7 @@ A release receipt with verdict `pass` released its part; one with verdict `block
 
 ### receipt-8 Reading without verifying
 
-A receipt can be decoded and shown without being verified: its statement read from its payload, its words printed. Whatever does so says the receipt was not verified, because a forged receipt decodes and shows exactly as a real one does. Anything that presents a receipt as the mediator's decision verifies it first.
+A receipt can be decoded and shown without being verified: its statement read from its payload, its words printed. Decoding reads the receipt's bytes and its payload as section 8's row 1 does, so a payload that is not its own canonical form is refused with `not-canonical`, and no id is shown for a receipt a verifier refuses at that row. Whatever does so says the receipt was not verified, because a forged receipt decodes and shows exactly as a real one does. Anything that presents a receipt as the mediator's decision verifies it first.
 
 #### Scenario: a forged receipt shown
 

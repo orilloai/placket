@@ -217,6 +217,40 @@ func main() {
 		verify("a-signature-of-63-bytes", "section 8 row 3: a sig that is not 64 bytes fails signature", list(short), failsAt("signature", 0)),
 	)
 
+	// Row 1: a payload the canonical form accepts but would write otherwise, signed by the mediator
+	// over exactly those bytes, is not-canonical (receipt-1); an envelope written another way around
+	// a canonical payload is read as the receipt it is.
+	bSt, aSt := kit.StatementOf(b), kit.StatementOf(a)
+	typeMember := `"_type":` + string(kit.Canon(kit.StatementType))
+	if !strings.HasPrefix(string(bSt), "{"+typeMember+",") {
+		panic("receipts: the statement does not open with _type")
+	}
+	signedOver := func(payload string) kit.Obj {
+		r, _ := kit.Receipt([]byte(payload), kit.Mediator)
+		return r
+	}
+	replaceOnce := func(s, old, new string) string {
+		if strings.Count(s, old) != 1 {
+			panic("receipts: " + old + " is not in the statement once")
+		}
+		return strings.Replace(s, old, new, 1)
+	}
+	spacedPayload := signedOver("{ " + string(bSt[1:]))
+	reordered := signedOver("{" + string(bSt[len(typeMember)+2:len(bSt)-1]) + "," + typeMember + "}")
+	seqFraction := signedOver(replaceOnce(string(aSt), `"seq":1,"to":`, `"seq":1.0,"to":`))
+	sigs := string(kit.Canon(a["signatures"]))
+	reencoded := `{ "signatures": ` + sigs + `, "payloadType": ` + string(kit.Canon(kit.PayloadType)) + `, "payload": ` + string(kit.Canon(a["payload"])) + " }"
+	vs = append(vs,
+		verify("a-payload-with-a-space-added", "receipt-1, section 8 row 1: a payload of its statement with one space after the opening brace, signed by the mediator over those bytes, is not-canonical at its index",
+			list(a, spacedPayload), failsAt("not-canonical", 1)),
+		verify("a-payload-with-its-members-reordered", "receipt-1, section 8 row 1: a payload of its statement with _type written last, signed by the mediator over those bytes, is not-canonical at its index",
+			list(a, reordered), failsAt("not-canonical", 1)),
+		verify("a-payload-with-seq-written-1-0", "receipt-1, section 8 row 1: a payload of its statement with the predicate's seq written 1.0, signed by the mediator over those bytes, is not-canonical",
+			list(seqFraction), failsAt("not-canonical", 0)),
+		verify("an-envelope-written-another-way", "receipt-1, section 8 row 1: a receipt whose envelope is written with its members in another order and with spaces, its payload untouched, verifies, and the next receipt's prev still names it",
+			[]any{kit.Obj{"receiptText": reencoded}, kit.Obj{"receipt": b}}, verified(2)),
+	)
+
 	// Row 4: the statement and the predicate (receipt-1 to receipt-4, receipt-9, receipt-10).
 	maybeBlock := resign(a, func(st kit.Obj) { predicate(st)["verdict"], predicate(st)["reason"] = "block", "maybe" })
 	okBlock := resign(a, func(st kit.Obj) { predicate(st)["verdict"], predicate(st)["reason"] = "block", "ok" })

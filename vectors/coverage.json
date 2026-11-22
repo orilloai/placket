@@ -217,8 +217,12 @@
     "scenarios": {"the call inside both deliveries": {"vectors": ["questions/an-accept-releases-the-asked-part"], "tests": ["core/mediator:TestReleaseNotJudged", "adapters/local:TestTheJournalKeepsEveryAcceptedCall"]}}
   },
   "receipt-1": {
-    "vectors": ["receipts/three-gives-are-echoed", "receipts/a-chain-verifies", "receipts/a-statement-of-another-type", "receipts/a-receipt-under-the-old-domain"],
-    "scenarios": {"the anatomy of a receipt": {"vectors": ["receipts/three-gives-are-echoed", "receipts/a-chain-verifies", "receipts/a-statement-of-another-type"]}}
+    "vectors": ["receipts/three-gives-are-echoed", "receipts/a-chain-verifies", "receipts/a-statement-of-another-type", "receipts/a-receipt-under-the-old-domain", "receipts/a-payload-with-a-space-added", "receipts/a-payload-with-its-members-reordered", "receipts/a-payload-with-seq-written-1-0", "receipts/an-envelope-written-another-way", "close/a-close-payload-with-a-space-added"],
+    "scenarios": {
+      "the anatomy of a receipt": {"vectors": ["receipts/three-gives-are-echoed", "receipts/a-chain-verifies", "receipts/a-statement-of-another-type"]},
+      "a payload the canonical form would rewrite": {"vectors": ["receipts/a-payload-with-a-space-added", "receipts/a-payload-with-its-members-reordered", "receipts/a-payload-with-seq-written-1-0", "close/a-close-payload-with-a-space-added"], "tests": ["core/receipts:TestAPayloadNotInItsCanonicalForm", "core/receipts:TestACloseWhosePayloadIsNotCanonical"]},
+      "an envelope written another way": {"vectors": ["receipts/an-envelope-written-another-way"], "tests": ["core/receipts:TestAReEncodedEnvelopeVerifies"]}
+    }
   },
   "receipt-2": {
     "vectors": ["receipts/each-pair-its-own-chain", "receipts/two-subjects"],
