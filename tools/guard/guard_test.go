@@ -406,6 +406,7 @@ var ruleDocs = map[string]string{
 	"schemas-hold": "tests.md", "vectors-independent": "tests.md",
 	"product-words-once": "adapters.md", "claims-stop-at-crossing": "adapters.md", "main-is-thin": "adapters.md",
 	"machine-rules-in-ci": "changes.md", "ci-stays-fast": "changes.md", "no-hidden-text": "changes.md", "agents-md-short": "changes.md",
+	"docs-tree-holds": "changes.md",
 }
 
 var placeRE = regexp.MustCompile(`^[^ ]+: [^ :]+(:[0-9]+)?: `)
@@ -535,7 +536,7 @@ func hasPlace(l, name string, places []string) bool {
 // allCases is every case of the checker's tests, for the test that each rule has one that refuses.
 func allCases(t *testing.T) []tcase {
 	var all []tcase
-	for _, cs := range [][]tcase{coreCases, parserCases, shadowCases, checksCases, specCases(t), schemaFetchCases(), ciCases(t), markerCases(t), gitCases, agentsCases(t), hiddenCases} {
+	for _, cs := range [][]tcase{coreCases, parserCases, shadowCases, checksCases, specCases(t), schemaFetchCases(), ciCases(t), markerCases(t), gitCases, agentsCases(t), hiddenCases, docsTreeCases(t)} {
 		all = append(all, cs...)
 	}
 	return all
