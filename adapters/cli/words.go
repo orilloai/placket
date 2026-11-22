@@ -147,6 +147,9 @@ const (
 	LineViewNotAll     = "view of %s: does not match the view it accepted at receipts.jsonl line %d"
 	// LineViewOwnOpening is the usage line of --view beside the viewer's own --open.
 	LineViewOwnOpening = "usage: placket verify: --view with the viewer's own --open: the opening checks its terms themselves"
+	// LineSuccessorFlags is the usage line of --superseded-by, --successor-accord and
+	// --successor-acceptances not given together (close-4, commands-4).
+	LineSuccessorFlags = "usage: placket verify: --superseded-by, --successor-accord and --successor-acceptances are given together"
 	LineBodyNot        = "body: does not conform at receipts.jsonl line %d"
 	// LineContradicted is the decision line of a receipt whose call given does not fit it, which
 	// fails row 4 (verify-3); such a receipt is never witnessed or unwitnessed.

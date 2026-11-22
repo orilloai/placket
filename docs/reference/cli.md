@@ -525,7 +525,7 @@ Exit codes: `0`, `3`.
 
 Check a journal's receipts for validity under the mediator's key and, with a founding set, for conformance to the Accord, and print what was checked and what is not claimed.
 
-Usage: `placket verify --receipts <dir> (--mediator <actor> | --accord <id> --founding <file>) [--founding <file>] [--acceptances <file>] [--answers <file>] [--subset] [--delivery <file>] [--superseded-by <file>] [--open <file>]... [--view <file>]`
+Usage: `placket verify --receipts <dir> (--mediator <actor> | --accord <id> --founding <file>) [--founding <file>] [--acceptances <file>] [--answers <file>] [--subset] [--delivery <file>] [--superseded-by <file> --successor-accord <id> --successor-acceptances <file>] [--open <file>]... [--view <file>]`
 
 | Flag | Required | Default | What it is |
 |---|---|---|---|
@@ -537,7 +537,9 @@ Usage: `placket verify --receipts <dir> (--mediator <actor> | --accord <id> --fo
 | `--answers <file>` | no |  | A file of answer calls, one a line, read beside the journal's `answers.jsonl` to witness answers. |
 | `--subset` | no |  | The receipts are a subset, whose chains may start late; completeness is then not claimed. |
 | `--delivery <file>` | no |  | A delivery, as `get --json` saved it, whose body and salt are checked against its receipt. |
-| `--superseded-by <file>` | no |  | The founding set of the Accord that supersedes this one, whose supersedes must pin this journal's close; it needs `--accord` and `--founding`. |
+| `--superseded-by <file>` | no |  | The founding set of the Accord that supersedes this one, whose supersedes must pin this journal's close; it needs `--accord`, `--founding`, `--successor-accord` and `--successor-acceptances`. |
+| `--successor-accord <id>` | no |  | The successor's Accord id, from your own record, such as the id you accepted, never from a file sent with the journal; the set given with `--superseded-by` must be the one whose typed hash it is. |
+| `--successor-acceptances <file>` | no |  | The successor's acceptances, with which it is founded at the time of this journal's close, so every member must have accepted it; never read from beside its founding set. |
 | `--open <file>` | no |  | A member's opening, given once per opening, so its seal and its terms are checked. |
 | `--view <file>` | no |  | One member's own view, as it kept it, to check that member's receipts against; it needs `--founding`. |
 | `--json` | no |  | Print the result as one JSON object on standard output. |
@@ -655,7 +657,7 @@ Two kinds of code follow another and are not listed here. After `error verify`, 
 | `adapters/cli` | `dir-not-empty` | The directory init would write in holds something already, and init wrote nothing; give --dir an empty or new directory. |
 | `adapters/cli` | `file` | A file or directory the command reads or writes could not be read or written, or is not a regular file, and the detail names which, or kept when a fetched body could not be written and was kept in kept.jsonl instead; check the path, and take a kept body from kept.jsonl. |
 | `adapters/cli` | `format` | The log's --format is neither json nor csv, --words and --no-words were both given, or --json was given with --format csv; give one format, and --json only with json. |
-| `adapters/cli` | `founding` | The founding set, an opening or the acceptances do not found the Accord, and the detail names the founding code, kernel for a card of another module than this build's, or judge for judge configs that are not the card's; fix the file the detail names, or run the build the card names. |
+| `adapters/cli` | `founding` | The founding set, an opening or the acceptances do not found the Accord, or the successor's set and acceptances do not found it at the close's time, and the detail names the founding code, kernel for a card of another module than this build's, or judge for judge configs that are not the card's; fix the file the detail names, or run the build the card names. |
 | `adapters/cli` | `internal` | The command failed in a way no other code names; run it again, and report it if it persists. |
 | `adapters/cli` | `judge` | A --judge file is not a judge's config, and the detail names its code; fix the config as docs/adr/0023-judges.md says. |
 | `adapters/cli` | `path` | The --at path is not a JSON Pointer; write it empty, or with a slash before each token. |
@@ -664,7 +666,7 @@ Two kinds of code follow another and are not listed here. After `error verify`, 
 | `adapters/cli` | `text` | A text given on the command line, or a file read as text, is not UTF-8; give UTF-8, or give the file with --as raw. |
 | `adapters/cli` | `until` | The binding's --until is not a timestamp in whole seconds; write it as 2099-01-01T00:00:00Z is written. |
 | `adapters/cli` | `usage` | The command, an argument or a flag is not one it takes, a flag's value is not of its form, or a flag it needs is missing, as the line before says; run it as its usage in the CLI reference says. |
-| `adapters/cli` | `verify` | The receipts do not verify, and the detail names the verifier's code with the file and the line, accord or card for a journal of more than one Accord or card, or superseded for a successor that does not pin this log's close; restore the journal, or give the successor that supersedes this Accord. |
+| `adapters/cli` | `verify` | The receipts do not verify, and the detail names the verifier's code with the file and the line, accord or card for a journal of more than one Accord or card, or superseded for a successor set that is not the one --successor-accord names, or that does not pin this log's close; restore the journal, or give the successor that supersedes this Accord under the id you accepted. |
 | `adapters/client` | `asked` | What the window shows of the question is not the part its ask's receipt names, so nothing was signed; list the questions again. |
 | `adapters/client` | `bad-config` | The labels config is not in its format; fix mediators.json against api/config/mediators.json. |
 | `adapters/client` | `envelope` | The envelope could not be signed; check the key file holds a key. |

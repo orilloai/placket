@@ -10,7 +10,7 @@ The one value it needs out of band is the Accord's id. With it, the founding set
 placket verify --accord ID --receipts journal --founding founding.json
 ```
 
-Add each party's opening with `--open`, as in a dispute, to check every decision against the terms; `--view` with one member's own view, to check that member's receipts against the view it accepted; `--delivery`, to check one delivery's body against its receipt; `--subset`, for a part of the journal; and `--superseded-by`, to check that a successor pins this journal's close. With `--mediator` and no founding set, it checks validity alone.
+Add each party's opening with `--open`, as in a dispute, to check every decision against the terms; `--view` with one member's own view, to check that member's receipts against the view it accepted; `--delivery`, to check one delivery's body against its receipt; `--subset`, for a part of the journal; and `--superseded-by`, with `--successor-accord` and `--successor-acceptances`, to check that a successor pins this journal's close. The successor's id comes from your own record, the id you accepted, never from a file sent with the journal, and the successor is founded with its members' acceptances at the time of the close, so a successor its members did not accept pins nothing ([rotating a mediator's key](guides/rotation.md)). With `--mediator` and no founding set, it checks validity alone.
 
 ## What each line says
 
@@ -30,7 +30,7 @@ Every line goes to standard error, in this order; each receipt's predicate goes 
 8. **Validity.** `valid: <n> receipts signed by mediator <key>`: every receipt is the mediator's, well formed, and chained. A receipt that fails validity ends the run there with `error verify`, its code, `receipts.jsonl` and its line, exit 3, and none of the lines above.
 9. **Conformance.** `conforms: every decision is one this Accord let its decider make`, with every opening; with some seals unopened, `conforms: every receipt names this Accord, its card and its members, and every answer call given fits; decisions checked against the terms only where the seals they read are opened`; `conformance not checked: give --founding`, or `... the card's module is not this build's`; or `does not conform: <code> at receipts.jsonl line <n>`, exit 1, with every other line still printed (verify-2).
 10. **A member's own receipts**, with `--view`. One line per receipt of the viewer's, `view of <key>: receipts.jsonl line <n> receipt <id> matches <row>`, or `does not match`, and then `view of <key>: every receipt of its own, <n>, matches the view it accepted`, or that it does not, at its line, exit 1.
-11. **Completeness.** `complete: not claimed: this Accord has no close receipt`, or `... only a subset was given`; or `complete: against close receipt <id>; not claimed: that the mediator signed no other log for this Accord`, and with `--superseded-by`, the successor that pins it (verify-4).
+11. **Completeness.** `complete: not claimed: this Accord has no close receipt`, or `... only a subset was given`; or `complete: against close receipt <id>; not claimed: that the mediator signed no other log for this Accord`, and with `--superseded-by`, the accepted successor, named by the id you gave, that pins it (verify-4, close-4).
 12. **The body**, with `--delivery`. `body: the part of receipt <id> is the one it names`, or `body: does not conform at receipts.jsonl line <n>`, exit 1.
 13. **The claim and its scope.** `claim: each receipt is this mediator's signed decision about one part under this Accord's terms.`, then the scope line.
 

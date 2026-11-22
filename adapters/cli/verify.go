@@ -79,13 +79,14 @@ func oneAccord(list []receipts.Verified) (string, int) {
 	return "", -1
 }
 
-// closeOf is the id of the close a verified list holds, its last receipt, or the empty string.
-func closeOf(list []receipts.Verified) string {
+// closeOf is the id and the time of the close a verified list holds, its last receipt, or two empty
+// strings.
+func closeOf(list []receipts.Verified) (string, string) {
 	if len(list) == 0 {
-		return ""
+		return "", ""
 	}
 	c, _ := list[len(list)-1].Close()
-	return c.ID
+	return c.ID, c.At
 }
 
 // firstAt is the time of a list's first receipt, a close's when it is the first, read without
@@ -104,7 +105,8 @@ func firstAt(list [][]byte) string {
 }
 
 // verifyCommand is `verify --receipts DIR (--mediator M | --accord A --founding F) [--founding F]
-// [--answers FILE] [--subset] [--delivery FILE] [--superseded-by NEW] [--view V] [--json]` (commands-4,
+// [--answers FILE] [--subset] [--delivery FILE] [--superseded-by NEW --successor-accord ID
+// --successor-acceptances FILE] [--view V] [--json]` (commands-4,
 // commands-8, verify-1 to verify-4, close-4): the journal's receipts checked for validity, under the mediator's reference alone, and,
 // with a founding set, for conformance to the Accord, without ever running a judge again. With
 // --accord the mediator's reference comes from the founding set whose typed hash is A, the one value
@@ -125,11 +127,10 @@ func firstAt(list [][]byte) string {
 // not.
 //
 // The complete line claims completeness only for a whole list that ends in its close (close-4). With
-// --superseded-by, the founding set of a successor Accord, founded as founding founds a set, it also
-// checks that the successor's supersedes names this Accord and this list's close, and names the
-// successor on the complete line; a list with no close, a successor that supersedes nothing, or one
-// that names another Accord or close, is tool error verify superseded. It needs --accord and
-// --founding.
+// --superseded-by, the founding set of a successor Accord, --successor-accord, the successor's id
+// from the reader's own record, and --successor-acceptances, its acceptances, it also checks that
+// the successor pins this list's close, and names the successor on the complete line (successor).
+// The three are given together, or it is a usage error, and they need --accord and --founding.
 //
 // With --view, one member's own view as it kept it, which needs --founding, it also checks that
 // member's receipts against the view it signed (verify-1 rows 0a and 4a, verify-2): after the
@@ -144,6 +145,7 @@ func verifyCommand(r *run, args []string) int {
 	accordFlag, answersFile := fs.text("accord"), fs.text("answers")
 	subset, deliveryFile := fs.switchFlag("subset"), fs.text("delivery")
 	successor := fs.text("superseded-by")
+	successorID, successorAcc := fs.text("successor-accord"), fs.text("successor-acceptances")
 	accFile := fs.text("acceptances")
 	var opens many
 	fs.list(&opens, flagOpen)
@@ -151,6 +153,11 @@ func verifyCommand(r *run, args []string) int {
 	if !r.parse(fs, args) || (*med == "") == (*accordFlag == "") || (*accordFlag != "" && *setPath == "") ||
 		(*successor != "" && *accordFlag == "") || ((*accFile != "" || len(opens) > 0 || *viewFile != "") && *setPath == "") ||
 		(*viewFile != "" && *subset) {
+		return r.tool(codeUsage)
+	}
+	// The successor is checked only with its id and its acceptances, and they mean nothing without it.
+	if (*successor != "") != (*successorID != "") || (*successor != "") != (*successorAcc != "") {
+		fmt.Fprintln(r.stderr, LineSuccessorFlags)
 		return r.tool(codeUsage)
 	}
 	var viewBytes []byte
@@ -291,23 +298,13 @@ func verifyCommand(r *run, args []string) int {
 	if a != nil {
 		accord = a.ID()
 	}
-	closeID := closeOf(sub.Verified)
+	closeID, closeAt := closeOf(sub.Verified)
 	pinned := ""
 	if *successor != "" {
-		b, err := os.ReadFile(*successor)
-		if err != nil {
-			return r.tool(codeFile, "superseded-by")
+		if code, ok := r.successor(*successor, *successorID, *successorAcc, accord, closeID, closeAt); !ok {
+			return code
 		}
-		b = bytes.TrimSuffix(b, []byte{'\n'})
-		next, err := setup.Found(b, setup.Openings{}, local.Stamp(r.env.Now()))
-		if err != nil {
-			return r.tool(codeFound)
-		}
-		acc, cl, ok := next.Supersedes()
-		if !ok || closeID == "" || acc != accord || cl != closeID {
-			return r.tool(codeVerify, detailSuperseded)
-		}
-		pinned = next.ID()
+		pinned = *successorID
 	}
 
 	// Conformance (verify-2): rows 1 to 4, then the body, row 5, which reads only the delivery and
@@ -479,6 +476,41 @@ func verifyCommand(r *run, args []string) int {
 		return ExitBlock
 	}
 	return ExitOK
+}
+
+// successor checks that the successor Accord pins this list's close (close-4), in order: that the
+// founding set at setPath is the one whose typed hash is id, the id the reader gives from its own
+// record, else tool error verify superseded; that the list ends in a close, else the same; that the
+// set founds with the acceptances at accPath, with no openings, at the close's time at, so that the
+// result does not hang on the clock, else tool error founding with its code; and that its policy's
+// supersedes names this Accord and the close, else tool error verify superseded. A file that cannot
+// be read is tool error file, naming its flag. It reports whether the successor pins the close, and
+// the exit code when it does not.
+func (r *run) successor(setPath, id, accPath, accord, closeID, at string) (int, bool) {
+	b, err := os.ReadFile(setPath)
+	if err != nil {
+		return r.tool(codeFile, "superseded-by"), false
+	}
+	b = bytes.TrimSuffix(b, []byte{'\n'})
+	if h, err := canonical.TypedHash(b); err != nil || h != id || closeID == "" {
+		return r.tool(codeVerify, detailSuperseded), false
+	}
+	acc, err := os.ReadFile(accPath)
+	if err != nil {
+		return r.tool(codeFile, "successor-acceptances"), false
+	}
+	next, err := founding.Found(founding.Inputs{Set: b, Acceptances: trimLF(acc)}, at)
+	var se *setup.Error
+	if errors.As(err, &se) {
+		return r.tool(codeFound, string(se.Code)), false
+	}
+	if err != nil {
+		return r.tool(codeFound), false
+	}
+	if a, c, ok := next.Supersedes(); !ok || a != accord || c != closeID {
+		return r.tool(codeVerify, detailSuperseded), false
+	}
+	return ExitOK, true
 }
 
 // validity runs the verifier over the list, or over a subset, and returns what it verified.

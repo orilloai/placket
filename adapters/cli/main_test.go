@@ -476,6 +476,13 @@ func (a *accord) falseAcceptances(t testing.TB, who, whose string) string {
 // party viewOf names.
 func (a *accord) acceptWith(t testing.TB, setPath, out string, viewOf func(string) string) string {
 	t.Helper()
+	return a.acceptWithAt(t, setPath, out, "2026-11-18T09:00:00Z", viewOf)
+}
+
+// acceptWithAt writes the acceptances as acceptWith does, each view built from the set as founded at
+// at.
+func (a *accord) acceptWithAt(t testing.TB, setPath, out, at string, viewOf func(string) string) string {
+	t.Helper()
 	set, err := os.ReadFile(setPath)
 	if err != nil {
 		t.Fatal(err)
@@ -488,7 +495,7 @@ func (a *accord) acceptWith(t testing.TB, setPath, out string, viewOf func(strin
 		}
 		openings[a.refs[p]] = bytes.TrimSuffix(b, []byte("\n"))
 	}
-	acc, err := setup.Found(bytes.TrimSuffix(set, []byte("\n")), setup.Openings{ByActor: openings}, "2026-11-18T09:00:00Z")
+	acc, err := setup.Found(bytes.TrimSuffix(set, []byte("\n")), setup.Openings{ByActor: openings}, at)
 	if err != nil {
 		t.Fatal(err)
 	}

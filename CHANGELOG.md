@@ -79,7 +79,7 @@ The first release. Placket mediates the parts that cross between parties under t
 ### Close and rotate
 
 - `placket window close --accord ID` closes the Accord of a stopped window's journal: it closes every open question and writes a close receipt that pins the last receipt of every chain and lists every delivery not yet fetched. A closed Accord never reopens, and once a member's queue is empty every `placket get` returns the close.
-- `placket verify --superseded-by NEW` checks that a successor Accord pins the journal's close. `docs/guides/rotation.md` rotates a mediator's key by closing the Accord and founding its successor.
+- `placket verify --superseded-by NEW --successor-accord ID --successor-acceptances FILE` checks that a successor Accord pins the journal's close: the successor is the one whose id the reader gives from its own record, it is founded with its members' acceptances, and it is founded at the close's time, so the result does not change with the day it is run. `docs/guides/rotation.md` rotates a mediator's key by closing the Accord, founding its successor in a directory of its own, running its window until every member has accepted, and checking the old journal against it; `tests/test_rotation.sh` runs every command of it.
 
 ### Go API
 
