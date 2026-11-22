@@ -2,9 +2,11 @@ package cli_test
 
 import (
 	"bytes"
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"net"
 	"os"
 	"path/filepath"
 	"strings"
@@ -13,6 +15,7 @@ import (
 	"time"
 
 	"github.com/orilloai/placket/adapters/cli"
+	"github.com/orilloai/placket/adapters/local"
 	"github.com/orilloai/placket/core/canonical"
 	"github.com/orilloai/placket/core/signing"
 )
@@ -199,5 +202,90 @@ func TestWindowReadsOpeningsOnlyInItsDirectory(t *testing.T) {
 	}
 	if r := start(b, escaped); r.code != cli.ExitTool || !strings.HasPrefix(r.stderr, "error founding ") {
 		t.Fatalf("an actor that is a path out of --openings: %v", r)
+	}
+}
+
+// refusedAtStart runs the window command with args and returns what it printed once it exits, which
+// it must do before it listens and within 10 s; nothing listens on the Accord's socket after it.
+func refusedAtStart(t *testing.T, a *accord, args ...string) result {
+	t.Helper()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	ready := make(chan struct{})
+	e := env()
+	e.Context, e.Ready = ctx, ready
+	done := make(chan result, 1)
+	go func() {
+		var stdout, stderr bytes.Buffer
+		code := cli.Run(e, args, strings.NewReader(""), &stdout, &stderr)
+		done <- result{stdout.String(), stderr.String(), code}
+	}()
+	var r result
+	select {
+	case r = <-done:
+	case <-ready:
+		cancel()
+		<-done
+		t.Fatalf("the window started: %v", args)
+	case <-time.After(10 * time.Second):
+		t.Fatalf("the window did not return: %v", args)
+	}
+	if c, err := net.Dial("unix", a.socket()); err == nil {
+		_ = c.Close()
+		t.Fatalf("something listens on the socket after %v", args)
+	}
+	return r
+}
+
+// windowArgs is the window command of the Accord, on its own socket and journal.
+func (a *accord) windowArgs() []string {
+	return []string{"window", "--key", a.key("mediator"), "--founding", a.founding(), "--openings", a.openings(),
+		"--socket", a.socket(), "--journal", a.journal()}
+}
+
+// TestWindowRefusesAnOpeningOthersCanRead sets one member's opening to a mode that lets others read
+// it, 0644, and one that lets its group write it, 0620: window and window close each refuse it with
+// error file opening, exit 3, and nothing listens; at mode 0600 the window starts (setup-contract-13).
+func TestWindowRefusesAnOpeningOthersCanRead(t *testing.T) {
+	t.Parallel()
+	a := newAccord(t, "proposer", "applier")
+	opening := filepath.Join(a.openings(), cli.OpeningName(a.refs["applier"]))
+	for _, mode := range []os.FileMode{0o644, 0o620} {
+		if err := os.Chmod(opening, mode); err != nil {
+			t.Fatal(err)
+		}
+		if r := refusedAtStart(t, a, a.windowArgs()...); r.code != cli.ExitTool || r.stderr != "error file opening\n" {
+			t.Fatalf("window, an opening of mode %v: %v", mode, r)
+		}
+		if r := run(t, env(), a.closeArgs()...); r.code != cli.ExitTool || r.stderr != "error file opening\n" {
+			t.Fatalf("window close, an opening of mode %v: %v", mode, r)
+		}
+	}
+	if err := os.Chmod(opening, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	a.start(t)
+}
+
+// TestWindowRefusesAnOpeningOverTheCap replaces one member's opening with a file of mode 0600 one
+// byte over local.MaxCall, and then with a sparse one of 1 GiB: each is error file opening, exit 3,
+// read no further than the cap, so the window returns within 10 s.
+func TestWindowRefusesAnOpeningOverTheCap(t *testing.T) {
+	t.Parallel()
+	a := newAccord(t, "proposer", "applier")
+	opening := filepath.Join(a.openings(), cli.OpeningName(a.refs["applier"]))
+	for _, size := range []int64{local.MaxCall + 1, 1 << 30} {
+		if err := os.Remove(opening); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(opening, nil, 0o600); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.Truncate(opening, size); err != nil {
+			t.Fatal(err)
+		}
+		if r := refusedAtStart(t, a, a.windowArgs()...); r.code != cli.ExitTool || r.stderr != "error file opening\n" {
+			t.Fatalf("an opening of %d bytes: %v", size, r)
+		}
 	}
 }
