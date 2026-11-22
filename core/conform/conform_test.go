@@ -551,3 +551,90 @@ func TestABodyOfNoReceiptAfterAClose(t *testing.T) {
 		}
 	}
 }
+
+// TestAnAccordWithNoReceiptChecksNoUntil is verify-1 row 0: a list is founded at its first
+// receipt's at, a close's when the close is the first, and a list with no receipt at no time at all,
+// the earliest, so no binding's until is checked. The worked set, whose bindings' until a founding at
+// that time fails, founds and conforms with no receipt.
+func TestAnAccordWithNoReceiptChecksNoUntil(t *testing.T) {
+	t.Parallel()
+	w := journal(t)
+	closed, _, _, _ := closedJournal(t, "2026-11-12T09:30:00Z")
+	for name, c := range map[string]struct {
+		list [][]byte
+		want string
+	}{
+		"no receipt":         {nil, "0001-01-01T00:00:00Z"},
+		"the worked journal": {w.list, "2026-11-12T09:00:00Z"},
+		"a close first":      {closed[len(closed)-1:], "2026-11-12T09:30:00Z"},
+		"no receipt's bytes": {[][]byte{[]byte("not a receipt")}, "0001-01-01T00:00:00Z"},
+	} {
+		if got := FoundedAt(c.list); got != c.want {
+			t.Errorf("%s: founded at %q, want %q", name, got, c.want)
+		}
+	}
+	if _, err := founding.Found(founding.Inputs{Set: w.set.Set, Openings: w.set.Openings, Acceptances: w.set.Acceptances}, "2099-01-01T00:00:00Z"); err == nil {
+		t.Fatal("the set founds at its bindings' until")
+	}
+	e := w.evidence()
+	e.Receipts, e.Answers = nil, nil
+	r, err := Check(e)
+	if err != nil || len(r.Decisions) != 0 || !r.Module || !r.Terms {
+		t.Fatalf("no receipt: %+v, %v", r, err)
+	}
+}
+
+// TestBodyReadsTheDeliveryFirst is verify-1 row 5: the released proposal's delivery, which holds the
+// answer call as maybe-12 lets it, is its receipt's part; the same delivery with a member its format
+// requires removed, a member it does not list added, two bodies or none, is no delivery, body at
+// index -1, though its body is the part; a salt that does not make the digest still fails at the
+// receipt's index.
+func TestBodyReadsTheDeliveryFirst(t *testing.T) {
+	t.Parallel()
+	w := journal(t)
+	r, err := Check(w.evidence())
+	if err != nil {
+		t.Fatal(err)
+	}
+	d := w.deliveries[1]
+	var o map[string]json.RawMessage
+	if err := json.Unmarshal(d, &o); err != nil {
+		t.Fatal(err)
+	}
+	if _, has := o["answer"]; !has {
+		t.Fatal("the released proposal's delivery holds no answer call")
+	}
+	if err := Body(r, d); err != nil {
+		t.Fatalf("the delivery: %v", err)
+	}
+	with := func(change func(map[string]json.RawMessage)) []byte {
+		c := map[string]json.RawMessage{}
+		for k, v := range o {
+			c[k] = v
+		}
+		change(c)
+		b, err := json.Marshal(c)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return b
+	}
+	cases := map[string][]byte{
+		"a member topic": with(func(c map[string]json.RawMessage) { c["topic"] = json.RawMessage(`"merges"`) }),
+		"text and data":  with(func(c map[string]json.RawMessage) { c["data"] = json.RawMessage(`{"total":1}`) }),
+		"no body":        with(func(c map[string]json.RawMessage) { delete(c, "text") }),
+		"a member gate":  with(func(c map[string]json.RawMessage) { c["gate"] = json.RawMessage(`"out_you"`) }),
+	}
+	for _, m := range []string{"receiptId", "receipt", "messageId", "kind", "salt"} {
+		cases["no "+m] = with(func(c map[string]json.RawMessage) { delete(c, m) })
+	}
+	for name, b := range cases {
+		if err := Body(r, b); !isCode(err, CodeBody, -1) {
+			t.Errorf("%s: got %v, want body at -1", name, err)
+		}
+	}
+	other := with(func(c map[string]json.RawMessage) { c["salt"] = json.RawMessage(`"` + strings.Repeat("0a", 32) + `"`) })
+	if err := Body(r, other); !isCode(err, CodeBody, 3) {
+		t.Fatalf("another salt: got %v, want body at 3", err)
+	}
+}
