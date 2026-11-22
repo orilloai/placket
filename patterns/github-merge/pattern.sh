@@ -364,9 +364,10 @@ jq -c --slurpfile g pr7.json.give '{state: "success", context: "placket", descri
 say pattern "32 more statuses named placket on pull request 7's merge commit"
 
 # CHANGE: the Accord, the founding set, its acceptances and the journal the operator handed you, the
-# deciding role, and the merge commit you audit.
+# deciding role, the applier's key reference, and the merge commit you audit.
 accord=$(cat asked/accord) founding=asked/founding.json acceptances=asked/acceptances.json journal=asked/journal
 role=decider
+applier=$(ref applier)
 commit=$c7
 # Step 1: the pull request the commit merged, as GitHub lists it.
 gh api "repos/$repo/commits/$commit/pulls" |
@@ -388,19 +389,30 @@ audit() {
 	jq -e --slurpfile s status.json --slurpfile p merged.json '.receiptId == $s[0].description and (.data as $b | $p[0]
 		| .base.repo.full_name == $b.repo and .number == $b.pr and .base.ref == $b.base and .head.sha == $b.head)' \
 		comment.json >/dev/null 2>&1 || { echo "its comment's delivery is not of its receipt, or names another merge"; return; }
-	# Step 4: verify, on the comment's delivery and its answer call.
+	# Step 4: verify, on the comment's delivery and its answer call, over a copy of the journal's
+	# receipts without its answer calls: the comment's call is the only call verify reads.
 	jq -c '.answer' comment.json >answer.json
+	copy=$(mktemp -d "${TMPDIR:-/tmp}/plk.XXXXXX")
+	cp "$journal/receipts.jsonl" "$copy/receipts.jsonl"
 	rc=0
-	placket verify --json --accord "$accord" --founding "$founding" --acceptances "$acceptances" --receipts "$journal" \
+	placket verify --json --accord "$accord" --founding "$founding" --acceptances "$acceptances" --receipts "$copy" \
 		--delivery comment.json --answers answer.json >verify.json 2>verify.err || rc=$?
+	rm -rf "$copy"
 	[ "$rc" -eq 0 ] || { echo "verify exits $rc"; return; }
-	# Step 5: the receipt is a release the deciding role's key accepted: verify witnessed its answer,
-	# signed by that key, and the call verify matched to it is an accept.
-	jq -e --slurpfile c comment.json --slurpfile k deciders.json --arg role "$role" '$c[0] as $d
+	# Step 5: the receipt is a release of a merge to the applier, which the deciding role's key
+	# accepted. Verify witnessed the comment's own call, signed by that key, and the call is an accept.
+	# The receipt's predicate, among those verify returns, is a crossing to the applier that passed,
+	# decided by an answer, and its subject is of kind merge. The comment's receipt is the one its
+	# receiptId names, which verify's body line, step 6, says.
+	jq -e --slurpfile c comment.json --slurpfile k deciders.json --arg role "$role" --arg applier "$applier" '. as $v
+		| $c[0] as $d | ($d.receipt.payload | @base64d | fromjson) as $s
 		| [.decisions[] | select(.receiptId == $d.receiptId) | .line
 			| capture("^(?<id>[^ ]+) witnessed: signed by key (?<key>[^ ]+), which principal [^ ]+ bound to role (?<roles>[^ ]+)$")]
 		| length == 1 and (.[0].key as $key | $k[0] | index($key)) != null and (.[0].roles | split(",") | index($role)) != null
-		and $d.answer.action == "accepted" and $d.answer.from == .[0].key' verify.json >/dev/null 2>&1 ||
+		and $d.answer.action == "accepted" and $d.answer.from == .[0].key
+		and $s.subject[0].name == "merge" and ($s.predicate | IN($v.predicates[]))
+		and ($s.predicate | .kind == "crossing" and .verdict == "pass" and .reason == "ok" and .to == $applier
+			and (.by | type) == "object" and (.by.answer | type) == "string")' verify.json >/dev/null 2>&1 ||
 		{ echo "its receipt is not a release that role $role accepted"; return; }
 	jq -e --slurpfile c comment.json '.body == "body: the part of receipt \($c[0].receiptId) is the one it names"' verify.json >/dev/null ||
 		{ echo "verify does not say its delivery is its receipt's part"; return; }
