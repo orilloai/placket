@@ -37,11 +37,199 @@ type tcase struct {
 	set []string
 }
 
-// copyRepo copies the repository, without .git and the fixtures of the tests, into a new directory.
+// copyRepo returns a copy of the repository, without .git and the fixtures of the tests, for one
+// case to change. The copies are kept and handed on: once a case ends, its copy is put back as it
+// was (restore) and the next case takes it, so the tree is linked once for each case running at a
+// time and not once for each case. Where the file system makes no hard links, each case copies the
+// tree afresh, as copyTree does.
 func copyRepo(t *testing.T) string {
 	t.Helper()
-	return copyTree(t, live)
+	m, err := liveManifest()
+	if err != nil {
+		t.Fatalf("listing the repository: %v", err)
+	}
+	copies.Lock()
+	n := len(copies.free)
+	var dir string
+	if n > 0 {
+		dir, copies.free = copies.free[n-1], copies.free[:n-1]
+	}
+	plain := copies.plain
+	copies.Unlock()
+	if plain {
+		return copyTree(t, live)
+	}
+	if dir == "" {
+		if dir, err = os.MkdirTemp("", "guard-copy"); err != nil {
+			t.Fatalf("copying the repository: %v", err)
+		}
+		copies.Lock()
+		copies.made = append(copies.made, dir)
+		copies.Unlock()
+		if err := m.fill(dir, nil); err != nil {
+			// No hard link here: this case and every later one copies the tree.
+			copies.Lock()
+			copies.plain = true
+			copies.Unlock()
+			return copyTree(t, live)
+		}
+	}
+	t.Cleanup(func() {
+		if err := m.restore(dir); err != nil {
+			return // left out of the free copies; TestMain removes it
+		}
+		copies.Lock()
+		copies.free = append(copies.free, dir)
+		copies.Unlock()
+	})
+	return dir
 }
+
+// copies are the copies of the repository copyRepo made: those no case holds, every one made, and
+// whether the file system refused a hard link, so that each case copies the tree itself.
+var copies struct {
+	sync.Mutex
+	free, made []string
+	plain      bool
+}
+
+// TestMain removes the copies of the repository once every test has run.
+func TestMain(m *testing.M) {
+	code := m.Run()
+	for _, dir := range copies.made {
+		_ = os.RemoveAll(dir)
+	}
+	os.Exit(code)
+}
+
+// A manifest is what a copy of the repository holds: each directory and regular file copyTree
+// would copy, a directory before what it holds, each file with the source's file info.
+type manifest struct {
+	items []item
+	index map[string]int
+}
+
+type item struct {
+	rel  string
+	dir  bool
+	info fs.FileInfo
+}
+
+var liveOnce struct {
+	sync.Once
+	m   *manifest
+	err error
+}
+
+// liveManifest lists the repository once, as copyTree walks it.
+func liveManifest() (*manifest, error) {
+	liveOnce.Do(func() {
+		m := &manifest{index: map[string]int{}}
+		tracked, ok := trackedIn(live)
+		liveOnce.err = filepath.WalkDir(live, func(p string, d fs.DirEntry, err error) error {
+			if err != nil {
+				return err
+			}
+			rel, _ := filepath.Rel(live, p)
+			if copySkip[filepath.ToSlash(rel)] {
+				if d.IsDir() {
+					return filepath.SkipDir
+				}
+				return nil
+			}
+			if rel == "." || (!d.IsDir() && (!d.Type().IsRegular() || ok && !tracked[filepath.ToSlash(rel)])) {
+				return nil
+			}
+			info, err := d.Info()
+			if err != nil {
+				return err
+			}
+			m.index[rel] = len(m.items)
+			m.items = append(m.items, item{rel: rel, dir: d.IsDir(), info: info})
+			return nil
+		})
+		liveOnce.m = m
+	})
+	return liveOnce.m, liveOnce.err
+}
+
+// fill makes, in dir, each directory of the manifest and a hard link to each file, but for the
+// items have marks as there already.
+func (m *manifest) fill(dir string, have []bool) error {
+	for i, it := range m.items {
+		if have != nil && have[i] {
+			continue
+		}
+		to := filepath.Join(dir, it.rel)
+		if it.dir {
+			if err := os.MkdirAll(to, 0o755); err != nil {
+				return err
+			}
+			continue
+		}
+		if err := os.Link(filepath.Join(live, it.rel), to); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// restore puts a copy a case changed back as fill made it: whatever the manifest does not hold is
+// removed, and so is a file that is no longer the source's own, which the helpers that change a
+// copy leave behind since they replace a file and never write into it; then what is missing is
+// made again.
+func (m *manifest) restore(dir string) error {
+	have := make([]bool, len(m.items))
+	err := filepath.WalkDir(dir, func(p string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		rel, _ := filepath.Rel(dir, p)
+		if rel == "." {
+			return nil
+		}
+		drop := func() error {
+			if err := os.RemoveAll(p); err != nil {
+				return err
+			}
+			if d.IsDir() {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+		i, ok := m.index[rel]
+		if !ok || m.items[i].dir != d.IsDir() {
+			return drop()
+		}
+		info, err := d.Info()
+		if err != nil {
+			return err
+		}
+		if d.IsDir() {
+			if info.Mode().Perm() != 0o755 {
+				if err := os.Chmod(p, 0o755); err != nil {
+					return err
+				}
+			}
+		} else if !os.SameFile(info, m.items[i].info) {
+			return drop()
+		}
+		have[i] = true
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+	return m.fill(dir, have)
+}
+
+// atOnce bounds the cases running at a time. Each case reads the whole tree, and past a few at once
+// the file system, more than the processors, is what they wait on: on a Mac, every processor's worth
+// of cases together takes three times as long as four.
+var atOnce = make(chan struct{}, 4)
+
+// copySkip are the paths no copy of a tree holds: .git and the fixtures of the tests.
+var copySkip = map[string]bool{".git": true, "tests/testdata": true, "tools/guard/testdata": true}
 
 // copyTree copies the tree at src, without .git and the fixtures of the tests, into a new directory.
 // .git is left out whether it is a directory or, in a worktree or a submodule, a file. Where src is
@@ -52,14 +240,13 @@ func copyRepo(t *testing.T) string {
 func copyTree(t *testing.T, src string) string {
 	t.Helper()
 	dst := t.TempDir()
-	skip := map[string]bool{".git": true, "tests/testdata": true, "tools/guard/testdata": true}
 	tracked, ok := trackedIn(src)
 	err := filepath.WalkDir(src, func(p string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
 		rel, _ := filepath.Rel(src, p)
-		if skip[filepath.ToSlash(rel)] {
+		if copySkip[filepath.ToSlash(rel)] {
 			// SkipDir on a file would skip the rest of its directory: only a directory is skipped whole.
 			if d.IsDir() {
 				return filepath.SkipDir
@@ -258,6 +445,8 @@ func runCases(t *testing.T, cases []tcase) {
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			t.Parallel()
+			atOnce <- struct{}{}
+			defer func() { <-atOnce }()
 			dir := copyRepo(t)
 			if c.fixture != "" {
 				lay(t, dir, c.fixture)
@@ -452,4 +641,74 @@ func TestGitEntry(t *testing.T) {
 		t.Fatalf("the copy holds the .git file: %v", err)
 	}
 	runCases(t, gitCases)
+}
+
+// TestACopyHandedOnIsAsNew changes a copy of the repository in each way a case does, and in ways
+// none does yet, and restores it: the copy then holds exactly what the manifest lists, each file
+// the source's own, as a copy made afresh does.
+func TestACopyHandedOnIsAsNew(t *testing.T) {
+	t.Parallel()
+	m, err := liveManifest()
+	if err != nil {
+		t.Fatal(err)
+	}
+	dir := t.TempDir()
+	if err := m.fill(dir, nil); err != nil {
+		t.Skipf("no hard link here, so no copy is handed on: %v", err)
+	}
+	must := func(err error) {
+		t.Helper()
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	edit(t, dir, "Makefile", func(s string) string { return s + "\n# changed\n" })
+	remove(t, dir, "AGENTS.md")
+	write(t, dir, "docs/new/added.md", "added\n")
+	symlink(t, dir, "README.md", "docs/link.md")
+	must(os.RemoveAll(filepath.Join(dir, "spec")))
+	must(os.Remove(filepath.Join(dir, "LICENSE")))
+	must(os.MkdirAll(filepath.Join(dir, "LICENSE", "inner"), 0o755))
+	must(os.RemoveAll(filepath.Join(dir, "cmd")))
+	must(os.WriteFile(filepath.Join(dir, "cmd"), []byte("a file where a directory was\n"), 0o644))
+	must(os.Chmod(filepath.Join(dir, "docs"), 0o700))
+	must(m.restore(dir))
+
+	seen := map[string]bool{}
+	must(filepath.WalkDir(dir, func(p string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		rel, _ := filepath.Rel(dir, p)
+		if rel == "." {
+			return nil
+		}
+		i, ok := m.index[rel]
+		if !ok {
+			t.Errorf("%s is left in the copy", rel)
+			return nil
+		}
+		info, err := d.Info()
+		if err != nil {
+			return err
+		}
+		switch it := m.items[i]; {
+		case it.dir != d.IsDir():
+			t.Errorf("%s: a directory for a file, or a file for a directory", rel)
+		case it.dir && info.Mode().Perm() != 0o755:
+			t.Errorf("%s: mode %v", rel, info.Mode().Perm())
+		case !it.dir && !os.SameFile(info, it.info):
+			t.Errorf("%s is not the source's file", rel)
+		}
+		seen[rel] = true
+		return nil
+	}))
+	for _, it := range m.items {
+		if !seen[it.rel] {
+			t.Errorf("%s is missing from the copy", it.rel)
+		}
+	}
+	if len(m.items) < 100 || !seen["Makefile"] || !seen[filepath.Join("spec", "protocol.md")] {
+		t.Fatalf("the manifest lists %d entries, and not the Makefile and spec/protocol.md", len(m.items))
+	}
 }
