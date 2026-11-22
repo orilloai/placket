@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/orilloai/placket/core/internal/testing/seeds"
+	"github.com/orilloai/placket/core/receipts"
 )
 
 // FuzzCheck checks any receipt and any call against the worked journal's founding set. It never
@@ -23,6 +24,37 @@ func FuzzCheck(f *testing.F) {
 		_, _ = Check(e)
 		e.Founding = nil
 		e.Mediator = "ed25519:00"
+		_, _ = Check(e)
+	})
+}
+
+// FuzzFoundedAt reads any first receipt for the time its list is founded at, and checks the worked
+// journal with that receipt first. It never panics (fuzz-parsers, core-no-panic), and the time is the
+// receipt's or the close's at, or with neither the earliest. Its seeds are the receipts of the conform
+// vectors, the journal's own first and an empty one.
+func FuzzFoundedAt(f *testing.F) {
+	w := journal(f)
+	for _, b := range seeds.Inputs(f, "conform", "receipt") {
+		f.Add(b)
+	}
+	f.Add(w.list[0])
+	f.Add([]byte{})
+	f.Fuzz(func(t *testing.T, first []byte) {
+		list := append([][]byte{first}, w.list[1:]...)
+		at := FoundedAt(list)
+		want := earliest
+		if s, err := receipts.Decode(first); err == nil {
+			want = s.Predicate.At
+		} else if c, err := receipts.DecodeClose(first); err == nil {
+			want = c.At
+		}
+		if at != want {
+			t.Fatalf("FoundedAt = %q, want %q", at, want)
+		}
+		e := w.evidence()
+		e.Receipts = list
+		_, _ = Check(e)
+		e.Subset = true
 		_, _ = Check(e)
 	})
 }
