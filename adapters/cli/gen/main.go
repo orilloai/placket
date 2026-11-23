@@ -101,6 +101,8 @@ Every command of ` + "`placket`" + `: what it does, its usage, its arguments and
 
 With ` + "`--json`" + `, every command but ` + "`mcp`" + ` and ` + "`watch`" + ` prints its result as one JSON object and a line feed on standard output instead; its exit code and standard error stay the same. ` + "`watch`" + `, which runs until it is stopped, prints one object per question, each on a line of its own as the question opens, and then its own object. ` + "`mcp`" + `, whose standard output carries the MCP protocol, takes no ` + "`--json`" + `. Each command's object holds the members [section 11 of the protocol](` + sec11 + `) gives it, under the requirement ids each command below cites.
 
+The object speaks the product words of that section: a verdict is ` + "`pass`" + `, ` + "`block`" + ` or ` + "`ask`" + `, and a question still open has the closing word ` + "`open`" + `. The MCP tools of ` + "`placket mcp`" + ` and the [mediator API](mediator-api.md) keep the window's own words instead: they name the verdict ` + "`escalate`" + ` where ` + "`--json`" + ` says ` + "`ask`" + `, and the MCP tool ` + "`result`" + ` carries a question still open as ` + "`open: true`" + `.
+
 In a usage, ` + "`<socket flags>`" + ` stands for ` + "`--key <file> --socket <path> --accord <id>`" + `, or ` + "`--label <label>`" + ` in their place, and then ` + "`[--state <dir>]`" + `: the flags of every command that calls a window. A flag in square brackets is optional, ` + "`|`" + ` separates flags of which one is given, and ` + "`...`" + ` after a flag means it may be given more than once.
 
 ` + "`placket <command> --help`" + ` prints a command's flags on standard output, each with the sentence this page gives it, and exits 0 ([commands-1](` + c1 + `)).

@@ -102,9 +102,9 @@ type Exit struct {
 func Exits() []Exit {
 	return []Exit{
 		{ExitOK, "A pass, or a command that did what it was asked."},
-		{ExitBlock, "A block on `give`, `answer` or `change`; a release that blocked; a `give --wait` or `result` whose question closed any way but an accept that passed and was released; a comment that did not cross; a file, or a value inside it, that no release matches; a log that does not conform, or a body that is not its receipt's part, in `verify`."},
+		{ExitBlock, "A block on `give`, `answer` or `change`; a release that blocked; a `give --wait` or `result` whose question closed any way but an accept that passed and was released; a comment that did not cross; a file, or a value inside it, that no release matches; a log that fails verification in `verify`: one that is not valid, holds more than one Accord or is not the one a successor supersedes, each with `error verify` and its code on standard error, or one that does not conform; and a body that is not its receipt's part, in `verify`."},
 		{ExitRejected, "A rejection: the window refused the call, and standard error ends `rejected` and its code."},
-		{ExitTool, "A tool or door error: standard error ends `error`, or `door`, and its code."},
+		{ExitTool, "A tool or door error: standard error ends `error`, or `door`, and its code. `error verify` from `verify` is a log that fails, exit 1."},
 		{ExitOpen, "An ask still open: the question's id is on standard output."},
 	}
 }

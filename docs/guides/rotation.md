@@ -81,7 +81,7 @@ placket verify --receipts journal --accord "$accord" --founding founding.json \
 
 It checks that the successor's set is the one whose typed hash is the id you gave, then founds it with its acceptances at the time of the old Accord's close, so every member must have accepted it and its bindings must outlast the close; the result is the same on whatever day the check runs. Then it checks that the successor's `supersedes` names the old Accord and this journal's close. It exits 0 and prints `complete: against close receipt <close>, which successor accord <new id> pins; not claimed: that the mediator signed no other log for this Accord`.
 
-A successor set that is not the one the id names is tool error `verify superseded`; one that does not found, an acceptance missing or signed for another Accord included, is tool error `founding` with its code. A journal with no close, a successor that supersedes nothing, and one that names another Accord or another close are tool error `verify superseded`. `--superseded-by`, `--successor-accord` and `--successor-acceptances` go together: one or two of them alone are `usage`.
+A successor set that is not the one the id names is `error verify superseded`, exit 1; one that does not found, an acceptance missing or signed for another Accord included, is tool error `founding` with its code, exit 3. A journal with no close, a successor that supersedes nothing, and one that names another Accord or another close are `error verify superseded`, exit 1. `--superseded-by`, `--successor-accord` and `--successor-acceptances` go together: one or two of them alone are `usage`.
 
 ## 5. Retire the old key
 

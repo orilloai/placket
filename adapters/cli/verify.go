@@ -38,16 +38,35 @@ func predicateOf(receipt []byte) []byte {
 	return canonicalJSON(pr)
 }
 
-// notVerified prints the verifier's failure, its code and the line of receipts.jsonl it is at.
+// notVerified prints the verifier's failure, its code and the line of receipts.jsonl it is at, as
+// the tool error verify: show and reconcile cannot read a list that fails.
 func (r *run) notVerified(err error) int {
+	return r.tool(codeVerify, verifyDetail(err)...)
+}
+
+// verifyDetail is what the error line of the verifier's failure carries after verify: its code and
+// the line of receipts.jsonl it is at, when it has them.
+func verifyDetail(err error) []string {
 	var re *receipts.Error
-	if errors.As(err, &re) {
-		if re.Index >= 0 {
-			return r.tool(codeVerify, string(re.Code), journal.FileReceipts, fmt.Sprintf("line %d", re.Index+1))
-		}
-		return r.tool(codeVerify, string(re.Code))
+	if !errors.As(err, &re) {
+		return nil
 	}
-	return r.tool(codeVerify)
+	if re.Index >= 0 {
+		return []string{string(re.Code), journal.FileReceipts, fmt.Sprintf("line %d", re.Index+1)}
+	}
+	return []string{string(re.Code)}
+}
+
+// fails prints a log that fails verify, as the tool error verify prints, with its detail, and
+// returns ExitBlock: a log that fails validity, holds more than one Accord, or is not the one a
+// successor supersedes is verify's answer about the evidence, as a log that does not conform is,
+// and exit 3 is left for a tool or usage error (commands-8).
+func (r *run) fails(detail ...string) int {
+	if r.helped {
+		return ExitOK
+	}
+	r.tool(codeVerify, detail...)
+	return ExitBlock
 }
 
 // accordOf is the Accord id and the card hash a verified receipt names, a close's included.
@@ -261,7 +280,7 @@ func verifyCommand(r *run, args []string) int {
 	// Validity (section 8): the verifier's rows, then one Accord and card.
 	sub, err := validity(*med, list, *subset)
 	if err != nil {
-		return r.notVerified(err)
+		return r.fails(verifyDetail(err)...)
 	}
 	// A close is in the list as a Verified whose statement is the zero one: it is no decision and no
 	// verdict, and rows of its own read it (close-4).
@@ -270,7 +289,7 @@ func verifyCommand(r *run, args []string) int {
 		st[i] = v.Statement()
 	}
 	if code, i := oneAccord(sub.Verified); code != "" {
-		return r.tool(codeVerify, code, journal.FileReceipts, fmt.Sprintf("line %d", i+1))
+		return r.fails(code, journal.FileReceipts, fmt.Sprintf("line %d", i+1))
 	}
 	accord, card := *accordFlag, ""
 	if len(st) > 0 {
@@ -294,7 +313,7 @@ func verifyCommand(r *run, args []string) int {
 	// Conformance (verify-2): rows 1 to 4, then the body, row 5, which reads only the delivery and
 	// its receipt, and so runs whether the log conforms or not.
 	if cerr != nil && conformErr == nil {
-		return r.notVerified(cerr)
+		return r.fails(verifyDetail(cerr)...)
 	}
 	bodyLine := ""
 	failed := conformErr != nil
@@ -470,12 +489,12 @@ func verifyCommand(r *run, args []string) int {
 
 // successor checks that the successor Accord pins this list's close (close-4), in order: that the
 // founding set at setPath is the one whose typed hash is id, the id the reader gives from its own
-// record, else tool error verify superseded; that the list ends in a close, else the same; that the
-// set founds with the acceptances at accPath, with no openings, at the close's time at, so that the
-// result does not hang on the clock, else tool error founding with its code; and that its policy's
-// supersedes names this Accord and the close, else tool error verify superseded. A file that cannot
-// be read is tool error file, naming its flag. It reports whether the successor pins the close, and
-// the exit code when it does not.
+// record, else error verify superseded, exit 1; that the list ends in a close, else the same; that
+// the set founds with the acceptances at accPath, with no openings, at the close's time at, so that
+// the result does not hang on the clock, else tool error founding with its code; and that its
+// policy's supersedes names this Accord and the close, else error verify superseded, exit 1. A file
+// that cannot be read is tool error file, naming its flag. It reports whether the successor pins the
+// close, and the exit code when it does not.
 func (r *run) successor(setPath, id, accPath, accord, closeID, at string) (int, bool) {
 	b, err := os.ReadFile(setPath)
 	if err != nil {
@@ -483,7 +502,7 @@ func (r *run) successor(setPath, id, accPath, accord, closeID, at string) (int, 
 	}
 	b = bytes.TrimSuffix(b, []byte{'\n'})
 	if h, err := canonical.TypedHash(b); err != nil || h != id || closeID == "" {
-		return r.tool(codeVerify, detailSuperseded), false
+		return r.fails(detailSuperseded), false
 	}
 	acc, err := os.ReadFile(accPath)
 	if err != nil {
@@ -498,7 +517,7 @@ func (r *run) successor(setPath, id, accPath, accord, closeID, at string) (int, 
 		return r.tool(codeFound), false
 	}
 	if a, c, ok := next.Supersedes(); !ok || a != accord || c != closeID {
-		return r.tool(codeVerify, detailSuperseded), false
+		return r.fails(detailSuperseded), false
 	}
 	return ExitOK, true
 }
