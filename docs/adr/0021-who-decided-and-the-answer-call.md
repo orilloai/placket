@@ -1,6 +1,6 @@
 # 0021. Every receipt names its decider, an answer is one signed call, judges are a format of the terms, and verify checks conformance to the Accord
 
-Status: accepted. Date: 2026-11-17. Amends records 0005, 0006, 0008, 0010, 0011 and 0012. `released` does not read a kept answer call: `answer --keep` and `change --keep` keep it in `kept.jsonl`, and `placket log --kept` reads it for its `answer_signed` column. Amended by records 0022, 0025, 0026, 0028, 0029 and 0031.
+Status: accepted. Date: 2026-11-17. Amends records 0005, 0006, 0008, 0009, 0010, 0011, 0012, 0017 and 0020. `released` does not read a kept answer call: `answer --keep` and `change --keep` keep it in `kept.jsonl`, and `placket log --kept` reads it for its `answer_signed` column. Amended by records 0022, 0024, 0025, 0026, 0028, 0029 and 0031.
 
 ## Context
 

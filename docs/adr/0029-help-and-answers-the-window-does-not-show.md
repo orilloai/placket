@@ -1,6 +1,6 @@
 # 0029. `--help` prints usage, and an answer the window does not show goes to the window
 
-Status: accepted. Date: 2026-11-21. Amends record 0021.
+Status: accepted. Date: 2026-11-21. Amends records 0021 and 0024.
 
 ## Context
 

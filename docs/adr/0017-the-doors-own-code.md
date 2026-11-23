@@ -1,6 +1,6 @@
 # 0017. The door's own failures have a code of their own, and a reply has a size limit
 
-Status: accepted. Date: 2026-11-17. Amends record 0010.
+Status: accepted. Date: 2026-11-17. Amends record 0010. Amended by record 0021.
 
 ## Context
 

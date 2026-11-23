@@ -1,6 +1,6 @@
 # 0012. The kernel hash, the default card, and a card of another module
 
-Status: accepted. Date: 2026-11-14. Amended by records 0020, 0021 and 0023.
+Status: accepted. Date: 2026-11-14. Amends record 0005. Amended by records 0020, 0021 and 0023.
 
 ## Context
 

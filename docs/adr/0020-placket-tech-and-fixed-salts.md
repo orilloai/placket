@@ -1,6 +1,6 @@
 # 0020. Every placket URI under placket.tech and one protocol number, salts of exactly 32 bytes, and A2A's meaning of role
 
-Status: accepted. Date: 2026-11-17. Amends records 0005, 0006, 0007, 0010, 0012 and 0014.
+Status: accepted. Date: 2026-11-17. Amends records 0005, 0006, 0007, 0008, 0010, 0012 and 0014. Amended by records 0021 and 0025.
 
 ## Context
 

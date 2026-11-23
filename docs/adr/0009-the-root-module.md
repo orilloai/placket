@@ -1,6 +1,6 @@
 # 0009. The root module holds the adapters and the binary
 
-Status: accepted. Date: 2026-11-12. Amended by records 0023 and 0024.
+Status: accepted. Date: 2026-11-12. Amended by records 0016, 0021, 0023, 0024 and 0027.
 
 ## Context
 

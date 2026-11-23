@@ -1,6 +1,6 @@
 # 0005. The core's packages and every name they export
 
-Status: accepted. Date: 2026-11-12. Amended by records 0020, 0021 and 0025.
+Status: accepted. Date: 2026-11-12. Amended by records 0012, 0016, 0020, 0021, 0022, 0023 and 0025.
 
 ## Context
 

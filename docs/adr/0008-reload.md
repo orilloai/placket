@@ -1,6 +1,6 @@
 # 0008. Reload rebuilds a mediator from its record and closes what was left open
 
-Status: accepted. Date: 2026-11-12. Amended by records 0019, 0021, 0022 and 0025.
+Status: accepted. Date: 2026-11-12. Amended by records 0019, 0020, 0021, 0022 and 0025.
 
 ## Context
 
