@@ -67,10 +67,11 @@ func (a *accord) another(t testing.TB) (id, founding, socket, journal string) {
 }
 
 // TestVerifyHoldsOneAccord joins the journals of two Accords under one mediator key, each of which
-// verifies alone, into one receipts.jsonl: verify and log each refuse it with tool error verify,
-// code accord, at the first receipt of the second Accord, and print nothing else. verify --founding
-// with the second Accord's founding set, under the same mediator, over the first Accord's journal is
-// tool error founding.
+// verifies alone, into one receipts.jsonl: verify and log each refuse it with error verify, code
+// accord, at the first receipt of the second Accord, and print nothing else. verify exits 1, since
+// the log fails, and log exits 3, the tool error of a log it cannot report on. verify --founding with
+// the second Accord's founding set, under the same mediator, over the first Accord's journal is tool
+// error founding.
 func TestVerifyHoldsOneAccord(t *testing.T) {
 	t.Parallel()
 	a := newAccord(t, "p1", "p2")
@@ -91,11 +92,11 @@ func TestVerifyHoldsOneAccord(t *testing.T) {
 		t.Fatal(err)
 	}
 	want := fmt.Sprintf("error verify accord receipts.jsonl line %d\n", bytes.Count(first, []byte{'\n'})+1)
-	for _, args := range [][]string{
-		{"verify", "--mediator", a.refs["mediator"], "--receipts", both},
-		{"log", "--mediator", a.refs["mediator"], "--receipts", both, "--format", "csv"},
+	for code, args := range map[int][]string{
+		cli.ExitBlock: {"verify", "--mediator", a.refs["mediator"], "--receipts", both},
+		cli.ExitTool:  {"log", "--mediator", a.refs["mediator"], "--receipts", both, "--format", "csv"},
 	} {
-		if r := run(t, env(), args...); r.code != 3 || r.stdout != "" || r.stderr != want {
+		if r := run(t, env(), args...); r.code != code || r.stdout != "" || r.stderr != want {
 			t.Fatalf("%s of two Accords: %v", args[0], r)
 		}
 	}

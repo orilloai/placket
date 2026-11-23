@@ -14,6 +14,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"reflect"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -512,6 +513,30 @@ func TestTheReferenceIsGenerated(t *testing.T) {
 	committed, err := os.ReadFile(filepath.Join("..", "docs", "reference", "mediator-api.md"))
 	if err != nil || !bytes.Equal(fresh, committed) {
 		t.Fatalf("docs/reference/mediator-api.md differs from a fresh go run ./api/gen (%v)", err)
+	}
+}
+
+// TestTheReferenceNamesTheCommandLineWords: the request layer of docs/reference/mediator-api.md says
+// that the MCP tools pass the API's words through unchanged, escalate and open: true, and that the
+// command line's --json uses the product words instead, ask and the closing word open, with a link to
+// section 11 of the protocol.
+func TestTheReferenceNamesTheCommandLineWords(t *testing.T) {
+	t.Parallel()
+	b, err := os.ReadFile(filepath.Join("..", "docs", "reference", "mediator-api.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, layer, ok := strings.Cut(string(b), "\n## The request layer\n")
+	if !ok {
+		t.Fatal("the reference has no request layer")
+	}
+	layer, _, _ = strings.Cut(layer, "\n### ")
+	const words = "The MCP tools pass this API's words through unchanged: a verdict is `pass`, `block` or `escalate`, " +
+		"and the tool `result` carries a question still open as `open: true`. The command line's `--json` uses the " +
+		"product words instead, `ask` for `escalate` and the closing word `open` for a question still open " +
+		"([section 11 of the protocol](../../spec/protocol.md#11-what-the-command-line-prints-for-a-script))."
+	if paragraphs := strings.Split(strings.TrimSpace(layer), "\n\n"); !slices.Contains(paragraphs, words) {
+		t.Errorf("the request layer has no paragraph naming the command line's words, exactly %q:\n%s", words, layer)
 	}
 }
 

@@ -78,7 +78,8 @@ func copyDir(t testing.TB, from string) string {
 // answer and released_at with and without the state directories, in JSON and in CSV; the topic and
 // the comment only from kept parts, the comment emptied by --no-words, and text and changed_text
 // only under --words. A kept part with one character changed is left out, with a line on stderr;
-// and with one byte of the journal changed, log prints no row and exits 3 (log-from-receipts).
+// and with one byte of the journal changed, log prints no row and exits 3 (log-from-receipts), and
+// verify prints the same error line and exits 1 (commands-8).
 func TestTheLogOfTheWorkedExample(t *testing.T) {
 	t.Parallel()
 	s := six(t)
@@ -164,7 +165,7 @@ func TestTheLogOfTheWorkedExample(t *testing.T) {
 		t.Fatalf("a changed journal: %v", r)
 	}
 	r = run(t, env(), "verify", "--mediator", s.refs["mediator"], "--receipts", journal)
-	if r.code != 3 || r.stdout != "" || r.stderr != "error verify signature receipts.jsonl line 1\n" {
+	if r.code != 1 || r.stdout != "" || r.stderr != "error verify signature receipts.jsonl line 1\n" {
 		t.Fatalf("verify of a changed journal: %v", r)
 	}
 }

@@ -175,7 +175,7 @@ func TestVerifyASubset(t *testing.T) {
 		!slices.Contains(r.lines(), cli.LineSubsetNotComplete) || !slices.Contains(r.lines(), fmt.Sprintf(cli.LineOutsideSubset, 0)) {
 		t.Fatalf("verify --subset: %v", r)
 	}
-	if r := run(t, env(), "verify", "--receipts", dir, "--mediator", a.refs["mediator"]); r.code != 3 || r.stderr != "error verify chain receipts.jsonl line 1\n" {
+	if r := run(t, env(), "verify", "--receipts", dir, "--mediator", a.refs["mediator"]); r.code != cli.ExitBlock || r.stderr != "error verify chain receipts.jsonl line 1\n" {
 		t.Fatalf("verify of the subset as a whole: %v", r)
 	}
 	// A whole journal given as a subset with no founding set leaves no question out: its answer's
@@ -762,7 +762,7 @@ func TestVerifyReadsTheViewBeforeValidity(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dir, "receipts.jsonl"), append(bytes.Join(lines, []byte("\n")), '\n'), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if r := run(t, env(), "verify", "--receipts", dir, "--mediator", a.refs["mediator"]); r.code != cli.ExitTool || r.stderr != "error verify signature receipts.jsonl line 2\n" {
+	if r := run(t, env(), "verify", "--receipts", dir, "--mediator", a.refs["mediator"]); r.code != cli.ExitBlock || r.stderr != "error verify signature receipts.jsonl line 2\n" {
 		t.Fatalf("the broken journal alone: %v", r)
 	}
 	r := run(t, env(), "verify", "--receipts", dir, "--accord", a.id, "--founding", a.founding(), "--view", changed)
@@ -993,6 +993,55 @@ func TestVerifyClaimsWhatItChecked(t *testing.T) {
 		var claim string
 		if o := object(t, run(t, env(), append(c.args, "--json")...)); json.Unmarshal(o["claim"], &claim) != nil || claim != c.claim {
 			t.Fatalf("%s --json: claim %s, want %q", name, o["claim"], c.claim)
+		}
+	}
+}
+
+// TestVerifyExitsOneWhenTheLogFails is commands-8's exit code: a log that fails validity, here one
+// receipt's signature changed, is verify's answer, not a misuse of the tool. It prints the same
+// error line as before and exits 1, and with --json the object's error is verify with the same
+// detail, and exit 1. A tool or usage error is still exit 3: a receipts directory that is not
+// there, no --receipts, a founding set that does not found, and a delivery that is not one.
+func TestVerifyExitsOneWhenTheLogFails(t *testing.T) {
+	t.Parallel()
+	a := newAccord(t, "p1", "p2")
+	a.start(t)
+	must(t, a.as("p1", "give", "--to", a.refs["p2"], "--kind", "note", "--text", "one")...)
+	a.window.stop(t)
+	dir := copyDir(t, a.journal())
+	lines := a.journalLines(t)
+	i := bytes.Index(lines[0], []byte(`"sig":"`)) + len(`"sig":"`)
+	lines[0][i] = map[bool]byte{true: 'B', false: 'A'}[lines[0][i] == 'A']
+	if err := os.WriteFile(filepath.Join(dir, "receipts.jsonl"), append(bytes.Join(lines, []byte("\n")), '\n'), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	broken := []string{"verify", "--mediator", a.refs["mediator"], "--receipts", dir}
+	if r := run(t, env(), broken...); r.code != cli.ExitBlock || r.stdout != "" || r.stderr != "error verify signature receipts.jsonl line 1\n" {
+		t.Fatalf("a changed signature: %v", r)
+	}
+	r := run(t, env(), append(broken, "--json")...)
+	if r.code != cli.ExitBlock || r.stderr != "error verify signature receipts.jsonl line 1\n" ||
+		r.stdout != `{"detail":["signature","receipts.jsonl","line 1"],"error":"verify","exit":1}`+"\n" {
+		t.Fatalf("a changed signature with --json: %v", r)
+	}
+
+	notOne := filepath.Join(t.TempDir(), "delivery.json")
+	if err := os.WriteFile(notOne, []byte(`{"exit":0}`+"\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	for name, c := range map[string]struct {
+		args   []string
+		stderr string
+	}{
+		"no receipts directory": {[]string{"verify", "--mediator", a.refs["mediator"], "--receipts", filepath.Join(t.TempDir(), "none")}, "error journal receipts.jsonl\n"},
+		"no --receipts":         {[]string{"verify", "--mediator", a.refs["mediator"]}, "usage: placket verify: --receipts is required\nerror usage\n"},
+		"a set that does not found": {[]string{"verify", "--mediator", a.refs["p1"], "--receipts", a.journal(), "--founding", a.founding()},
+			"error founding\n"},
+		"a delivery that is not one": {[]string{"verify", "--mediator", a.refs["mediator"], "--receipts", a.journal(), "--delivery", notOne},
+			"error delivery\n"},
+	} {
+		if r := run(t, env(), c.args...); r.code != cli.ExitTool || r.stdout != "" || r.stderr != c.stderr {
+			t.Fatalf("%s: %v", name, r)
 		}
 	}
 }

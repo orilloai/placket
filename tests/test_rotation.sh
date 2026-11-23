@@ -133,9 +133,9 @@ refused() {
 	[ ! -s "$tmp/stdout" ] || fail "verify $* printed on standard output"
 	[ "$(cat "$tmp/out")" = "$want" ] || fail "verify $* did not print: $want"
 }
-refused 3 "error verify superseded" --superseded-by successor/founding.json --successor-accord "$accord" \
+refused 1 "error verify superseded" --superseded-by successor/founding.json --successor-accord "$accord" \
 	--successor-acceptances successor/acceptances.json
-echo "ok   verify refuses a successor under an id that is not its set's"
+echo "ok   verify refuses a successor under an id that is not its set's, exit 1"
 usage="usage: placket verify: --superseded-by, --successor-accord and --successor-acceptances are given together
 error usage"
 refused 3 "$usage" --superseded-by successor/founding.json --successor-accord "$new"

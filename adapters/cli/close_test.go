@@ -505,7 +505,7 @@ func notedAccord(t *testing.T) *accord {
 // complete; once it ends in its close, the complete line is against that close, in the object as on
 // standard error; its last two receipts as a subset claim nothing and name the chain that starts
 // late; and the closed log with its first receipt removed, whose first two are one pair, fails chain
-// at line 1.
+// at line 1, exit 1.
 func TestVerifyCompleteLine(t *testing.T) {
 	t.Parallel()
 	a := notedAccord(t)
@@ -533,7 +533,7 @@ func TestVerifyCompleteLine(t *testing.T) {
 		t.Fatalf("the last two as a subset: %v", sub)
 	}
 	cut := verifyAccord(t, a, write(lines[1:]))
-	if cut.code != cli.ExitTool || !slices.Equal(cut.lines(), []string{"error verify chain receipts.jsonl line 1"}) {
+	if cut.code != cli.ExitBlock || !slices.Equal(cut.lines(), []string{"error verify chain receipts.jsonl line 1"}) {
 		t.Fatalf("the closed log less its first receipt: %v", cut)
 	}
 }
@@ -541,13 +541,13 @@ func TestVerifyCompleteLine(t *testing.T) {
 // TestVerifySupersededBy is U13 (close-4): with the founding set of a successor whose supersedes
 // pins this Accord and this log's close, its id and its acceptances, verify exits 0 with the pinned
 // complete line; a successor that names another close or another Accord, one that supersedes
-// nothing, and a log with no close, each with its own id and acceptances, are tool error verify
-// superseded; and --superseded-by needs --accord.
+// nothing, and a log with no close, each with its own id and acceptances, are error verify
+// superseded, exit 1; and --superseded-by needs --accord.
 func TestVerifySupersededBy(t *testing.T) {
 	t.Parallel()
 	a := notedAccord(t)
 	open := successor(t, a, a.id, "sha256:"+strings.Repeat("cd", 32))
-	if r := verifyNext(t, env(), a, open); r.code != cli.ExitTool || !slices.Equal(r.lines(), []string{"error verify superseded"}) {
+	if r := verifyNext(t, env(), a, open); r.code != cli.ExitBlock || !slices.Equal(r.lines(), []string{"error verify superseded"}) {
 		t.Fatalf("a log with no close: %v", r)
 	}
 	id := a.closeNow(t)
@@ -561,7 +561,7 @@ func TestVerifySupersededBy(t *testing.T) {
 		"another Accord": successor(t, a, "sha256:"+strings.Repeat("ab", 32), id),
 		"no supersedes":  successor(t, a, "", ""),
 	} {
-		if r := verifyNext(t, env(), a, other); r.code != cli.ExitTool || !slices.Equal(r.lines(), []string{"error verify superseded"}) {
+		if r := verifyNext(t, env(), a, other); r.code != cli.ExitBlock || !slices.Equal(r.lines(), []string{"error verify superseded"}) {
 			t.Fatalf("%s: %v", name, r)
 		}
 	}
@@ -596,7 +596,7 @@ func TestVerifySuccessorNeedsItsIDAndAcceptances(t *testing.T) {
 
 // TestVerifySuccessorIsTheOneNamed is V2 (close-4): a successor whose supersedes pins the close,
 // with its acceptances, checked under an id that is not its set's typed hash, the old Accord's, any
-// other hash or no hash at all, is tool error verify superseded, with no other line.
+// other hash or no hash at all, is error verify superseded, exit 1, with no other line.
 func TestVerifySuccessorIsTheOneNamed(t *testing.T) {
 	t.Parallel()
 	a := notedAccord(t)
@@ -605,7 +605,7 @@ func TestVerifySuccessorIsTheOneNamed(t *testing.T) {
 	for _, other := range []string{a.id, "sha256:" + strings.Repeat("ef", 32), "founding.json"} {
 		named := n
 		named.id = other
-		if r := verifyNext(t, env(), a, named); r.code != cli.ExitTool || r.stdout != "" || r.stderr != "error verify superseded\n" {
+		if r := verifyNext(t, env(), a, named); r.code != cli.ExitBlock || r.stdout != "" || r.stderr != "error verify superseded\n" {
 			t.Fatalf("the id %s: %v", other, r)
 		}
 	}
@@ -773,7 +773,7 @@ func TestTornCloseAtStart(t *testing.T) {
 
 // TestVerifyClosedClosingsAtTwoTimes closes two open proposals and signs the second's closing again a
 // second later: two closings with reason closed at two times fail close at the second's line, when
-// they end the list and when the close follows them (close-4).
+// they end the list and when the close follows them, exit 1 (close-4).
 func TestVerifyClosedClosingsAtTwoTimes(t *testing.T) {
 	t.Parallel()
 	a := newAccord(t, "proposer", "applier", "decider")
@@ -812,7 +812,7 @@ func TestVerifyClosedClosingsAtTwoTimes(t *testing.T) {
 		if err := os.WriteFile(filepath.Join(dir, journal.FileReceipts), append(bytes.Join(l, []byte("\n")), '\n'), 0o600); err != nil {
 			t.Fatal(err)
 		}
-		if r := run(t, env(), "verify", "--receipts", dir, "--accord", a.id, "--founding", a.founding()); r.code != cli.ExitTool || r.stderr != "error verify close receipts.jsonl line 4\n" {
+		if r := run(t, env(), "verify", "--receipts", dir, "--accord", a.id, "--founding", a.founding()); r.code != cli.ExitBlock || r.stderr != "error verify close receipts.jsonl line 4\n" {
 			t.Fatalf("%s: %v", name, r)
 		}
 	}

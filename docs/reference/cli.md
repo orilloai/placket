@@ -6,6 +6,8 @@ Every command of `placket`: what it does, its usage, its arguments and flags, wh
 
 With `--json`, every command but `mcp` and `watch` prints its result as one JSON object and a line feed on standard output instead; its exit code and standard error stay the same. `watch`, which runs until it is stopped, prints one object per question, each on a line of its own as the question opens, and then its own object. `mcp`, whose standard output carries the MCP protocol, takes no `--json`. Each command's object holds the members [section 11 of the protocol](../../spec/protocol.md#11-what-the-command-line-prints-for-a-script) gives it, under the requirement ids each command below cites.
 
+The object speaks the product words of that section: a verdict is `pass`, `block` or `ask`, and a question still open has the closing word `open`. The MCP tools of `placket mcp` and the [mediator API](mediator-api.md) keep the window's own words instead: they name the verdict `escalate` where `--json` says `ask`, and the MCP tool `result` carries a question still open as `open: true`.
+
 In a usage, `<socket flags>` stands for `--key <file> --socket <path> --accord <id>`, or `--label <label>` in their place, and then `[--state <dir>]`: the flags of every command that calls a window. A flag in square brackets is optional, `|` separates flags of which one is given, and `...` after a flag means it may be given more than once.
 
 `placket <command> --help` prints a command's flags on standard output, each with the sentence this page gives it, and exits 0 ([commands-1](../../spec/protocol.md#commands-1-one-object-on-standard-output)).
@@ -15,9 +17,9 @@ In a usage, `<socket flags>` stands for `--key <file> --socket <path> --accord <
 | Code | What it means |
 |---|---|
 | `0` | A pass, or a command that did what it was asked. |
-| `1` | A block on `give`, `answer` or `change`; a release that blocked; a `give --wait` or `result` whose question closed any way but an accept that passed and was released; a comment that did not cross; a file, or a value inside it, that no release matches; a log that does not conform, or a body that is not its receipt's part, in `verify`. |
+| `1` | A block on `give`, `answer` or `change`; a release that blocked; a `give --wait` or `result` whose question closed any way but an accept that passed and was released; a comment that did not cross; a file, or a value inside it, that no release matches; a log that fails verification in `verify`: one that is not valid, holds more than one Accord or is not the one a successor supersedes, each with `error verify` and its code on standard error, or one that does not conform; and a body that is not its receipt's part, in `verify`. |
 | `2` | A rejection: the window refused the call, and standard error ends `rejected` and its code. |
-| `3` | A tool or door error: standard error ends `error`, or `door`, and its code. |
+| `3` | A tool or door error: standard error ends `error`, or `door`, and its code. `error verify` from `verify` is a log that fails, exit 1. |
 | `4` | An ask still open: the question's id is on standard output. |
 
 ## Commands
