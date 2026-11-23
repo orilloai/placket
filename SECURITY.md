@@ -6,8 +6,8 @@ Placket signs receipts that parties rely on as evidence, so we take reports of w
 
 Report privately. Never open a public issue, pull request or discussion about a vulnerability.
 
-- **GitHub private vulnerability reporting** is the channel once it is turned on for this repository: the "Report a vulnerability" button under the repository's Security tab.
-- **Email security@orillo.ai.** This is the working channel until private reporting is turned on, and the fallback after.
+- **GitHub private vulnerability reporting** is the channel: the "Report a vulnerability" button under the repository's Security tab.
+- **Email security@orillo.ai** if you cannot use GitHub.
 
 Include what you can: the version or commit, what you ran, what happened, what you expected, and the smallest input that shows it. A report that a person has checked is worth more than a long one. A report written by a tool that nobody has verified is closed without action.
 
@@ -16,7 +16,7 @@ Include what you can: the version or commit, what you ran, what happened, what y
 | Version | Supported |
 |---|---|
 | `main` | yes |
-| the latest tag, once one exists | yes |
+| the latest release | yes |
 | anything older | no |
 
 ## In scope
