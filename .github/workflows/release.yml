@@ -126,6 +126,9 @@ jobs:
           args: release --clean --release-notes ${{ runner.temp }}/notes.md
         env:
           GITHUB_TOKEN: ${{ github.token }}
+          # The release's own tag, named: the core's tags (core/vX.Y.Z) can sit on the same commit,
+          # and GoReleaser would otherwise take whichever tag sorts first as the version.
+          GORELEASER_CURRENT_TAG: v${{ steps.detect.outputs.version }}
       - name: Build provenance for every archive and checksums.txt
         if: steps.detect.outputs.kind != 'none'
         uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
@@ -171,6 +174,10 @@ jobs:
       - name: A snapshot builds the same archives twice (B2, B3)
         run: |
           set -eu
+          # The version is the newest vX.Y.Z tag, or v0.0.0 before the first release: never a core
+          # tag (core/vX.Y.Z), whose slash would put every archive one directory down.
+          GORELEASER_CURRENT_TAG=$(git describe --tags --abbrev=0 --match 'v[0-9]*' 2>/dev/null || echo v0.0.0)
+          export GORELEASER_CURRENT_TAG
           goreleaser release --snapshot --clean --skip=sign
           grep '\.tar\.gz$' dist/checksums.txt >"$RUNNER_TEMP/first.txt"
           goreleaser release --snapshot --clean --skip=sign
