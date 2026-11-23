@@ -4,6 +4,8 @@ Placket mediates content crossing between parties, and records what crossed in r
 
 It sits at a handoff between parties that do not fully trust each other: agents, people, tools. Each party declares, and signs, the terms under which a part may cross to the other. For every part offered, placket decides whether it passes, is blocked, or must be asked about: then a named person, holding the role the terms name, accepts it, changes it or declines it. Placket signs a receipt for every decision, chained per pair of parties, and a third party verifies the receipts with the mediator's public key alone.
 
+Each part crosses as an [A2A 1.0](https://a2a-protocol.org) message carrying placket's crossing extension, `https://placket.tech/crossing/0.1` ([crossing-1](spec/protocol.md#crossing-1-the-crossing-message)). In 0.1 a party reaches the mediator through placket's own door, a signed call on a local socket, or through the MCP tools `placket mcp` serves.
+
 The first job is ask and log: one system proposes, another applies, and a named person is asked about every proposal. An accepted proposal is released to the applier exactly as it was sent; a changed one is released as the person's version and returned to the proposer; a declined one releases nothing. The deliverable is the signed log of what was asked, answered and released.
 
 ## Install
