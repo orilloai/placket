@@ -1034,13 +1034,13 @@ func TestVerifyExitsOneWhenTheLogFails(t *testing.T) {
 		stderr string
 	}{
 		"no receipts directory": {[]string{"verify", "--mediator", a.refs["mediator"], "--receipts", filepath.Join(t.TempDir(), "none")}, "error journal receipts.jsonl\n"},
-		"no --receipts":         {[]string{"verify", "--mediator", a.refs["mediator"]}, "error usage\n"},
+		"no --receipts":         {[]string{"verify", "--mediator", a.refs["mediator"]}, "usage: placket verify: --receipts is required\nerror usage\n"},
 		"a set that does not found": {[]string{"verify", "--mediator", a.refs["p1"], "--receipts", a.journal(), "--founding", a.founding()},
 			"error founding\n"},
 		"a delivery that is not one": {[]string{"verify", "--mediator", a.refs["mediator"], "--receipts", a.journal(), "--delivery", notOne},
 			"error delivery\n"},
 	} {
-		if r := run(t, env(), c.args...); r.code != cli.ExitTool || r.stdout != "" || !strings.HasSuffix(r.stderr, c.stderr) {
+		if r := run(t, env(), c.args...); r.code != cli.ExitTool || r.stdout != "" || r.stderr != c.stderr {
 			t.Fatalf("%s: %v", name, r)
 		}
 	}

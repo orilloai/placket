@@ -14,6 +14,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"reflect"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -530,11 +531,12 @@ func TestTheReferenceNamesTheCommandLineWords(t *testing.T) {
 		t.Fatal("the reference has no request layer")
 	}
 	layer, _, _ = strings.Cut(layer, "\n### ")
-	for _, want := range []string{"`escalate`", "`open: true`", "`--json`", "product words", "`ask`", "`open`",
-		"(../../spec/protocol.md#11-what-the-command-line-prints-for-a-script)"} {
-		if !strings.Contains(layer, want) {
-			t.Errorf("the request layer's opening does not hold %q", want)
-		}
+	const words = "The MCP tools pass this API's words through unchanged: a verdict is `pass`, `block` or `escalate`, " +
+		"and the tool `result` carries a question still open as `open: true`. The command line's `--json` uses the " +
+		"product words instead, `ask` for `escalate` and the closing word `open` for a question still open " +
+		"([section 11 of the protocol](../../spec/protocol.md#11-what-the-command-line-prints-for-a-script))."
+	if paragraphs := strings.Split(strings.TrimSpace(layer), "\n\n"); !slices.Contains(paragraphs, words) {
+		t.Errorf("the request layer has no paragraph naming the command line's words, exactly %q:\n%s", words, layer)
 	}
 }
 
