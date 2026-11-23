@@ -1,5 +1,5 @@
 blank_issues_enabled: true
 contact_links:
   - name: Report a security vulnerability
-    url: https://github.com/orilloai/placket/security/policy
+    url: https://github.com/orilloai/placket/security/advisories/new
     about: Report it privately, as SECURITY.md says. Never in a public issue.
