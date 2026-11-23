@@ -1,6 +1,6 @@
 # 0014. A principal per party, scoped to the roles the policy gives it
 
-Status: accepted. Date: 2026-11-17.
+Status: accepted. Date: 2026-11-17. Amended by record 0020.
 
 ## Context
 

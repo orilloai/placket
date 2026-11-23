@@ -1,6 +1,6 @@
 # 0010. The door: calls on a local socket, the window that answers them, and the answer call
 
-Status: accepted. Date: 2026-11-12.
+Status: accepted. Date: 2026-11-12. Amended by records 0017, 0020, 0021, 0022, 0023, 0024 and 0025.
 
 ## Context
 

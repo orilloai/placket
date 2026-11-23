@@ -1,6 +1,6 @@
 # 0018. Releases are signed without a key and rebuild to the same bytes, and `placket version` names a build
 
-Status: accepted. Date: 2026-11-17. Records a decision built before its record; `docs/release.md` holds the steps.
+Status: accepted. Date: 2026-11-17. Records a decision built before its record; `docs/release.md` holds the steps. What an archive holds is in `docs/release.md`: `NOTICE` too, beside the files below; the release also holds `install.sh` and a Homebrew cask.
 
 ## Context
 

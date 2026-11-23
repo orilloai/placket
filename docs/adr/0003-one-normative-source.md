@@ -1,6 +1,6 @@
 # 0003. Placket's behaviour has one normative source
 
-Status: accepted. Date: 2026-11-12.
+Status: accepted. Date: 2026-11-12. Amends record 0001.
 
 ## Context
 

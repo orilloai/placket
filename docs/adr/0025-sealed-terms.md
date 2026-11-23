@@ -1,6 +1,6 @@
 # 0025. Each party's terms are sealed in the founding set, and each party signs its view before the Accord is founded
 
-Status: accepted. Date: 2026-11-18. Amends records 0005, 0006, 0008, 0010, 0011, 0021, 0022 and 0024.
+Status: accepted. Date: 2026-11-18. Amends records 0005, 0006, 0008, 0010, 0011, 0021, 0022 and 0024. Amended by record 0026.
 
 ## Context
 

@@ -1,6 +1,6 @@
 # 0011. The journal, the state directory and the log
 
-Status: accepted. Date: 2026-11-12. Amended 2026-11-22: the log's `answer_signed` is described as what it shows for a decline, a signed call bound to the closing, not its signer; the log did not change.
+Status: accepted. Date: 2026-11-12. Amended 2026-11-22: the log's `answer_signed` is described as what it shows for a decline, a signed call bound to the closing, not its signer; the log did not change. Amended by records 0021, 0022, 0023 and 0025.
 
 ## Context
 

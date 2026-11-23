@@ -1,6 +1,6 @@
 # 0013. Tests are shown red against main and green at the head, however the branch was built
 
-Status: accepted. Date: 2026-11-16. Amended 2026-11-16: the job runs on pull requests and on pushes to `main`, not on every push. Amended 2026-11-21: the same program checks a second rule, `outside-commits-signed-off`, on the change's own commits (below).
+Status: accepted. Date: 2026-11-16. Amends record 0007. Amended 2026-11-16: the job runs on pull requests and on pushes to `main`, not on every push. Amended 2026-11-21: the same program checks a second rule, `outside-commits-signed-off`, on the change's own commits (below).
 
 ## Context
 

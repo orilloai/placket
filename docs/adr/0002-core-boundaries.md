@@ -1,6 +1,6 @@
 # 0002. The core is a module of its own, with no dependency and no world
 
-Status: accepted. Date: 2026-11-11.
+Status: accepted. Date: 2026-11-11. Amended by record 0015.
 
 ## Context
 

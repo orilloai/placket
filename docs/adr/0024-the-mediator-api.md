@@ -1,6 +1,6 @@
 # 0024. The mediator API, the client, and placket mcp
 
-Status: accepted. Date: 2026-11-18. Amends records 0001, 0009 and 0010. Amended 2026-11-21: `adapters/errtext` holds the command line's codes too, and `adapters/cli/gen` writes the CLI reference from the command line's command table.
+Status: accepted. Date: 2026-11-18. Amends records 0001, 0009 and 0010. Amended 2026-11-21: `adapters/errtext` holds the command line's codes too, and `adapters/cli/gen` writes the CLI reference from the command line's command table. Amended by record 0025.
 
 ## Context
 

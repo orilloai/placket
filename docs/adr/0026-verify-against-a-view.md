@@ -1,6 +1,6 @@
 # 0026. A member checks its own receipts against the view it signed
 
-Status: accepted. Date: 2026-11-19. Amends records 0021 and 0025.
+Status: accepted. Date: 2026-11-19. Amends records 0021 and 0025. Amended by record 0028.
 
 ## Context
 
