@@ -1,6 +1,6 @@
 # Modules and boundaries
 
-What may import what, which modules exist, and which packages the core holds. Dependencies point one way: `cmd` to `adapters` to `core`, and `recipes` to `core`. The mediator API's packages sit beside them: `adapters/mcp` imports `api`, the schemas, which imports nothing of placket; `api/gen` imports `api` and `adapters/errtext`; `adapters/cli/gen`, the CLI reference's generator, imports `adapters/cli` and `adapters/errtext`; and `api`'s external tests import `adapters/local`, `adapters/client`, `adapters/mcp` and the core. `docs/adr/0001-repository-layout.md`, `docs/adr/0002-core-boundaries.md`, `docs/adr/0009-the-root-module.md` and `docs/adr/0024-the-mediator-api.md` record why.
+What may import what, which modules exist, and which packages the core holds. Dependencies point one way: `cmd` to `adapters` to `core`, and `recipes` to `core`. The mediator API's packages sit beside them: `adapters/mcp` imports `api`, the schemas, which imports nothing of placket; `api/gen` imports `api` and `adapters/errtext`; `adapters/cli/gen`, the CLI reference's generator, imports `adapters/cli` and `adapters/errtext`; and `api`'s external tests import `adapters/local`, `adapters/client`, `adapters/mcp` and the core. `docs/adr/0001-the-repository.md` and `docs/adr/0002-the-core.md` record why.
 
 ## `core-imports`
 

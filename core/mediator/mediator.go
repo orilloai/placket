@@ -15,9 +15,9 @@
 // envelope), receipt-5 (the chain of each pair) and receipt-10 (the same inputs at the same times
 // write the same receipts), and close-1 to close-3 (closing the Accord: its open questions closed,
 // the close receipt written last, and a closed Accord that takes no give or answer). Decision record
-// 0006 says what it holds and why, record 0008 how a reload rebuilds it, record 0022 how a close
-// ends it, and record 0023 the read of which judges a give would reach (composition-7); it runs
-// no judge itself.
+// 0008 says what it holds and why, and how a reload rebuilds it, record 0010 how a close ends it,
+// and record 0009 the read of which judges a give would reach (composition-7); it runs no judge
+// itself.
 package mediator
 
 import (
@@ -97,10 +97,10 @@ type Rejection struct{ Code RejectionCode }
 func (r *Rejection) Error() string { return "mediator: rejected: " + string(r.Code) }
 
 // ErrorCode says what the caller's program did wrong, or that the mediator failed
-// (rejection-vs-error, record 0006).
+// (rejection-vs-error, record 0008).
 type ErrorCode string
 
-// The codes of Error. None is a code of the protocol (record 0006, record 0008).
+// The codes of Error. None is a code of the protocol (record 0008).
 const (
 	// CodeAt: a time that does not keep the timestamp rule.
 	CodeAt ErrorCode = "at"
@@ -151,7 +151,7 @@ func failure(code ErrorCode) *Error { return &Error{Code: code, Index: -1} }
 var ErrOtherMediator = errors.New("mediator: the set names another mediator")
 
 // An Outcome is a receipt the mediator wrote: its verdict, reason, id and bytes (receipt-1,
-// record 0006).
+// record 0008).
 type Outcome struct {
 	Verdict   string
 	Reason    string
@@ -259,7 +259,7 @@ func (m *Mediator) Card() string {
 }
 
 // Receipts returns every receipt the mediator wrote, in order, as copies (results-are-copies,
-// record 0006).
+// record 0008).
 func (m *Mediator) Receipts() [][]byte {
 	out := make([][]byte, len(m.receipts))
 	for i, r := range m.receipts {

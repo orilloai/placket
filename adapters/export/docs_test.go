@@ -14,7 +14,7 @@ import (
 // decline's call verifies under the row's answerer.
 func TestTheDocsSayWhatADeclineShows(t *testing.T) {
 	t.Parallel()
-	record, err := os.ReadFile("../../docs/adr/0011-the-journal.md")
+	record, err := os.ReadFile("../../docs/adr/0011-the-door-and-the-journal.md")
 	if err != nil {
 		t.Fatal(err)
 	}

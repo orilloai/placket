@@ -8,6 +8,6 @@
 // (conformance-vectors-8) and an operation run in full or not at all (conformance-vectors-4).
 //
 // A part is passed or failed; nothing is skipped. A part a handler cannot run yet is pending, and a
-// pending part fails its vector, as does an operation no handler runs. Decision record 0004 says why
+// pending part fails its vector, as does an operation no handler runs. Decision record 0003 says why
 // the runner lives in the core and reads the schemas without a dependency.
 package conformance

@@ -18,7 +18,7 @@ const ClosePredicateType = "https://placket.tech/close/0.1"
 // (close-2).
 const closeSubject = "accord"
 
-// A Close is what a close receipt states (close-2, record 0022): its id, the typed hash of its
+// A Close is what a close receipt states (close-2, record 0010): its id, the typed hash of its
 // statement's canonical bytes; the Accord id, the card hash and the mediator's reference; its time;
 // the last receipt of every chain of the list before it, ordered by pair; and each delivery not yet
 // fetched at the close, in the order queued. A close is in no chain: it has no seq, no prev and no
@@ -73,7 +73,7 @@ func (c Close) statement() []byte {
 }
 
 // BuildClose writes the close receipt of c, signed by the mediator's key, and returns it and its
-// close, whose ID is the receipt's id (close-2, record 0022). The close's mediator is the key's
+// close, whose ID is the receipt's id (close-2, record 0010). The close's mediator is the key's
 // reference, whatever it held, and its ID is ignored. A statement the verifier's row 4 would refuse
 // is not written. Which chains and deliveries it lists is its caller's: the verifier's row 8 holds
 // them to the list.

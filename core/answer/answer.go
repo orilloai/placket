@@ -5,7 +5,7 @@
 // It implements maybe-11 (the answer call, its members and its signature under the fourth object
 // type of signing-4) and receipt-11's answer form, whose value is the call's typed hash
 // (canonical-3). The answer's text and salt travel beside the call and are never inside it: the call
-// holds the answer's salted digest (crossing-3). Decision record 0021 says why it is a package of
+// holds the answer's salted digest (crossing-3). Decision record 0002 says why it is a package of
 // its own.
 package answer
 

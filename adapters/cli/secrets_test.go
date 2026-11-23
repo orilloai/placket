@@ -233,7 +233,7 @@ func TestAWindowWhoseJournalFails(t *testing.T) {
 }
 
 // vectorModule is the line founding prints after a vector's card, which names the hash the vectors
-// were written with, another module than this build's (docs/adr/0012-the-kernel-hash.md).
+// were written with, another module than this build's (docs/adr/0007-the-card-and-the-kernel-hash.md).
 func vectorModule(t *testing.T, card []byte) string {
 	t.Helper()
 	var c struct {

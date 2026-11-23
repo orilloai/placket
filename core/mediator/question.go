@@ -6,7 +6,7 @@ import (
 	"github.com/orilloai/placket/core/internal/crossing"
 )
 
-// A Question is an open question as the mediator holds it (maybe-1, record 0006): its id, the
+// A Question is an open question as the mediator holds it (maybe-1, record 0008): its id, the
 // asker, the receiver the part is for, the asked part's kind, the form of its body (text, raw or
 // data), its deadline and the role labels that may answer it; in Part the body's value as given: a
 // text body's bytes, a raw body's decoded bytes, or a data body's canonical bytes; in Salt the part's
@@ -31,7 +31,7 @@ func (Question) GoString() string { return "mediator.Question" }
 func (Question) String() string { return "mediator.Question" }
 
 // Question returns a copy of the question open under id, to the mediator's own reference and to the
-// question's answerers only (maybe-1, maybe-6, record 0006). The mediator's reference reads any open
+// question's answerers only (maybe-1, maybe-6, record 0008). The mediator's reference reads any open
 // question before membership is asked, as the door that journals every ask must. Otherwise its rows
 // run in section 6's order: a caller that is not a member is rejected with not-a-member
 // (setup-contract-6); an id that names no open question returns false and no error (maybe-7); and a

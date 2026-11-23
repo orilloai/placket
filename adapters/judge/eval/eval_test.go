@@ -30,7 +30,7 @@ func (s scripted) Judge(ctx context.Context, r judge.Request) (judge.Answer, err
 func score(n int) *int { return &n }
 
 // TestRunCounts runs six cases against a scripted judge at the threshold 80, and prints a line per
-// case and the counts at 80 and at every step of 5 (docs/adr/0023-judges.md).
+// case and the counts at 80 and at every step of 5 (docs/adr/0009-who-decided.md).
 func TestRunCounts(t *testing.T) {
 	t.Parallel()
 	cases := []eval.Case{

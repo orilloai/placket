@@ -82,13 +82,13 @@ The journal of one run is committed under `scripts/demo/`, with the founding set
 
 ```
 go build -o placket ./cmd/placket
-./placket verify --accord sha256:05c9d0e43cb807a278205425bf283145e28419f380c7fbacc9d74f674fcd4312 --receipts scripts/demo/journal --founding scripts/demo/founding.json
+./placket verify --accord sha256:2d5527e5e4dc89d956aa8422443200ee84294ad349cbac96462eaf6b6e38d09b --receipts scripts/demo/journal --founding scripts/demo/founding.json
 ```
 
 Given only the Accord's id, its founding set and the acceptances beside it, it checks what every party signed: that every receipt is the mediator's and names this Accord, its card and its members, and that every member accepted its view. The terms behind each seal stay sealed, so it prints `valid: 13 receipts signed by mediator ...` and `terms: not checked: the declarations are sealed; with every member's opening, --open checks them`, and the journal's `answers.jsonl` shows each answer witnessed by the key that signed it. With every opening, as in a dispute, it checks each seal, each view and every decision:
 
 ```
-./placket verify --accord sha256:05c9d0e43cb807a278205425bf283145e28419f380c7fbacc9d74f674fcd4312 --receipts scripts/demo/journal --founding scripts/demo/founding.json $(for o in scripts/demo/openings/*; do printf ' --open %s' "$o"; done)
+./placket verify --accord sha256:2d5527e5e4dc89d956aa8422443200ee84294ad349cbac96462eaf6b6e38d09b --receipts scripts/demo/journal --founding scripts/demo/founding.json $(for o in scripts/demo/openings/*; do printf ' --open %s' "$o"; done)
 ```
 
 It prints `terms: checked: every seal opens, and every view is the one its member accepted` and `conforms: every decision is one this Accord let its decider make`.
@@ -139,7 +139,7 @@ done
 
 Each party's binding is signed by that party's own principal, under the policy it names by hash, and gives only roles the policy lets that principal grant. One principal may stand behind every party, as here, or each side may have its own, as in the guarded-export pattern (`patterns/guarded-export/`); `verify --founding` names each member's roles and principal.
 
-`placket card --default` prints the binary's own card on standard output, and on standard error its card hash and `module <version> <hash>`. The hash is taken from the source of the decision module, `core/composition/composition.go`, that the binary was built from, so a binary with another module prints another card (`docs/adr/0012-the-kernel-hash.md`). Never copy a card from another build:
+`placket card --default` prints the binary's own card on standard output, and on standard error its card hash and `module <version> <hash>`. The hash is taken from the source of the decision module, `core/composition/composition.go`, that the binary was built from, so a binary with another module prints another card (`docs/adr/0007-the-card-and-the-kernel-hash.md`). Never copy a card from another build:
 
 - `placket founding` founds under any card that reads, since whoever founds an Accord need not run its window, but prints `module <version> <hash> is not this build's decision module, <version> <hash>` when the card is not its own.
 - `placket window` refuses to run an Accord whose card names another module: it prints that line and `error founding kernel`, and starts nothing. After an upgrade that changes the module, found the Accord again with the new binary's card; the old journal still verifies.
@@ -148,27 +148,27 @@ Each party's binding is signed by that party's own principal, under the policy i
 The first receipt of the committed demo journal, line 1 of `scripts/demo/journal/receipts.jsonl`, is `seq` 1 of the proposer's chain to the applier, the first proposal's ask:
 
 ```
-{"payload":"eyJfdHlwZSI6Imh0dHBzOi8vaW4tdG90by5pby9TdGF0ZW1lbnQvdjEiLCJwcmVkaWNhdGUiOnsiYWNjb3JkIjoic2hhMjU2OjA1YzlkMGU0M2NiODA3YTI3ODIwNTQyNWJmMjgzMTQ1ZTI4NDE5ZjM4MGM3ZmJhY2M5ZDc0ZjY3NGZjZDQzMTIiLCJhdCI6IjIwMjYtMTEtMThUMTc6Mjg6MDFaIiwiYnkiOiJ0ZXJtcyIsImNhcmQiOiJzaGEyNTY6ZTM2N2Q1ZTE4MjA5OGJiYjNhM2NlOTYwYjMyMjFhYTJhMWMwZDZlZDJmYzc5MGRmYTQ2MDRlNjA0MTkxZDZhNSIsImVudmVsb3BlIjp7Imhhc2giOiJzaGEyNTY6NmMxYmE4YTI1MWNhNGQ1YzMyOGUyY2Q2ODI2MjQ3OGE5YmViNzBhYzk0NDU0MGViYTAyN2M5M2FkYjg1NzMxYiIsInNlbmRlciI6ImVkMjU1MTk6NzBkZWU1OGZhMTlhMTc3OTVlOWU0ZjM5MjkwNmYwY2JhZTE5NDE0YzAxNTBkYjk3NGUyYjEwYTljMzFkMjA0ZCIsInNlcSI6MX0sImZyb20iOiJlZDI1NTE5OjcwZGVlNThmYTE5YTE3Nzk1ZTllNGYzOTI5MDZmMGNiYWUxOTQxNGMwMTUwZGI5NzRlMmIxMGE5YzMxZDIwNGQiLCJraW5kIjoiY3Jvc3NpbmciLCJtZWRpYXRvciI6ImVkMjU1MTk6Mzg3NmRkZGM1ZDUzZjcwZjE0YmUyYTk5NmRmZmJlMzU4NGQ3MmU4ZDJhMDExMTQ3NDgzMDg1N2E1NWNhMmQyMyIsInJlYXNvbiI6Im1heWJlIiwic2VxIjoxLCJ0byI6ImVkMjU1MTk6MGI1MzE2MWM3MWJlMTEyZTM4NjE3MDdmMzUwMWZhYTNhM2JjMDJkOTk3NWMxN2I3ZjA3MzQwOTc5Mjg1NDEzZiIsInZlcmRpY3QiOiJlc2NhbGF0ZSJ9LCJwcmVkaWNhdGVUeXBlIjoiaHR0cHM6Ly9wbGFja2V0LnRlY2gvcmVjZWlwdC8wLjEiLCJzdWJqZWN0IjpbeyJkaWdlc3QiOnsic2FsdGVkLXNoYTI1NiI6IjFhMGZiMTcwMTQxYzZmZTI0NzcwYTQ4Y2I0YjQ5MjMxMWNhNmM0Y2Y0MDBiODNiZTAyMmQ5NDk2YTIwYTE2ZDcifSwibmFtZSI6InByb3Bvc2FsIn1dfQ==","payloadType":"application/vnd.in-toto+json","signatures":[{"keyid":"ed25519:3876dddc5d53f70f14be2a996dffbe3584d72e8d2a0111474830857a55ca2d23","sig":"emfBC4s1Koswx9+uZiCEn3taVDvedYKdi3/R/Usau2y0T1Wva17bvtYvqNazNILcfxqp4miwQfT2Dd9XW7vdAw=="}]}
+{"payload":"eyJfdHlwZSI6Imh0dHBzOi8vaW4tdG90by5pby9TdGF0ZW1lbnQvdjEiLCJwcmVkaWNhdGUiOnsiYWNjb3JkIjoic2hhMjU2OjJkNTUyN2U1ZTRkYzg5ZDk1NmFhODQyMjQ0MzIwMGVlODQyOTRhZDM0OWNiYWM5NjQ2MmVhZjZiNmUzOGQwOWIiLCJhdCI6IjIwMjYtMTEtMjNUMTI6MzU6NTdaIiwiYnkiOiJ0ZXJtcyIsImNhcmQiOiJzaGEyNTY6MGY0OTAzYTVjZmY3NTBjZjU4ODYzYjk0NDEzMjg5M2M4ZTY4MzViYjc1OWM1NzhhNzdmY2UyZGQwM2M4OTA2NyIsImVudmVsb3BlIjp7Imhhc2giOiJzaGEyNTY6ODEwMTBlZTUxZmFiNGQ2Yjg1YWYyY2U0YmVkYzgzYjhlMjFiZDYwODdmYmY5ZDdkMDIxNGU0YzNmM2JjOTJjNiIsInNlbmRlciI6ImVkMjU1MTk6YjRjYWU0ZWJiYjE2NmRjN2YyMmUxZGQ4ZWE3YmIxNDA0ZjA4NGQ5ZTU2NDU0YTA5OTRjYjgyYjYyYzZkNjgyZCIsInNlcSI6MX0sImZyb20iOiJlZDI1NTE5OmI0Y2FlNGViYmIxNjZkYzdmMjJlMWRkOGVhN2JiMTQwNGYwODRkOWU1NjQ1NGEwOTk0Y2I4MmI2MmM2ZDY4MmQiLCJraW5kIjoiY3Jvc3NpbmciLCJtZWRpYXRvciI6ImVkMjU1MTk6ZjAwNzgyOTZkMmM5ZTUyY2ZlZGUwMzdlNmE2ZTJkZTU4MDYwYjg1YmMyZjVkODI0YWJiODRhNGNjYWVjNDU1MyIsInJlYXNvbiI6Im1heWJlIiwic2VxIjoxLCJ0byI6ImVkMjU1MTk6MjQ2YThmNjI1NDQzZTQwZDUzZTAwNmViNGZiZjg1OWM3ZDIwN2Y4ZTExOGVhZTQ0MzlkNDdhMWM5OTNkZGRkNCIsInZlcmRpY3QiOiJlc2NhbGF0ZSJ9LCJwcmVkaWNhdGVUeXBlIjoiaHR0cHM6Ly9wbGFja2V0LnRlY2gvcmVjZWlwdC8wLjEiLCJzdWJqZWN0IjpbeyJkaWdlc3QiOnsic2FsdGVkLXNoYTI1NiI6ImZmMDZkNzk4NTFjOTQwYzFmNWRhMzU4YWFjMDY4MDMwMGQ3M2Q2ZDI2MTMyZGQ3ZWY3ODRiYmQ5OGI1MzMxNjYifSwibmFtZSI6InByb3Bvc2FsIn1dfQ==","payloadType":"application/vnd.in-toto+json","signatures":[{"keyid":"ed25519:f0078296d2c9e52cfede037e6a6e2de58060b85bc2f5d824abb84a4ccaec4553","sig":"vbUxX0IwdyXmYiVnVlHZ6gYsWNZUrW9M14h6KxokZfDgpZ+o96Lu/dJaOCtSsYwCJuZuAnQa8xOyGuWIMSHjDw=="}]}
 ```
 
 and `placket show --receipt` prints, on standard error, then on standard output:
 
 ```
 not verified
-ask maybe proposal 2026-11-18T17:28:01Z
-from ed25519:70dee58fa19a17795e9e4f392906f0cbae19414c0150db974e2b10a9c31d204d to ed25519:0b53161c71be112e3861707f3501faa3a3bc02d9975c17b7f07340979285413f
-module: named by card sha256:e367d5e182098bbb3a3ce960b3221aa2a1c0d6ed2fc790dfa4604e604191d6a5.
+ask maybe proposal 2026-11-23T12:35:57Z
+from ed25519:b4cae4ebbb166dc7f22e1dd8ea7bb1404f084d9e56454a0994cb82b62c6d682d to ed25519:246a8f625443e40d53e006eb4fbf859c7d207f8e118eae4439d47a1c993dddd4
+module: named by card sha256:0f4903a5cff750cf58863b944132893c8e6835bb759c578a77fce2dd03c89067.
 claim: the mediator held this part and asked the roles its terms name. This receipt delivered nothing.
 not claimed: what any party did with a part after it crossed; anything that did not go through this mediator; reworded or derived content; who was at a key.
 not verified: this receipt was decoded without checking its signature, its mediator or its chain
-receipt sha256:bc209e7137c6c452d01f06a983f1af942b97df6f436d0b0ed3a98ce3b8edd0e8
-crossing from ed25519:70dee58fa19a17795e9e4f392906f0cbae19414c0150db974e2b10a9c31d204d to ed25519:0b53161c71be112e3861707f3501faa3a3bc02d9975c17b7f07340979285413f
+receipt sha256:a4e7f773f6ff192a9b4b84e287314104b97c0b837a4be3dd65bacecc18ddd282
+crossing from ed25519:b4cae4ebbb166dc7f22e1dd8ea7bb1404f084d9e56454a0994cb82b62c6d682d to ed25519:246a8f625443e40d53e006eb4fbf859c7d207f8e118eae4439d47a1c993dddd4
 verdict escalate, reason maybe
 by terms
-subject proposal, salted-sha256 1a0fb170141c6fe24770a48cb4b492311ca6c4cf400b83be022d9496a20a16d7
-accord sha256:05c9d0e43cb807a278205425bf283145e28419f380c7fbacc9d74f674fcd4312, card sha256:e367d5e182098bbb3a3ce960b3221aa2a1c0d6ed2fc790dfa4604e604191d6a5
-mediator ed25519:3876dddc5d53f70f14be2a996dffbe3584d72e8d2a0111474830857a55ca2d23, seq 1, at 2026-11-18T17:28:01Z
-envelope of ed25519:70dee58fa19a17795e9e4f392906f0cbae19414c0150db974e2b10a9c31d204d, seq 1, hash sha256:6c1ba8a251ca4d5c328e2cd68262478a9beb70ac944540eba027c93adb85731b
+subject proposal, salted-sha256 ff06d79851c940c1f5da358aac0680300d73d6d26132dd7ef784bbd98b533166
+accord sha256:2d5527e5e4dc89d956aa8422443200ee84294ad349cbac96462eaf6b6e38d09b, card sha256:0f4903a5cff750cf58863b944132893c8e6835bb759c578a77fce2dd03c89067
+mediator ed25519:f0078296d2c9e52cfede037e6a6e2de58060b85bc2f5d824abb84a4ccaec4553, seq 1, at 2026-11-23T12:35:57Z
+envelope of ed25519:b4cae4ebbb166dc7f22e1dd8ea7bb1404f084d9e56454a0994cb82b62c6d682d, seq 1, hash sha256:81010ee51fab4d6b85af2ce4bedc83b8e21bd6087fbf9d7d0214e4c3f3bc92c6
 ```
 
 ## Judges

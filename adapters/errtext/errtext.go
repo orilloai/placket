@@ -7,7 +7,7 @@
 // sentence is in the CLI reference. A detail word that follows a code is named in that code's
 // sentence. Two kinds of code have no row, since another text says what they mean: the verifier's
 // code after error verify (spec/protocol.md, verify-1), and a judge config's code after error judge
-// (docs/adr/0023-judges.md).
+// (docs/adr/0009-who-decided.md).
 //
 // It imports nothing of placket, so the references' generators read it without the adapters.
 package errtext
@@ -132,7 +132,7 @@ var table = map[key]string{
 	{FromCLI, "card"}:          "The card could not be built with the judges given; check each --judge file.",
 	{FromCLI, "path"}:          "The --at path is not a JSON Pointer; write it empty, or with a slash before each token.",
 	{FromCLI, "internal"}:      "The command failed in a way no other code names; run it again, and report it if it persists.",
-	{FromCLI, "judge"}:         "A --judge file is not a judge's config, and the detail names its code; fix the config as docs/adr/0023-judges.md says.",
+	{FromCLI, "judge"}:         "A --judge file is not a judge's config, and the detail names its code; fix the config as docs/adr/0009-who-decided.md says.",
 	{FromCLI, "seal"}:          "The declaration is not one object signed by the key whose actor it names, or its opening could not be made; seal a declaration this key signed.",
 	{FromCLI, "dir-not-empty"}: "The directory init would write in holds something already, and init wrote nothing; give --dir an empty or new directory.",
 

@@ -1,4 +1,4 @@
-// Command redgreen is the check red-green-tests (docs/rules/tests.md; docs/adr/0013-red-green-tests.md): every
+// Command redgreen is the check red-green-tests (docs/rules/tests.md; docs/adr/0004-how-a-change-is-checked.md): every
 // test a change adds or changes fails without the change's code and passes with it, and no test is
 // removed or skipped unexplained.
 //

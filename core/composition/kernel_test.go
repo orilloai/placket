@@ -12,7 +12,7 @@ import (
 )
 
 // TestKernelHash computes the kernel hash again from the module's source on disk: the typed hash of
-// {"composition.go": its bytes} (setup-contract-4, docs/adr/0012-the-kernel-hash.md).
+// {"composition.go": its bytes} (setup-contract-4, docs/adr/0007-the-card-and-the-kernel-hash.md).
 func TestKernelHash(t *testing.T) {
 	t.Parallel()
 	src, err := os.ReadFile("composition.go")

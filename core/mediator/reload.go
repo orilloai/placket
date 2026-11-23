@@ -23,7 +23,7 @@ type Open struct {
 // every receipt in the order written, each open question's deadline and roles, each delivery not
 // yet fetched, in deliveries, the time the set was founded at and the mediator's key; and it closes
 // every open question at the reload time at. Its data come first, then the times and the key
-// (inputs-as-parameters, record 0019). It checks, in order, and returns no mediator and the first fault: at, by the
+// (inputs-as-parameters, record 0008). It checks, in order, and returns no mediator and the first fault: at, by the
 // timestamp rule (at); the set, as Found founds it (founding's *Error, or ErrOtherMediator); the
 // receipts, by receipts.Verify (journal, at the failing receipt, the verifier's error inside); each
 // receipt's Accord and card (journal, with its index); each open entry's deadline (at) and question,
@@ -93,7 +93,7 @@ func (r record) question(qi int) *question {
 		envelope: ask.Predicate.Envelope, subject: ask.Subject, roles: o.Roles, deadline: o.Deadline}
 }
 
-// rebuild is what Reload and Close share (record 0008, record 0022): it checks the record in
+// rebuild is what Reload and Close share (record 0008, record 0010): it checks the record in
 // Reload's order and makes the mediator its receipts leave, with nothing written. A close in the
 // list makes the mediator closed. With terms set it needs every member's opening, as Found does.
 func rebuild(in founding.Inputs, list [][]byte, open []Open, deliveries []Queued, foundedAt string, key signing.Key, at string, terms bool) (record, error) {

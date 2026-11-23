@@ -6,7 +6,7 @@
 // It implements setup-contract-14 (the view), setup-contract-15 (the acceptance and the founding
 // record) and setup-contract-16 (founding without the openings), and with setup, setup-contract-8's
 // order across all its rows. It is a package of its own because a view's outcomes are composition's,
-// and composition imports setup (docs/adr/0025-sealed-terms.md).
+// and composition imports setup (docs/adr/0006-founding.md).
 package founding
 
 import (

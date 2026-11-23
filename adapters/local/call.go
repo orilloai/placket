@@ -31,7 +31,7 @@ const (
 	OpResult    = "result"
 	// OpView and OpAccept are a member's own view of the Accord, and its signed acceptance of it, the
 	// two ops a proposed Accord serves (setup-contract-14, setup-contract-15,
-	// docs/adr/0025-sealed-terms.md).
+	// docs/adr/0011-the-door-and-the-journal.md).
 	OpView   = "view"
 	OpAccept = "accept"
 )
@@ -53,23 +53,23 @@ const (
 // Internal is the door's code for a failure of the door itself, after a call passed its checks: the
 // salt source failed, a reply could not be encoded, or an error came back that is neither a
 // mediator.Rejection nor a mediator.Error. It is never the mediator's internal code
-// (rejection-vs-error; docs/adr/0017-the-doors-own-code.md).
+// (rejection-vs-error; docs/adr/0011-the-door-and-the-journal.md).
 const Internal DoorCode = "door-internal"
 
 // JudgeBusy is the door's code for a caller's give while its last give is with a judge. It is checked
 // after the nonce, so the refused call's nonce is spent, and before the tick, so the refused give
 // writes nothing. It is about the order of the caller's calls: a later give never reaches the core
-// before an earlier one (crossing-4, docs/adr/0023-judges.md).
+// before an earlier one (crossing-4, docs/adr/0011-the-door-and-the-journal.md).
 const JudgeBusy DoorCode = "judge-busy"
 
 // NotFounded is the door's code for a call of any op but view and accept to a proposed Accord, one
 // whose members have not all accepted their views: it is not founded, so nothing crosses yet
-// (setup-contract-15, docs/adr/0025-sealed-terms.md). It is checked after the nonce, as JudgeBusy is.
+// (setup-contract-15, docs/adr/0011-the-door-and-the-journal.md). It is checked after the nonce, as JudgeBusy is.
 const NotFounded DoorCode = "not-founded"
 
 // MaxReply is the most bytes of a reply, before its line feed, a client reads. It is enough for one
 // delivery, whose body came in a call under MaxCall, with its receipt and the answer call inside it
-// (docs/adr/0017-the-doors-own-code.md).
+// (docs/adr/0011-the-door-and-the-journal.md).
 const MaxReply = 4 * MaxCall
 
 // A Call is a call as the door read it: its members, its canonical bytes and its signature as

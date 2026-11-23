@@ -67,7 +67,7 @@ const (
 )
 
 // The window's start-up lines of each judge the card lists, in card order, after its operator line
-// (docs/adr/0023-judges.md): the kinds it may be sent and where; that no term lists it, key or no
+// (docs/adr/0009-who-decided.md): the kinds it may be sent and where; that no term lists it, key or no
 // key; or that it has no key in the environment variable named, and so sends nothing.
 const (
 	LineJudgeSends  = "judge %s may send kinds %s to %s, model %s"
@@ -78,7 +78,7 @@ const (
 	LineAdvised = "advise %s %s %s"
 )
 
-// The lines init prints (docs/adr/0027-placket-init.md): what it founded, then each command for the
+// The lines init prints (docs/adr/0012-the-mediator-api-and-the-command-line.md): what it founded, then each command for the
 // person to run, the command itself on the line after, indented by two spaces.
 const (
 	LineInitAccord      = "accord %s %s"
@@ -190,7 +190,7 @@ const (
 	// ModuleLine names the decision module by the card hash, its one verb.
 	ModuleLine = "module: named by card %s."
 	// ModuleOther names a card's module that is not this build's, and this build's
-	// (docs/adr/0012-the-kernel-hash.md).
+	// (docs/adr/0007-the-card-and-the-kernel-hash.md).
 	ModuleOther = "module %s %s is not this build's decision module, %s %s"
 	// Scope is the scope line.
 	Scope = "not claimed: what any party did with a part after it crossed; anything that did not go through this mediator; reworded or derived content; who was at a key."

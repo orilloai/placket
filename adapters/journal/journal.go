@@ -31,7 +31,7 @@
 //	                 after the receipt's line and before the reply, and the advise lines later. It is
 //	                 content: a judge's output may quote the part. No reader of receipts needs it,
 //	                 Read never opens it, and it may be removed at any time
-//	                 (docs/adr/0023-judges.md).
+//	                 (docs/adr/0009-who-decided.md).
 //
 // The receipts are evidence (journal-is-evidence): nothing rewrites or truncates receipts.jsonl but
 // the one repair at the start, of a last line with no line feed, which was never answered. A last
@@ -107,7 +107,7 @@ const (
 	FileQuestions = "questions.jsonl"
 	FileAnswers   = "answers.jsonl"
 	DirHeld       = "held"
-	// DirJudged holds each judged receipt's judge records (docs/adr/0023-judges.md).
+	// DirJudged holds each judged receipt's judge records (docs/adr/0009-who-decided.md).
 	DirJudged = "judged"
 )
 

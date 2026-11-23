@@ -41,13 +41,13 @@ func init() {
 // the card hash and the operator, then one line per event: ids, words and codes, never a body, a
 // salt, a seed, a key or a question's part. A founding set whose card names another module than
 // this build's is tool error founding kernel, after a line that names both
-// (docs/adr/0012-the-kernel-hash.md).
+// (docs/adr/0007-the-card-and-the-kernel-hash.md).
 //
 // On a closed journal it prints `accord <id> closed <close id>` and serves the closed Accord. A
 // journal whose close was cut short is tool error journal, receipts.jsonl, close, after a line that
 // says to run `placket window close`. `window close` is closeCommand.
 //
-// Each --judge is the config of a judge the card lists (docs/adr/0023-judges.md): a window that can
+// Each --judge is the config of a judge the card lists (docs/adr/0009-who-decided.md): a window that can
 // take a give needs exactly the card's, each at the card's hash, or it is tool error founding judge
 // and starts nothing. The judges' key is read once, from jev.KeyEnv. After the operator line the
 // window prints, for each judge the card lists, which kinds may go to which host and model, or that
@@ -76,7 +76,7 @@ func windowCommand(r *run, args []string) int {
 	}
 	set = bytes.TrimSuffix(set, []byte{'\n'})
 	// A card of another module is refused before the set is founded; one that does not read is left to
-	// founding (docs/adr/0012-the-kernel-hash.md).
+	// founding (docs/adr/0007-the-card-and-the-kernel-hash.md).
 	if k, ok := kernelOf(cardOf(set)); ok {
 		if l := otherModule(k); l != "" {
 			fmt.Fprintln(r.stderr, l)
@@ -86,7 +86,7 @@ func windowCommand(r *run, args []string) int {
 	// With no --socket or --journal the window takes the Accord's defaults: its socket under the
 	// user's runtime directory, made mode 0700, and its journal under the user's state directory. A
 	// --socket that is the default socket has its directory made too, as the labels config names
-	// it and the runtime directory may be gone since (docs/adr/0027-placket-init.md). The environment
+	// it and the runtime directory may be gone since (docs/adr/0012-the-mediator-api-and-the-command-line.md). The environment
 	// is read for it only when the socket's directory is missing.
 	if _, err := os.Stat(filepath.Dir(*socket)); *socket != "" && errors.Is(err, os.ErrNotExist) && isDefaultSocket(r, set, *socket) {
 		if err := local.CheckSocket(*socket); err != nil {
@@ -127,7 +127,7 @@ func windowCommand(r *run, args []string) int {
 		return code
 	}
 	operator := memberString(set, "mediator", "operator")
-	// The key is read once, here, and held only by the judges' adapters (docs/adr/0023-judges.md).
+	// The key is read once, here, and held only by the judges' adapters (docs/adr/0009-who-decided.md).
 	key := ""
 	if r.env.Getenv != nil {
 		key = r.env.Getenv(jev.KeyEnv)
@@ -296,7 +296,7 @@ func (r *run) event(e local.Event, operator string) {
 		fmt.Fprintln(r.stderr, LineDoor+" "+string(e.Door))
 		return
 	case local.EventAdvised:
-		// One line per advise judge, never its output (docs/adr/0023-judges.md).
+		// One line per advise judge, never its output (docs/adr/0009-who-decided.md).
 		for _, a := range e.Advice {
 			fmt.Fprintf(r.stderr, LineAdvised+"\n", field(a.Judge), a.Outcome, a.Receipt)
 		}

@@ -17,13 +17,13 @@ var (
 	otherCard = `{"spec":"0.1","kernel":{"version":"0.1.0","hash":"` + otherHash + `"},"judges":[]}`
 )
 
-// otherLine is the line that names a card of another module (docs/adr/0012-the-kernel-hash.md).
+// otherLine is the line that names a card of another module (docs/adr/0007-the-card-and-the-kernel-hash.md).
 func otherLine(version, hash string) string {
 	return "module " + version + " " + hash + " is not this build's decision module, " + composition.KernelVersion + " " + composition.KernelHash()
 }
 
 // TestCardDefault prints the binary's own card, and its card hash and module on standard error
-// (docs/adr/0012-the-kernel-hash.md).
+// (docs/adr/0007-the-card-and-the-kernel-hash.md).
 func TestCardDefault(t *testing.T) {
 	t.Parallel()
 	r := run(t, env(), "card", "--default")

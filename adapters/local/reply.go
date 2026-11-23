@@ -37,7 +37,7 @@ const (
 	// CodeCursor: the window could not draw the key of its cursors; it started nothing.
 	CodeCursor Code = "cursor"
 	// CodeJudge: the window's judge configs are not the ones its card lists, at their hashes and this
-	// adapter's version; it started nothing (docs/adr/0023-judges.md).
+	// adapter's version; it started nothing (docs/adr/0009-who-decided.md).
 	CodeJudge Code = "judge"
 )
 
@@ -91,7 +91,7 @@ type Reply struct {
 	Error            mediator.ErrorCode
 	Door             DoorCode
 	// Close is the close receipt a get on a closed Accord returns once the caller's queue is empty
-	// (close-3, docs/adr/0022-the-close.md).
+	// (close-3, docs/adr/0010-the-close-and-the-successor.md).
 	Close []byte
 	// Cursor is the opaque value every questions reply carries: passed back as a questions call's
 	// after, it asks only for the questions opened after the last one this reply carries.

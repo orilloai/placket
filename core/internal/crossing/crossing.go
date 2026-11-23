@@ -4,7 +4,7 @@
 // the receipt that passed a part and its id, and the part as it crossed. The mediator calls it and
 // keeps only state (mediator-no-logic). It is written once, so the mediator reads a part's body the
 // same way when it admits a give, when it shows a question and when it restores a delivery
-// (docs/adr/0016-verified-receipts.md).
+// (docs/adr/0002-the-core.md).
 package crossing
 
 import (

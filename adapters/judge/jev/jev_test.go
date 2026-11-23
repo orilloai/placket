@@ -103,7 +103,7 @@ func replyOf(label, confidence string) string {
 // TestTheRequestCarriesOnlyKindBodyInstruction sends one request and reads what reached the host:
 // a POST to the one path, whose content is the kind, the body and the instruction, beside the model
 // and the adapter's fixed labels, with the key only as its bearer credential, and no other header
-// carrying anything (docs/adr/0023-judges.md).
+// carrying anything (docs/adr/0009-who-decided.md).
 func TestTheRequestCarriesOnlyKindBodyInstruction(t *testing.T) {
 	t.Parallel()
 	r := newRecorder(t, http.StatusOK, replyOf("block", "0.93"))
@@ -294,7 +294,7 @@ func TestTheDocsNameTheFixedWords(t *testing.T) {
 		{"README.md", "## Judges"},
 		{"docs/security/threat-model.md", "- **P21."},
 		{"docs/security/threat-model.md", "## The Jev data flow"},
-		{"docs/adr/0023-judges.md", "### The key, and what leaves the machine"},
+		{"docs/adr/0009-who-decided.md", "### The key, and what leaves the machine"},
 	}
 	for _, p := range places {
 		b, err := os.ReadFile(filepath.Join("..", "..", "..", p.file))

@@ -13,7 +13,7 @@ import (
 
 // TestAddJudged appends a receipt's judge records to judged/<hex of its id>.jsonl, mode 0600, in a
 // directory of mode 0700 made on first use, one line each, the later lines after the earlier; and
-// Read opens none of it: a judged/ that holds anything at all reads as before (docs/adr/0023-judges.md).
+// Read opens none of it: a judged/ that holds anything at all reads as before (docs/adr/0009-who-decided.md).
 func TestAddJudged(t *testing.T) {
 	t.Parallel()
 	dir := filepath.Join(t.TempDir(), "j")

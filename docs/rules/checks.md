@@ -17,7 +17,7 @@ The step `secrets` runs gitleaks, pinned in the `Makefile`, over every file of t
 
 ## Known limits of the checks
 
-The checks that read the tree are rules of one Go program, `tools/guard/` (`docs/adr/0007-one-checker.md`). It reads Go with the standard library's parser and resolves names without types; it reads `go.mod` files, the `Makefile`, scripts and the requirement text as lines. What that sees, and what it still misses:
+The checks that read the tree are rules of one Go program, `tools/guard/` (`docs/adr/0004-how-a-change-is-checked.md`). It reads Go with the standard library's parser and resolves names without types; it reads `go.mod` files, the `Makefile`, scripts and the requirement text as lines. What that sees, and what it still misses:
 
 - Every rule reads every `.go` file in its scope, whatever its build constraints, and refuses a file it cannot parse, at the line of the error; no file is skipped. Code `gofmt` would rewrite fails `make ci` anyway, in the `modules` step, which reads every Go file of a module outside `testdata/`.
 - The checker does not follow a symbolic link, and the Go tool does. So every check of the core, and `product-words-once`, refuses a link anywhere under `core/`, `core/` and `core/go.mod` included, and `vectors-independent` refuses one under `vectors/`.

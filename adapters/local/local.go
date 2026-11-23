@@ -1,12 +1,12 @@
 // Package local is the window's door: a unix socket on which members of one Accord call its
 // mediator. One connection carries one call: the client connects, writes one call and a line feed,
 // reads one reply and a line feed, and closes. The call and the reply are door formats, not frozen
-// ones, but for the answer call (below); decision record 0010 says why.
+// ones, but for the answer call (below); decision record 0011 says why.
 //
 // A call, at most MaxCall bytes, is {"call","sig"}, and a reply one line of at most MaxReply bytes.
 // Their members, by op, are the mediator API's wire layer: the schemas under api/wire/, which are
 // the one source of the door formats, and docs/reference/mediator-api.md, generated from them
-// (docs/adr/0024-the-mediator-api.md). A call of questions, get or result may wait at the door up to
+// (docs/adr/0012-the-mediator-api-and-the-command-line.md). A call of questions, get or result may wait at the door up to
 // MaxWait seconds; every questions reply carries a cursor; and a get that waits replies queued, and
 // never takes a delivery itself.
 //
@@ -24,7 +24,7 @@
 //
 // The answer call a resolve carries is the answerer's own signed call, a frozen format
 // (spec/frozen-formats.md): the window takes it as the call carried it, and it travels inside every
-// delivery its answer queues, as the delivery's answer (answer-call-attached, decision record 0021).
+// delivery its answer queues, as the delivery's answer (answer-call-attached, decision record 0009).
 package local
 
 // PayloadType is the payload type a call is signed under (call-signing). It is a media type, not a

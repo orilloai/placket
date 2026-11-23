@@ -15,7 +15,7 @@
 #
 # First the standard library's packages the modules import, compiled once for every step that compiles
 # (build). The checks of the tree are the rules of one Go program, tools/guard/
-# (docs/adr/0007-one-checker.md), built once (guard) and run once per rule. Then every Go module's
+# (docs/adr/0004-how-a-change-is-checked.md), built once (guard) and run once per rule. Then every Go module's
 # format (modules), the toolchain steps, the shared test run they read (tests), the conformance runner over vectors/
 # (runner-no-silent-pass) and every tests/test_*.sh (scripts). ci's prerequisites are written out as
 # literal names: machine-rules-in-ci refuses a ci that leaves out a rule of the checker or a step.
@@ -36,7 +36,7 @@ ci: build guard core-no-deps core-imports core-no-world core-no-panic specs-name
 # refuses a test or script that clears the marker.
 ci: export PLACKET_IN_CI = 1
 # No step of make ci reaches a judge's host: every step sees the judges' key empty, which every reader
-# of it takes for no key (docs/adr/0023-judges.md).
+# of it takes for no key (docs/adr/0009-who-decided.md).
 ci: export PLACKET_JEV_KEY =
 # CI_JOBS is how much runs side by side: by default the host's processor count, and at least 2.
 CI_JOBS ?= $(shell n=$$(getconf _NPROCESSORS_ONLN 2>/dev/null || echo 2); [ "$$n" -ge 2 ] 2>/dev/null || n=2; echo $$n)
@@ -251,7 +251,7 @@ demo:
 
 # judge-eval: the judge's basic eval, run by hand with the user's own key in PLACKET_JEV_KEY: every
 # case of CASES against the judge config JUDGE, one line per case and the counts (evals/judge/README.md,
-# docs/adr/0023-judges.md). Not a step of ci: each case is a request to the judge's host.
+# docs/adr/0009-who-decided.md). Not a step of ci: each case is a request to the judge's host.
 CASES ?= evals/judge/cases.jsonl
 .PHONY: judge-eval
 judge-eval:
@@ -262,7 +262,7 @@ judge-eval:
 # and no test is removed or skipped unexplained (docs/rules/tests.md#red-green-tests). Not a step of ci: it
 # needs main and scratch worktrees. It judges the commits from the merge base of BASE and HEAD to
 # HEAD, so commit first; uncommitted changes are not read. The workflow runs the same program, built
-# from main's copy (docs/adr/0013-red-green-tests.md). It then checks outside-commits-signed-off with
+# from main's copy (docs/adr/0004-how-a-change-is-checked.md). It then checks outside-commits-signed-off with
 # no opener, so only a bot's sign-off is refused (docs/rules/changes.md#outside-commits-signed-off). It
 # exits 0 when ok, 1 when either refuses and 3 when it could not judge.
 BASE ?= origin/main

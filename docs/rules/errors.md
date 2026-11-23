@@ -2,11 +2,11 @@
 
 How a failure is typed, coded and worded, in the core and in the adapters. Errors are codes, never quotes of the input.
 
-These rules cover the errors placket's packages return. The conformance runner's report is not an error: its lines describe a vector to the person running it, and may quote the vector, which is public test data. They are outside these rules (`docs/adr/0004-the-conformance-runner.md`).
+These rules cover the errors placket's packages return. The conformance runner's report is not an error: its lines describe a vector to the person running it, and may quote the vector, which is public test data. They are outside these rules (`docs/adr/0003-the-conformance-runner.md`).
 
 ## `one-error-type`
 
-Each package has one error type, `*Error`, whose `Code` is a constant of a stable string type, spelled as the requirement text spells it. Where `rejection-vs-error` applies, the mediator's operations and the door, a package has one type for each kind of failure it records, and no more: the mediator a `*Rejection` and an `*Error` (`docs/adr/0006-the-mediator-package.md`), the door its own code beside them.
+Each package has one error type, `*Error`, whose `Code` is a constant of a stable string type, spelled as the requirement text spells it. Where `rejection-vs-error` applies, the mediator's operations and the door, a package has one type for each kind of failure it records, and no more: the mediator a `*Rejection` and an `*Error` (`docs/adr/0008-the-mediator-and-reload.md`), the door its own code beside them.
 
 Why: callers and vectors match on codes, never on text.
 
@@ -22,7 +22,7 @@ Checked by: the reviewer.
 
 ## `rejection-vs-error`
 
-Where a protocol rejection and a tool error are recorded differently, at the mediator's operations and at the door, what the caller did wrong (a protocol rejection) and what the caller's program did wrong (a tool error) are different types, and a door's own code is a third, never converted into either. Each new failure there is placed in one, and the design says which. A package whose failures are all recorded one way, such as `setup` and `receipts`, keeps one `*Error` for a misuse and a refusal alike (`docs/adr/0005-the-core-packages.md`).
+Where a protocol rejection and a tool error are recorded differently, at the mediator's operations and at the door, what the caller did wrong (a protocol rejection) and what the caller's program did wrong (a tool error) are different types, and a door's own code is a third, never converted into either. Each new failure there is placed in one, and the design says which. A package whose failures are all recorded one way, such as `setup` and `receipts`, keeps one `*Error` for a misuse and a refusal alike (`docs/adr/0002-the-core.md`).
 
 Why: the two go to different people and are recorded differently.
 

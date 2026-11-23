@@ -118,7 +118,7 @@ type Env struct {
 	// it; nil takes a character device for one.
 	Terminal func(w io.Writer) bool
 	// Getenv reads the environment: the judges' key, once when a window starts
-	// (docs/adr/0023-judges.md), and the directories of the labels config and of a window's default
+	// (docs/adr/0009-who-decided.md), and the directories of the labels config and of a window's default
 	// socket and journal (HOME and the XDG_ variables, TMPDIR); nil is an empty environment. The
 	// command line never reads the environment another way.
 	Getenv func(string) string

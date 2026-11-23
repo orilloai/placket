@@ -40,7 +40,7 @@ func advised(t *testing.T, r *running) local.Event {
 
 // TestAdviseNeverDecidesNorDelays stacks advise a, held, and decide b, which passes: the give's reply,
 // pass, ok, by the judge b, comes while a is held; released, a's line is appended to the same judged
-// file, use advise, and the window emits what it said (docs/adr/0023-judges.md).
+// file, use advise, and the window emits what it said (docs/adr/0009-who-decided.md).
 func TestAdviseNeverDecidesNorDelays(t *testing.T) {
 	t.Parallel()
 	j := newJudged(t, []string{"a", "b"}, uses("a", "advise", "b", "decide"), false)

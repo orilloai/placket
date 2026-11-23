@@ -72,4 +72,4 @@ Every test a change adds or changes fails without the change's code and passes w
 
 Why: a test proves the code only if it fails without it, and a removed or skipped test proves nothing; the shape of a branch's commits proves neither.
 
-Checked by: the workflow's `red-green-tests` job checks it on every pull request and every push to `main`, with `main`'s copy of `tools/redgreen/`, so a change cannot alter its own judge; `make red-green-tests` runs it from a checkout. `docs/adr/0013-red-green-tests.md` records why and what it cannot see.
+Checked by: the workflow's `red-green-tests` job checks it on every pull request and every push to `main`, with `main`'s copy of `tools/redgreen/`, so a change cannot alter its own judge; `make red-green-tests` runs it from a checkout. `docs/adr/0004-how-a-change-is-checked.md` records why and what it cannot see.

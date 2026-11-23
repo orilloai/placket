@@ -10,7 +10,7 @@ import (
 )
 
 // This file is a member's check of its own receipts against the view it signed: verify-1's rows 0a
-// and 4a, which verify-2 describes (docs/adr/0026-verify-against-a-view.md). It reads the view's
+// and 4a, which verify-2 describes (docs/adr/0013-what-a-verifier-checks-and-says.md). It reads the view's
 // rows and never the terms: it compares no stance, matches no term and compares no two terms'
 // judges (one-decision-module).
 
