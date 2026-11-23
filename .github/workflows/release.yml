@@ -31,6 +31,10 @@ jobs:
   release:
     if: github.event_name == 'push'
     runs-on: ubuntu-24.04
+    # The release environment admits main alone, so the job's OIDC token, which signs and attests,
+    # comes only from a run on main. It asks for no approval: the job runs on every push to main, and
+    # approving the release pull request is the decision to release.
+    environment: release
     permissions:
       contents: write
       id-token: write

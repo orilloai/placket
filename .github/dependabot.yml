@@ -1,0 +1,25 @@
+# Update pull requests for what placket pins (Landed and changed only by the maintainer's merge).
+#
+# github-actions: every workflow pins its actions by full commit, which never moves by itself; this
+#                 opens one weekly pull request that moves the pins and their version comments.
+# gomod:          tools/guard is the only module with outside dependencies. The core has none, by rule
+#                 (core-no-deps), and the root requires only the core. A change here is a rules change.
+#
+# dependabot[bot]'s pull requests are exempt from outside-commits-signed-off (tools/redgreen/signoff.go);
+# each still needs the maintainer's review and green checks, as every pull request does.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      actions:
+        patterns: ["*"]
+  - package-ecosystem: gomod
+    directory: /tools/guard
+    schedule:
+      interval: weekly
+    groups:
+      guard:
+        patterns: ["*"]
