@@ -141,7 +141,7 @@ A release PR does two things only:
 - it moves `CHANGELOG.md`'s `Unreleased` section under the new version, `## [X.Y.Z] - YYYY-MM-DD`, dated the day it merges;
 - it marks the formats in `spec/frozen-formats.md` released at that version.
 
-Approving it is the decision to release, the register's change included. Once it merges, the release workflow, `.github/workflows/release.yml`, does the rest in one run on the push to `main`:
+Approving it is the decision to release, the register's change included. Once it merges, the release workflow, `.github/workflows/release.yml`, does the rest in one run on the push to `main`. The job runs in the `release` environment, which admits `main` alone, so the token that signs and attests comes only from a run on `main`:
 
 1. `scripts/release-detect.sh` reads the push. It prints `release X.Y.Z` when the push added exactly one version section and `vX.Y.Z` is not a tag; `resume X.Y.Z` when `vX.Y.Z` is a tag at the push and its release is missing or a draft; `not a release push` otherwise, and the run ends there. It refuses two new sections, a version not above the latest tag, a version tagged at another commit, a section dated more than a day from the run, and any release while the repository is private.
 2. For a release, `make ci` runs at the commit, and the workflow pushes the annotated tag `vX.Y.Z` at it.
