@@ -12,7 +12,7 @@ A new record takes the next free number, adds its row here, and adds its number 
 | [0002](0002-core-boundaries.md) | The core is a module of its own, with no dependency and no world | core | accepted |  | 0007, 0015 |
 | [0003](0003-one-normative-source.md) | Placket's behaviour has one normative source | layout | accepted | 0001 |  |
 | [0004](0004-the-conformance-runner.md) | The conformance runner is a package of the core, and reads the schema itself | core | accepted |  |  |
-| [0005](0005-the-core-packages.md) | The core's packages and every name they export | core | accepted |  | 0012, 0016, 0020, 0021, 0022, 0023, 0025 |
+| [0005](0005-the-core-packages.md) | The core's packages and every name they export | core | accepted |  | 0012, 0014, 0016, 0020, 0021, 0022, 0023, 0025 |
 | [0006](0006-the-mediator-package.md) | The mediator holds an Accord's state and runs its operations | core | accepted |  | 0020, 0021, 0022, 0023, 0025 |
 | [0007](0007-one-checker.md) | The checks that read the tree are one Go program, proved by its own Go tests | process | accepted | 0002 | 0013, 0015, 0020 |
 | [0008](0008-reload.md) | Reload rebuilds a mediator from its record and closes what was left open | core | accepted |  | 0019, 0020, 0021, 0022, 0025 |
@@ -21,7 +21,7 @@ A new record takes the next free number, adds its row here, and adds its number 
 | [0011](0011-the-journal.md) | The journal, the state directory and the log | adapters | accepted |  | 0021, 0022, 0023, 0025 |
 | [0012](0012-the-kernel-hash.md) | The kernel hash, the default card, and a card of another module | formats | accepted | 0005 | 0020, 0021, 0023 |
 | [0013](0013-red-green-tests.md) | Tests are shown red against main and green at the head, however the branch was built | process | accepted | 0007 | 0015 |
-| [0014](0014-a-principal-per-party.md) | A principal per party, scoped to the roles the policy gives it | formats | accepted |  | 0020 |
+| [0014](0014-a-principal-per-party.md) | A principal per party, scoped to the roles the policy gives it | formats | accepted | 0005 | 0020 |
 | [0015](0015-rules-in-topic-files.md) | The rules live in topic files, and AGENTS.md is a short entry file | process | accepted | 0002, 0007, 0013 |  |
 | [0016](0016-verified-receipts.md) | Verified receipts have a type of their own | verify | accepted | 0005, 0009 |  |
 | [0017](0017-the-doors-own-code.md) | The door's own failures have a code of their own, and a reply has a size limit | adapters | accepted | 0010 | 0021 |
