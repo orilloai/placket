@@ -92,7 +92,7 @@ With no receipt there is no time to found at, so no binding's `until` is checked
 
 ## Consequences
 
-- A third party given only an Accord id, its founding set and a journal can say whether each decision it can read was one the Accord allowed, and which answers are witnessed by their answerer's own signature.
+- A third party given only an Accord id, its founding set and a journal can say that each receipt and close is signed by the Accord's mediator, and which answers are witnessed by their answerer's own signature. It can say that a decision was one the Accord allowed only when it also holds the openings of every member whose terms that decision reads, and the card names the kernel hash it trusts, its own; otherwise the decision row is skipped for it, and `verify` prints the shorter claim line.
 - The view check is as good as the view: a view states the outcome with no judgment, so a judge's decision is checked only as one the row lists to decide, never by what the judge said. A member that is only the receiver of a question checks that its closing fits the agreed rule, and not the answer's verdict toward the asker, which its view does not hold. A person checking two members runs verify twice.
 - A `witnessed` line means a call given passed row 4, and nothing less; a `contradicted` line means one was given and did not. A view line never claims a receipt it did not read.
 - A second implementation hashes a body's bytes alone, allows `mediaType` on a part, reads a delivery's shape before its body, founds a set with no receipt without checking `until`, and learns each from the text.
