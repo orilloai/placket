@@ -38,7 +38,7 @@ What the judge said is in the journal's `judged/` directory, never in a receipt.
 ## Making it yours
 
 - `judge.json` is the judge's config: its `name` on the card, its `provider` (`jev`), the `host` a request may go to, the `model`, the `threshold` and the `instruction`. Its hash goes into the card, so a change to any byte of it is a new Accord. Write your own instruction.
-- Put your own Jev key in `PLACKET_JEV_KEY` before you start the window. The window reads it once, holds it in memory and writes it nowhere. At start it prints which kinds may go to which host. With no key, the judge sends nothing and says none, as this pattern shows.
+- Put your own Jev key in `PLACKET_JEV_KEY` before you start the window. The window reads it once, holds it in memory and writes it nowhere. At start it prints which kinds may go to which host. With no key, the judge sends nothing and says none, as this pattern shows: as it is, `pattern.sh` clears `PLACKET_JEV_KEY` before its window starts, so a key already in your shell never sends its invented parts. Delete that line, marked `# CHANGE`, when you run your own parties.
 - Each request carries the part's kind, its body and the instruction, with the model, to the config's host. A raw body is never sent.
 - `use=advise` in `pattern.sh` lists the judge to advise. Change it to `decide` only once its advice has matched your approver's answers.
 

@@ -24,7 +24,7 @@ This guide starts with `placket` on your `PATH`. The [install section of the REA
 placket init approve
 ```
 
-It writes everything into `~/.config/placket/approve/` (`--dir` picks another, empty, directory): a key for the mediator, its operator, the principal who binds the parties, and one for each party, all mode 0600; each party's terms, in `approve/agent.terms`, `approve/person.terms` and `approve/applier.terms`; and the founding set. You hold every key, so `init` signs each party's acceptance of its own view, and the Accord is founded. Read your own view, what will cross for you, in `approve-person.key.state/<the Accord id's hex>/view.json`.
+It writes everything into `~/.config/placket/approve/` (`--dir` picks another, empty, directory; a second copy of the example also needs `--label`, such as `--dir ~/demo/approve2 --label approve2`, since the labels config already holds the first copy's `approve-<party>` labels and `init` refuses them with `label-taken`): a key for the mediator, its operator, the principal who binds the parties, and one for each party, all mode 0600; each party's terms, in `approve/agent.terms`, `approve/person.terms` and `approve/applier.terms`; and the founding set. You hold every key, so `init` signs each party's acceptance of its own view, and the Accord is founded. Read your own view, what will cross for you, in `approve-person.key.state/<the Accord id's hex>/view.json`.
 
 It prints the Accord's id and its three parties, `approve-agent`, `approve-person` and `approve-applier`, each with its key reference and role, and then the commands for the steps below. Each party is an entry of the labels config, so every command names it with `--label`.
 

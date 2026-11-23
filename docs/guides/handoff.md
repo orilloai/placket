@@ -18,7 +18,7 @@ This guide starts with `placket` on your `PATH`. The [install section of the REA
 placket init handoff
 ```
 
-It writes everything into `~/.config/placket/handoff/` (`--dir` picks another, empty, directory): one mediator key for both Accords, its operator's and the principal's keys, and a key per party and Accord, all mode 0600; each party's terms, under `handoff-plan/` and `handoff-review/`; and each founding set, with each party's acceptance of its own view, so both are founded. It prints each Accord's id and parties, `handoff-plan-planner`, `handoff-plan-coder`, `handoff-review-coder` and `handoff-review-reviewer`, with their key references and roles, and the commands for the steps below.
+It writes everything into `~/.config/placket/handoff/` (`--dir` picks another, empty, directory; a second copy of the example also needs `--label`, such as `--dir ~/demo/handoff2 --label handoff2`, since the labels config already holds the first copy's `handoff-<party>` labels and `init` refuses them with `label-taken`): one mediator key for both Accords, its operator's and the principal's keys, and a key per party and Accord, all mode 0600; each party's terms, under `handoff-plan/` and `handoff-review/`; and each founding set, with each party's acceptance of its own view, so both are founded. It prints each Accord's id and parties, `handoff-plan-planner`, `handoff-plan-coder`, `handoff-review-coder` and `handoff-review-reviewer`, with their key references and roles, and the commands for the steps below.
 
 ## 2. Start both windows
 

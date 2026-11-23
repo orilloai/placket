@@ -23,7 +23,7 @@ Each pattern is a directory `patterns/<job>/`, named for the caller's job in low
   - `## When to use it`: when this pattern fits, and when another one or none does.
   - `## What it relies on`: the sections of `spec/protocol.md` it relies on, by number and title.
   - `## What it claims`: the claim lines and the scope line it leans on, quoted as Placket prints them, so that nobody reads more into the pattern than Placket claims.
-- `pattern.sh`, the template. It is a POSIX `sh` script that uses Placket's command line and `jq`, beside the shell's own utilities, and nothing else but the one exception below. Every line a caller changes for their own use carries the comment `# CHANGE`, with what to put there. As it is, it runs from start to end on invented data: it makes its own keys, terms and founding set in the directory it runs in, starts its own window on a socket under `$TMPDIR`, does its job, and stops its window before it exits, on failure too.
+- `pattern.sh`, the template. It is a POSIX `sh` script that uses Placket's command line and `jq`, beside the shell's own utilities, and nothing else but the one exception below. Every line a caller changes for their own use carries the comment `# CHANGE`, with what to put there. As it is, it runs from start to end on invented data: it makes its own keys, terms and founding set in the directory it runs in, starts its own window on a socket under `$TMPDIR`, does its job, and stops its window before it exits, on failure too. A pattern that starts a window with a judge clears `PLACKET_JEV_KEY` first, on a line marked `# CHANGE`, so as it is it never sends its invented parts to a judge's host, whatever key the caller's shell holds.
 - `expected.txt`, exactly what a run of `pattern.sh` prints, standard output and standard error together. A run prints the same each time, so a pattern prints no key, hash, salt or time: it picks what it shows with `jq`.
 
 A pattern may also hold:
@@ -38,7 +38,7 @@ A pattern depends on nothing else: only the `placket` binary and `jq` on `PATH`,
 
 `tests/test_patterns.sh` finds every `patterns/*/pattern.sh`. A new pattern needs no change to `make ci`. For each one it:
 
-- checks the shape above: the three files, the four sections, at least one `# CHANGE` line in `pattern.sh`, and in `apply.sh` where there is one, and one line in the list above for each pattern and none for a pattern that is not here;
+- checks the shape above: the three files, the four sections, at least one `# CHANGE` line in `pattern.sh`, and in `apply.sh` where there is one, `unset PLACKET_JEV_KEY` before the first window in a `pattern.sh` that runs a judge, and one line in the list above for each pattern and none for a pattern that is not here;
 - copies the pattern's directory to a fresh directory and runs `sh pattern.sh` there, with the `placket` it built from the tree first on `PATH`, a fresh `TMPDIR` of the pattern's own, and no `PLACKET_JEV_KEY`, so no pattern reaches a judge's host;
 - passes the pattern when it exits 0 within 60 seconds, prints exactly its `expected.txt`, and leaves no process running.
 
