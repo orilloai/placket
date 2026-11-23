@@ -1,8 +1,9 @@
 #!/bin/sh
 # The README's Go program runs: built in a module of its own against the core in this tree, and fed a
 # receipts vector's reference and receipts, it prints exactly the number the vector expects to
-# verify, and exits 0. The README's Go section gives the go get line of a tagged core and says what
-# the core's packages promise.
+# verify, and exits 0. It refuses a changed signature by naming the receipt, and an input the
+# canonical form refuses, such as a repeated name or a second value. The README's Go section gives
+# the go get line of a tagged core and says what the core's packages promise.
 set -u
 
 root=$(cd "$(dirname "$0")/.." && pwd)
@@ -56,15 +57,42 @@ else
 	fail "the README's Go program on $vector, want exactly '$want' and exit 0"
 fi
 
-# A receipt changed by one character of its signature does not verify.
+# refused NAME FILE WANT: the program, fed FILE, prints exactly WANT on standard error, nothing on
+# standard output, and exits 1.
+refused() {
+	"$tmp/verify" <"$2" >"$tmp/stdout" 2>"$tmp/stderr"
+	rc=$?
+	if [ "$rc" -eq 1 ] && [ ! -s "$tmp/stdout" ] && [ "$(cat "$tmp/stderr")" = "$3" ]; then
+		echo "ok   the README's Go program refuses $1: $3"
+	else
+		{ cat "$tmp/stdout" "$tmp/stderr"; echo "exit $rc"; } >"$tmp/out"
+		fail "the README's Go program on $1, want exactly '$3' on standard error and exit 1"
+	fi
+}
+
+# A receipt changed by one character of its signature does not verify, and the first receipt that
+# fails is named.
 jq '.receipts[1].receipt.signatures[0].sig |= (if startswith("A") then "B" else "A" end + .[1:])' "$vector" >"$tmp/broken.json"
-"$tmp/verify" <"$tmp/broken.json" >"$tmp/out" 2>&1
+refused 'a receipt whose signature was changed' "$tmp/broken.json" 'not verified: receipts: signature at index 1'
+
+# The vector on one line, and its length: a name repeated after its last member, or bytes after it,
+# is refused at that offset.
+jq -c . "$vector" | tr -d '\n' >"$tmp/line.json"
+end=$(wc -c <"$tmp/line.json" | tr -d ' ')
+sed 's/}$/,"receipts":[]}/' "$tmp/line.json" >"$tmp/repeated.json"
+refused 'a repeated member name' "$tmp/repeated.json" "error input: canonical: duplicate-key at offset $end"
+{ cat "$tmp/line.json"; printf '{}'; } >"$tmp/trailing.json"
+refused 'a second JSON value after the object' "$tmp/trailing.json" "error input: canonical: invalid-json at offset $end"
+
+# A name that differs only in case is another member, which the program does not read.
+sed 's/}$/,"Receipts":[]}/' "$tmp/line.json" >"$tmp/case.json"
+"$tmp/verify" <"$tmp/case.json" >"$tmp/out" 2>&1
 rc=$?
-if [ "$rc" -eq 1 ] && ! grep -q '^verified:' "$tmp/out"; then
-	echo "ok   the README's Go program exits 1 on a receipt whose signature was changed"
+if [ "$rc" -eq 0 ] && [ "$(cat "$tmp/out")" = "$want" ]; then
+	echo "ok   the README's Go program reads members by their exact names"
 else
 	echo "exit $rc" >>"$tmp/out"
-	fail "the README's Go program on a changed signature, want exit 1 and no verified line"
+	fail "the README's Go program with a member 'Receipts' added, want exactly '$want' and exit 0"
 fi
 
 exit $failed

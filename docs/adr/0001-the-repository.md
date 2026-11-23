@@ -93,7 +93,7 @@ The repository holds `LICENSE` (Apache-2.0, for the code and the requirement tex
 
 - A builder can tell from the path alone whether a file is core, adapter, binary, recipe, text, format or vector, and the checks in `make ci` can rely on it: a check on `core/` does not need to guess where the core ends.
 - The core stays a module with no dependency beside the root module, so a verifier that needs only the core never pulls in an adapter, and nothing under `core/` can import the adapters.
-- A fresh clone builds the binary with `go build ./cmd/placket`, with nothing fetched but the toolchain.
+- A fresh clone builds the binary with `go build ./cmd/placket`. Until the core is first tagged, nothing is fetched but the toolchain; once it is tagged, the build also fetches the tagged core, which the root's `go.sum` pins.
 - A builder, a vector author and a verifier read the same text and reach the same result. A vector's expected code is derived from a check table, and a reviewer can check the derivation without reading code. A behaviour that exists only in code is a finding, and so is a code the text does not define.
 - The schemas are checked on every run of `make ci`, so the formats cannot drift from their examples unseen.
 - Changing what placket does costs a change to the text, and to a format's register row when a format changes, in the same change as the code. That is slower than changing code alone, and it is the point. An id freed by a removed requirement stays reserved, so the lists only grow.
