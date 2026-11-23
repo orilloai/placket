@@ -69,11 +69,9 @@ jobs:
           # 0 ok, 1 refused, 3 could not judge; anything but 0 fails the job.
           "$RUNNER_TEMP/redgreen" "$base" HEAD
   ci:
-    # The organisation's four-processor runner, a larger GitHub-hosted runner on GitHub's Ubuntu
-    # image: make ci runs its steps, its modules' tests and its shell tests side by side, and two
-    # processors made it slow and its timing uneven. Four is what a standard runner has in a public
-    # repository; once this one is public, this line names ubuntu-24.04 again.
-    runs-on: ubuntu-latest-m
+    # make ci runs its steps, its modules' tests and its shell tests side by side, so it needs four
+    # processors: a standard runner has four in a public repository, and two in a private one.
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
