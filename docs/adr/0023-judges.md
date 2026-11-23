@@ -1,6 +1,6 @@
 # 0023. Judges run in the window, off its loop, and the core takes their judgment as an input
 
-Status: accepted. Date: 2026-11-17. Amends records 0001, 0009, 0010, 0011 and 0012.
+Status: accepted. Date: 2026-11-17. Amends records 0001, 0005, 0006, 0009, 0010, 0011 and 0012. Amended by record 0024.
 
 ## Context
 

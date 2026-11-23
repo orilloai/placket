@@ -1,6 +1,6 @@
 # 0016. Verified receipts have a type of their own
 
-Status: accepted. Date: 2026-11-17.
+Status: accepted. Date: 2026-11-17. Amends records 0005 and 0009.
 
 ## Context
 

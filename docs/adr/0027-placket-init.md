@@ -1,6 +1,6 @@
 # 0027. `placket init` founds an example Accord, and a test runs each first hour
 
-Status: accepted. Date: 2026-11-19.
+Status: accepted. Date: 2026-11-19. Amends records 0001 and 0009.
 
 ## Context
 

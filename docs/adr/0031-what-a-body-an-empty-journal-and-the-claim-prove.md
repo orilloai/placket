@@ -1,6 +1,6 @@
 # 0031. What a body check, an empty journal and verify's claim line prove
 
-Status: accepted. Date: 2026-11-22. Amends records 0021 and 0028.
+Status: accepted. Date: 2026-11-22. Amends records 0021, 0028 and 0030.
 
 ## Context
 

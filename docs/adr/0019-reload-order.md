@@ -1,6 +1,6 @@
 # 0019. Reload takes its data first, then the times and the key
 
-Status: accepted. Date: 2026-11-17. Changes one signature of record 0008.
+Status: accepted. Date: 2026-11-17. Changes one signature of record 0008. Amended by record 0025.
 
 ## Context
 

@@ -1,6 +1,6 @@
 # 0030. The successor check takes the reader's id and the successor's acceptances, and founds at the close's time
 
-Status: accepted. Date: 2026-11-22. Amends record 0022.
+Status: accepted. Date: 2026-11-22. Amends record 0022. Amended by record 0031.
 
 ## Context
 

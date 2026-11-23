@@ -1,6 +1,6 @@
 # 0015. The rules live in topic files, and AGENTS.md is a short entry file
 
-Status: accepted. Date: 2026-11-17.
+Status: accepted. Date: 2026-11-17. Amends records 0002, 0007 and 0013.
 
 ## Context
 

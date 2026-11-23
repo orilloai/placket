@@ -1,6 +1,6 @@
 # 0022. An Accord is closed by a signed close receipt, and a verifier can say a closed log is complete
 
-Status: accepted. Date: 2026-11-17. Amends records 0008, 0010, 0011 and 0021.
+Status: accepted. Date: 2026-11-17. Amends records 0005, 0006, 0008, 0010, 0011 and 0021. Amended by records 0025, 0028 and 0030.
 
 ## Context
 

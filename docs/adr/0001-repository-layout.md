@@ -1,6 +1,6 @@
 # 0001. The repository layout
 
-Status: accepted. Date: 2026-11-11.
+Status: accepted. Date: 2026-11-11. Amended by records 0003, 0023, 0024 and 0027.
 
 ## Context
 

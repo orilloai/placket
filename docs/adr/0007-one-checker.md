@@ -1,6 +1,6 @@
 # 0007. The checks that read the tree are one Go program, proved by its own Go tests
 
-Status: accepted. Date: 2026-11-12.
+Status: accepted. Date: 2026-11-12. Amends record 0002. Amended by records 0013, 0015 and 0020.
 
 ## Context
 

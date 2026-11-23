@@ -1,6 +1,6 @@
 # 0028. What verify, released and show say is exactly what they checked
 
-Status: accepted. Date: 2026-11-21. Amends records 0021, 0022 and 0026.
+Status: accepted. Date: 2026-11-21. Amends records 0021, 0022 and 0026. Amended by record 0031.
 
 ## Context
 
