@@ -53,6 +53,11 @@ jobs:
           restore-keys: go-${{ runner.os }}-${{ env.GO_VERSION }}-
       - name: Tests are red at the merge base with main and green at the head
         shell: bash
+        env:
+          # The pull request's opener, for outside-commits-signed-off (docs/rules/changes.md): an
+          # outside pull request's commits need their authors' sign-off, Dependabot's are exempt, and
+          # the project's need none. Empty on a push to main, where only a bot's sign-off is refused.
+          PLACKET_PR_OPENER: ${{ github.event.pull_request.user.login }}
         run: |
           set -uo pipefail
           if ! git cat-file -e origin/main:tools/redgreen/go.mod 2>/dev/null; then
