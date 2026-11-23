@@ -19,7 +19,7 @@ import (
 // Verdict is a crossing's verdict (receipt-4).
 type Verdict string
 
-// The verdicts composition returns (receipt-4, record 0005).
+// The verdicts composition returns (receipt-4, record 0002).
 const (
 	Pass     Verdict = "pass"
 	Block    Verdict = "block"
@@ -49,7 +49,7 @@ type Judgment struct {
 
 // A Crossing is what composition decides: a part of a kind from a sender to a receiver, given by a
 // member or formed by the mediator from an answer, and the judgment a judge gave it, or nil
-// (composition-1, composition-7, maybe-8, record 0005).
+// (composition-1, composition-7, maybe-8, record 0002).
 type Crossing struct {
 	From, To string
 	Kind     string
@@ -59,7 +59,7 @@ type Crossing struct {
 
 // A Decision is composition's verdict and reason; for an escalate, and for a judged pass or block,
 // the rule every matching maybe term agreed on, with its roles in sorted order and its Judges the
-// judges both sides consented to, or none (composition-5, composition-7, record 0005); and the name
+// judges both sides consented to, or none (composition-5, composition-7, record 0002); and the name
 // of the judge that decided, empty when the terms decided.
 type Decision struct {
 	Verdict Verdict
@@ -69,7 +69,7 @@ type Decision struct {
 }
 
 // Decide decides c under the Accord a by the rows of section 5, in order; the first that applies
-// decides (composition-1 to composition-6, record 0005). It is the decision module's one entry point
+// decides (composition-1 to composition-6, record 0002). It is the decision module's one entry point
 // (one-decision-module).
 func Decide(a *setup.Accord, c Crossing) Decision {
 	var matching []setup.Term
