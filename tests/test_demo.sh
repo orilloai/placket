@@ -120,7 +120,7 @@ want='^== 1\.
 ^verifier: sha256:[0-9a-f]{64},billing,proposal,[^,]*,[^,]*,declined,,Invoices are kept for seven years\.,yes,
 ^verifier: sha256:[0-9a-f]{64},billing,proposal,[^,]*,[^,]*,undeliverable,,,,
 ^verifier: error verify signature receipts\.jsonl line 1$
-^verifier: exit 3$
+^verifier: exit 1$
 ^verifier: error verify signature receipts\.jsonl line 1$
 ^verifier: exit 3$
 ^demo: done'

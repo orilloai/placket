@@ -515,6 +515,29 @@ func TestTheReferenceIsGenerated(t *testing.T) {
 	}
 }
 
+// TestTheReferenceNamesTheCommandLineWords: the request layer of docs/reference/mediator-api.md says
+// that the MCP tools pass the API's words through unchanged, escalate and open: true, and that the
+// command line's --json uses the product words instead, ask and the closing word open, with a link to
+// section 11 of the protocol.
+func TestTheReferenceNamesTheCommandLineWords(t *testing.T) {
+	t.Parallel()
+	b, err := os.ReadFile(filepath.Join("..", "docs", "reference", "mediator-api.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, layer, ok := strings.Cut(string(b), "\n## The request layer\n")
+	if !ok {
+		t.Fatal("the reference has no request layer")
+	}
+	layer, _, _ = strings.Cut(layer, "\n### ")
+	for _, want := range []string{"`escalate`", "`open: true`", "`--json`", "product words", "`ask`", "`open`",
+		"(../../spec/protocol.md#11-what-the-command-line-prints-for-a-script)"} {
+		if !strings.Contains(layer, want) {
+			t.Errorf("the request layer's opening does not hold %q", want)
+		}
+	}
+}
+
 // workedFounding reads the worked Accord's openings, each under its actor, and its acceptances, so a
 // window of the worked set is founded at once (setup-contract-15).
 func workedFounding(t *testing.T, dir string) (map[string][]byte, []byte) {

@@ -62,3 +62,30 @@ func TestTheCLIReferenceSaysHowWatchPrints(t *testing.T) {
 		t.Errorf("watch's --json line does not say it prints one object per question:\n%s", section)
 	}
 }
+
+// TestTheCLIReferenceNamesBothVocabularies: the page's opening says that --json speaks the product
+// words of section 11, while the MCP tools and the mediator API name a verdict escalate where --json
+// says ask, and carry a question still open as open: true; and its exit code 1 is where verify's
+// error verify ends, a log that fails (commands-8).
+func TestTheCLIReferenceNamesBothVocabularies(t *testing.T) {
+	t.Parallel()
+	b, err := os.ReadFile(filepath.Join("..", "..", "docs", "reference", "cli.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	page := string(b)
+	opening, _, _ := strings.Cut(page, "\n## ")
+	for _, want := range []string{"the product words", "`ask`", "`escalate`", "`open: true`", "MCP tools", "[mediator API](mediator-api.md)"} {
+		if !strings.Contains(opening, want) {
+			t.Errorf("the page's opening does not hold %q", want)
+		}
+	}
+	for _, l := range strings.Split(page, "\n") {
+		if strings.HasPrefix(l, "| `1` |") && !strings.Contains(l, "a log that fails verification in `verify`") {
+			t.Errorf("exit code 1 does not name a log that fails verify: %q", l)
+		}
+		if strings.HasPrefix(l, "| `3` |") && !strings.Contains(l, "`error verify` from `verify` is a log that fails, exit 1") {
+			t.Errorf("exit code 3 does not leave verify's failing log to exit 1: %q", l)
+		}
+	}
+}

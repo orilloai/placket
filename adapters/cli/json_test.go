@@ -548,7 +548,8 @@ func TestJSONAWindowStops(t *testing.T) {
 
 // TestJSONAShownReceiptAndAVerifiedJournal shows and verifies a journal of one pass with --json:
 // each object holds its claim line and the scope line, and what the command prints on standard
-// output without --json; standard error is as without --json (commands-4).
+// output without --json; standard error is as without --json (commands-4). Under another key the
+// journal fails validity: error verify with its detail, exit 1, with and without --json (commands-8).
 func TestJSONAShownReceiptAndAVerifiedJournal(t *testing.T) {
 	t.Parallel()
 	a := newAccord(t, "ann", "bob")
@@ -616,7 +617,7 @@ func TestJSONAShownReceiptAndAVerifiedJournal(t *testing.T) {
 		t.Fatalf("verify under another key, without --json: %v", plain)
 	}
 	detail, _ := json.Marshal([]string{f[2], f[3], f[4] + " " + f[5]})
-	if plain.code != 3 || r.code != 3 || r.stderr != plain.stderr || r.stdout != `{"detail":`+string(detail)+`,"error":"verify","exit":3}`+"\n" {
+	if plain.code != cli.ExitBlock || r.code != cli.ExitBlock || r.stderr != plain.stderr || r.stdout != `{"detail":`+string(detail)+`,"error":"verify","exit":1}`+"\n" {
 		t.Fatalf("verify under another key: %v, without --json %v", r, plain)
 	}
 }
