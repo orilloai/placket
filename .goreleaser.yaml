@@ -8,6 +8,13 @@ version: 2
 
 project_name: placket
 
+# The core's tags, core/vX.Y.Z, name the core module, not a release. Without this, a snapshot of a
+# commit with no vX.Y.Z tag takes its version from the latest core tag, and its archives' names hold
+# the tag's slash.
+git:
+  ignore_tags:
+    - "core/*"
+
 builds:
   - id: placket
     main: ./cmd/placket
