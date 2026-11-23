@@ -48,6 +48,74 @@ Or by hand:
    placket version
    ```
 
+The command line installs from the release, in one of these ways. A versioned `go install` of it is not supported in 0.1.
+
+## Use the core from Go
+
+The core is a Go module of its own, `github.com/orilloai/placket/core`, with no dependency, tagged `core/vX.Y.Z`. A Go project requires it at a tag:
+
+```sh
+go get github.com/orilloai/placket/core@v0.1.0
+```
+
+Its packages outside `internal/`, which `core/README.md` lists, are its API, and what it promises is "0.x, may change": a later 0.x version may change or remove an exported name, and `CHANGELOG.md` says which. The root module's packages, under `adapters/` and `cmd/`, are not a supported Go API.
+
+This program verifies a mediator's receipts with the mediator's reference alone. It reads, on standard input, a JSON object whose `reference` is the mediator's reference and whose `receipts` lists `{"receipt": ...}` in the order the mediator wrote them, as a receipts vector does, such as `vectors/receipts/a-chain-verifies.json`:
+
+```go
+package main
+
+import (
+	"encoding/json"
+	"fmt"
+	"io"
+	"os"
+
+	"github.com/orilloai/placket/core/canonical"
+	"github.com/orilloai/placket/core/receipts"
+)
+
+// maxInput is the most the program reads of standard input.
+const maxInput = 16 << 20
+
+func main() {
+	input, err := io.ReadAll(io.LimitReader(os.Stdin, maxInput+1))
+	if err != nil || len(input) > maxInput {
+		refuse("standard input cannot be read, or holds more than 16 MiB")
+	}
+	// The canonical form refuses a repeated name, bytes after the value and anything else placket's
+	// parsing refuses, so the program reads the input as every other reader of it does.
+	if _, err := canonical.Form(input); err != nil {
+		refuse(err.Error())
+	}
+	// Members are taken by their exact names: a struct field would also match a name in another case.
+	var in map[string]json.RawMessage
+	var reference string
+	var entries []map[string]json.RawMessage
+	if json.Unmarshal(input, &in) != nil || json.Unmarshal(in["reference"], &reference) != nil ||
+		json.Unmarshal(in["receipts"], &entries) != nil || entries == nil {
+		refuse("the input is not a JSON object of reference and receipts")
+	}
+	list := make([][]byte, len(entries))
+	for i, e := range entries {
+		list[i] = e["receipt"]
+	}
+	verified, err := receipts.Verify(reference, list)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "not verified:", err)
+		os.Exit(1)
+	}
+	fmt.Println("verified:", len(verified))
+}
+
+func refuse(why string) {
+	fmt.Fprintln(os.Stderr, "error input:", why)
+	os.Exit(1)
+}
+```
+
+Fed that vector, it prints `verified: 3`. Change one character of a receipt's signature and it exits 1, naming the first receipt that fails. It refuses an input the canonical form refuses, such as one with a repeated name or bytes after the object, and verifies nothing.
+
 ## Quickstart
 
 Each of placket's three uses starts with one `placket init`, which founds its example Accord for you alone and prints every command that comes next. Each guide takes it from there to a receipt you verify, with no judge's key.

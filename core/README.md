@@ -10,7 +10,9 @@ Placket's core: the Go module `github.com/orilloai/placket/core`. It has no depe
 | `composition` | The decision module: a crossing's verdict and reason (composition-1 to composition-7), and the crossings a member's view lists, each decided by it (setup-contract-14). |
 | `founding` | Founding an Accord by every row, the acceptances' included; a member's view and its acceptance (setup-contract-14 to setup-contract-16). |
 | `receipts` | Building, verifying, reading and reconciling receipts, and recognising a question's receipts (receipt-1 to receipt-10, crossing-5). |
+| `answer` | Signing and reading the answer call, by which a member accepts, changes, declines or cancels a question (maybe-11). |
 | `mediator` | One Accord's state and operations: the door, giving, fetching, asking, answering, deadlines, release and reload (maybe-1 to maybe-10). |
+| `conform` | Checking a mediator's receipts for conformance to their Accord: validity first, then that every decision a receipt states is one the Accord let its decider make (verify-2). |
 | `conformance` | The conformance runner, which runs every vector under `vectors/` through the packages above. |
 | `internal/shape` | The format rules the packages share, such as the timestamp rule. |
 

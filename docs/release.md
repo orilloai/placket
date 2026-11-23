@@ -214,6 +214,8 @@ jobs:
 ### Versions
 
 - Tags are `vMAJOR.MINOR.PATCH`, for the binary and the root module alike. The first release is `v0.1.0`.
+- The core module, `github.com/orilloai/placket/core`, has tags of its own, `core/vMAJOR.MINOR.PATCH`. The maintainer tags it by hand on `main`, after every core change a release needs has landed and before that release; the release workflow tags only `vMAJOR.MINOR.PATCH`. The first is `core/v0.1.0`. GitHub refuses to move or delete a core tag, as it does a release tag. The release workflow names the version GoReleaser builds, so a release or a snapshot takes it only from a `vX.Y.Z` tag, never from a core tag.
+- The root module requires the tagged core, with no `replace` (`root-module`), so the binary is built against the core a Go user outside placket gets. A root change that needs a new core name waits for the next core tag; the core's own tests and the vectors run on the core in the tree.
 - The protocol's version and each frozen format's version are their own, in the register `spec/frozen-formats.md` (`format-change-noted`); each release's notes name them.
 - Go's version is set in two places that change together: the `toolchain` line of `go.mod`, which the release workflow builds with, and `GO_VERSION` in `.github/workflows/loom.yml`, which `make ci` runs with.
 - GoReleaser, cosign and syft are pinned by version in the release workflow; a change of any of them may change the archives' bytes, so it lands in its own pull request.
