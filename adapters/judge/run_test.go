@@ -156,7 +156,7 @@ func TestAdviseDecidesNothing(t *testing.T) {
 }
 
 // TestLine writes each record's line: canonical, with only the members it has, and output that is
-// not valid UTF-8 as standard base64 (docs/adr/0023-judges.md).
+// not valid UTF-8 as standard base64 (docs/adr/0009-who-decided.md).
 func TestLine(t *testing.T) {
 	t.Parallel()
 	for _, c := range []struct {

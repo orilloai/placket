@@ -452,7 +452,7 @@ func (d *Dir) Salts() ([]Salt, error) {
 	return out, nil
 }
 
-// KeepClose keeps the Accord's close receipt in close.json (close-3, docs/adr/0022-the-close.md): it
+// KeepClose keeps the Accord's close receipt in close.json (close-3, docs/adr/0010-the-close-and-the-successor.md): it
 // makes the file, mode 0600, synced with the directory, when it is absent, and leaves it as it is
 // when it holds the same receipt. A file with no line feed, as a crash while it was written leaves
 // it, was never written whole: it is replaced, through a file of its own renamed over it. A file

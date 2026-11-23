@@ -19,9 +19,9 @@ func init() {
 }
 
 // cardCommand is `card --default [--judge FILE]...`: it prints this build's card on standard output,
-// and its card hash and the module it names on standard error (docs/adr/0012-the-kernel-hash.md).
+// and its card hash and the module it names on standard error (docs/adr/0007-the-card-and-the-kernel-hash.md).
 // Each --judge is a judge's config: the card lists them in flag order, each by its name, this
-// adapter's version and the config's typed hash (setup-contract-4, docs/adr/0023-judges.md). No
+// adapter's version and the config's typed hash (setup-contract-4, docs/adr/0009-who-decided.md). No
 // other card is built by the command line, so --default is required.
 func cardCommand(r *run, args []string) int {
 	fs := newFlags("card")

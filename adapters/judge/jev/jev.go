@@ -1,5 +1,5 @@
 // Package jev is the judge adapter for Jev, a decision model a user calls with their own key, behind
-// the provider-neutral judge.Judge (docs/adr/0023-judges.md).
+// the provider-neutral judge.Judge (docs/adr/0009-who-decided.md).
 //
 // What it sends, in placket's terms: one HTTPS request, a POST to the config's host at path, that
 // carries the config's model, the config's instruction, the part's kind and the part's body, with

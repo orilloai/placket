@@ -57,7 +57,7 @@ const (
 )
 
 // Code is a code of the verifier (receipt-6) or of reconciliation (receipt-7), or a misuse of Build
-// (record 0005).
+// (record 0002).
 type Code string
 
 // The codes, in the order of the two tables.
@@ -83,7 +83,7 @@ const (
 
 // Error is a failed verification or reconciliation: its code, the index of the receipt it failed at,
 // and for kept the party's reference. Index is -1 for reference and for a misuse of Build
-// (receipt-6, receipt-7, record 0005).
+// (receipt-6, receipt-7, record 0002).
 type Error struct {
 	Code  Code
 	Index int
@@ -216,7 +216,7 @@ type Statement struct {
 
 // Verified is a receipt's statement that passed Verify, or one this package built and signed; or a
 // close that did (close-2). Only this package makes one that holds a statement or a close, so a
-// caller holding a Verified holds one that was checked (verified-by-type, record 0016). The zero
+// caller holding a Verified holds one that was checked (verified-by-type, record 0002). The zero
 // Verified, which any package can write, holds neither: its Statement is the zero Statement, with no
 // id, and it is no close.
 type Verified struct {
@@ -224,11 +224,11 @@ type Verified struct {
 	c *Close
 }
 
-// Statement returns a copy of the verified statement (record 0016). For a close it is the zero
+// Statement returns a copy of the verified statement (record 0002). For a close it is the zero
 // Statement: a close is read with Close.
 func (v Verified) Statement() Statement { return v.s }
 
-// Close returns a copy of the verified close, and true, when v is one (close-2, record 0022).
+// Close returns a copy of the verified close, and true, when v is one (close-2, record 0010).
 func (v Verified) Close() (Close, bool) {
 	if v.c == nil {
 		return Close{}, false
@@ -238,7 +238,7 @@ func (v Verified) Close() (Close, bool) {
 
 // Digest returns the salted digest of a part: the lowercase hex SHA-256 of its salt's bytes followed
 // by its body's bytes (crossing-3). The salt comes first, in the order of crossing-3's formula: an
-// exception to the data-first order of inputs-as-parameters, recorded in record 0016.
+// exception to the data-first order of inputs-as-parameters, recorded in record 0002.
 func Digest(salt, body []byte) string {
 	h := sha256.New()
 	h.Write(salt)
@@ -260,7 +260,7 @@ func (p Predicate) value() shape.Object {
 }
 
 // Build writes the receipt of subject and predicate, signed by the mediator's key, and returns it and
-// its statement, whose ID is the receipt's id (receipt-1, record 0016). The
+// its statement, whose ID is the receipt's id (receipt-1, record 0002). The
 // predicate's mediator is the key's reference, whatever it held. A statement the verifier's row 4
 // would refuse is not written.
 func Build(subject Subject, predicate Predicate, key signing.Key) ([]byte, Verified, error) {

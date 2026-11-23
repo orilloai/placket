@@ -76,7 +76,7 @@ func configCases(t testing.TB) []struct {
 }
 
 // TestReadConfigRefuses reads configs that do not hold: each is refused with its code and no hash
-// (docs/adr/0023-judges.md).
+// (docs/adr/0009-who-decided.md).
 func TestReadConfigRefuses(t *testing.T) {
 	t.Parallel()
 	for _, c := range configCases(t) {

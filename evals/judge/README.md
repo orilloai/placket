@@ -1,6 +1,6 @@
 # The judge eval
 
-A basic eval of a judge: 30 synthetic labelled cases, and a command that runs them against a judge's config with the user's own key. It is run by hand, never by `make ci`, and its result sets the threshold of the shadow-judge pattern's config (`patterns/shadow-judge/README.md`, "The measured threshold"). `docs/adr/0023-judges.md` says why.
+A basic eval of a judge: 30 synthetic labelled cases, and a command that runs them against a judge's config with the user's own key. It is run by hand, never by `make ci`, and its result sets the threshold of the shadow-judge pattern's config (`patterns/shadow-judge/README.md`, "The measured threshold"). `docs/adr/0009-who-decided.md` says why.
 
 ## The cases
 

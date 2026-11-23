@@ -51,7 +51,7 @@ const applierBase = "https://raw.githubusercontent.com/orilloai/placket/"
 // no binding of it should stop it first.
 const bindUntil = "2099-01-01T00:00:00Z"
 
-// An example is one Accord, or two, that init founds for one person (docs/adr/0027-placket-init.md).
+// An example is one Accord, or two, that init founds for one person (docs/adr/0012-the-mediator-api-and-the-command-line.md).
 type example struct {
 	accords []exampleAccord
 	// pattern is the applier's pattern, and target what its run line names after the label; none
@@ -137,7 +137,7 @@ func (x example) longest(l string) int {
 	return n
 }
 
-// initCommand is `init <example> [--dir D] [--label L]` (docs/adr/0027-placket-init.md): it founds
+// initCommand is `init <example> [--dir D] [--label L]` (docs/adr/0012-the-mediator-api-and-the-command-line.md): it founds
 // the example's Accords for one person, who holds every key, and prints what to run next. The
 // example is approve, merge or handoff; the label is the example's name unless --label gives one.
 //

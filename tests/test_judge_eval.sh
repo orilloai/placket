@@ -2,7 +2,7 @@
 # The judge eval's cases: evals/judge/cases.jsonl holds at least 30 cases, one canonical object per
 # line with exactly expect, id, injection, kind and text; at least 6 non-injection cases of each of
 # pass, block and abstain, and at least 6 injection cases, none of which expects pass; and no id
-# twice (docs/adr/0023-judges.md). It reads the file with jq only, and runs no judge.
+# twice (docs/adr/0009-who-decided.md). It reads the file with jq only, and runs no judge.
 set -u
 
 root=$(cd "$(dirname "$0")/.." && pwd)

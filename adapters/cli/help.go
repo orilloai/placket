@@ -8,7 +8,7 @@ import (
 
 // --help, -help and -h, given as a flag and not as a flag's value, ask for a command's usage, which
 // it prints on standard output, exiting 0, before it reads any file, socket or state, and without
-// checking the flags it requires (commands-1, docs/adr/0029-help-and-answers-the-window-does-not-show.md).
+// checking the flags it requires (commands-1, docs/adr/0012-the-mediator-api-and-the-command-line.md).
 // The usage is the line `usage: placket <command> [flags]`, one line per flag of the command's row
 // of the command table, in name order, each its flag and value as the row writes them, its sentence
 // and any default, and one line per subcommand, `placket <subcommand> [flags]`: the rows of the

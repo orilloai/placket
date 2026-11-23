@@ -574,7 +574,7 @@ func (r *run) putModule(set []byte) {
 }
 
 // moduleLines are the lines that name the operator and the decision module of a founded set, the
-// line that names the module when it is not this build's (docs/adr/0012-the-kernel-hash.md), and one
+// line that names the module when it is not this build's (docs/adr/0007-the-card-and-the-kernel-hash.md), and one
 // line per judge of the card, in card order.
 func moduleLines(set []byte) []string {
 	k, _ := kernelOf(cardOf(set))

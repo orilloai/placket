@@ -157,7 +157,7 @@ func (a *judgedAccord) startJudged(t *testing.T, getenv func(string) string, jud
 
 // TestCardListsTheJudges builds a card with two judges' configs: its judges are each config's name,
 // jev.Version and the typed hash of the config's canonical bytes, in flag order, as the founded
-// Accord reads them (setup-contract-4, docs/adr/0023-judges.md). A config that does not hold is
+// Accord reads them (setup-contract-4, docs/adr/0009-who-decided.md). A config that does not hold is
 // tool error judge with its code.
 func TestCardListsTheJudges(t *testing.T) {
 	t.Parallel()
@@ -267,7 +267,7 @@ func refoundJudged(t *testing.T, a *judgedAccord, card string) (string, string) 
 // TestTheWindowSaysWhereContentMayGo starts the window with the judges' key and without: after its
 // operator line it prints review's kinds, host and model, or that review has no key, and that spare,
 // which no term lists, sends nothing. With no key a patch is asked and review's line is none, no-key
-// (docs/adr/0023-judges.md).
+// (docs/adr/0009-who-decided.md).
 func TestTheWindowSaysWhereContentMayGo(t *testing.T) {
 	t.Parallel()
 	a := newJudgedAccord(t)
@@ -309,7 +309,7 @@ func judgedReceipt(t *testing.T, a *judgedAccord) string {
 }
 
 // TestJudgedIsDroppable gives a judged patch, then removes judged/: verify --founding and log print
-// what they printed before, and the window restarts as before (docs/adr/0023-judges.md).
+// what they printed before, and the window restarts as before (docs/adr/0009-who-decided.md).
 func TestJudgedIsDroppable(t *testing.T) {
 	t.Parallel()
 	a := newJudgedAccord(t)
@@ -376,7 +376,7 @@ func TestTheKeyIsReadOnceAndWrittenNowhere(t *testing.T) {
 
 // TestACloseNeedsNoJudge closes a judged Accord's journal with no --judge, and starts the closed
 // window with none: the close exits 0, and the closed window prints its closed start line and no
-// judge line, and neither reads the key (close-1, docs/adr/0023-judges.md).
+// judge line, and neither reads the key (close-1, docs/adr/0009-who-decided.md).
 func TestACloseNeedsNoJudge(t *testing.T) {
 	t.Parallel()
 	a := newJudgedAccord(t)

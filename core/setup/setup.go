@@ -12,7 +12,7 @@
 // (setup-contract-11), the seal of each declaration and its opening (setup-contract-12,
 // setup-contract-13), and founding without the openings (setup-contract-16). It runs rows 1 to 17 of
 // founding's table; rows 18 to 21, which read the acceptances and the views, are core/founding's,
-// since a view is composition's (docs/adr/0025-sealed-terms.md).
+// since a view is composition's (docs/adr/0006-founding.md).
 package setup
 
 import (
@@ -26,7 +26,7 @@ import (
 )
 
 // Code is a founding refusal code, spelled as the check table of section 3 spells it
-// (setup-contract-1 to setup-contract-10, record 0005).
+// (setup-contract-1 to setup-contract-10, record 0002).
 type Code string
 
 // The founding codes, in the order of the check table (section 3).
@@ -89,7 +89,7 @@ const CodeAt Code = "at"
 const CodeViewer Code = "viewer"
 
 // Error is a refused founding: the code of the first row that failed. It carries nothing of the set
-// (record 0005).
+// (record 0002).
 type Error struct{ Code Code }
 
 // Error returns the package and the code, and nothing of the set.
@@ -150,7 +150,7 @@ type Rule struct {
 	Judges  []Judge
 }
 
-// An Accord is a founded founding set (setup-contract-5, record 0005). Its
+// An Accord is a founded founding set (setup-contract-5, record 0002). Its
 // read methods take a nil *Accord as an Accord with no members and no terms, and return zero values,
 // so a caller handed none fails closed and never panics (core-no-panic).
 type Accord struct {
@@ -209,7 +209,7 @@ func (a *Accord) CardJudges() []CardJudge {
 }
 
 // JudgeKinds returns the kinds of every term, of any member, whose resolve lists the judge named
-// name, sorted and each once (setup-contract-1, docs/adr/0023-judges.md). Only a maybe term has a
+// name, sorted and each once (setup-contract-1, docs/adr/0009-who-decided.md). Only a maybe term has a
 // resolve, so it compares no stance and decides nothing: it is a superset of the kinds that can
 // reach the judge, since both sides must agree (composition-7), and the window prints it at start.
 func (a *Accord) JudgeKinds(name string) []string {

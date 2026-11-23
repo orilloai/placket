@@ -17,7 +17,7 @@ var (
 // reference alone, by the rows of section 8: the reference once, then each receipt in list order,
 // every row of one before the next (receipt-6). It stops at the first failure and returns its code
 // with the receipt's index. A list that verifies yields its statements as Verified, the type only
-// verification makes (record 0016); an empty list verifies.
+// verification makes (record 0002); an empty list verifies.
 func Verify(mediator string, list [][]byte) ([]Verified, error) {
 	// Row 0.
 	if !isReference(mediator) {
@@ -51,7 +51,7 @@ func first(release error, close, rest *Error) error {
 	return nil
 }
 
-// verifiedOf makes each entry the type only verification makes (record 0016).
+// verifiedOf makes each entry the type only verification makes (record 0002).
 func verifiedOf(entries []entry) []Verified {
 	out := make([]Verified, len(entries))
 	for i, e := range entries {
@@ -277,7 +277,7 @@ const (
 )
 
 // A Place is a receipt's place among the questions of its list: its role and, for every role but
-// RoleGive, RoleOutside and RoleClose, the index of its question's receipt (receipt-6, record 0005).
+// RoleGive, RoleOutside and RoleClose, the index of its question's receipt (receipt-6, record 0002).
 type Place struct {
 	Role     Role
 	Question int
@@ -287,7 +287,7 @@ type Place struct {
 // every reader of receipts applies, and returns each receipt's place. A receipt that belongs to a
 // question but has no place in it, and a resolution receipt that belongs to no question, fail release
 // at their index (section 8, row 7). It takes Verified alone, so no caller reads the questions of
-// receipts nobody verified (record 0016).
+// receipts nobody verified (record 0002).
 func Releases(list []Verified) ([]Place, error) {
 	entries := make([]entry, len(list))
 	for i, v := range list {
@@ -392,14 +392,14 @@ type Kept struct {
 	Delivered [][]byte
 }
 
-// An Item names a receipt, by its id, in a party's list of a report (receipt-7, record 0005).
+// An Item names a receipt, by its id, in a party's list of a report (receipt-7, record 0002).
 type Item struct {
 	Actor     string
 	ReceiptID string
 }
 
 // A Missed names a kept envelope, by its seq, that no presented receipt echoes for its party
-// (receipt-7, record 0005).
+// (receipt-7, record 0002).
 type Missed struct {
 	Actor string
 	Seq   int64

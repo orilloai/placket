@@ -250,7 +250,7 @@ func TestJudgesRunOnlyWhereAsked(t *testing.T) {
 
 // TestAJudgeOnAClosedAccord gives a report a judge is listed for on a closed Accord: the window starts
 // with no judge configs and no reach, the reply is the rejection closed, and no judge is asked
-// (close-3, docs/adr/0023-judges.md).
+// (close-3, docs/adr/0009-who-decided.md).
 func TestAJudgeOnAClosedAccord(t *testing.T) {
 	t.Parallel()
 	j := newJudged(t, []string{"a"}, uses("a", "decide"), false)
@@ -402,7 +402,7 @@ func TestNoJudgeAtRelease(t *testing.T) {
 
 // TestARequestHoldsOnlyKindBodyInstruction runs a judged give through the Jev adapter against a
 // server that records each request: the request holds none of the message's id, its salt, the
-// members, the Accord, the receipts or the role labels (docs/adr/0023-judges.md).
+// members, the Accord, the receipts or the role labels (docs/adr/0009-who-decided.md).
 func TestARequestHoldsOnlyKindBodyInstruction(t *testing.T) {
 	t.Parallel()
 	var mu sync.Mutex
@@ -456,7 +456,7 @@ func TestARequestHoldsOnlyKindBodyInstruction(t *testing.T) {
 
 // TestTheJudgedFileIsDroppable gives a judged report, checks its judged file and that the receipts
 // hold nothing of the model's output, removes judged/, and restarts: the receipts and the open
-// question are as before (docs/adr/0023-judges.md).
+// question are as before (docs/adr/0009-who-decided.md).
 func TestTheJudgedFileIsDroppable(t *testing.T) {
 	t.Parallel()
 	j := newJudged(t, []string{"a", "b"}, uses("a", "decide", "b", "decide"), false)
@@ -659,7 +659,7 @@ func TestAJudgedAppendThatFails(t *testing.T) {
 // TestTheConfigsMustBeTheCards starts a window whose configs are not the card's: a config whose
 // instruction differs by a byte, none for a judge the card lists, one the card does not list, and a
 // card whose version is not this adapter's. Each is CodeJudge, and the journal stays unfounded; a
-// window whose configs are the card's prints each judge's reach (docs/adr/0023-judges.md).
+// window whose configs are the card's prints each judge's reach (docs/adr/0009-who-decided.md).
 func TestTheConfigsMustBeTheCards(t *testing.T) {
 	t.Parallel()
 	j := newJudged(t, []string{"a"}, uses("a", "decide"), false)

@@ -10,7 +10,7 @@ import (
 
 // TestTheWindowPrintsAdvice gives a patch whose rule lists review to advise, with no key: the patch
 // is asked, and the window prints exactly the line advise review none <receipt id> once review has
-// said none (docs/adr/0023-judges.md).
+// said none (docs/adr/0009-who-decided.md).
 func TestTheWindowPrintsAdvice(t *testing.T) {
 	t.Parallel()
 	a := newJudgedAccordOf(t, "advise")

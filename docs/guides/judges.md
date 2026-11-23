@@ -33,7 +33,7 @@ The person still answers every question. Compare the judge's advice with the per
 
 ## Set one up
 
-1. Write the judge's config, `judge.json`: its `name`, `provider` (`jev`), `host`, `model`, `threshold`, a whole number from 0 to 100, and `instruction`. Its hash goes into the card, so a change to any byte of it is a new Accord ([`docs/adr/0023-judges.md`](../adr/0023-judges.md)).
+1. Write the judge's config, `judge.json`: its `name`, `provider` (`jev`), `host`, `model`, `threshold`, a whole number from 0 to 100, and `instruction`. Its hash goes into the card, so a change to any byte of it is a new Accord ([`docs/adr/0009-who-decided.md`](../adr/0009-who-decided.md)).
 2. List the judge on the card, and found the Accord with that card and the terms that list it:
 
    ```sh

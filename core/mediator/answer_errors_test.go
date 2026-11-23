@@ -112,7 +112,7 @@ func TestAnswerErrorTextQuotesNoInput(t *testing.T) {
 
 // TestAZeroValueMediator calls every operation of a Mediator no Found or Reload made: each with an
 // error result returns *Error unfounded, the reads return false or nothing, and none panics
-// (record 0006).
+// (record 0008).
 func TestAZeroValueMediator(t *testing.T) {
 	t.Parallel()
 	var z mediator.Mediator

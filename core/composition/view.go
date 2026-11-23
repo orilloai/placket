@@ -9,7 +9,7 @@ import (
 
 // This file is outside the kernel hash (kernel.go reads composition.go alone): it decides nothing.
 // It lists the crossings a member's own terms select and decides each with Decide, so a view's
-// outcomes are the module's verdicts (setup-contract-14, docs/adr/0025-sealed-terms.md).
+// outcomes are the module's verdicts (setup-contract-14, docs/adr/0006-founding.md).
 
 // A Side is one crossing a member is a side of, as its own terms select it: the counterpart, the
 // direction from the member, the kind, and Decide's decision of that crossing, given by a member with

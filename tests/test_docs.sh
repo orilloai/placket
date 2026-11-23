@@ -21,7 +21,7 @@
 #   its seal salt;
 # - the threat model's judge provider row names the model, the key and the fixed words a request
 #   carries beside the part's kind, body and instruction;
-# - the threat model's L22, decision record 0022 and the rotation guide say that one member can keep
+# - the threat model's L22, decision record 0010 and the rotation guide say that one member can keep
 #   the close from being written, by giving parts to a receiver that never fetches, and that a
 #   successor pinned by supersedes waits with it;
 # - the README's verify of the committed demo journal names the demo's Accord id written out, never
@@ -312,13 +312,13 @@ elif [ -n "$missing" ]; then
 else
 	ok "docs/security/threat-model.md: L22 says one member can keep the close, and a pinned successor, waiting"
 fi
-waits=$(tr '\n' ' ' <docs/adr/0022-the-close.md | grep -oE '[^.]*the close waits on fetches[^.]*')
+waits=$(tr '\n' ' ' <docs/adr/0010-the-close-and-the-successor.md | grep -oE '[^.]*the close waits on fetches[^.]*')
 if [ -z "$waits" ]; then
-	fail "docs/adr/0022-the-close.md has no sentence that says the close waits on fetches"
+	fail "docs/adr/0010-the-close-and-the-successor.md has no sentence that says the close waits on fetches"
 elif printf '%s\n' "$waits" | grep -q 'rare'; then
-	fail "docs/adr/0022-the-close.md calls the case where the close waits on fetches rare; one member can cause it" "$waits"
+	fail "docs/adr/0010-the-close-and-the-successor.md calls the case where the close waits on fetches rare; one member can cause it" "$waits"
 else
-	ok "docs/adr/0022-the-close.md: the close waiting on fetches is not called rare"
+	ok "docs/adr/0010-the-close-and-the-successor.md: the close waiting on fetches is not called rare"
 fi
 nothing=$(tr '\n' ' ' <docs/guides/rotation.md | grep -oE 'Nothing waits for a member to fetch[^.]*')
 if [ -z "$nothing" ]; then

@@ -7,7 +7,7 @@ import (
 )
 
 // Queued is a delivery not yet fetched: the member it is queued for, and its canonical bytes as Get
-// would return them (crossing-3, record 0006). Reload takes it back (record 0008). It holds a body
+// would return them (crossing-3, record 0008). Reload takes it back (record 0008). It holds a body
 // and a salt, so it prints as a fixed text under every format verb (secrets-never-print).
 type Queued struct {
 	To       string

@@ -1,6 +1,6 @@
 # The door, the journal and the command line
 
-The rules for `adapters/` and `cmd/`: the socket door, the journal, key files, the state directory, the log export and the command line. An adapter hands work to the core and takes the world off its hands. `docs/adr/0010-the-door.md` and `docs/adr/0011-the-journal.md` record the design.
+The rules for `adapters/` and `cmd/`: the socket door, the journal, key files, the state directory, the log export and the command line. An adapter hands work to the core and takes the world off its hands. `docs/adr/0011-the-door-and-the-journal.md` records the design.
 
 ## `adapters-no-recheck`
 
@@ -54,7 +54,7 @@ Checked by: the reviewer.
 
 The door reads the clock once per call, at whole seconds, and uses that one time for the call, and decides what the core cannot know. A salt is minted with `crypto/rand` by the party that gives or answers, and the door mints none.
 
-Why: the core takes the world as parameters (`core-no-world`), one time per call keeps a call's receipts consistent, and an answerer that minted its own salt can show what it signed (`docs/adr/0021-who-decided-and-the-answer-call.md`).
+Why: the core takes the world as parameters (`core-no-world`), one time per call keeps a call's receipts consistent, and an answerer that minted its own salt can show what it signed (`docs/adr/0009-who-decided.md`).
 
 Checked by: the reviewer.
 
@@ -76,7 +76,7 @@ Checked by: the reviewer.
 
 ## `state-lock`
 
-A `give` or a `resolve` takes the state directory's exclusive lock before it reads the sequence number, or anything it writes from, and keeps it until the reply is handled. A `get` and a `result` take it only to fetch and persist what they fetch. A call that waits at the door holds no lock while it waits, and `questions`, which reads no sequence number and writes nothing, takes none (`docs/adr/0024-the-mediator-api.md`).
+A `give` or a `resolve` takes the state directory's exclusive lock before it reads the sequence number, or anything it writes from, and keeps it until the reply is handled. A `get` and a `result` take it only to fetch and persist what they fetch. A call that waits at the door holds no lock while it waits, and `questions`, which reads no sequence number and writes nothing, takes none (`docs/adr/0012-the-mediator-api-and-the-command-line.md`).
 
 Why: two commands at once must not reuse a sequence number, and a call that waits for up to a minute must not stop the same key's answer or give.
 
@@ -126,7 +126,7 @@ Checked by: `make ci` checks string literals, step `claims-stop-at-crossing`; th
 
 The answerer's signed call travels inside every delivery its answer queues, as the delivery's `answer`, the released part included. The journal keeps each call it accepted in `answers.jsonl`, with no body and no salt, before the receipts of its closing. The call is never in a receipt: a receipt names it by its typed hash.
 
-Why: every party an answer reaches, and the operator's journal, can show who answered, so a verifier can say an answer is witnessed, and the journal keeps no clear text it does not need (`docs/adr/0021-who-decided-and-the-answer-call.md`).
+Why: every party an answer reaches, and the operator's journal, can show who answered, so a verifier can say an answer is witnessed, and the journal keeps no clear text it does not need (`docs/adr/0009-who-decided.md`).
 
 Checked by: the reviewer.
 

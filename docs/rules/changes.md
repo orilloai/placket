@@ -72,7 +72,7 @@ No commit of a change carries a `Signed-off-by` in a bot's name: one that holds 
 
 Why: a sign-off is a person's statement under the Developer Certificate of Origin, so an outside contributor's commits carry their own, and a bot's certifies nothing.
 
-Checked by: the workflow's `red-green-tests` job, with `main`'s copy of `tools/redgreen/`, after the `red-green-tests` verdict. The opener is the pull request's author, passed in `PLACKET_PR_OPENER`; with none, on a push to `main` or from `make red-green-tests`, only a bot's sign-off is refused. A person's sign-off added for them by an agent, and content a merge commit adds, are the reviewer's; `docs/adr/0013-red-green-tests.md` records why.
+Checked by: the workflow's `red-green-tests` job, with `main`'s copy of `tools/redgreen/`, after the `red-green-tests` verdict. The opener is the pull request's author, passed in `PLACKET_PR_OPENER`; with none, on a push to `main` or from `make red-green-tests`, only a bot's sign-off is refused. A person's sign-off added for them by an agent, and content a merge commit adds, are the reviewer's; `docs/adr/0004-how-a-change-is-checked.md` records why.
 
 ## `docs-tree-holds`
 

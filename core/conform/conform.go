@@ -10,10 +10,10 @@
 // checks, contradicted by one that does not fit, a failure, and with no call unwitnessed, never a
 // failure). Its decision row re-runs composition.Decide,
 // the one decision module, only when the card's kernel hash is the one its caller trusts
-// (one-decision-module, docs/adr/0021-who-decided-and-the-answer-call.md). With one member's view,
+// (one-decision-module, docs/adr/0013-what-a-verifier-checks-and-says.md). With one member's view,
 // rows 0a and 4a check that the view is the one the member accepted and that each receipt of the
 // member's matches the view's rows, reading the view and never the terms (view.go,
-// docs/adr/0026-verify-against-a-view.md).
+// docs/adr/0013-what-a-verifier-checks-and-says.md).
 package conform
 
 import (

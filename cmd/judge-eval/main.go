@@ -1,6 +1,6 @@
 // Command judge-eval runs a judge's basic eval by hand: `judge-eval JUDGE CASES` asks the judge of
 // the config JUDGE about every case of the file CASES, with the user's own key from PLACKET_JEV_KEY,
-// and prints one line per case and the counts (docs/adr/0023-judges.md). make judge-eval runs it; it
+// and prints one line per case and the counts (docs/adr/0009-who-decided.md). make judge-eval runs it; it
 // is no step of make ci, and not in the release.
 package main
 

@@ -2,7 +2,7 @@
 // labels, kinds and role selectors, typed hashes and lowercase hex, standard base64 in its one
 // encoding, and the reading and writing of JSON values through the canonical form. It decides no
 // result of its own: each caller turns a value that fails a rule into the code of the check that read
-// it. Decision record 0005 says why it exists.
+// it. Decision record 0002 says why it exists.
 package shape
 
 import (

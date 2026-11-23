@@ -1,5 +1,5 @@
 // Command firsthour is the first-hour test's scripted MCP client (tests/test_first_hour.sh,
-// docs/adr/0027-placket-init.md). It stands where Claude Code stands, with a script in place of a
+// docs/adr/0012-the-mediator-api-and-the-command-line.md). It stands where Claude Code stands, with a script in place of a
 // model:
 //
 //	firsthour COMMAND [ARG]...

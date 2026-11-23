@@ -1,5 +1,5 @@
 // Package eval is a judge's basic eval: a file of synthetic labelled cases, each run against a
-// judge's config, and the counts that set the config's threshold (docs/adr/0023-judges.md). It is
+// judge's config, and the counts that set the config's threshold (docs/adr/0009-who-decided.md). It is
 // run by hand, with the user's own key, by cmd/judge-eval; make ci runs only its tests, on fakes.
 //
 // The case file is a door format, not a frozen one: one canonical JSON object per line, exactly

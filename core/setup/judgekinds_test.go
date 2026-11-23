@@ -10,7 +10,7 @@ import (
 
 // TestJudgeKinds reads the kinds of every term, of any member, whose resolve lists a judge, in the
 // judged vector's Accord: sorted, each once, whatever the use; none for a judge no term lists, nor
-// for a nil Accord (setup-contract-1, docs/adr/0023-judges.md). The result is a copy
+// for a nil Accord (setup-contract-1, docs/adr/0009-who-decided.md). The result is a copy
 // (results-are-copies).
 func TestJudgeKinds(t *testing.T) {
 	t.Parallel()

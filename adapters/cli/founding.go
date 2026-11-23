@@ -20,7 +20,7 @@ func init() {
 // and the bindings in actor-reference order (setup-contract-10, setup-contract-12), founds it at the
 // current second as any party can, without the openings (setup-contract-16), to check it, and prints the set on standard
 // output and its Accord id and card hash on standard error, and after them a line that names the
-// card's module when it is not this build's (docs/adr/0012-the-kernel-hash.md).
+// card's module when it is not this build's (docs/adr/0007-the-card-and-the-kernel-hash.md).
 func foundingCommand(r *run, args []string) int {
 	fs := newFlags("founding")
 	policy, med, card := fs.text("policy"), fs.text("mediator"), fs.text("card")

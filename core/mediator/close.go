@@ -9,7 +9,7 @@ import (
 	"github.com/orilloai/placket/core/signing"
 )
 
-// Closed is an Accord's close receipt: its id and its bytes (close-2, record 0022).
+// Closed is an Accord's close receipt: its id and its bytes (close-2, record 0010).
 type Closed struct {
 	ID      string
 	Receipt []byte
@@ -24,7 +24,7 @@ func (m *Mediator) Closed() (Closed, bool) {
 	return Closed{ID: m.closed.ID, Receipt: append([]byte(nil), m.closed.Receipt...)}, true
 }
 
-// Close closes an Accord from the record a journal keeps (close-1, record 0022). It takes Reload's
+// Close closes an Accord from the record a journal keeps (close-1, record 0010). It takes Reload's
 // record and checks it in Reload's order, with Reload's codes, but decides nothing, so it needs no
 // opening; a record that already ends in its close is closed. Then it writes, in one batch built
 // before any state changes: first a timeout for each open question whose deadline is at or before

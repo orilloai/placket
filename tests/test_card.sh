@@ -1,5 +1,5 @@
 #!/bin/sh
-# The default card names the binary's own decision module (docs/adr/0012-the-kernel-hash.md): a
+# The default card names the binary's own decision module (docs/adr/0007-the-card-and-the-kernel-hash.md): a
 # build whose core/composition/composition.go differs by one comment prints another card, names the
 # first build's card as another module's when it founds under it, and refuses to run a window of an
 # Accord founded under it.

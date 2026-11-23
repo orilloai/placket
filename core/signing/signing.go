@@ -20,8 +20,8 @@ import (
 
 // The five type URIs of signing-4. Each ends in the protocol number, the card's spec
 // (setup-contract-4); core/mediator's tests hold them to setup.Spec. TypeAnswer is the answer call's
-// (maybe-11, docs/adr/0021-who-decided-and-the-answer-call.md), and TypeAcceptance a member's
-// acceptance of its view (setup-contract-15, docs/adr/0025-sealed-terms.md).
+// (maybe-11, docs/adr/0009-who-decided.md), and TypeAcceptance a member's
+// acceptance of its view (setup-contract-15, docs/adr/0006-founding.md).
 const (
 	TypeDeclaration = "https://placket.tech/declaration/0.1"
 	TypeBinding     = "https://placket.tech/binding/0.1"
@@ -33,7 +33,7 @@ const (
 // ReferencePrefix starts every actor reference (signing-1).
 const ReferencePrefix = "ed25519:"
 
-// Code says how a caller misused this package. None is a code of the protocol (record 0005).
+// Code says how a caller misused this package. None is a code of the protocol (record 0002).
 type Code string
 
 // The codes of Error.
@@ -47,13 +47,13 @@ const (
 	CodeObject Code = "object"
 )
 
-// Error is a misuse of this package by its caller (record 0005).
+// Error is a misuse of this package by its caller (record 0002).
 type Error struct{ Code Code }
 
 // Error returns the package and the code, and nothing of the input.
 func (e *Error) Error() string { return "signing: " + string(e.Code) }
 
-// A Key is an actor's private key (signing-1, signing-2, record 0005). It
+// A Key is an actor's private key (signing-1, signing-2, record 0002). It
 // prints as a fixed text under every format verb, so no key reaches a log by accident. It holds the
 // key behind a function: fmt does not call Format on a value inside another struct's unexported
 // field, and prints a function there as an address under every verb. A pointer to the key would not
@@ -70,7 +70,7 @@ func (k Key) bytes() ed25519.PrivateKey {
 	return k.private()
 }
 
-// NewKey makes the key whose Ed25519 seed is seed, 32 bytes (RFC 8032; signing-1, record 0005).
+// NewKey makes the key whose Ed25519 seed is seed, 32 bytes (RFC 8032; signing-1, record 0002).
 func NewKey(seed []byte) (Key, error) {
 	if len(seed) != ed25519.SeedSize {
 		return Key{}, &Error{Code: CodeSeed}
@@ -88,13 +88,13 @@ func (k Key) Reference() string {
 	return ReferencePrefix + hex.EncodeToString(private.Public().(ed25519.PublicKey))
 }
 
-// Format prints the Key as a fixed text, whatever the verb (secrets-never-print, record 0005).
+// Format prints the Key as a fixed text, whatever the verb (secrets-never-print, record 0002).
 func (k Key) Format(f fmt.State, _ rune) { _, _ = f.Write([]byte("signing.Key")) }
 
-// GoString prints the Key as a fixed text (secrets-never-print, record 0005).
+// GoString prints the Key as a fixed text (secrets-never-print, record 0002).
 func (k Key) GoString() string { return "signing.Key" }
 
-// String prints the Key as a fixed text (secrets-never-print, record 0005).
+// String prints the Key as a fixed text (secrets-never-print, record 0002).
 func (k Key) String() string { return "signing.Key" }
 
 // ParseReference reads ref as an actor reference: ed25519: and 64 lowercase hex digits (signing-1).

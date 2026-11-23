@@ -116,7 +116,7 @@ Checked by: the reviewer.
 
 ## `one-decision-module`
 
-The decision about what crosses is reached through one entry point in the composition package. No other code compares a stance, matches a term or compares two terms' judges, and a recorded verdict is never computed again, not on reload and not in the export. The one exception is the conformance check, `core/conform`, which decides again only when the card's kernel hash is the one the verifier trusts: then the module that decides again is the module trusted for that hash, so the reason a reload decides nothing again, that the module may have changed, does not hold (`docs/adr/0021-who-decided-and-the-answer-call.md`).
+The decision about what crosses is reached through one entry point in the composition package. No other code compares a stance, matches a term or compares two terms' judges, and a recorded verdict is never computed again, not on reload and not in the export. The one exception is the conformance check, `core/conform`, which decides again only when the card's kernel hash is the one the verifier trusts: then the module that decides again is the module trusted for that hash, so the reason a reload decides nothing again, that the module may have changed, does not hold (`docs/adr/0009-who-decided.md`).
 
 Why: the decision module is the seam that can be swapped; logic outside it would survive the swap.
 

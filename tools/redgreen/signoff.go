@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-// The rule outside-commits-signed-off (docs/rules/changes.md; docs/adr/0013-red-green-tests.md): no
+// The rule outside-commits-signed-off (docs/rules/changes.md; docs/adr/0004-how-a-change-is-checked.md): no
 // commit of the change is signed off by a bot, and on a pull request from outside the project every
 // commit that is not a merge is signed off by its author.
 const (

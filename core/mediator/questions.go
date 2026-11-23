@@ -16,7 +16,7 @@ import (
 // for an accept or a change, Text, the answer's text or the version, and Salt, the salt the
 // answerer minted for it, under which the call's digest was taken. A decline and a cancel have
 // neither. A Resolution holds an answer's text and salt, so it prints as a fixed text under every
-// format verb (secrets-never-print, record 0006).
+// format verb (secrets-never-print, record 0008).
 type Resolution struct {
 	Call []byte
 	Text string
@@ -174,7 +174,7 @@ func contains(l []string, s string) bool {
 
 // Answerers returns the answerers of the question open under questionID: the members whose bindings
 // give them a role its rule names, in actor-reference order, as a copy. The list is empty, not nil,
-// when no member holds one (section 6, maybe-4, record 0006). An id that names no open question
+// when no member holds one (section 6, maybe-4, record 0008). An id that names no open question
 // returns nil and false.
 func (m *Mediator) Answerers(questionID string) ([]string, bool) {
 	if !m.founded() {

@@ -129,7 +129,7 @@ In a usage, ` + "`<socket flags>`" + ` stands for ` + "`--key <file> --socket <p
 
 Every code the command line prints, by where it comes from: its own codes under ` + "`adapters/cli`" + `; the journal's under ` + "`adapters/journal`" + `; a code in the window's reply by its member, ` + "`door`" + `, ` + "`rejection`" + ` or ` + "`error`" + `; and any other by the package that declares it. The same code under two keys has two sentences, each saying what it means there. ` + "`placket mcp`" + `'s own codes are in the [mediator API's errors](mediator-api.md#errors).
 
-Two kinds of code follow another and are not listed here. After ` + "`error verify`" + `, the verifier's code is the protocol's ([verify-1](` + v1 + `)). After ` + "`error judge`" + `, a judge config's code is the one ` + "`docs/adr/0023-judges.md`" + ` names. A founding code after ` + "`founding`" + ` is the protocol's too.
+Two kinds of code follow another and are not listed here. After ` + "`error verify`" + `, the verifier's code is the protocol's ([verify-1](` + v1 + `)). After ` + "`error judge`" + `, a judge config's code is the one ` + "`docs/adr/0009-who-decided.md`" + ` names. A founding code after ` + "`founding`" + ` is the protocol's too.
 
 | From | Code | Cause and fix |
 |---|---|---|

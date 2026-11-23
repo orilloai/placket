@@ -2,7 +2,7 @@
 // a maybe term lets pass or block a part where the terms would ask (composition-7). It is
 // provider-neutral. It holds a judge's config, the interface every provider's adapter implements,
 // the runners that ask a rule's judges, and the record each run leaves, and nothing of any one
-// provider; adapters/judge/jev is this version's one adapter. Decision record 0023 says why.
+// provider; adapters/judge/jev is this version's one adapter. Decision record 0009 says why.
 //
 // A judge's config is a door format, not a frozen one: one canonical JSON object of exactly
 //
@@ -38,7 +38,7 @@ import (
 )
 
 // Budget is how long a rule's decide judges have, together, to settle a give, and how long each
-// advise run has (docs/adr/0023-judges.md). A judge still running at the budget says none.
+// advise run has (docs/adr/0009-who-decided.md). A judge still running at the budget says none.
 const Budget = 20 * time.Second
 
 // MaxOutput is the most bytes of a provider's reply an adapter reads.

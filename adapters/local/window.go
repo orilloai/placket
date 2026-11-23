@@ -39,7 +39,7 @@ type Window struct {
 	Key      signing.Key
 	Founding []byte
 	// Openings holds every member's opening, under its actor's reference: the mediator decides
-	// crossings, so its operator holds every term (setup-contract-13, docs/adr/0025-sealed-terms.md).
+	// crossings, so its operator holds every term (setup-contract-13, docs/adr/0006-founding.md).
 	// A close, which decides nothing, may hold none.
 	Openings map[string][]byte
 	// Acceptances is acceptances.json's bytes. With none, a window on an empty journal starts the
@@ -54,7 +54,7 @@ type Window struct {
 	Socket, Journal string
 	// Close starts the window along mediator.Close, not Reload: it closes the journal's Accord,
 	// writing the closings of its open questions and the close receipt, then serves the closed Accord
-	// on Socket, or, with Socket empty, returns (close-1, docs/adr/0022-the-close.md).
+	// on Socket, or, with Socket empty, returns (close-1, docs/adr/0010-the-close-and-the-successor.md).
 	Close bool
 	// Disk is what the journal writes through; nil is the operating system's.
 	Disk journal.Disk
@@ -69,7 +69,7 @@ type Window struct {
 	// Ready, when set, is closed once the door listens.
 	Ready chan<- struct{}
 	// Judges are the judges' configs, each with its hash: exactly one for each judge the card lists,
-	// at its hash, or the window starts nothing (docs/adr/0023-judges.md). A window that cannot take a
+	// at its hash, or the window starts nothing (docs/adr/0009-who-decided.md). A window that cannot take a
 	// give, a close or a closed journal, needs none.
 	Judges []judge.Loaded
 	// NewJudge makes the adapter of a judge's config; nil is one that has no key, and says none.
@@ -116,7 +116,7 @@ const (
 	// EventRefused: a call the door refused.
 	EventRefused = "refused"
 	// EventAdvised: a receipt's advise judges said what Advice holds, and their records are in its
-	// judged file (docs/adr/0023-judges.md).
+	// judged file (docs/adr/0009-who-decided.md).
 	EventAdvised = "advised"
 )
 
@@ -160,7 +160,7 @@ type Advice struct {
 
 // A Reach is where a judge's requests may go, as the window prints it at start: the judge's name, the
 // host and model of its config, the kinds of every term that lists it, a superset of what can reach
-// it, and whether the window has a key for it (docs/adr/0023-judges.md).
+// it, and whether the window has a key for it (docs/adr/0009-who-decided.md).
 type Reach struct {
 	Judge, Host, Model string
 	Kinds              []string
@@ -432,7 +432,7 @@ func (w *window) start() (bool, error) {
 }
 
 // loadJudges compares the card's judges with the window's configs, before anything is written to
-// the journal (docs/adr/0023-judges.md): each judge the card lists needs exactly one config of its
+// the journal (docs/adr/0009-who-decided.md): each judge the card lists needs exactly one config of its
 // name whose hash is the card's, at this adapter's version, and each config must be one the card
 // lists; otherwise CodeJudge. It makes each judge's adapter, and the reach the window prints, from
 // the Accord propose found.
@@ -502,7 +502,7 @@ func (w *window) close(rec *journal.Record, at string) error {
 
 // CoreCloseSize follows error journal receipts.jsonl when a close receipt would not fit in the
 // largest reply that carries it: the members fetch what is queued for them, and the close runs again
-// (docs/adr/0022-the-close.md).
+// (docs/adr/0010-the-close-and-the-successor.md).
 const CoreCloseSize = "close-size"
 
 // closeReply is the largest reply that carries the close receipt c: the questions reply of a closed
@@ -952,7 +952,7 @@ func (w *window) handle(r request) ([]byte, error) {
 	}
 	w.nonces[c.Nonce] = now
 	// A caller's give while its last is with a judge is refused, so its gives reach the core in the
-	// order of their seq (crossing-4, docs/adr/0023-judges.md); its other calls go on.
+	// order of their seq (crossing-4, docs/adr/0011-the-door-and-the-journal.md); its other calls go on.
 	if c.Op == OpGive && w.busy[c.Caller] {
 		return refuse(JudgeBusy)
 	}
@@ -1171,7 +1171,7 @@ func (w *window) decide(c Call, at string, ev *Event, judgment *composition.Judg
 
 // advise runs the advise judges of a receipt's part on a goroutine of the window's, each within its
 // own budget; their records come back on the results channel. They decide nothing, and the reply
-// does not wait on them (docs/adr/0023-judges.md).
+// does not wait on them (docs/adr/0009-who-decided.md).
 func (w *window) advise(receiptID string, adv *advising) {
 	w.wg.Add(1)
 	go func() {

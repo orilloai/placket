@@ -1,6 +1,6 @@
 #!/bin/sh
 # The first hour of each of placket's three entry points, from a clean HOME, as a person would spend
-# it (docs/adr/0027-placket-init.md): a, approve before apply; b, an out-gate on a merge; c, handoffs
+# it (docs/adr/0012-the-mediator-api-and-the-command-line.md): a, approve before apply; b, an out-gate on a merge; c, handoffs
 # between agents across two windows, whose journals one mediator key signs.
 #
 # Usage: sh tests/test_first_hour.sh [a|b|c]. With no argument, as make ci runs it, it runs the three

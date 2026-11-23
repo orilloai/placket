@@ -118,7 +118,7 @@ type Log struct {
 	Rows             []Row
 	All              bool
 	// Close is the id of the close receipt the journal ends in, and empty when it has none; the
-	// close is no row (close-2, docs/adr/0022-the-close.md).
+	// close is no row (close-2, docs/adr/0010-the-close-and-the-successor.md).
 	Close string
 }
 

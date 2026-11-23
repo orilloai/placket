@@ -644,7 +644,7 @@ Exit codes: `0`, `3`.
 
 Every code the command line prints, by where it comes from: its own codes under `adapters/cli`; the journal's under `adapters/journal`; a code in the window's reply by its member, `door`, `rejection` or `error`; and any other by the package that declares it. The same code under two keys has two sentences, each saying what it means there. `placket mcp`'s own codes are in the [mediator API's errors](mediator-api.md#errors).
 
-Two kinds of code follow another and are not listed here. After `error verify`, the verifier's code is the protocol's ([verify-1](../../spec/protocol.md#verify-1-what-a-verifier-is-given)). After `error judge`, a judge config's code is the one `docs/adr/0023-judges.md` names. A founding code after `founding` is the protocol's too.
+Two kinds of code follow another and are not listed here. After `error verify`, the verifier's code is the protocol's ([verify-1](../../spec/protocol.md#verify-1-what-a-verifier-is-given)). After `error judge`, a judge config's code is the one `docs/adr/0009-who-decided.md` names. A founding code after `founding` is the protocol's too.
 
 | From | Code | Cause and fix |
 |---|---|---|
@@ -659,7 +659,7 @@ Two kinds of code follow another and are not listed here. After `error verify`, 
 | `adapters/cli` | `format` | The log's --format is neither json nor csv, --words and --no-words were both given, or --json was given with --format csv; give one format, and --json only with json. |
 | `adapters/cli` | `founding` | The founding set, an opening or the acceptances do not found the Accord, or the successor's set and acceptances do not found it at the close's time, and the detail names the founding code, kernel for a card of another module than this build's, or judge for judge configs that are not the card's; fix the file the detail names, or run the build the card names. |
 | `adapters/cli` | `internal` | The command failed in a way no other code names; run it again, and report it if it persists. |
-| `adapters/cli` | `judge` | A --judge file is not a judge's config, and the detail names its code; fix the config as docs/adr/0023-judges.md says. |
+| `adapters/cli` | `judge` | A --judge file is not a judge's config, and the detail names its code; fix the config as docs/adr/0009-who-decided.md says. |
 | `adapters/cli` | `path` | The --at path is not a JSON Pointer; write it empty, or with a slash before each token. |
 | `adapters/cli` | `seal` | The declaration is not one object signed by the key whose actor it names, or its opening could not be made; seal a declaration this key signed. |
 | `adapters/cli` | `terms` | The terms are not one JSON object a declaration can carry, or could not be signed; fix the terms file. |
