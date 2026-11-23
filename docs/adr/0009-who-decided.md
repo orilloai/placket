@@ -73,11 +73,13 @@ The rules' texts are in `docs/rules/`; their reasons are these.
 **`answer`** (maybe-11, section 6)
 
 - `Call` and `Read`: what an answer call says, and its reader, which checks its bytes, shape and signature.
+- `Call.Accord`, `Call.Question`, `Call.Action`, `Call.Digest`, `Call.Release` and `Call.From`: the Accord's id, the question's id, the action, for an accept or a change the salted digest of the answer and whether it asks for release, and the signer's reference.
 - `Sign`: a call's canonical bytes, signed by the key.
 - `ID`: a call's typed hash, the value of a receipt's `by.answer`.
 - `TypeURI`: the call's type URI, `signing.TypeAnswer` written once (`constants-once`).
 - `Action`, with `Accepted`, `Changed`, `Declined` and `Cancelled`: the four actions, spelled as the vector format spells them.
 - `Code`, with `CodeCall`, and `Error` and `Error.Error`: a call that does not read, `answer-call`, with nothing of the call.
+- `Error.Code`: the code of a call that does not read.
 
 **`signing`**
 
@@ -86,23 +88,33 @@ The rules' texts are in `docs/rules/`; their reasons are these.
 **`composition`**
 
 - `Judgment`: a judge's verdict on a crossing, by its card name, or none.
+- `Judgment.Name` and `Judgment.Verdict`: the judge's card name, and its verdict, `Pass` or `Block`.
+- `Crossing.Judge`: the judgment a judge gave the crossing, or nil.
+- `Decision.Judge`: the name of the judge that decided, empty when the terms decided.
 - `ReasonJudge`: the reason of a judge's block, `judge:<name>`.
 
 **`setup`**
 
 - `Judge` and `Use`, with `Decide` and `Advise`: a term's grant of a judge, and the two uses.
+- `Judge.Name` and `Judge.Use`: the judge's card name, and the use the term grants it.
+- `Rule.Judges`: the judges a maybe term's resolve lists, in order.
 - `CardJudge` and `Accord.CardJudges`: an entry of the card's judges, and the card's judges in order.
+- `CardJudge.Name`, `CardJudge.Version` and `CardJudge.Hash`: a judge's name, and the version and hash that pin its build.
 - `Accord.JudgeKinds`: the kinds whose terms list a judge.
 - `JudgeUnknown`: the founding code of a judge a term names that the card does not.
 
 **`receipts`**
 
 - `By` and `Decider`, with `ByTerms`, `ByJudge`, `ByAnswer` and `ByMediator`: a predicate's decider and its four forms.
+- `By.Decider`, `By.Judge`, `By.Answer` and `By.Event`: the decider, and exactly the one field it names: the judge, the answer call's typed hash, or the mediator's event; none for the terms.
+- `Predicate.By`: the predicate's decider.
 - `Event`, with `EventDeadline` and `EventUndeliverable`: what made the mediator decide.
 
 **`mediator`**
 
 - `Mediator.Judges` and `Judging`: which judges a give would reach, and what they would be shown.
+- `Judging.Kind`, `Judging.Form`, `Judging.Body` and `Judging.Judges`: the part's kind, the form of its body, the body as `Question` reads it, and the agreed rule's judges in its order.
+- `Question.Salt` and `Question.Receipt`: the asked part's salt, and the ask's receipt, whose digest is the part's under that salt, so an answerer checks what it answers.
 - `Judging.Format`, `Judging.GoString` and `Judging.String`: a `Judging` prints as a fixed text.
 
 ## Consequences

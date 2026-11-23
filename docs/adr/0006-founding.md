@@ -55,6 +55,7 @@ The founding set is what every party holds: to found, to verify and to name the 
 **`founding`** (section 3, setup-contract-12 to setup-contract-16)
 
 - `Inputs`: what founding reads: the sealed set, the openings and the acceptances.
+- `Inputs.Set`, `Inputs.Openings` and `Inputs.Acceptances`: the sealed set's bytes, the openings its founder holds, and `acceptances.json`'s bytes.
 - `Found`: every row of founding's table, 1 to 21.
 - `View`: a member's view, in canonical bytes.
 - `Crosses`, `Asked` and `Blocked`: the outcomes of a view's crossing.
@@ -69,6 +70,7 @@ A refusal is a `*setup.Error`.
 - `Seal`: a seal entry and its opening, from a signed declaration and a salt.
 - `SaltBytes`: the length of a seal's salt.
 - `Openings`: the openings a founder holds: none, every member's, or some members'.
+- `Openings.ByActor` and `Openings.Some`: each opening's bytes under its actor's reference, and whether they are some members' only.
 - `Accord.Opened`, `Accord.TermsChecked` and `Accord.Salt`: whether a member's seal was opened, whether every member's was, and a member's opening salt.
 - `Accord.Principal`: the principal that signed a member's binding.
 - `BindingRole`, `BindingPolicy`, `OpeningMissing`, `SealMismatch`, `AcceptanceMissing`, `AcceptanceSignature`, `AcceptanceAccord` and `AcceptanceView`: the founding codes of a principal's grant, its policy, an opening and an acceptance.
@@ -81,7 +83,9 @@ A refusal is a `*setup.Error`.
 **`composition`**
 
 - `Sides` and `Side`: the crossings a member is a side of, by its own terms only, each with its decision.
+- `Side.Counterpart`, `Side.Dir`, `Side.Kind` and `Side.Decision`: the counterpart, the direction from the member, the kind, and `Decide`'s decision of the crossing.
 - `Answers` and `Asked`: the crossings between two other members that a member answers.
+- `Asked.Asker`, `Asked.Receiver`, `Asked.Kind` and `Asked.Timeout`: the asker, the receiver, the kind and the agreed rule's timeout.
 
 `Sides` and `Answers` are the view's rows, in `view.go`, outside the file the kernel hash reads (record 0007), built on `Decide` and the one term matcher.
 

@@ -23,10 +23,15 @@ Section 10 of `spec/protocol.md` says how a runner judges a conformance vector: 
 - `Handler` and `Handlers`: what runs one operation's vectors, and the handler of each operation.
 - `Default`: the handlers of every operation the core can run, and every step of a scenario.
 - `Vector`: one vector file as a handler receives it, after the runner's own checks.
+- `Vector.Path`, `Vector.Operation` and `Vector.Bytes`: the file's path from the repository root, its operation member, and its bytes unchanged.
 - `Part`: one result a handler compared, or could not.
+- `Part.Name`, `Part.Failure` and `Part.Pending`: which part, how the result differed from the one expected, and what the part needs before it can run; a part passed when both of the last are empty.
 - `Result` and `Result.Passed`: what became of one vector, and whether it passed.
+- `Result.Path`, `Result.Check`, `Result.Reason` and `Result.Parts`: the vector's path, the check that failed it, empty when it passed, why it failed, and how many parts passed.
 - `Report`, `Report.Lines` and `Report.Passed`: the outcome of a run, written as lines, and whether it passed.
+- `Report.Results`, `Report.Problems` and `Report.Open`: every vector found, in path order; the failures of the run that belong to no one vector; and the coverage list's open entries.
 - `Open`: an entry of the coverage list that no vector covers yet, or covers in part, with what stays open.
+- `Open.ID`, `Open.Scenario`, `Open.Milestone` and `Open.Rest`: the requirement id, the scenario, empty for the requirement itself, the milestone that writes its vector, and what stays open of an entry covered in part.
 - `CheckHeader`, `CheckSchema`, `CheckInputs`, `CheckOperation` and `CheckResults`: the checks a vector goes through, in order.
 
 ## Consequences

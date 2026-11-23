@@ -68,19 +68,26 @@ With no receipt there is no time to found at, so no binding's `until` is checked
 
 - `Check`: validity, then conformance, over the evidence a verifier is given.
 - `Evidence`: what a verifier is given: the Accord id, the mediator's reference, the founding set, its acceptances, the openings, the receipts, the answer calls, whether they are a subset, the trusted kernel hash and a view.
+- `Evidence.Accord`, `Evidence.Mediator`, `Evidence.Founding`, `Evidence.Acceptances`, `Evidence.Openings`, `Evidence.Receipts`, `Evidence.Answers`, `Evidence.Subset`, `Evidence.Kernel` and `Evidence.View`: each of those, in that order; the mediator's reference is used only when no founding set is given.
 - `Report`: what `Check` found: the verified subset, each receipt's decision, whether the card's module is trusted, the close, the operator, the members, the answer calls that match no receipt, whether the terms were checked, and the view rows read.
+- `Report.Mediator`, `Report.Subset`, `Report.Decisions`, `Report.Module`, `Report.Close`, `Report.Operator`, `Report.OperatorPrincipalOf`, `Report.Members`, `Report.Unmatched`, `Report.Terms`, `Report.Viewer` and `Report.Viewed`: each of those, with the mediator the receipts were verified under, how many members the operator is principal of, and the viewer of the view given.
 - `Decision`: one receipt's decider, its witness, and whether its rows were checked.
+- `Decision.Index`, `Decision.By`, `Decision.Witness` and `Decision.Checked`: the receipt's index in the list, its decider, the witness of an answer's receipt, and whether its rows were checked.
 - `Witness`, with `Witnessed`, `Unwitnessed` and `Contradicted`: what a receipt an answer decided says of its answer.
 - `Viewed`: one receipt of the viewer's read against its view, with the row it read.
+- `Viewed.Index`, `Viewed.Counterpart`, `Viewed.Dir`, `Viewed.Kind`, `Viewed.Outcome` and `Viewed.Matches`: the receipt's index, the row's counterpart, direction from the viewer, kind and outcome, empty when the view has no row for it, and whether it matches.
 - `Body`: row 5, and the only place it runs.
 - `FoundedAt`: the time a founding set is founded at for a list.
 - `Code`, with `CodeFounding`, `CodeAccord`, `CodeParty`, `CodeDecision`, `CodeWitness`, `CodeBody`, `CodeAcceptanceView` and `CodeViewConformance`: the conformance codes, in the order of the table.
 - `Error` and `Error.Error`: a receipt that does not conform, its code and index, with nothing of the evidence.
+- `Error.Code` and `Error.Index`: the code of the first row that failed, and the receipt's index, -1 when no receipt is at fault.
 
 **`receipts`**
 
 - `VerifySubset` and `Subset`: a subset checked as `Verify` checks a whole list, whose chains may start late, and what it yields.
+- `Subset.Verified`, `Subset.Places` and `Subset.Starts`: the verified statements, each receipt's place among the subset's questions, and the chains that start late.
 - `Start`: a chain of a subset that starts after its first receipt.
+- `Start.From`, `Start.To` and `Start.Seq`: the pair's from and to, and the seq of the pair's first receipt the subset holds, above 1.
 - `RoleOutside`: a receipt whose question is not in the subset.
 
 ## Consequences

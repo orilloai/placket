@@ -50,18 +50,25 @@ A mediator lives in one process. When the process stops, a door that keeps a jou
 - `Mediator.Give`: a give, by the door's rows, then composition with the judgment given, then the receipt, then the state.
 - `Mediator.Get`: the first delivery queued for the caller, removed from its queue, so the mediator keeps no body or salt of it once fetched.
 - `Mediator.Resolve` and `Resolution`: an answer, by section 6's rows, from the signed call, the answer's text and the answerer's salt.
+- `Resolution.Call`, `Resolution.Text` and `Resolution.Salt`: the signed answer call's canonical bytes, and for an accept or a change the answer's text or the version and the salt the answerer minted for it.
 - `Mediator.Undeliverable`: the finding that nobody can be reached to answer a question.
 - `Mediator.Tick`: the passing of time; every question whose deadline is due closes `timeout`, in the order opened. It refuses nothing.
 - `Mediator.Answerers`: an open question's answerers, in actor-reference order, empty and not nil when nobody holds a role it names.
 - `Mediator.Queued` and `Queued`: a copy of the delivery a receipt queued, while it is unfetched, and the member it is for.
+- `Queued.To` and `Queued.Delivery`: the member a delivery is queued for, and its canonical bytes as `Get` would return them.
 - `Mediator.Result`: a closed question's closing and its release, to its asker only.
 - `Mediator.Question` and `Question`: a copy of an open question, its part included, to the mediator's own reference and to its answerers only.
+- `Question.ID`, `Question.Asker`, `Question.Receiver`, `Question.Kind`, `Question.Form`, `Question.Deadline`, `Question.Roles` and `Question.Part`: the question's id, the asker, the receiver, the asked part's kind and the form of its body, its deadline, the role labels that may answer it, and the body's value as given.
 - `Mediator.Receipts` and `Mediator.Pending`: copies of every receipt written, and the ids of the open questions.
 - `Mediator.Accord` and `Mediator.Card`: the Accord id and the card hash.
 - `Outcome`: a receipt the mediator wrote, with its verdict, reason and id.
+- `Outcome.Verdict`, `Outcome.Reason`, `Outcome.ReceiptID` and `Outcome.Receipt`: the receipt's verdict, reason, id and bytes.
 - `Reload` and `Open`: a mediator rebuilt from its record, and an open question as the door recorded it.
+- `Open.Question`, `Open.Deadline` and `Open.Roles`: the question's id, its deadline and the role labels that may answer it, as the door recorded them when it was asked.
 - `Rejection`, `Rejection.Error` and `RejectionCode`, with the door's codes `NotAMember`, `EnvelopeSignature`, `NotCanonical`, `EnvelopeHash`, `EnvelopeSequence`, `ExtensionMissing`, `ReceiverUnknown`, `AccordMismatch`, `OnePart`, `OneBody`, `URLUnsupported` and `PartMetadata`, and section 6's `AnswerCall`, `NoOpenQuestion`, `NotAnAnswerer` and `AnswerBody`: what the caller did wrong.
+- `Rejection.Code`: the code of the first row that failed.
 - `Error`, `Error.Error`, `Error.Unwrap` and `ErrorCode`, with `CodeAt`, `CodeInternal`, `CodeUnfounded`, `CodeJournal`, `CodeHeld` and `CodeQuestion`: what the caller's program did wrong, a record reload refuses, or a failure inside.
+- `Error.Code`, `Error.Index` and `Error.Err`: the code; the index of the receipt or entry at fault, -1 when none is; and the verifier's error a `journal` error wraps.
 - `Mediator.Format`, `Mediator.GoString`, `Mediator.String`, `Resolution.Format`, `Resolution.GoString`, `Resolution.String`, `Queued.Format`, `Queued.GoString`, `Queued.String`, `Question.Format`, `Question.GoString` and `Question.String`: each prints as a fixed text.
 - `Extension`, `RoleUser` and `RoleAgent`: the crossing extension's URI, and the roles of a crossing message (record 0005).
 - `SaltBytes`: the length of every salt of a part, 32 bytes (record 0005).

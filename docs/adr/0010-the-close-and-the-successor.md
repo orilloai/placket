@@ -60,9 +60,12 @@ The journal appends a close's lines in one multi-line write, so a crash can cut 
 **`receipts`** (close-1 to close-4)
 
 - `Close` and `DecodeClose`: what a close receipt states, and its reader that verifies nothing.
+- `Close.ID`, `Close.Accord`, `Close.Card`, `Close.Mediator`, `Close.At`, `Close.Chains` and `Close.Unfetched`: the close's id, the Accord id, the card hash, the mediator's reference, its time, the last receipt of every chain by pair, and each delivery not yet fetched, in the order queued.
 - `BuildClose`: a close receipt, signed, and its verified close.
 - `Verified.Close`: a copy of a verified close.
 - `Final` and `Unfetched`: the last receipt of one chain at a close, and a delivery not yet fetched at it.
+- `Final.From`, `Final.To`, `Final.Seq` and `Final.Receipt`: the pair's from and to, and the seq and id of its last receipt.
+- `Unfetched.To` and `Unfetched.Receipt`: the member a delivery was queued for, and the id of the receipt that queued it.
 - `ClosePredicateType`: the close's predicate type.
 - `ReasonClosed`: the reason of a closing a close wrote.
 - `EventClose`: the mediator's event of a close.
@@ -72,6 +75,7 @@ The journal appends a close's lines in one multi-line write, so a crash can cut 
 **`mediator`**
 
 - `Close` and `Closed`: a close from the record a journal keeps, and the close receipt's id and bytes.
+- `Closed.ID` and `Closed.Receipt`: the close receipt's id and its bytes.
 - `Mediator.Closed`: a copy of the close receipt of a closed Accord.
 - `AccordClosed`: the rejection `closed`.
 - `CodeClosed` and `CodeClose`: a close of a closed Accord, and a record cut inside a close.
