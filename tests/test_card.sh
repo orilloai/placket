@@ -22,6 +22,9 @@ fail() {
 mkdir "$tmp/copy"
 cp -R "$root/go.mod" "$root/core" "$root/adapters" "$root/api" "$root/cmd" "$tmp/copy/"
 printf '\n// Another kernel.\n' >>"$tmp/copy/core/composition/composition.go"
+# The root requires the tagged core, so the copy builds against its own changed core only through a
+# replace of its own.
+(cd "$tmp/copy" && go mod edit -replace github.com/orilloai/placket/core=./core) || { echo "FAIL the copy's go.mod does not take a replace"; exit 1; }
 (cd "$tmp/copy" && go build -o "$tmp/other" ./cmd/placket) || { echo "FAIL the changed copy does not build"; exit 1; }
 
 "$tmp/this" card --default >"$tmp/this.card" 2>"$tmp/this.err" || fail "card --default of this build"
