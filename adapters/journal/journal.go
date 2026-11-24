@@ -222,12 +222,15 @@ func OpenWith(dir string, stderr io.Writer, disk Disk) (*Journal, error) {
 	return &Journal{dir: dir, disk: disk, stderr: stderr, lock: f}, nil
 }
 
-// Close lets the lock go. It writes nothing.
+// Close lets the lock go, and then closes its file. It writes nothing. Closing the file alone is not
+// enough: the lock belongs to the file's open description, which a child process shares between
+// its fork and its exec, so the lock would stay held after Close.
 func (j *Journal) Close() error {
 	if j.lock == nil {
 		return nil
 	}
-	err := j.lock.Close()
+	uerr := syscall.Flock(int(j.lock.Fd()), syscall.LOCK_UN)
+	err := errors.Join(uerr, j.lock.Close())
 	j.lock = nil
 	return err
 }
