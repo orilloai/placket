@@ -2,6 +2,8 @@ package journal
 
 import (
 	"bytes"
+	"errors"
+	"os"
 	"path/filepath"
 	"syscall"
 	"testing"
@@ -10,7 +12,8 @@ import (
 // TestCloseLetsTheLockGoWhileItsFileIsShared closes a journal while a second descriptor still shares
 // its lock's file, as a child process does between fork and exec, and opens the journal again. The
 // lock belongs to the file's open description, so closing one descriptor alone would keep it held,
-// and the window that stopped would refuse its own restart, journal-locked.
+// and the window that stopped would refuse its own restart, journal-locked. Close must still close
+// the lock's file too, or each window would leak a descriptor.
 func TestCloseLetsTheLockGoWhileItsFileIsShared(t *testing.T) {
 	t.Parallel()
 	dir := filepath.Join(t.TempDir(), "j")
@@ -23,8 +26,12 @@ func TestCloseLetsTheLockGoWhileItsFileIsShared(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = syscall.Close(dup) })
+	f := a.lock
 	if err := a.Close(); err != nil {
 		t.Fatalf("close: %v", err)
+	}
+	if _, err := f.Stat(); !errors.Is(err, os.ErrClosed) {
+		t.Fatalf("lock file after close: got %v, want %v", err, os.ErrClosed)
 	}
 	b, err := OpenWith(dir, &bytes.Buffer{}, OS)
 	if err != nil {
