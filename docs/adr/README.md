@@ -1,6 +1,6 @@
 # Decision records
 
-A record is a decision, with its context and its consequences. These fourteen state what holds at placket v0.1.0, one subject each, and each reads on its own.
+A record is a decision, with its context and its consequences. The first fourteen state what held at placket v0.1.0, one subject each, and each reads on its own. Each record from 0015 on is a later decision, and names on its `Status:` line the records it changes.
 
 Each record has one area: layout, the repository and its modules; core, the Go core's packages; process, how a change is made and checked; formats, the frozen formats and what they carry; adapters, the door, the journal and the command line; verify, what a verifier checks and says; release, how placket is built and released.
 
@@ -22,3 +22,4 @@ A new record takes the next free number, from 0015 on, and adds its row here. A 
 | [0012](0012-the-mediator-api-and-the-command-line.md) | The mediator API, placket mcp and the command line | adapters |
 | [0013](0013-what-a-verifier-checks-and-says.md) | What a verifier checks and says | verify |
 | [0014](0014-releases-and-versions.md) | Releases and versions | release |
+| [0015](0015-no-payload-signature-under-a-placket-uri.md) | No payload signature under a placket URI | core |

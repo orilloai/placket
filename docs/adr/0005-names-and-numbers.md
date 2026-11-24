@@ -1,6 +1,6 @@
 # 0005. Names and numbers: placket.tech, one protocol number, salts and roles
 
-Status: accepted. Date: 2026-11-23.
+Status: accepted. Date: 2026-11-23. Changed by record 0015.
 
 ## Context
 

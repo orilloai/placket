@@ -1,6 +1,6 @@
 # 0002. The core: no dependency, no world, its packages and its names
 
-Status: accepted. Date: 2026-11-23.
+Status: accepted. Date: 2026-11-23. Changed by record 0015.
 
 ## Context
 
