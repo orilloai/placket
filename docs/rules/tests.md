@@ -10,6 +10,22 @@ Why: a loose test passes on the wrong answer.
 
 Checked by: the reviewer.
 
+## `refusals-tested`
+
+Every refusal or stop a change adds, a branch that refuses an input, returns a code or ends a command before it is done, has a test that fails when that branch is flipped: its condition turned around, or the branch removed. The test feeds the input the branch stops and checks what comes back exactly (`tests-exact`).
+
+Why: a refusal no test reaches can be lost in a later change unseen, and the input it stopped then passes.
+
+Checked by: the reviewer.
+
+## `output-modes-tested`
+
+An output mode, such as `--json` (`docs/reference/cli.md`), is tested together with every flag that changes what it prints: for each such flag, a test runs the command in that mode with the flag and compares what it prints exactly (`tests-exact`).
+
+Why: a flag tested only in the default mode can print the wrong thing in another, and a script reads that mode.
+
+Checked by: the reviewer.
+
 ## `raw-bytes-in-hex`
 
 A test about raw bytes spells them in hex or `\x` escapes and checks them by comparing bytes, never by trusting an editor.

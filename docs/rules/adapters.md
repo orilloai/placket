@@ -90,6 +90,14 @@ Why: the journal is the evidence of what crossed.
 
 Checked by: the reviewer.
 
+## `files-like-siblings`
+
+A new file of the journal or of the state directory is written, synced and repaired as an existing file of the same kind is. There are three kinds: a file appended to, a line at a time; a file written once and never again; and a file replaced whole. A file used in two of these ways keeps the way of each. The reviewer names the sibling whose use matches the new file's; the contributor need not. No repair goes further than `journal-is-evidence` allows.
+
+Why: a crash finds the file written with the least care, and a new file kept less safely than its siblings loses or tears what they would keep.
+
+Checked by: the reviewer.
+
 ## `restart-reproducible`
 
 After a restart, the founding set plus the journal determine the state, and nothing else does; a window killed between calls carries on with the same receipts.

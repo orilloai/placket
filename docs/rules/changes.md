@@ -12,7 +12,7 @@ Checked by: the reviewer.
 
 ## `deltas-stop-for-intent`
 
-A change to the requirement text that alters observable behaviour, a capability's scope or what it must not do stops for the maintainer. Anything else is the builder's choice, listed in the design and the pull request where the maintainer can veto it.
+A change to the requirement text that alters observable behaviour, a capability's scope or what it must not do stops for the maintainer. Five kinds of change, which a person or a script sees, wait for the maintainer's explicit ruling: a change to the requirement text, to command-line output, to an exit code, to a door code or to a door format. The maintainer gives that ruling on the issue or on the pull request, in their own words. A list of choices open to veto never settles one of these five, and no one objecting is not a ruling. Anything else is the builder's choice, listed in the design and the pull request where the maintainer can veto it.
 
 Why: the maintainer rules intent; builders keep building.
 

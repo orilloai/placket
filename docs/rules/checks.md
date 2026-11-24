@@ -10,6 +10,7 @@ Every step of `make ci` is a target of its own, so `make <rule>` runs one check.
 - A toolchain step (`vet`, `lint`, `vulnerabilities`, `race`, `fuzz-seeds`, `coverage-reported`) prints `<step>: ok`, or `<step>: <module>: refused` after the tool's own output. `secrets` is described under its own heading below. `race`, `fuzz-seeds` and `coverage-reported` read one shared test run per module, the step `tests`, with the race detector and coverage, that also runs every fuzz test on its seed corpus.
 - Every step then prints its time on a line of its own, `time: <step>: <n>s`, whether it passed or refused. No time fails a step.
 - Only the lines of a check of the tree, and of `secrets`, promise to name a file. The other steps' lines name a module, a vector or a shell test, or nothing at all: the time lines, the `== <module>` and `== <test>` lines, the shell tests' own output, the shared run's and the runner's lines, and `ci-stays-fast: refused: make ci inside make ci`.
+- `make ci` runs its steps side by side, `CI_JOBS` at a time: by default the host's processor count, and at least 2. It holds back each step's output and prints it whole when the step ends, so a step's lines and its time line stay together. `CI_JOBS` also sets how many shell tests run at once, and the step `tests` runs the modules' test runs half as many at a time, rounded up, and at least two when `CI_JOBS` is 2 or more. `make ci CI_JOBS=1` runs serially: the steps one by one, the shell tests one by one, and the modules' test runs one by one.
 
 ## Secrets
 
