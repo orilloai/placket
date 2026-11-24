@@ -203,10 +203,17 @@ tmp=$(mktemp -d)
 short=$(mktemp -d /tmp/plkh.XXXXXX)
 groups=
 watchdogs=
+# without LIST ID prints LIST, a list of ids split on spaces, with ID left out.
+without() {
+	kept=
+	for id in $1; do [ "$id" = "$2" ] || kept="$kept $id"; done
+	echo "$kept"
+}
 cleanup() {
 	for g in $groups; do kill -KILL -"$g" 2>/dev/null; done
 	# A watchdog left running after an interrupt would sleep out its limit and then kill a group whose
-	# id may by then be another's.
+	# id may by then be another's. Each list holds only the groups the loop below has not yet killed,
+	# so no id in it can by now be another's.
 	for w in $watchdogs; do kill -KILL -"$w" 2>/dev/null; done
 	rm -rf "$tmp" "$short"
 }
@@ -253,9 +260,12 @@ for e in $entries; do
 	wait "$g"
 	rc=$?
 	w=$(cat "$tmp/$e.watchdog")
+	# Each id leaves its list as its group is killed, so cleanup never signals an id that is free again.
 	kill -KILL -"$w" 2>/dev/null
+	watchdogs=$(without "$watchdogs" "$w")
 	wait "$w" 2>/dev/null
 	kill -KILL -"$g" 2>/dev/null
+	groups=$(without "$groups" "$g")
 	if [ "$rc" -eq 0 ]; then
 		sed 's/^/    /' "$tmp/$e.out"
 		echo "ok   $e"
