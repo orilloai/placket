@@ -208,11 +208,12 @@ jobs:
             --certificate-oidc-issuer https://token.actions.githubusercontent.com \
             "$d/checksums.txt"
           # Each SHA-256 of the cask is an archive's line in checksums.txt, one for each of the four.
+          sed -n 's/^ *sha256 "\([0-9a-f]\{64\}\)"$/\1/p' "$d/placket.rb" >"$d/sums"
           n=0
-          for s in $(sed -n 's/^ *sha256 "\([0-9a-f]\{64\}\)"$/\1/p' "$d/placket.rb"); do
+          while read -r s; do
             grep -q "^$s  placket_.*\.tar\.gz\$" "$d/checksums.txt" || { echo "::error::sha256 $s is no archive's line in checksums.txt"; exit 1; }
             n=$((n + 1))
-          done
+          done <"$d/sums"
           [ "$n" -eq 4 ] || { echo "::error::the cask has $n SHA-256s, not 4"; exit 1; }
           mkdir -p Casks
           if cmp -s "$d/placket.rb" Casks/placket.rb; then echo "the cask is already $tag's"; exit 0; fi
