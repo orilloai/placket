@@ -2,7 +2,7 @@
 
 An agent proposes to merge a pull request on GitHub. You accept it, or decline it. The merge happens only through an applier, after placket released it with your accept, and exactly at the head commit you accepted; a receipt records each step, and anyone can follow the merge commit back to it and verify it. This guide sets up `placket init merge` and its applier, [`patterns/github-merge/`](../../patterns/github-merge/).
 
-This guide starts with `placket` on your `PATH`. The [install section of the README](../../README.md#install) says how to get it there. Nothing here needs a judge's key. The applier also needs GitHub's command line, `gh`, and `jq`.
+This guide starts with `placket` on your `PATH`. The [install section of the README](../../README.md#install) says how to get it there. Nothing here needs a judge's key. The applier also needs GitHub's command line, `gh`, and `jq`. To rehearse with no repository, [`patterns/github-merge/`](../../patterns/github-merge/README.md) runs the same flow on invented pull requests against a stand-in `gh`.
 
 ## Six words
 
@@ -22,7 +22,7 @@ The receipt says what the mediator released. That nothing merged any other way r
 placket init merge
 ```
 
-It writes everything into `~/.config/placket/merge/` (`--dir` picks another, empty, directory): the keys of the mediator, its operator, the principal and each party, all mode 0600; each party's terms; and the founding set, with each party's acceptance of its own view, signed with its key, so the Accord is founded. It prints the Accord's id, its three parties, `merge-agent`, `merge-person` and `merge-applier`, with their key references and roles, and the commands for the steps below. Custody step 3 keeps your key, the window and the applier in an account the agent cannot reach: run `init` there.
+It writes everything into `~/.config/placket/merge/` (`--dir` picks another, empty, directory; a second copy of the example also needs `--label`, such as `--dir ~/demo/merge2 --label merge2`, since the labels config already holds the first copy's `merge-<party>` labels and `init` refuses them with `label-taken`): the keys of the mediator, its operator, the principal and each party, all mode 0600; each party's terms; and the founding set, with each party's acceptance of its own view, signed with its key, so the Accord is founded. It prints the Accord's id, its three parties, `merge-agent`, `merge-person` and `merge-applier`, with their key references and roles, and the commands for the steps below. Custody step 3 keeps your key, the window and the applier in an account the agent cannot reach: run `init` there.
 
 ## 3. Start the window
 
@@ -46,7 +46,7 @@ The give returns the question's id: the terms ask you.
 
 ## 5. Answer
 
-Run the `placket watch` line `init` printed, `placket watch --label merge-person`. It prints each new question with the lines that answer it. Read the merge the agent proposed with `placket questions --label merge-person`, check the pull request at that head yourself, and run the `placket answer` line to accept it, or `placket decline` with `--comment` to refuse it.
+Run the `placket watch` line `init` printed, `placket watch --label merge-person`. It prints each new question with the lines that answer it. Read the merge the agent proposed with `placket questions --label merge-person`, check the pull request at that head yourself, and run the `placket answer` line to accept it, or `placket decline` with `--comment` to refuse it. `watch` prints a `placket change` line for every question; on a merge, a changed body no longer matches the agent's terms, so the window blocks it, `no-match`, and the question closes as a decline would.
 
 ## 6. Apply
 

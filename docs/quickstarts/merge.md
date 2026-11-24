@@ -1,6 +1,6 @@
 # Quickstart: an out-gate on a merge
 
-An agent proposes to merge a pull request on GitHub, you accept or decline it, and an applier merges only what you accepted, at the head commit you accepted. It needs `placket` on your `PATH` ([install](../../README.md#install)), `gh` and `jq`, and no judge's key.
+An agent proposes to merge a pull request on GitHub, you accept or decline it, and an applier merges only what you accepted, at the head commit you accepted. It needs `placket` on your `PATH` ([install](../../README.md#install)), `gh` and `jq`, and no judge's key; [`patterns/github-merge/`](../../patterns/github-merge/README.md) rehearses it against a stand-in `gh`, with no repository.
 
 ```sh
 placket init merge

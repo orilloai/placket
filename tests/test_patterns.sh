@@ -78,6 +78,15 @@ for d in "$patterns"/*; do
 			fail "patterns/$job/$f: no line is marked '# CHANGE' for a caller to change"
 		fi
 	done
+	# A window with a judge reads PLACKET_JEV_KEY from the caller's shell: the pattern clears it first,
+	# so as it is it never sends its invented parts to the judge's host.
+	window=$(grep -n 'placket window' "$d/pattern.sh" | head -n 1 | cut -d: -f1)
+	if [ -n "$window" ] && grep -q -e '--judge' "$d/pattern.sh"; then
+		unset_at=$(grep -n '^[[:space:]]*unset PLACKET_JEV_KEY' "$d/pattern.sh" | head -n 1 | cut -d: -f1)
+		if [ -z "$unset_at" ] || [ "$unset_at" -gt "$window" ]; then
+			fail "patterns/$job/pattern.sh: starts a window with a judge and does not unset PLACKET_JEV_KEY before it, so a key in the caller's shell sends the invented parts"
+		fi
+	fi
 done
 # The list: in the section "## The patterns", up to the next heading, one line per job,
 # "- `<job>`: <the job it does>.", ending "Checked against placket <tag>." once it names a release.

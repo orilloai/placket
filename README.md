@@ -180,6 +180,23 @@ An Accord is founded from five kinds of file: the policy, the mediator, the card
 for k in mediator operator principal proposer applier decider; do
 	placket key new --out "$k.key" >"$k.ref"
 done
+# Each party's terms: the proposer's proposal to the applier is asked of the decider, and each says
+# what it gives and gets.
+cat >proposer.terms <<'T'
+{"terms":[
+ {"stance":"maybe","dir":"give","with":["role:applier"],"select":{"kind":["proposal"]},"resolve":{"to":["role:decider"],"timeout":3600}},
+ {"stance":"want","dir":"get","with":["role:decider"],"select":{"kind":["answer","changed-version","comment"]}}]}
+T
+cat >applier.terms <<'T'
+{"terms":[
+ {"stance":"want","dir":"get","with":["role:proposer"],"select":{"kind":["proposal"]}},
+ {"stance":"want","dir":"get","with":["role:decider"],"select":{"kind":["changed-version"]}}]}
+T
+cat >decider.terms <<'T'
+{"terms":[
+ {"stance":"want","dir":"give","with":["role:proposer"],"select":{"kind":["answer","changed-version","comment"]}},
+ {"stance":"want","dir":"give","with":["role:applier"],"select":{"kind":["changed-version"]}}]}
+T
 # The policy: the roles that must be held, and each principal with the roles it may grant. Here one
 # principal stands behind all three parties.
 echo "{\"roles\":[\"proposer\",\"applier\",\"decider\"],\"principals\":[{\"principal\":\"$(cat principal.ref)\",\"roles\":[\"proposer\",\"applier\",\"decider\"]}]}" >policy.json

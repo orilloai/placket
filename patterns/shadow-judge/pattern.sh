@@ -5,8 +5,9 @@
 # Three invented parties share one Accord: a proposer, who proposes changes; a receiver, who applies
 # them; and an approver, who answers each one. The card lists one judge, review, whose config is this
 # pattern's judge.json, and both sides' terms list it to advise. The window runs it on each part it
-# asks about, after the receipt is written; the part still waits for the approver. With no key in
-# PLACKET_JEV_KEY, the judge sends nothing and says none, so the pattern runs as it is with no key.
+# asks about, after the receipt is written; the part still waits for the approver. As it is, the
+# pattern clears PLACKET_JEV_KEY before it starts the window, so the judge sends nothing and says
+# none, even when your shell holds a key: these invented parts never reach the judge's host.
 #
 # Run it as it is: `sh pattern.sh`. It uses the placket binary and jq on PATH, reads judge.json from
 # its own directory, makes everything else it needs in the current directory, starts its own window
@@ -99,6 +100,7 @@ accord=$(jq -r '.accord' founding.out)
 
 step "2. the window, and where the judge's requests may go"
 # The window runs only the judge configs its card lists, and reads the key from PLACKET_JEV_KEY.
+unset PLACKET_JEV_KEY # CHANGE: delete this line to send your own parts to the judge with your key
 placket window --key mediator.key --founding founding.json --openings openings --socket "$sock" --journal journal \
 	--judge "$judge" 2>window.log &
 window_pid=$!
