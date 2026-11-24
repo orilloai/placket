@@ -95,7 +95,7 @@ The command line installs from the release, in one of the ways above. A versione
 The core is a Go module of its own, `github.com/orilloai/placket/core`, with no dependency, tagged `core/vX.Y.Z`. A Go project requires it at a tag:
 
 ```sh
-go get github.com/orilloai/placket/core@v0.1.0
+go get github.com/orilloai/placket/core@v0.1.1
 ```
 
 Its packages outside `internal/`, which `core/README.md` lists, are its API, and what it promises is "0.x, may change": a later 0.x version may change or remove an exported name, and `CHANGELOG.md` says which. The root module's packages, under `adapters/` and `cmd/`, are not a supported Go API.

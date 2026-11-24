@@ -8,12 +8,17 @@ This file covers the tool and its Go API. Changes to the protocol's frozen forma
 
 ## Unreleased
 
+## [0.1.1] - 2026-11-24
+
+### Changed
+
 - The README opens with what placket is for and a link to placket.tech, lists Homebrew first and the install script's need for `cosign` before its command, puts the quickstart straight after the install, and adds two results that need no agent: the demo journal's verify and the merge rehearsal. Each quickstart says it uses Claude Code and points to the six words and to those two results.
 - `docs/release.md` says the Homebrew cask follows a release within the hour, not within a day, and how the tap brings in a cask that changes more than its version and SHA-256s.
 
 ### Fixed
 
 - The core's `signing.SignPayload` refuses, with `type-uri`, and `signing.VerifyPayload` rejects every payload type that starts with `https://placket.tech/`, not only the five type URIs, so no payload signature can stand for a placket object's signature of a later protocol version or kind. It is in the core module from `core/v0.1.1`; `docs/adr/0015-no-payload-signature-under-a-placket-uri.md` says why.
+- The `placket` binary is built against `core/v0.1.1`, so its payload signatures refuse every `https://placket.tech/` type too, and the README's Go section requires `core@v0.1.1`.
 
 ## [0.1.0] - 2026-11-24
 
