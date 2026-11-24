@@ -201,17 +201,47 @@ command -v jq >/dev/null 2>&1 || { echo "FAIL jq is not on PATH; the first hour 
 tmp=$(mktemp -d)
 # A unix socket's path is short on some systems: each entry's TMPDIR lives under a short directory.
 short=$(mktemp -d /tmp/plkh.XXXXXX)
-groups=
 cleanup() {
-	for g in $groups; do kill -KILL -"$g" 2>/dev/null; done
+	# An entry still running when the test exits ends on its own: its supervisor, below, sees that its
+	# parent has gone and kills its group.
 	rm -rf "$tmp" "$short"
 }
 trap cleanup EXIT
 trap 'exit 1' INT TERM
 
-# LEADER is a perl program that makes itself the leader of a new process group and then becomes the
-# command its arguments name, so the command's process id, $!, is also its group's id.
-LEADER='setpgrp(0, 0) or die "setpgrp: $!\n"; exec @ARGV or die "exec $ARGV[0]: $!\n"'
+# SUPERVISOR is a perl program, run as the shell's own child: SHELL LIMIT REPORT COMMAND... It makes
+# itself the leader of a new process group and runs COMMAND in that group. It ends when COMMAND ends,
+# when LIMIT seconds pass, or when its parent is no longer SHELL, which has then exited. It writes to
+# REPORT one line: COMMAND's exit status (128 plus the signal, if a signal ended it), late, or
+# orphaned, then a space and the number of other processes still in the group. Then it kills the
+# whole group, itself with it. Only the leader signals its group, and only while it is alive: its id
+# cannot be another's until the shell reaps it, so no signal reaches a group id that has been freed.
+# The shell sends no group signal at all.
+SUPERVISOR='
+use POSIX qw(WNOHANG);
+my ($shell, $limit, $report, @command) = @ARGV;
+setpgrp(0, 0) or die "setpgrp: $!\n";
+my $child = fork();
+defined $child or die "fork: $!\n";
+if ($child == 0) { exec @command or die "exec $command[0]: $!\n" }
+my $end = time() + $limit;
+my $how;
+until (defined $how) {
+	if (waitpid($child, WNOHANG) == $child) { $how = $? & 127 ? 128 + ($? & 127) : $? >> 8 }
+	elsif (getppid() != $shell) { $how = "orphaned" }
+	elsif (time() >= $end) { $how = "late" }
+	else { select(undef, undef, undef, 0.1) }
+}
+my $left = "unknown";
+my $ps = open(my $list, "-|", "ps", "-A", "-o", "pid=", "-o", "pgid=");
+if ($ps) {
+	my $n = 0;
+	while (<$list>) { my ($pid, $group) = split; $n++ if $group == $$ && $pid != $$ && $pid != $ps }
+	$left = $n if close $list;
+}
+if (open(my $out, ">", $report)) { print $out "$how $left\n"; close $out }
+kill "-KILL", $$;
+'
 
 # The install's archive: placket, built as .goreleaser.yaml builds it, and the files of its archive.
 files=$(awk '/^[a-z]/ { in_archives = ($0 == "archives:") } in_archives && $1 == "-" && $2 == "src:" { print $3 }' "$root/.goreleaser.yaml")
@@ -234,29 +264,27 @@ for e in $entries; do
 	mkdir -p "$tmp/$e" "$short/$e"
 	(
 		# No example needs a judge's key, even where the caller's shell holds one.
-		TMPDIR=$short/$e exec env -u PLACKET_JEV_KEY perl -e "$LEADER" sh "$0" --entry "$e" "$tmp"
+		TMPDIR=$short/$e exec env -u PLACKET_JEV_KEY perl -e "$SUPERVISOR" "$$" "$LIMIT" "$tmp/$e.report" sh "$0" --entry "$e" "$tmp"
 	) >"$tmp/$e.out" 2>&1 </dev/null &
-	g=$!
-	groups="$groups $g"
-	echo "$g" >"$tmp/$e.group"
-	(exec perl -e "$LEADER" sh -c "sleep $LIMIT; kill -KILL -$g") >/dev/null 2>&1 &
-	echo "$!" >"$tmp/$e.watchdog"
+	echo "$!" >"$tmp/$e.pid"
 done
 failed=0
 for e in $entries; do
-	g=$(cat "$tmp/$e.group")
-	wait "$g"
-	rc=$?
-	w=$(cat "$tmp/$e.watchdog")
-	kill -KILL -"$w" 2>/dev/null
-	wait "$w" 2>/dev/null
-	kill -KILL -"$g" 2>/dev/null
-	if [ "$rc" -eq 0 ]; then
+	# The supervisor's status is always KILL's, and the shell's note of it is noise: the report says how
+	# the run ended.
+	wait "$(cat "$tmp/$e.pid")" 2>/dev/null
+	how=
+	read -r how _ 2>/dev/null <"$tmp/$e.report"
+	if [ "$how" = 0 ]; then
 		sed 's/^/    /' "$tmp/$e.out"
 		echo "ok   $e"
 	else
 		failed=1
-		if [ "$rc" -eq 137 ]; then echo "FAIL $e: killed, or did not end within ${LIMIT}s"; else echo "FAIL $e: exit $rc"; fi
+		case $how in
+		late) echo "FAIL $e: did not end within ${LIMIT}s" ;;
+		'') echo "FAIL $e: ended before its supervisor could report" ;;
+		*) echo "FAIL $e: exit $how" ;;
+		esac
 		sed 's/^/    | /' "$tmp/$e.out"
 	fi
 done

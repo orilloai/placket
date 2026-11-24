@@ -206,4 +206,43 @@ if expect "a changelog ending with link references is a release" 0 "release 0.1.
 	fi
 fi
 
+# Versions compare by number, part by part, not as text: v0.10.0 is above v0.9.0.
+fresh
+g tag -a v0.9.0 -m v0.9.0
+g tag -a v0.10.0 -m v0.10.0
+before=$(g rev-parse HEAD)
+release_section 0.9.1 2026-12-01
+after=$(commit 'Release 0.9.1')
+expect "a version below a latest tag that is greater by number, not as text, is refused" 1 \
+	"release: refused: 0.9.1 is not above the latest tag v0.10.0" \
+	--before "$before" --after "$after" --today 2026-12-01 --release-state none
+fresh
+g tag -a v0.9.0 -m v0.9.0
+before=$(g rev-parse HEAD)
+release_section 0.10.0 2026-12-01
+after=$(commit 'Release 0.10.0')
+expect "a version above the latest tag by number, not as text, is a release" 0 "release 0.10.0" \
+	--before "$before" --after "$after" --today 2026-12-01 --release-state none
+
+# dated <date> <today> <exit> <line> <name>: a push that adds section 0.1.0 dated <date>, run on
+# <today>, prints <line> and exits <exit>. The cases cross the end of February in a common year, a
+# leap year, a century year that is not a leap year and one that is.
+dated() {
+	fresh
+	before=$(g rev-parse HEAD)
+	release_section 0.1.0 "$1"
+	after=$(commit "Release 0.1.0 on $1")
+	expect "$5" "$3" "$4" --before "$before" --after "$after" --today "$2" --release-state none
+}
+dated 2027-02-28 2027-03-01 0 "release 0.1.0" \
+	"a section dated the day before March 1 in a common year is a release"
+dated 2028-02-28 2028-03-01 1 "release: refused: 0.1.0 is dated 2028-02-28, more than one day from 2028-03-01" \
+	"a section dated two days before March 1 in a leap year is refused"
+dated 2028-02-29 2028-03-01 0 "release 0.1.0" \
+	"a section dated February 29, the day before March 1 in a leap year, is a release"
+dated 2100-02-28 2100-03-01 0 "release 0.1.0" \
+	"a section dated the day before March 1 in a century year that is not a leap year is a release"
+dated 2000-02-28 2000-03-01 1 "release: refused: 0.1.0 is dated 2000-02-28, more than one day from 2000-03-01" \
+	"a section dated two days before March 1 in a century year that is a leap year is refused"
+
 exit $failed

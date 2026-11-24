@@ -19,6 +19,7 @@
 set -u
 
 root=$(cd "$(dirname "$0")/.." && pwd)
+command -v curl >/dev/null 2>&1 || { echo "FAIL curl is not on PATH; the install test needs it"; exit 1; }
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
 trap 'exit 1' INT TERM
