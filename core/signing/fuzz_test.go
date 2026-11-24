@@ -165,14 +165,16 @@ func FuzzSign(f *testing.F) {
 }
 
 // FuzzSignPayload signs any payload under any payload type with a key of any seed. It never panics;
-// a payload type of signing-4's four is refused, and every other signature is the key's over the
-// pre-authentication encoding.
+// a payload type that starts with https://placket.tech/, signing-4's five type URIs among them, is
+// refused (record 0015), and every other signature is the key's over the pre-authentication encoding.
 func FuzzSignPayload(f *testing.F) {
 	seed := sha256.Sum256([]byte("placket vectors: key mediator"))
 	for _, ty := range fuzzTypes {
 		f.Add(ty, []byte(`{"seq":1}`), seed[:])
 	}
 	f.Add("application/vnd.in-toto+json", []byte{}, []byte{})
+	f.Add("https://placket.tech/declaration/0.2", []byte(`{"seq":1}`), seed[:])
+	f.Add("https://placket.tech/", []byte(`{"seq":1}`), seed[:])
 	for _, in := range seeds.Inputs(f, "signatures") {
 		f.Add("application/vnd.in-toto+json", in, seed[:])
 	}
@@ -180,7 +182,7 @@ func FuzzSignPayload(f *testing.F) {
 		k, kerr := NewKey(seed)
 		sig, err := SignPayload(payloadType, payload, k)
 		switch {
-		case objectType(payloadType):
+		case strings.HasPrefix(payloadType, "https://placket.tech/"):
 			if e, ok := err.(*Error); !ok || e.Code != CodeTypeURI || sig != nil {
 				t.Fatalf("under %q: %x, %v", payloadType, sig, err)
 			}

@@ -53,8 +53,8 @@
   },
   "signing-4": {
     "vectors": ["signatures/receipt-verifies", "signatures/receipt-placket-payload-type", "signatures/a-binding-under-the-old-domain", "signatures/answer-sign-accepted", "signatures/answer-sign-cancelled", "signatures/receipt-answer-payload-type", "signatures/acceptance-verifies", "signatures/acceptance-by-another-key", "signatures/acceptance-under-the-declaration-uri", "signatures/acceptance-sign", "signatures/receipt-acceptance-payload-type"],
-    "tests": ["core/signing:TestPayloadSignaturesRefuseTheThreeTypeURIs"],
-    "scenarios": {"a placket URI as a payload type": {"vectors": ["signatures/receipt-answer-payload-type"], "tests": ["core/signing:TestPayloadSignaturesRefuseTheThreeTypeURIs", "core/signing:TestTheAnswerCallIsAnObjectType"]}, "an answer call signed and verified": {"vectors": ["signatures/answer-verifies", "signatures/answer-by-another-key", "signatures/answer-under-the-envelope-uri"]}, "an acceptance signed and verified": {"vectors": ["signatures/acceptance-verifies", "signatures/acceptance-by-another-key", "signatures/acceptance-under-the-declaration-uri"]}}
+    "tests": ["core/signing:TestPayloadSignaturesRefuseEveryPlacketURI"],
+    "scenarios": {"a placket URI as a payload type": {"vectors": ["signatures/receipt-answer-payload-type"], "tests": ["core/signing:TestPayloadSignaturesRefuseEveryPlacketURI", "core/signing:TestTheAnswerCallIsAnObjectType"]}, "an answer call signed and verified": {"vectors": ["signatures/answer-verifies", "signatures/answer-by-another-key", "signatures/answer-under-the-envelope-uri"]}, "an acceptance signed and verified": {"vectors": ["signatures/acceptance-verifies", "signatures/acceptance-by-another-key", "signatures/acceptance-under-the-declaration-uri"]}}
   },
   "setup-contract-1": {
     "vectors": ["founding/selector-not-a-role", "founding/maybe-without-resolve", "founding/term-names-a-check", "founding/declaration-edited", "founding/resolve-on-a-want", "founding/judge-unknown", "founding/a-judge-named-twice", "founding/a-judge-of-another-use", "founding/judged"],
