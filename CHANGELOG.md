@@ -8,6 +8,8 @@ This file covers the tool and its Go API. Changes to the protocol's frozen forma
 
 ## Unreleased
 
+- The README opens with what placket is for and a link to placket.tech, lists Homebrew first and the install script's need for `cosign` before its command, puts the quickstart straight after the install, and adds two results that need no agent: the demo journal's verify and the merge rehearsal. Each quickstart says it uses Claude Code and points to the six words and to those two results.
+
 ## [0.1.0] - 2026-11-24
 
 The first release. Placket mediates the parts that cross between parties under the terms each signed, asks a person where the terms say to, and signs a receipt for every decision, which anyone can verify.

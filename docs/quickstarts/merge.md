@@ -1,6 +1,8 @@
 # Quickstart: an out-gate on a merge
 
-An agent proposes to merge a pull request on GitHub, you accept or decline it, and an applier merges only what you accepted, at the head commit you accepted. It needs `placket` on your `PATH` ([install](../../README.md#install)), `gh` and `jq`, and no judge's key; [`patterns/github-merge/`](../../patterns/github-merge/README.md) rehearses it against a stand-in `gh`, with no repository.
+An agent proposes to merge a pull request on GitHub, you accept or decline it, and an applier merges only what you accepted, at the head commit you accepted. It uses Claude Code as the agent, and needs `placket` on your `PATH` ([install](../../README.md#install)), `gh` and `jq`, and no judge's key; [`patterns/github-merge/`](../../patterns/github-merge/README.md) rehearses it against a stand-in `gh`, with no repository. Without Claude Code, that rehearsal is one of [two results that need no agent](../../README.md#with-no-agent).
+
+The words it uses, Accord, terms, ask, answer, receipt and verify, are in [the approve guide's "Six words"](../guides/approve.md#six-words).
 
 ```sh
 placket init merge
