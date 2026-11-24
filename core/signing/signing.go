@@ -3,8 +3,9 @@
 //
 // It implements signing-1 (actor references, and keys that sign nothing), signing-2 (signing bytes
 // and cofactorless verification) and signing-4 (the five type URIs, and payload signatures that can
-// never stand for a placket object's). It has no codes of the protocol: an operation that checks a
-// signature returns its own code when Verify fails.
+// never stand for a placket object's: no payload type under https://placket.tech/ signs or
+// verifies, record 0015). It has no codes of the protocol: an operation that checks a signature
+// returns its own code when Verify fails.
 package signing
 
 import (
@@ -41,7 +42,8 @@ const (
 	// CodeSeed: a key's seed is not 32 bytes.
 	CodeSeed Code = "seed"
 	// CodeTypeURI: an object signed under a type URI this version does not sign objects under, or a
-	// payload signed under one of the five type URIs of signing-4.
+	// payload signed under a payload type that starts with https://placket.tech/, the five type URIs
+	// of signing-4 among them (record 0015).
 	CodeTypeURI Code = "type-uri"
 	// CodeObject: the bytes to sign are not accepted by the canonical form, or are not an object.
 	CodeObject Code = "object"
@@ -130,6 +132,17 @@ func objectType(t string) bool {
 	return t == TypeDeclaration || t == TypeBinding || t == TypeEnvelope || t == TypeAnswer || t == TypeAcceptance
 }
 
+// placketURIs starts every URI of placket's, the five type URIs among them (record 0005).
+const placketURIs = "https://placket.tech/"
+
+// placketPayloadType reports whether t is a payload type no payload signature is made or checked
+// under: one that starts, byte for byte, with placket's URIs, so that no payload signature can stand
+// for an object's signature, of this protocol number or a later one (signing-4, record 0015). Another
+// scheme, another case or the host with no trailing slash is not one.
+func placketPayloadType(t string) bool {
+	return objectType(t) || strings.HasPrefix(t, placketURIs)
+}
+
 // SigningBytes returns the signing bytes of object under typeURI: the pre-authentication encoding of
 // the type URI and the canonical bytes of the object with its sig member removed (signing-2).
 func SigningBytes(object []byte, typeURI string) ([]byte, error) {
@@ -196,10 +209,11 @@ func Verify(object []byte, typeURI string, signer string) bool {
 }
 
 // SignPayload signs payload under its payload type with key and returns the 64-byte signature
-// (signing-4). A payload type of signing-4's five is refused: no payload signature can be taken
-// for a placket object's.
+// (signing-4). A payload type that starts with https://placket.tech/, signing-4's five type URIs
+// among them, is refused with type-uri: no payload signature can be taken for a placket object's,
+// of this protocol number or a later one (record 0015).
 func SignPayload(payloadType string, payload []byte, key Key) ([]byte, error) {
-	if objectType(payloadType) {
+	if placketPayloadType(payloadType) {
 		return nil, &Error{Code: CodeTypeURI}
 	}
 	if len(key.bytes()) != ed25519.PrivateKeySize {
@@ -209,10 +223,11 @@ func SignPayload(payloadType string, payload []byte, key Key) ([]byte, error) {
 }
 
 // VerifyPayload reports whether sig, 64 bytes, verifies over payload under its payload type by the
-// actor signer (signing-2, signing-4). A payload type of signing-4's five verifies nothing.
+// actor signer (signing-2, signing-4). A payload type that starts with https://placket.tech/,
+// signing-4's five type URIs among them, verifies nothing (record 0015).
 func VerifyPayload(payloadType string, payload, sig []byte, signer string) bool {
 	public, ok := ParseReference(signer)
-	if !ok || !keySigns(public) || objectType(payloadType) {
+	if !ok || !keySigns(public) || placketPayloadType(payloadType) {
 		return false
 	}
 	return equation(public, PAE(payloadType, payload), sig)

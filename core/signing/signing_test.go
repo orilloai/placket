@@ -140,43 +140,72 @@ func TestNonCanonicalKeysSignNothing(t *testing.T) {
 // registration.
 var registration = strings.Replace(TypeDeclaration, "declaration", "registration", 1)
 
-// TestPayloadSignaturesRefuseTheThreeTypeURIs is signing-4's scenario: a payload signature whose
-// payload type is a placket type URI is refused both ways, and no object is signed or verified under
-// a payload type that is not one of them, the registration type URI earlier drafts reserved included.
-func TestPayloadSignaturesRefuseTheThreeTypeURIs(t *testing.T) {
+// TestPayloadSignaturesRefuseEveryPlacketURI is signing-4's scenario, held by the stricter rule of
+// record 0015: a payload signature under a payload type that starts with https://placket.tech/ is
+// refused both ways, the five type URIs, other kinds and other protocol numbers included; any other
+// payload type signs and verifies, a near spelling of the host included; and objects are still signed
+// and verified under the five type URIs alone.
+func TestPayloadSignaturesRefuseEveryPlacketURI(t *testing.T) {
 	t.Parallel()
 	k := testKey(t, "proposer")
 	envelope := []byte(`{"hash":"sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a","seq":1}`)
-	for _, uri := range []string{TypeDeclaration, TypeBinding, TypeEnvelope} {
-		sig, err := SignPayload(uri, envelope, k)
-		var se *Error
-		if sig != nil || !errors.As(err, &se) || se.Code != CodeTypeURI {
-			t.Fatalf("SignPayload under %s: %x, %v", uri, sig, err)
+	placket := []string{
+		TypeDeclaration, TypeBinding, TypeEnvelope, TypeAnswer, TypeAcceptance,
+		registration,
+		"https://placket.tech/declaration/0.2",
+		"https://placket.tech/receipt/0.1",
+		"https://placket.tech/close/0.1",
+		"https://placket.tech/",
+	}
+	for _, pt := range placket {
+		sig, err := SignPayload(pt, envelope, k)
+		if sig != nil || !isTypeURI(err) {
+			t.Fatalf("SignPayload under %s: %x, %v, want type-uri", pt, sig, err)
 		}
 		// A raw Ed25519 signature over the very pre-authentication encoding an object signature uses.
-		raw := ed25519.Sign(k.bytes(), PAE(uri, envelope))
-		if VerifyPayload(uri, envelope, raw, k.Reference()) {
-			t.Fatalf("VerifyPayload under %s accepted a signature", uri)
+		raw := ed25519.Sign(k.bytes(), PAE(pt, envelope))
+		if VerifyPayload(pt, envelope, raw, k.Reference()) {
+			t.Fatalf("VerifyPayload under %s accepted a signature", pt)
 		}
 	}
-	// The receipt's payload type signs and verifies as a payload, and never as an object.
-	const intoto = "application/vnd.in-toto+json"
-	sig, err := SignPayload(intoto, envelope, k)
-	if err != nil || !VerifyPayload(intoto, envelope, sig, k.Reference()) {
-		t.Fatalf("a payload under %s: %v", intoto, err)
+	// Any other payload type signs and verifies as a payload, and never as an object. The match is
+	// byte-exact, so another scheme, another case or the host with no trailing slash is not placket's.
+	for _, pt := range []string{
+		"application/vnd.in-toto+json",
+		"application/vnd.placket.call+json",
+		"http://placket.tech/x",
+		"HTTPS://placket.tech/x",
+		"https://Placket.tech/x",
+		"https://placket.tech",
+		"https://placket.technology/x",
+	} {
+		sig, err := SignPayload(pt, envelope, k)
+		if err != nil || len(sig) != ed25519.SignatureSize || !VerifyPayload(pt, envelope, sig, k.Reference()) {
+			t.Fatalf("a payload under %s: %x, %v", pt, sig, err)
+		}
+		if _, err := Sign(envelope, pt, k); !isTypeURI(err) {
+			t.Fatalf("Sign under the payload type %s: got %v, want %s", pt, err, CodeTypeURI)
+		}
 	}
-	if _, err := Sign(envelope, intoto, k); !isTypeURI(err) {
-		t.Fatalf("Sign under the payload type %s: got %v, want %s", intoto, err, CodeTypeURI)
+	// No object is signed under a placket URI that is not one of the five: not a registration, which
+	// no version reserves, and not a type URI of another protocol number.
+	for _, uri := range []string{registration, "https://placket.tech/declaration/0.2", "https://placket.tech/"} {
+		if _, err := Sign(envelope, uri, k); !isTypeURI(err) {
+			t.Fatalf("Sign under %s: got %v, want %s", uri, err, CodeTypeURI)
+		}
 	}
-	// No registration type is reserved: the URI one would have under this version is a type no object
-	// is signed under, like any other.
-	if _, err := Sign(envelope, registration, k); !isTypeURI(err) {
-		t.Fatalf("Sign under %s: got %v, want %s", registration, err, CodeTypeURI)
+	obj, err := Sign(envelope, TypeEnvelope, k)
+	if err != nil {
+		t.Fatalf("Sign under TypeEnvelope: %v", err)
 	}
-	obj, _ := Sign(envelope, TypeEnvelope, k)
 	signed := []byte(strings.Replace(string(envelope), `"seq":1`, `"seq":1,"sig":"`+obj+`"`, 1))
-	if !Verify(signed, TypeEnvelope, k.Reference()) || Verify(signed, intoto, k.Reference()) {
-		t.Fatal("an envelope verifies under the in-toto payload type, or not under its own")
+	if !Verify(signed, TypeEnvelope, k.Reference()) {
+		t.Fatal("an envelope does not verify under its own type URI")
+	}
+	for _, uri := range []string{TypeDeclaration, "https://placket.tech/envelope/0.2", "application/vnd.in-toto+json"} {
+		if Verify(signed, uri, k.Reference()) {
+			t.Fatalf("an envelope verifies under %s", uri)
+		}
 	}
 }
 

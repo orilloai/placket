@@ -8,6 +8,10 @@ This file covers the tool and its Go API. Changes to the protocol's frozen forma
 
 ## Unreleased
 
+### Fixed
+
+- The core's `signing.SignPayload` refuses, with `type-uri`, and `signing.VerifyPayload` rejects every payload type that starts with `https://placket.tech/`, not only the five type URIs, so no payload signature can stand for a placket object's signature of a later protocol version or kind. It is in the core module from `core/v0.1.1`; `docs/adr/0015-no-payload-signature-under-a-placket-uri.md` says why.
+
 ## [0.1.0] - 2026-11-24
 
 The first release. Placket mediates the parts that cross between parties under the terms each signed, asks a person where the terms say to, and signs a receipt for every decision, which anyone can verify.
