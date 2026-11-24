@@ -202,8 +202,12 @@ tmp=$(mktemp -d)
 # A unix socket's path is short on some systems: each entry's TMPDIR lives under a short directory.
 short=$(mktemp -d /tmp/plkh.XXXXXX)
 groups=
+watchdogs=
 cleanup() {
 	for g in $groups; do kill -KILL -"$g" 2>/dev/null; done
+	# A watchdog left running after an interrupt would sleep out its limit and then kill a group whose
+	# id may by then be another's.
+	for w in $watchdogs; do kill -KILL -"$w" 2>/dev/null; done
 	rm -rf "$tmp" "$short"
 }
 trap cleanup EXIT
@@ -240,6 +244,7 @@ for e in $entries; do
 	groups="$groups $g"
 	echo "$g" >"$tmp/$e.group"
 	(exec perl -e "$LEADER" sh -c "sleep $LIMIT; kill -KILL -$g") >/dev/null 2>&1 &
+	watchdogs="$watchdogs $!"
 	echo "$!" >"$tmp/$e.watchdog"
 done
 failed=0

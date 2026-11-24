@@ -261,6 +261,23 @@ never_ran() {
 	fi
 }
 
+# --release takes a tag vX.Y.Z: any other is a usage error, before cosign or gh is called.
+for t in 0.1.0 v0.1.0-rc.1 v0.1; do
+	build "$dir" v0.1.0 0.1.0
+	rm -f "$tmp/calls"
+	(cd "$root" && PATH=$tmp/bin:$PATH sh "$check" --release "$t" "$dir") >"$out" 2>&1
+	if judge "a release tag $t, not vX.Y.Z, is a usage error" 2 \
+		"release-check: usage: release-check.sh --snapshot DIR | --release vX.Y.Z DIR"; then
+		if [ -e "$tmp/calls" ]; then
+			echo "FAIL a release tag $t, not vX.Y.Z, calls cosign or gh"
+			sed 's/^/    | /' "$tmp/calls"
+			failed=1
+		else
+			echo "ok   a release tag $t, not vX.Y.Z, calls neither cosign nor gh"
+		fi
+	fi
+done
+
 build "$dir" v0.1.0 0.1.0
 rm -f "$tmp/calls"
 if expect_release "a release whose signature, provenance and version hold passes" 0 "release-check: ok" "$dir"; then
