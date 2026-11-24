@@ -1,5 +1,56 @@
 # placket
 
+placket sits at the handoff between agents, people and tools. Clear cases pass, the rest go to the person who answers for them, and every decision leaves a signed receipt that others can verify.
+
+[placket.tech](https://placket.tech) says what it is for and how it works.
+
+## Install
+
+Placket is one binary, for Linux and macOS on amd64 and arm64. Any one of these installs it:
+
+- **Homebrew**, on macOS or Linux: `brew install --cask orilloai/tap/placket`. Homebrew checks each archive against the SHA-256 the cask names, which the tap takes from the release only after checking the signature on its `checksums.txt`; at install, Homebrew itself checks neither the signature nor the provenance.
+- **The install script**. Needs `cosign` (`brew install cosign`). The script checks the release's signature before it installs anything:
+
+  ```sh
+  curl -fsSL https://github.com/orilloai/placket/releases/latest/download/install.sh | sh
+  ```
+
+  Without `cosign` on `PATH` it installs nothing, unless `PLACKET_INSTALL_UNSIGNED=1` tells it to go on without the signature; then, unless `gh` verified the archive's provenance, it ends by saying the binary's origin was not checked. It also checks the archive's SHA-256 against its line in `checksums.txt`, and the archive's provenance with `gh` when `gh` is installed and signed in, and puts `placket` in `~/.local/bin`.
+- **Claude Code**, through placket's plugin, whose skills install placket with your yes, set it up with you, and suggest where it could gate what your agents do: `/plugin marketplace add orilloai/placket`, then `/plugin install placket@placket`, then ask for `placket-setup`. Any other agent that reads `SKILL.md` files takes the same skills, as [`skills/README.md`](skills/README.md) says.
+
+To check the install script before it runs, or to install by hand, see [Other ways to install](#other-ways-to-install).
+
+## Quickstart
+
+Each of placket's three uses starts with one `placket init`, which founds its example Accord for you alone and prints every command that comes next. Each guide takes it from there to a receipt you verify, with no judge's key. All three use Claude Code as the agent.
+
+1. **Approve before apply**, the one to start with: an agent proposes the text of a file, you accept, change or decline it, and an applier writes only what you accepted. `placket init approve`, then [`docs/guides/approve.md`](docs/guides/approve.md). As `init` sets it up, every key is in your own account, so the gate records and checks each decision but does not hold against an agent that can run commands as you; for that, the agent runs in an account of its own, as [the guide says](docs/guides/approve.md#what-this-setup-does-not-stop).
+2. **An out-gate on a merge**: an agent proposes a merge on GitHub, you answer it, and an applier merges only what you accepted, at the head commit you accepted. `placket init merge`, then [`docs/guides/merge.md`](docs/guides/merge.md).
+3. **Handoffs between agents**: a planner hands a plan to a coder, and the coder its work to a reviewer, across two Accords, each with a window of its own and both under one mediator key, each handoff with a receipt. `placket init handoff`, then [`docs/guides/handoff.md`](docs/guides/handoff.md).
+
+### With no agent
+
+Two results need no agent and no key, only a clone of this repository.
+
+**Verify a journal.** The demo's journal of one run is committed under `scripts/demo/`. Verify it against the id of the Accord the demo founded, written out here; the id you verify a journal of your own against comes from your own record of its founding, such as the `accord <id>` line `placket founding` printed, never from the journal you are checking:
+
+```
+go build -o placket ./cmd/placket
+./placket verify --accord sha256:2d5527e5e4dc89d956aa8422443200ee84294ad349cbac96462eaf6b6e38d09b --receipts scripts/demo/journal --founding scripts/demo/founding.json
+```
+
+With `placket` installed, skip the build and run `placket verify` with the same flags. It prints each receipt's statement, then its report, which includes `valid: 13 receipts signed by mediator ...`. [Run the demo](#run-the-demo) says what it checks.
+
+**Rehearse a merge gate.** [`patterns/github-merge/`](patterns/github-merge/README.md) runs an agent's merges through placket against a stand-in for GitHub's `gh`, with no repository and no account. It needs `placket` and `jq` on `PATH`, and writes its keys into the directory it runs in, so run it from an empty one:
+
+```sh
+here=$PWD && cd "$(mktemp -d)" && sh "$here/patterns/github-merge/pattern.sh"
+```
+
+It prints what `patterns/github-merge/expected.txt` holds. Among its lines is `applier: refused pr 8 head-moved`: a push moved pull request 8's head after the applier read it, and GitHub refused the merge, since the applier asks it to merge only the head commit that was accepted.
+
+## What it does
+
 Placket mediates content crossing between parties, and records what crossed in receipts anyone can verify.
 
 It sits at a handoff between parties that do not fully trust each other: agents, people, tools. Each party declares, and signs, the terms under which a part may cross to the other. For every part offered, placket decides whether it passes, is blocked, or must be asked about: then a named person, holding the role the terms name, accepts it, changes it or declines it. Placket signs a receipt for every decision, chained per pair of parties, and a third party verifies the receipts with the mediator's public key alone.
@@ -8,33 +59,22 @@ Each part crosses as an [A2A 1.0](https://a2a-protocol.org) message carrying pla
 
 The first job is ask and log: one system proposes, another applies, and a named person is asked about every proposal. An accepted proposal is released to the applier exactly as it was sent; a changed one is released as the person's version and returned to the proposer; a declined one releases nothing. The deliverable is the signed log of what was asked, answered and released.
 
-## Install
+## Other ways to install
 
-Placket is one binary, for Linux and macOS on amd64 and arm64. Any one of these lines installs it:
+The install script is the one [`docs/release.md`, "Install in one line"](docs/release.md#install-in-one-line) describes.
 
-- **The install script**, which checks the signature on the release's `checksums.txt` with `cosign`, the archive's SHA-256 against its line there, and the archive's provenance with `gh` when `gh` is installed and signed in, as [`docs/release.md`, "Install in one line"](docs/release.md#install-in-one-line) says, and puts `placket` in `~/.local/bin`:
+`curl | sh` runs the script before anything checks it. To check the script itself first, against the release's signed `checksums.txt`, in a new directory, stopping at the first step that fails:
 
-  ```sh
-  curl -fsSL https://github.com/orilloai/placket/releases/latest/download/install.sh | sh
-  ```
-
-  Without `cosign` on `PATH` it installs nothing, unless `PLACKET_INSTALL_UNSIGNED=1` tells it to go on without the signature; then, unless `gh` verified the archive's provenance, it ends by saying the binary's origin was not checked.
-
-  `curl | sh` runs the script before anything checks it. To check the script itself first, against the release's signed `checksums.txt`, in a new directory, stopping at the first step that fails:
-
-  ```sh
-  dir=$(mktemp -d) && cd "$dir" &&
-  base=https://github.com/orilloai/placket/releases/latest/download &&
-  curl -fsSLO "$base/install.sh" -O "$base/checksums.txt" -O "$base/checksums.txt.sigstore.json" &&
-  cosign verify-blob --bundle checksums.txt.sigstore.json \
-    --certificate-identity https://github.com/orilloai/placket/.github/workflows/release.yml@refs/heads/main \
-    --certificate-oidc-issuer https://token.actions.githubusercontent.com checksums.txt &&
-  grep ' install.sh$' checksums.txt | shasum -a 256 -c &&
-  sh install.sh
-  ```
-
-- **Homebrew**, on macOS or Linux: `brew install --cask orilloai/tap/placket`.
-- **Claude Code**, through placket's plugin, whose skills install placket with your yes, set it up with you, and suggest where it could gate what your agents do: `/plugin marketplace add orilloai/placket`, then `/plugin install placket@placket`, then ask for `placket-setup`. Any other agent that reads `SKILL.md` files takes the same skills, as [`skills/README.md`](skills/README.md) says.
+```sh
+dir=$(mktemp -d) && cd "$dir" &&
+base=https://github.com/orilloai/placket/releases/latest/download &&
+curl -fsSLO "$base/install.sh" -O "$base/checksums.txt" -O "$base/checksums.txt.sigstore.json" &&
+cosign verify-blob --bundle checksums.txt.sigstore.json \
+  --certificate-identity https://github.com/orilloai/placket/.github/workflows/release.yml@refs/heads/main \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com checksums.txt &&
+grep ' install.sh$' checksums.txt | shasum -a 256 -c &&
+sh install.sh
+```
 
 Or by hand:
 
@@ -48,7 +88,7 @@ Or by hand:
    placket version
    ```
 
-The command line installs from the release, in one of these ways. A versioned `go install` of it is not supported in 0.1.
+The command line installs from the release, in one of the ways above. A versioned `go install` of it is not supported in 0.1.
 
 ## Use the core from Go
 
@@ -116,14 +156,6 @@ func refuse(why string) {
 
 Fed that vector, it prints `verified: 3`. Change one character of a receipt's signature and it exits 1, naming the first receipt that fails. It refuses an input the canonical form refuses, such as one with a repeated name or bytes after the object, and verifies nothing.
 
-## Quickstart
-
-Each of placket's three uses starts with one `placket init`, which founds its example Accord for you alone and prints every command that comes next. Each guide takes it from there to a receipt you verify, with no judge's key.
-
-1. **Approve before apply**, the one to start with: an agent proposes the text of a file, you accept, change or decline it, and an applier writes only what you accepted. `placket init approve`, then [`docs/guides/approve.md`](docs/guides/approve.md). As `init` sets it up, every key is in your own account, so the gate records and checks each decision but does not hold against an agent that can run commands as you; for that, the agent runs in an account of its own, as [the guide says](docs/guides/approve.md#what-this-setup-does-not-stop).
-2. **An out-gate on a merge**: an agent proposes a merge on GitHub, you answer it, and an applier merges only what you accepted, at the head commit you accepted. `placket init merge`, then [`docs/guides/merge.md`](docs/guides/merge.md).
-3. **Handoffs between agents**: a planner hands a plan to a coder, and the coder its work to a reviewer, across two Accords, each with a window of its own and both under one mediator key, each handoff with a receipt. `placket init handoff`, then [`docs/guides/handoff.md`](docs/guides/handoff.md).
-
 ## What a receipt claims
 
 Each receipt states one decision about one part, under one Accord: the part's salted digest and kind, the two keys, the Accord, the card that names the decision module, and a time. Whoever holds the body and its salt can show that a part is the one judged. `placket show` prints, for each receipt, the line of what it claims, and `placket verify` prints the claim of a verified journal:
@@ -148,14 +180,7 @@ A receipt also does not show that the mediator is honest, or that its clock is t
 
 `make demo` runs the worked example, `scripts/demo.sh`, with Go 1.27 on Linux or macOS: it builds the `placket` binary, makes the keys of a mediator, an operator, a principal and three parties (a proposer, an applier and a decider), signs their terms and bindings, seals each party's terms, founds the Accord from the seals, and starts a window, to which each party consents by accepting its own view. Then the proposer asks three proposals and waits on each; the decider accepts the first, changes the second with a comment, and declines the third with a comment, each from its own commands; the applier fetches what was released. The proposer leaves a fourth proposal open and is refused when it tries to answer it itself, and gives a part of a kind no term names, which is blocked. The window is killed and started again: the open proposal is closed as undeliverable, and the applier fetches the changed version it had not fetched yet. Last, a third party verifies the journal with the terms sealed, the operator verifies it again with every opening, each party checks its own receipts against the view it accepted, a third party reconciles each party's records with it and exports the log, four rows; then changes one character of a receipt's signature, and verification fails. `sh scripts/demo.sh DIR` keeps everything it made in `DIR`.
 
-The journal of one run is committed under `scripts/demo/`, with the founding set, its `acceptances.json`, the mediator's public reference and, for the demo only, every party's opening, and no key. Anyone can verify it, against the id of the Accord the demo founded, written out below; the id you verify a journal of your own against comes from your own record of its founding, such as the `accord <id>` line `placket founding` printed, never from the journal you are checking:
-
-```
-go build -o placket ./cmd/placket
-./placket verify --accord sha256:2d5527e5e4dc89d956aa8422443200ee84294ad349cbac96462eaf6b6e38d09b --receipts scripts/demo/journal --founding scripts/demo/founding.json
-```
-
-Given only the Accord's id, its founding set and the acceptances beside it, it checks what every party signed: that every receipt is the mediator's and names this Accord, its card and its members, and that every member accepted its view. The terms behind each seal stay sealed, so it prints `valid: 13 receipts signed by mediator ...` and `terms: not checked: the declarations are sealed; with every member's opening, --open checks them`, and the journal's `answers.jsonl` shows each answer witnessed by the key that signed it. With every opening, as in a dispute, it checks each seal, each view and every decision:
+The journal of one run is committed under `scripts/demo/`, with the founding set, its `acceptances.json`, the mediator's public reference and, for the demo only, every party's opening, and no key. Anyone can verify it, as [With no agent](#with-no-agent) does. Given only the Accord's id, its founding set and the acceptances beside it, it checks what every party signed: that every receipt is the mediator's and names this Accord, its card and its members, and that every member accepted its view. The terms behind each seal stay sealed, so it prints `valid: 13 receipts signed by mediator ...` and `terms: not checked: the declarations are sealed; with every member's opening, --open checks them`, and the journal's `answers.jsonl` shows each answer witnessed by the key that signed it. With every opening, as in a dispute, it checks each seal, each view and every decision:
 
 ```
 ./placket verify --accord sha256:2d5527e5e4dc89d956aa8422443200ee84294ad349cbac96462eaf6b6e38d09b --receipts scripts/demo/journal --founding scripts/demo/founding.json $(for o in scripts/demo/openings/*; do printf ' --open %s' "$o"; done)

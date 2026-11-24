@@ -1,6 +1,8 @@
 # Quickstart: handoffs between agents
 
-A planner hands a plan to a coder, and the coder hands its work to a reviewer, across two mediators, each handoff with a receipt. Nobody is asked: the terms pass each handoff, and block any kind they do not name. It needs `placket` on your `PATH` ([install](../../README.md#install)) and no judge's key.
+A planner hands a plan to a coder, and the coder hands its work to a reviewer, across two mediators, each handoff with a receipt. Nobody is asked: the terms pass each handoff, and block any kind they do not name. It uses Claude Code as the agents, and needs `placket` on your `PATH` ([install](../../README.md#install)) and no judge's key. Without Claude Code, [two results need no agent](../../README.md#with-no-agent).
+
+The words it uses, Accord, terms, ask, answer, receipt and verify, are in [the approve guide's "Six words"](../guides/approve.md#six-words).
 
 ```sh
 placket init handoff

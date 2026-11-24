@@ -1,6 +1,8 @@
 # Quickstart: approve before apply
 
-An agent proposes the text of a file, you accept, change or decline it, and an applier writes only what you accepted. This is the entry point to try first. It needs `placket` on your `PATH` ([install](../../README.md#install)) and no judge's key.
+An agent proposes the text of a file, you accept, change or decline it, and an applier writes only what you accepted. This is the entry point to try first. It uses Claude Code as the agent, and needs `placket` on your `PATH` ([install](../../README.md#install)) and no judge's key. Without Claude Code, [two results need no agent](../../README.md#with-no-agent).
+
+The words it uses, Accord, terms, ask, answer, receipt and verify, are in [the guide's "Six words"](../guides/approve.md#six-words).
 
 ```sh
 placket init approve

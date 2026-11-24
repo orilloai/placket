@@ -8,6 +8,8 @@ This file covers the tool and its Go API. Changes to the protocol's frozen forma
 
 ## Unreleased
 
+- The README opens with what placket is for and a link to placket.tech, lists Homebrew first and the install script's need for `cosign` before its command, puts the quickstart straight after the install, and adds two results that need no agent: the demo journal's verify and the merge rehearsal. Each quickstart says it uses Claude Code and points to the six words and to those two results.
+
 ### Fixed
 
 - The core's `signing.SignPayload` refuses, with `type-uri`, and `signing.VerifyPayload` rejects every payload type that starts with `https://placket.tech/`, not only the five type URIs, so no payload signature can stand for a placket object's signature of a later protocol version or kind. It is in the core module from `core/v0.1.1`; `docs/adr/0015-no-payload-signature-under-a-placket-uri.md` says why.
