@@ -57,6 +57,7 @@ A new rule gets its name here, in the change that adds it: a heading in its topi
 - [`door-passes-bytes`](adapters.md#door-passes-bytes)
 - [`state-lock`](adapters.md#state-lock)
 - [`journal-is-evidence`](adapters.md#journal-is-evidence)
+- [`files-like-siblings`](adapters.md#files-like-siblings)
 - [`restart-reproducible`](adapters.md#restart-reproducible)
 - [`log-from-receipts`](adapters.md#log-from-receipts)
 - [`product-words-once`](adapters.md#product-words-once)
@@ -69,6 +70,8 @@ A new rule gets its name here, in the change that adds it: a heading in its topi
 ## Tests and vectors
 
 - [`tests-exact`](tests.md#tests-exact)
+- [`refusals-tested`](tests.md#refusals-tested)
+- [`output-modes-tested`](tests.md#output-modes-tested)
 - [`raw-bytes-in-hex`](tests.md#raw-bytes-in-hex)
 - [`test-helpers-placed`](tests.md#test-helpers-placed)
 - [`vectors-independent`](tests.md#vectors-independent)

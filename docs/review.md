@@ -15,6 +15,17 @@ How a reviewer judges a change to placket, and what a finding looks like. The ru
 - The reviewer checks that no test was weakened, skipped or deleted to pass.
 - A reviewer of a code change runs mutation testing: they break lines on purpose and report which broken lines the tests did not notice.
 
+## The checklist
+
+No check of `make ci` reads these, so the reviewer reads each one on every change it applies to:
+
+- [`refusals-tested`](rules/tests.md#refusals-tested): every refusal or stop the change adds has a test that fails when the branch is flipped.
+- [`output-modes-tested`](rules/tests.md#output-modes-tested): every flag that changes what an output mode such as `--json` prints is tested in that mode.
+- [`files-like-siblings`](rules/adapters.md#files-like-siblings): for each new file of the journal or the state directory, the reviewer names the existing file of the same kind and checks that the new one is written, synced and repaired as it is.
+- [`tests-exact`](rules/tests.md#tests-exact): every test compares the whole value where the whole value is known.
+- [`fuzz-parsers`](rules/tests.md#fuzz-parsers): every new parser of untrusted input has a fuzz test.
+- [`deltas-stop-for-intent`](rules/changes.md#deltas-stop-for-intent): a choice on the requirement text, command-line output, an exit code, a door code or a door format that is listed as open to veto is a blocking finding. It waits for the maintainer's explicit ruling.
+
 ## A finding
 
 Every finding names three things:

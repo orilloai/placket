@@ -25,6 +25,8 @@ Open an issue before you start on any of these, using the **proposal** form, and
 
 The maintainer rules on intent. Anything else is your choice: take the sensible default and say so in the pull request, where it can be questioned. For a bug, use the **bug** form; for something wrong or unclear in the requirement text, the **erratum** form. A small fix needs no issue first.
 
+A pull request that changes command-line output, an exit code or a door code waits for the maintainer's answer, on its issue or on the pull request, before it merges, and no one objecting does not settle it ([`deltas-stop-for-intent`](docs/rules/changes.md#deltas-stop-for-intent)).
+
 ## Making a change
 
 1. **Read first.** `AGENTS.md` maps the repository and says which file of `docs/rules/` to read before you touch each part. Read the decision records in `docs/adr/` that touch your change. If your change makes a decision that spans packages or would be expensive to reverse, write its record in `docs/adr/` first (`NNNN-<slug>.md`, the next free number; context, decision, consequences).
@@ -39,7 +41,7 @@ The maintainer rules on intent. Anything else is your choice: take the sensible 
 
    A `<test>` is a Go test's name, or a shell test's path such as `tests/test_x.sh`. Add one with `git commit --trailer 'Green-On-Base: TestX: <why>'`, plus `-s` if you are a person signing off (an agent never adds one). A trailer naming a test the change does not touch is refused.
 4. **Then the code**, in small commits.
-5. **Run `make ci`** before you push, with Go 1.27, `jq`, a POSIX shell, OpenSSL 3, GNU `basenc` (from coreutils), `perl`, `git` and `tar`. It runs every check: the rules of the checker in `tools/guard/`, every module's format, vet, lint, the vulnerability and secret scans, the tests with the race detector, the fuzz seeds, the conformance runner and the shell tests. `make <step>` runs one of them. A refusal starts with the rule's name, names the file and line, and its last line links the rule's heading in `docs/rules/`; `docs/rules/checks.md` says what each step prints. Never run `make ci` from inside a test ([`ci-stays-fast`](docs/rules/changes.md#ci-stays-fast)).
+5. **Run `make ci`** before you push, with Go 1.27, `jq`, a POSIX shell, OpenSSL 3, GNU `basenc` (from coreutils), `perl`, `git`, `tar`, `curl`, and `gzip` where `tar` is GNU tar. It runs every check: the rules of the checker in `tools/guard/`, every module's format, vet, lint, the vulnerability and secret scans, the tests with the race detector, the fuzz seeds, the conformance runner and the shell tests. `make <step>` runs one of them. A refusal starts with the rule's name, names the file and line, and its last line links the rule's heading in `docs/rules/`; `docs/rules/checks.md` says what each step prints. Never run `make ci` from inside a test ([`ci-stays-fast`](docs/rules/changes.md#ci-stays-fast)).
 
 ## Patterns
 

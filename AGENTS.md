@@ -9,7 +9,7 @@ This file is the entry point for anyone who builds or reviews placket, agents fi
 - `make ci`: every check, the one entry point. `make <step>` runs one step, named as `make ci` prints it.
 - `make red-green-tests BASE=origin/main`: every test the change adds or changes is red on `main` and green at the head. It reads commits, so commit first.
 - `make demo`: the worked example, run by hand.
-- Go 1.27 (toolchain go1.27.4); `jq` and `sh` for the shell tests and patterns; OpenSSL 3, GNU `basenc`, `perl`, `git` and `tar` for the shell tests too.
+- Go 1.27 (toolchain go1.27.4); `jq` and `sh` for the shell tests and patterns; OpenSSL 3, GNU `basenc`, `perl`, `git`, `tar`, `curl`, and `gzip` where `tar` is GNU tar, for the shell tests too.
 - GitHub runs `make ci` and `red-green-tests` on every pull request and every push to `main`; that run is the one that counts.
 
 ## The map
@@ -17,17 +17,22 @@ This file is the entry point for anyone who builds or reviews placket, agents fi
 - `core/`: the Go core, its own module with no dependency; one package per protocol capability. Nothing here touches the world.
 - `adapters/`: the world: the socket door, the journal, key files, the state directory, the log export, the command line. Root module.
 - `cmd/placket/`: the binary, `main` only, under 40 lines.
+- `cmd/judge-eval/` and `evals/`: the judge eval's command and its cases, run by hand with `make judge-eval`; no step of `make ci`, and not in the release.
 - `recipes/<name>/` (none yet): one job's templates, on the core's exported API only.
+- `api/`: the mediator API's schemas, for a client in any language and for the tools of `placket mcp`; `docs/reference/mediator-api.md` is generated from them.
 - `spec/`: the protocol. `protocol.md` is the normative requirement text; `schema/` and `frozen-formats.md` are the frozen formats and their register.
 - `vectors/`: conformance vectors, generated independently of the code they test, and the coverage list.
 - `patterns/`: runnable templates for a caller's job, using the `placket` binary and `jq` only, and `gh api` for `github-merge` alone; a pattern may hold an `apply.sh` its `pattern.sh` calls, and a stand-in for an outside tool with its fixtures. `make ci` runs each.
-- `docs/README.md`: the docs tree, the site's page order; every page it lists is checked (`docs-tree-holds`).
+- `docs/README.md`: the docs tree, the site's page order over `docs/quickstarts/`, `docs/concepts/`, `docs/guides/`, `docs/reference/` and `docs/verify.md`; every page it lists is checked (`docs-tree-holds`).
 - `docs/adr/`: decision records, `NNNN-<slug>.md`, written before the change that relies on them.
 - `docs/rules/`: every rule, once, under its public name. `docs/style/`, `docs/security/`, `docs/review.md`: style, security, review.
-- `tests/`: the shell tests `make ci` runs, `tests/test_*.sh`, with fixtures under `tests/testdata/`.
+- `tests/`: the shell tests `make ci` runs, `tests/test_*.sh`, with fixtures under `tests/testdata/`, and `tests/firsthour/`, a Go program the first-hour test builds.
 - `tools/guard/`: the checker behind the checks of `make ci` that read the tree. Changed only in a rules change.
 - `tools/redgreen/`: the checks `red-green-tests` and `outside-commits-signed-off`. Changed only in a rules change; GitHub runs `main`'s copy.
+- `Makefile`: the steps of `make ci`, and `make demo` and `make judge-eval`. Its checks and steps change only in a rules change.
 - `scripts/`: scripts run by hand or by a workflow, such as the demo, each with its test in `tests/`.
+- `install.sh` and `.goreleaser.yaml`: the one-line install and the release build; `docs/release.md` says what a release holds.
+- `skills/` and `.claude-plugin/`: skills for an agent that helps a person try placket, and the plugin manifest that ships them.
 - `.github/`: workflows, templates and code owners. Workflows are the maintainer's alone.
 - `review/` (none yet): the review passes, the maintainer's to change.
 - `out/`: a builder's notes for the next round of a change; removed before it merges, which the reviewer checks, since `make ci` cannot tell a branch from a merge.
@@ -41,7 +46,7 @@ Fixtures for any check go under a `testdata/` directory, which Go's tools and `m
 - Behaviour lands in `spec/protocol.md` and the vectors before code (`specs-name-behaviour`, `vectors-independent`).
 - Every test a change adds or changes is red against `main` and green at the head, and none is removed or skipped unexplained (`red-green-tests`).
 - Rules, checks, workflows and review change only in a change of their own, which the maintainer approves (`CONTRIBUTING.md`, Kinds of change; no public name of its own).
-- A change that alters what placket does for someone, a capability's scope or what it must not do stops for the maintainer (`deltas-stop-for-intent`).
+- A change that alters what placket does for someone, a capability's scope or what it must not do stops for the maintainer. A change to the requirement text, command-line output, an exit code, a door code or a door format waits for the maintainer's explicit ruling, never a list open to veto (`deltas-stop-for-intent`).
 - Secrets never print, in errors, logs or any format verb (`secrets-never-print`, `error-text-no-content`).
 - An agent never adds a `Signed-off-by` line, its own or anyone's. Only a person signs off, for themselves (`outside-commits-signed-off`; `CONTRIBUTING.md`, Commits).
 
@@ -78,3 +83,5 @@ Stop and ask the maintainer before:
 - a workflow, a rule or a check;
 - a release or a tag;
 - anything security-sensitive: report it as `SECURITY.md` says, never fix it in public first.
+
+`deltas-stop-for-intent` names the other changes that wait for the maintainer, such as one to command-line output or an exit code.
