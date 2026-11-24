@@ -83,9 +83,10 @@ group=$!
 watchdog=$!
 wait "$group"
 rc=$?
+# The watchdog's id is cleared as its group is killed, before the reap that frees it for another.
 kill -KILL -"$watchdog" 2>/dev/null
-wait "$watchdog" 2>/dev/null
-watchdog=
+w=$watchdog watchdog=
+wait "$w" 2>/dev/null
 left=0
 if kill -0 -"$group" 2>/dev/null; then
 	left=1
