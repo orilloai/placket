@@ -65,7 +65,7 @@ On macOS or Linux:
 brew install --cask orilloai/tap/placket
 ```
 
-The cask installs from the release's archives at their SHA-256s in `checksums.txt`. On macOS it clears the quarantine mark of the installed `placket`, so its first run asks nothing. The tap takes the cask from each published release once a day, so it may lag a release by up to a day.
+The cask installs from the release's archives at their SHA-256s in `checksums.txt`. On macOS it clears the quarantine mark of the installed `placket`, so its first run asks nothing. The tap takes the cask from each published release within the hour, with no step after the release.
 
 ### Download
 
@@ -161,24 +161,37 @@ On every pull request, the workflow also builds a snapshot twice without signing
 
 ### The Homebrew tap
 
-The tap is the repository `orilloai/homebrew-tap`, which holds `Casks/placket.rb`. GoReleaser writes the cask and pushes it nowhere: the release only attaches it. Placket's own workflows hold no token for the tap. A workflow in the tap, on a schedule and by hand, takes the cask from placket's latest published release, so it only ever names published assets; checks the signature on that release's `checksums.txt` and that each of the cask's SHA-256s is an archive's line there; and commits it with the tap's own token. So the cask may lag a release by up to a day; running the workflow by hand after a release brings it at once.
+The tap is the repository `orilloai/homebrew-tap`, which holds `Casks/placket.rb`. GoReleaser writes the cask and pushes it nowhere: the release only attaches it. Placket's own workflows hold no token for the tap. A workflow in the tap, on a schedule and by hand, takes the cask from placket's latest published release, so it only ever names published assets, and writes `zap :not_required` where GoReleaser writes a comment, which `brew style` refuses; checks the signature on that release's `checksums.txt` and that each of the cask's SHA-256s is an archive's line there; and brings it in with the tap's own token. When only the cask's version and its four SHA-256s change, the lines the signed `checksums.txt` vouches for, it pushes the cask to the tap's `main`; when anything else in the cask changes, such as an install step, it pushes the cask to `update-cask` and opens a pull request for the maintainer to review, since `placket.rb` itself is not signed. The tap's `main` has no ruleset yet, so nothing yet holds a person's push to `main` to that review, and the organization does not let GitHub Actions open pull requests, so in the second case the workflow fails after its push to `update-cask`, and the maintainer opens the pull request. The header comment of the workflow below says a ruleset lets GitHub Actions push past its review; that holds once the tap gains its ruleset and the workflow its own identity. It runs every hour, so the cask follows a release within the hour; running it by hand after a release brings it at once.
 
 The tap's workflow, `.github/workflows/update.yml`:
 
 ```yaml
+# Takes the cask from placket's latest published release, checks it against the release's signed
+# checksums.txt, and brings it here. Hourly, and by hand, so the tap follows a release within the
+# hour with no step after the release merge.
+#
+# A routine update, one in which only the version and the four SHA-256s change, is pushed to main:
+# those are the lines the signed checksums.txt vouches for. Any other change, such as a new install
+# step or URL, is opened as a pull request on update-cask for the maintainer to review, since
+# placket.rb itself is not signed. The main ruleset lets GitHub Actions push past its review for the
+# routine case.
 name: update
 on:
   schedule:
-    - cron: "23 5 * * *"
+    - cron: "23 * * * *"
   workflow_dispatch:
 permissions:
   contents: write
+  pull-requests: write
+concurrency:
+  group: update
+  cancel-in-progress: false
 jobs:
   update:
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-      - uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: sigstore/cosign-installer@756fe2d284c7292c4e9b62c8a28f1e5629c59532 # v4.1.3
         with:
           cosign-release: v3.1.4
       - name: Take the cask from placket's latest published release
@@ -195,20 +208,41 @@ jobs:
             --certificate-oidc-issuer https://token.actions.githubusercontent.com \
             "$d/checksums.txt"
           # Each SHA-256 of the cask is an archive's line in checksums.txt, one for each of the four.
+          sed -n 's/^ *sha256 "\([0-9a-f]\{64\}\)"$/\1/p' "$d/placket.rb" >"$d/sums"
           n=0
-          for s in $(sed -n 's/^ *sha256 "\([0-9a-f]\{64\}\)"$/\1/p' "$d/placket.rb"); do
+          while read -r s; do
             grep -q "^$s  placket_.*\.tar\.gz\$" "$d/checksums.txt" || { echo "::error::sha256 $s is no archive's line in checksums.txt"; exit 1; }
             n=$((n + 1))
-          done
+          done <"$d/sums"
           [ "$n" -eq 4 ] || { echo "::error::the cask has $n SHA-256s, not 4"; exit 1; }
+          # GoReleaser writes a comment where a cask with nothing to zap says so, which brew style
+          # refuses (Cask/ZapNotRequired): the one line this tap writes otherwise than the release.
+          sed 's/^  # No zap stanza required$/  zap :not_required/' "$d/placket.rb" >"$d/cask.rb"
           mkdir -p Casks
-          if cmp -s "$d/placket.rb" Casks/placket.rb; then echo "the cask is already $tag's"; exit 0; fi
-          cp "$d/placket.rb" Casks/placket.rb
+          if cmp -s "$d/cask.rb" Casks/placket.rb; then echo "the cask is already $tag's"; exit 0; fi
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          # The cask with its version and SHA-256 lines left out: what checksums.txt does not vouch for.
+          shape() { grep -v -E '^ *(version "[^"]*"|sha256 "[0-9a-f]{64}")$' "$1" 2>/dev/null || true; }
+          if [ -f Casks/placket.rb ] && [ "$(shape "$d/cask.rb")" = "$(shape Casks/placket.rb)" ]; then
+            cp "$d/cask.rb" Casks/placket.rb
+            git add Casks/placket.rb
+            git commit -m "placket $tag"
+            git push origin HEAD:main
+            echo "pushed the cask of $tag: only its version and SHA-256s changed"
+            exit 0
+          fi
+          # Anything else changed: a pull request for the maintainer, on one branch, refreshed in place.
+          git switch -c update-cask
+          cp "$d/cask.rb" Casks/placket.rb
           git add Casks/placket.rb
-          git commit -m "placket $tag"
-          git push
+          git commit -m "placket $tag, with changes beyond its version and SHA-256s"
+          git push --force origin update-cask
+          if [ -z "$(gh pr list --head update-cask --state open --json number --jq '.[].number')" ]; then
+            gh pr create --base main --head update-cask --title "placket $tag: the cask changes beyond its version and SHA-256s" \
+              --body "The cask of placket $tag changes more than its version and its four SHA-256s, which the release's signed checksums.txt vouches for; the rest of placket.rb is not signed. Its SHA-256s were checked. Review the diff, then merge."
+          fi
+          echo "::notice::opened or refreshed the pull request on update-cask: the cask of $tag changes beyond its version and SHA-256s"
 ```
 
 ### Versions

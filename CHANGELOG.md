@@ -9,6 +9,7 @@ This file covers the tool and its Go API. Changes to the protocol's frozen forma
 ## Unreleased
 
 - The README opens with what placket is for and a link to placket.tech, lists Homebrew first and the install script's need for `cosign` before its command, puts the quickstart straight after the install, and adds two results that need no agent: the demo journal's verify and the merge rehearsal. Each quickstart says it uses Claude Code and points to the six words and to those two results.
+- `docs/release.md` says the Homebrew cask follows a release within the hour, not within a day, and how the tap brings in a cask that changes more than its version and SHA-256s.
 
 ### Fixed
 
