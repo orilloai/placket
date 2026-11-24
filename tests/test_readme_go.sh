@@ -24,7 +24,7 @@ if [ ! -s "$tmp/section.md" ]; then
 	echo "FAIL README.md has no section '## Use the core from Go'"
 	exit 1
 fi
-for want in 'go get github.com/orilloai/placket/core@v0.1.0' '0.x, may change' 'internal/'; do
+for want in 'go get github.com/orilloai/placket/core@v0.1.1' '0.x, may change' 'internal/'; do
 	if grep -qF "$want" "$tmp/section.md"; then
 		echo "ok   the Go section says: $want"
 	else
@@ -39,7 +39,7 @@ if [ "$(grep -c '^```go$' "$tmp/section.md")" -ne 1 ] || [ ! -s "$tmp/example/ma
 	echo "FAIL the Go section does not hold exactly one go block"
 	exit 1
 fi
-printf 'module example.com/verify\n\ngo 1.27\n\nrequire github.com/orilloai/placket/core v0.1.0\n\nreplace github.com/orilloai/placket/core => %s/core\n' "$root" >"$tmp/example/go.mod"
+printf 'module example.com/verify\n\ngo 1.27\n\nrequire github.com/orilloai/placket/core v0.1.1\n\nreplace github.com/orilloai/placket/core => %s/core\n' "$root" >"$tmp/example/go.mod"
 if ! (cd "$tmp/example" && GOWORK=off GOFLAGS=-mod=mod GOPROXY=off go build -o "$tmp/verify" .) >"$tmp/out" 2>&1; then
 	echo "FAIL the README's Go program does not build against the core in this tree"
 	sed 's/^/    | /' "$tmp/out"
