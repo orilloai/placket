@@ -161,7 +161,7 @@ On every pull request, the workflow also builds a snapshot twice without signing
 
 ### The Homebrew tap
 
-The tap is the repository `orilloai/homebrew-tap`, which holds `Casks/placket.rb`. GoReleaser writes the cask and pushes it nowhere: the release only attaches it. Placket's own workflows hold no token for the tap. A workflow in the tap, on a schedule and by hand, takes the cask from placket's latest published release, so it only ever names published assets; checks the signature on that release's `checksums.txt` and that each of the cask's SHA-256s is an archive's line there; and brings it in with the tap's own token. When only the cask's version and its four SHA-256s change, the lines the signed `checksums.txt` vouches for, it pushes the cask to the tap's `main`, which the tap's `main` ruleset lets GitHub Actions do past its review; when anything else in the cask changes, such as an install step, it opens a pull request on `update-cask` for the maintainer to review, since `placket.rb` itself is not signed. It runs every hour, so the cask follows a release within the hour; running it by hand after a release brings it at once.
+The tap is the repository `orilloai/homebrew-tap`, which holds `Casks/placket.rb`. GoReleaser writes the cask and pushes it nowhere: the release only attaches it. Placket's own workflows hold no token for the tap. A workflow in the tap, on a schedule and by hand, takes the cask from placket's latest published release, so it only ever names published assets, and writes `zap :not_required` where GoReleaser writes a comment, which `brew style` refuses; checks the signature on that release's `checksums.txt` and that each of the cask's SHA-256s is an archive's line there; and brings it in with the tap's own token. When only the cask's version and its four SHA-256s change, the lines the signed `checksums.txt` vouches for, it pushes the cask to the tap's `main`, which the tap's `main` ruleset lets GitHub Actions do past its review; when anything else in the cask changes, such as an install step, it opens a pull request on `update-cask` for the maintainer to review, since `placket.rb` itself is not signed. It runs every hour, so the cask follows a release within the hour; running it by hand after a release brings it at once.
 
 The tap's workflow, `.github/workflows/update.yml`:
 
@@ -215,14 +215,17 @@ jobs:
             n=$((n + 1))
           done <"$d/sums"
           [ "$n" -eq 4 ] || { echo "::error::the cask has $n SHA-256s, not 4"; exit 1; }
+          # GoReleaser writes a comment where a cask with nothing to zap says so, which brew style
+          # refuses (Cask/ZapNotRequired): the one line this tap writes otherwise than the release.
+          sed 's/^  # No zap stanza required$/  zap :not_required/' "$d/placket.rb" >"$d/cask.rb"
           mkdir -p Casks
-          if cmp -s "$d/placket.rb" Casks/placket.rb; then echo "the cask is already $tag's"; exit 0; fi
+          if cmp -s "$d/cask.rb" Casks/placket.rb; then echo "the cask is already $tag's"; exit 0; fi
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           # The cask with its version and SHA-256 lines left out: what checksums.txt does not vouch for.
           shape() { grep -v -E '^ *(version "[^"]*"|sha256 "[0-9a-f]{64}")$' "$1" 2>/dev/null || true; }
-          if [ -f Casks/placket.rb ] && [ "$(shape "$d/placket.rb")" = "$(shape Casks/placket.rb)" ]; then
-            cp "$d/placket.rb" Casks/placket.rb
+          if [ -f Casks/placket.rb ] && [ "$(shape "$d/cask.rb")" = "$(shape Casks/placket.rb)" ]; then
+            cp "$d/cask.rb" Casks/placket.rb
             git add Casks/placket.rb
             git commit -m "placket $tag"
             git push origin HEAD:main
@@ -231,7 +234,7 @@ jobs:
           fi
           # Anything else changed: a pull request for the maintainer, on one branch, refreshed in place.
           git switch -c update-cask
-          cp "$d/placket.rb" Casks/placket.rb
+          cp "$d/cask.rb" Casks/placket.rb
           git add Casks/placket.rb
           git commit -m "placket $tag, with changes beyond its version and SHA-256s"
           git push --force origin update-cask
