@@ -1,12 +1,14 @@
 # Changelog
 
-Every change to placket that a user can see is listed here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions will follow [Semantic Versioning](https://semver.org/) from the first tag.
+Every change to placket that a user can see is listed here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow [Semantic Versioning](https://semver.org/).
 
 A user-visible change adds its line under `Unreleased` in the same pull request. For an outside contribution, the reviewer or the project's own agents add the line; a contributor is never asked to.
 
 This file covers the tool and its Go API. Changes to the protocol's frozen formats carry their own version notes, in the register (`spec/frozen-formats.md`) and the vectors' notes (`vectors/README.md`).
 
 ## Unreleased
+
+## [0.1.0] - 2026-11-24
 
 The first release. Placket mediates the parts that cross between parties under the terms each signed, asks a person where the terms say to, and signs a receipt for every decision, which anyone can verify.
 
