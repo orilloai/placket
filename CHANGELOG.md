@@ -8,6 +8,10 @@ This file covers the tool and its Go API. Changes to the protocol's frozen forma
 
 ## Unreleased
 
+### Changed
+
+- The README links placket.tech's brief for an AI agent assessing placket for its person, near the top.
+
 ## [0.1.1] - 2026-11-24
 
 ### Changed

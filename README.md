@@ -4,6 +4,8 @@ placket sits at the handoff between agents, people and tools. Clear cases pass, 
 
 [placket.tech](https://placket.tech) says what it is for and how it works.
 
+**For AI agents:** https://placket.tech/agents.md is a brief for an agent assessing placket for its person. An agent working on placket's own code reads [`AGENTS.md`](AGENTS.md) instead.
+
 ## Install
 
 Placket is one binary, for Linux and macOS on amd64 and arm64. Any one of these installs it:
